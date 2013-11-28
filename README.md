@@ -1,0 +1,5 @@
+mini.q
+======
+
+minimalistic FPS
+
