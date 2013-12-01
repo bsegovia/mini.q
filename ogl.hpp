@@ -3,10 +3,11 @@
  - ogl.hpp -> exposes opengl routines
  -------------------------------------------------------------------------*/
 #pragma once
-#include "math.hpp"
 #include "sys.hpp"
 
 namespace q {
+template<typename T> struct vec3;
+template<typename T> struct mat4x4;
 namespace ogl {
 
 // declare all GL functions
@@ -22,7 +23,7 @@ void start(int w, int h);
 void end();
 
 // vertex attributes
-enum {POS0, POS1, TEX0, TEX1, TEX2, NOR, COL, ATTRIB_NUM};
+enum {POS0, POS1, TEX0, TEX1, TEX2, TEX3, NOR, COL, ATTRIB_NUM};
 
 // pre-allocated texture
 enum {
@@ -41,14 +42,14 @@ enum {
 u32 coretex(u32 index);
 u32 installtex(const char *texname, bool clamp=false);
 
-// quick, dirty and super simple uber-shader system
+// quick, dirty and super simple shader system to replace fixed pipeline
 static const u32 COLOR = 0;
 static const u32 FOG = 1<<0;
 static const u32 KEYFRAME = 1<<1;
 static const u32 DIFFUSETEX = 1<<2;
 static const int subtypen = 3;
 static const int shadern = 1<<subtypen;
-void bindshader(u32 flags);
+void fixedshader(u32 flags);
 
 // track allocations
 void gentextures(s32 n, u32 *id);
@@ -97,16 +98,16 @@ void immdraw(int mode, int pos, int tex, int col, size_t n, const float *data);
 enum {MODELVIEW, PROJECTION, MATRIX_MODE};
 void matrixmode(int mode);
 void identity(void);
-void rotate(float angle, const vec3f &axis);
-void perspective(const mat4x4f &m, float fovy, float aspect, float znear, float zfar);
-void translate(const vec3f &v);
-void mulmatrix(const mat4x4f &m);
+void rotate(float angle, const vec3<float> &axis);
+void perspective(const mat4x4<float> &m, float fovy, float aspect, float znear, float zfar);
+void translate(const vec3<float> &v);
+void mulmatrix(const mat4x4<float> &m);
 void pushmatrix(void);
 void popmatrix(void);
-void loadmatrix(const mat4x4f &m);
+void loadmatrix(const mat4x4<float> &m);
 void ortho(float left, float right, float bottom, float top, float znear, float zfar);
-void scale(const vec3f &s);
-const mat4x4f &matrix(int mode);
+void scale(const vec3<float> &s);
+const mat4x4<float> &matrix(int mode);
 
 // OGL debug macros
 #if !defined(__EMSCRIPTEN__)

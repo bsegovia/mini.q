@@ -4,6 +4,7 @@
  -------------------------------------------------------------------------*/
 #include "con.hpp"
 #include "script.hpp"
+#include "renderer.hpp"
 #include "game.hpp"
 #include "ogl.hpp"
 #include "sys.hpp"
@@ -111,10 +112,10 @@ static INLINE void mainloop() {
   static float fps = 30.0f;
   fps = (1000.0f/game::curtime+fps*50.f)/51.f;
   SDL_GL_SwapBuffers();
-  OGL(ClearColor, 1.f, 1.f, 1.f, 1.f);
+  OGL(ClearColor, 0.f, 0.f, 0.f, 1.f);
   OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  // ogl::drawframe(scr_w, scr_h, fps);
+  rr::drawframe(scrw, scrh, int(fps));
   SDL_Event e;
   int lasttype = 0, lastbut = 0;
   while (SDL_PollEvent(&e)) {

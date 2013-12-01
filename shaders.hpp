@@ -1,14 +1,13 @@
 /*-------------------------------------------------------------------------
  - mini.q - a minimalistic multiplayer FPS
- - con.hpp -> exposes console functionalities
+ - shaders.hpp -> exposes shader source code
  -------------------------------------------------------------------------*/
-#pragma once
-
 namespace q {
-namespace con {
-const char *curcmd();
-void out(const char *s, ...);
-void keypress(int code, bool isdown, int cooked);
-} /* namespace con */
+namespace shaders {
+
+// fixed function shaders
+extern const char fixed_vp[], fixed_fp[];
+
+} /* namespace shaders */
 } /* namespace q */
 

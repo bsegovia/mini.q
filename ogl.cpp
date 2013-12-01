@@ -2,24 +2,16 @@
  - mini.q - a minimalistic multiplayer FPS
  - ogl.cpp -> defines opengl routines
  -------------------------------------------------------------------------*/
-#include "ogl.hpp"
 #include "con.hpp"
 #include "sys.hpp"
+#include "shaders.hpp"
+#include "math.hpp"
+#include "ogl.hpp"
+
 #include <SDL/SDL_image.h>
 
 namespace q {
 namespace ogl {
-
-#if defined(__JAVASCRIPT__)
-#define __WEBGL__
-#define IF_WEBGL(X) X
-#define IF_NOT_WEBGL(X)
-#define SWITCH_WEBGL(X,Y) X
-#else
-#define IF_WEBGL(X)
-#define IF_NOT_WEBGL(X) X
-#define SWITCH_WEBGL(X,Y) Y
-#endif //__JAVASCRIPT__
 
 #if !defined(__WEBGL__)
 #define OGLPROC110(FIELD,NAME,PROTOTYPE) PROTOTYPE FIELD = NULL;
@@ -348,7 +340,7 @@ void immdraw(int mode, int pos, int tex, int col, size_t n, const float *data) {
 /*--------------------------------------------------------------------------
  - quick and dirty shader management
  -------------------------------------------------------------------------*/
-static bool checkshader(u32 shadername) {
+static bool checkshader(const char *source, const char *rules, u32 shadername) {
   GLint result = GL_FALSE;
   int infologlength;
 
@@ -359,7 +351,8 @@ static bool checkshader(u32 shadername) {
     char *buffer = (char*) malloc(infologlength+1);
     buffer[infologlength] = 0;
     OGL(GetShaderInfoLog, shadername, infologlength, NULL, buffer);
-    con::out("%d %s", buffer);
+    con::out("%s", buffer);
+    printf("in\n%s%s\n", rules, source);
     free(buffer);
   }
   if (result == GL_FALSE) sys::fatal("ogl: failed to compile shader");
@@ -372,19 +365,25 @@ static u32 loadshader(GLenum type, const char *source, const char *rulestr) {
   const char *sources[] = {rulestr, source};
   OGL(ShaderSource, name, 2, sources, NULL);
   OGL(CompileShader, name);
-  if (!checkshader(name)) sys::fatal("OGL: shader not valid");
+  if (!checkshader(source, rulestr, name)) return 0;
   return name;
 }
 
 #if defined(__WEBGL__)
-#define OGL_PROGRAM_HEADER\
+  #define OGL_PROGRAM_HEADER\
   "precision highp float;\n"\
+  "#define IF_WEBGL(X) X\n"\
+  "#define IF_NOT_WEBGL(X)\n"\
+  "#define SWITCH_WEBGL(X,Y) X\n"\
   "#define VS_IN attribute\n"\
   "#define VS_OUT varying\n"\
   "#define PS_IN varying\n"
 #else
 #define OGL_PROGRAM_HEADER\
   "#version 130\n"\
+  "#define IF_WEBGL(X)\n"\
+  "#define IF_NOT_WEBGL(X) X\n"\
+  "#define SWITCH_WEBGL(X,Y) Y\n"\
   "#define VS_IN in\n"\
   "#define VS_OUT out\n"\
   "#define PS_IN in\n"
@@ -399,6 +398,7 @@ static u32 loadprogram(const char *vertstr, const char *fragstr, u32 rules) {
                       rules&FOG,rules&KEYFRAME,rules&DIFFUSETEX);
   const u32 vert = loadshader(GL_VERTEX_SHADER, vertstr, rulestr);
   const u32 frag = loadshader(GL_FRAGMENT_SHADER, fragstr, rulestr);
+  if (vert == 0 || frag == 0) return 0;
   program = createprogram();
   OGL(AttachShader, program, vert);
   OGL(AttachShader, program, frag);
@@ -407,66 +407,6 @@ static u32 loadprogram(const char *vertstr, const char *fragstr, u32 rules) {
   return program;
 }
 #undef OGL_PROGRAM_HEADER
-
-static const char ubervert[] = {
-  "uniform mat4 u_mvp;\n"
-  "#if USE_FOG\n"
-  "  uniform vec4 u_zaxis;\n"
-  "  VS_OUT float fs_fogz;\n"
-  "#endif\n"
-  "#if USE_KEYFRAME\n"
-  "  uniform float u_delta;\n"
-  "  VS_IN vec3 vs_pos0, vs_pos1;\n"
-  "#else\n"
-  "  VS_IN vec3 vs_pos;\n"
-  "#endif\n"
-  "VS_IN vec4 vs_col;\n"
-  "#if USE_DIFFUSETEX\n"
-  "  VS_IN vec2 vs_tex;\n"
-  "  VS_OUT vec2 fs_tex;\n"
-  "#endif\n"
-  "VS_OUT vec4 fs_col;\n"
-  "void main() {\n"
-  "#if USE_DIFFUSETEX\n"
-  "  fs_tex = vs_tex;\n"
-  "#endif\n"
-  "  fs_col = vs_col;\n"
-  "#if USE_KEYFRAME\n"
-  "  vec3 vs_pos = mix(vs_pos0,vs_pos1,u_delta);\n"
-  "#endif\n"
-  "#if USE_FOG\n"
-  "  fs_fogz = dot(u_zaxis.xyz,vs_pos)+u_zaxis.w;\n"
-  "#endif\n"
-  "  gl_Position = u_mvp*vec4(vs_pos,1.0);\n"
-  "}\n"
-};
-static const char uberfrag[] = {
-  "#if USE_DIFFUSETEX\n"
-  "  uniform sampler2D u_diffuse;\n"
-  "  PS_IN vec2 fs_tex;\n"
-  "#endif\n"
-  "#if USE_FOG\n"
-  "  uniform vec4 u_fogcolor;\n"
-  "  uniform vec2 u_fogstartend;\n"
-  "  PS_IN float fs_fogz;\n"
-  "#endif\n"
-  "PS_IN vec4 fs_col;\n"
-  IF_NOT_WEBGL("out vec4 rt_c;\n")
-  "void main() {\n"
-  "  vec4 col;\n"
-  "#if USE_DIFFUSETEX\n"
-  "  col = texture2D(u_diffuse, fs_tex);\n"
-  "  col *= fs_col;\n"
-  "#else\n"
-  "  col = fs_col;\n"
-  "#endif\n"
-  "#if USE_FOG\n"
-  "  float factor = clamp((-fs_fogz-u_fogstartend.x)*u_fogstartend.y,0.0,1.0)\n;"
-  "  col.xyz = mix(col.xyz,u_fogcolor.xyz,factor);\n"
-  "#endif\n"
-  SWITCH_WEBGL("gl_FragColor = col;\n", "rt_c = col;\n")
-  "}\n"
-};
 
 static struct shader {
   u32 rules; // fog,keyframe...?
@@ -486,7 +426,7 @@ static void bindshader(shader &shader) {
   }
 }
 
-void bindshader(u32 flags) { bindshader(shaders[flags]); }
+void fixedshader(u32 flags) { bindshader(shaders[flags]); }
 
 static void linkshader(shader &shader) {
   OGL(LinkProgram, shader.program);
@@ -512,9 +452,9 @@ static void setshaderuniform(shader &shader) {
   OGL(UseProgram, 0);
 }
 
-static void compileshader(shader &shader, const char *vert, const char *frag, u32 rules) {
+static bool compileshader(shader &shader, const char *vert, const char *frag, u32 rules) {
   memset(&shader, 0, sizeof(struct shader));
-  shader.program = loadprogram(vert, frag, rules);
+  if ((shader.program = loadprogram(vert, frag, rules))==0) return false;
   shader.rules = rules;
   if (shader.rules&KEYFRAME) {
     OGL(BindAttribLocation, shader.program, POS0, "vs_pos0");
@@ -527,20 +467,23 @@ static void compileshader(shader &shader, const char *vert, const char *frag, u3
 #if !defined(__WEBGL__)
   OGL(BindFragDataLocation, shader.program, 0, "rt_col");
 #endif // __WEBGL__
+  return true;
 }
 
-static void buildshader(shader &shader, const char *vert, const char *frag, u32 rules) {
-  compileshader(shader, vert, frag, rules);
+static bool buildshader(shader &shader, const char *vert, const char *frag, u32 rules) {
+  if (!compileshader(shader, vert, frag, rules)) return false;
   linkshader(shader);
   setshaderuniform(shader);
+  return true;
 }
 
-static void buildubershader(shader &shader, u32 rules) {
-  buildshader(shader, ubervert, uberfrag, rules);
+static bool buildfixedshader(shader &shader, u32 rules) {
+  return buildshader(shader, shaders::fixed_vp, shaders::fixed_fp, rules);
 }
 
 static void buildshaders(void) {
-  loopi(shadern) buildubershader(shaders[i], i);
+  loopi(shadern) if (!buildfixedshader(shaders[i], i))
+    sys::fatal("unable to build fixed shaders");
 }
 
 static void destroyshaders(void) {
@@ -626,7 +569,11 @@ void start(int w, int h) {
     if (coretexarray[i] == 0)
       sys::fatal("could not find core textures");
 }
-void end() { destroyshaders(); }
+void end() {
+  destroyshaders();
+  rangei(TEX_CROSSHAIR, TEX_PREALLOCATED_NUM)
+    if (coretexarray[i]) OGL(DeleteTextures, 1, coretexarray+i);
+}
 
 } /* namespace ogl */
 } /* namespace q */

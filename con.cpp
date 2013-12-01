@@ -58,6 +58,7 @@ static int conskip = 0;
 static bool saycommandon = false;
 static string cmdbuf;
 
+const char *curcmd() { return saycommandon?cmdbuf:NULL; }
 static void setconskip(const int &n) {
   conskip += n;
   if (conskip < 0) conskip = 0;

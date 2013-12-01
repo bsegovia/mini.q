@@ -4,13 +4,11 @@
  -------------------------------------------------------------------------*/
 #include "ogl.hpp"
 #include "text.hpp"
+#include "renderer.hpp"
+#include "math.hpp"
 
 namespace q {
 namespace text {
-static const int VIRTW = 2400; // screen width for text & HUD
-static const int VIRTH = 1800; // screen height for text & HUD
-static const int FONTH = 64; // font height
-static const int PIXELTAB = VIRTW / 12; // tabulation size in pixels
 
 static const short char_coords[96][4] = {
   {0,0,25,64},        //!
@@ -116,9 +114,9 @@ int width(const char *str) {
   int x = 0;
   for (int i = 0; str[i] != 0; i++) {
     int c = str[i];
-    if (c=='\t') { x = (x+PIXELTAB)/PIXELTAB*PIXELTAB; continue; }; 
+    if (c=='\t') { x = (x+rr::PIXELTAB)/rr::PIXELTAB*rr::PIXELTAB; continue; }; 
     if (c=='\f') continue; 
-    if (c==' ') { x += FONTH/2; continue; };
+    if (c==' ') { x += rr::FONTH/2; continue; };
     c -= 33;
     if (c<0 || c>=95) continue;
     const int in_width = char_coords[c][2] - char_coords[c][0];
@@ -127,15 +125,15 @@ int width(const char *str) {
   return x;
 }
 
-void drawf(const char *fstr, int left, int top, int gl_num, ...) {
-  sprintf_sdlv(str, gl_num, fstr);
-  draw(str, left, top, gl_num);
+void drawf(const char *fstr, int left, int top, ...) {
+  sprintf_sdlv(str, top, fstr);
+  draw(str, left, top);
 }
 
-void draw(const char *str, int left, int top, int gl_num) {
+void draw(const char *str, int left, int top) {
   typedef array<float,4> arrayf4;
   OGL(BlendFunc, GL_ONE, GL_ONE);
-  ogl::bindtexture(GL_TEXTURE_2D, gl_num);
+  ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_CHARACTERS));
   OGL(VertexAttrib3f,ogl::COL,1.f,1.f,1.f);
 
   // use a triangle mesh to display the text
@@ -147,9 +145,9 @@ void draw(const char *str, int left, int top, int gl_num) {
   int index = 0, vert = 0, x = left, y = top;
   for (int i = 0; str[i] !=	 0; ++i) {
     int c = str[i];
-    if (c=='\t') { x = (x-left+PIXELTAB)/PIXELTAB*PIXELTAB+left; continue; }; 
+    if (c=='\t') { x = (x-left+rr::PIXELTAB)/rr::PIXELTAB*rr::PIXELTAB+left; continue; }; 
     if (c=='\f') { OGL(VertexAttrib3f,ogl::COL,0.25f,1.f,0.5f); continue; };
-    if (c==' ') { x += FONTH/2; continue; };
+    if (c==' ') { x += rr::FONTH/2; continue; };
     c -= 33;
     if (c<0 || c>=95) continue;
 
@@ -175,7 +173,7 @@ void draw(const char *str, int left, int top, int gl_num) {
   ogl::immvertexsize(sizeof(float[4]));
   ogl::immattrib(ogl::POS0, 2, GL_FLOAT, sizeof(float[2]));
   ogl::immattrib(ogl::TEX0, 2, GL_FLOAT, 0);
-  ogl::bindshader(ogl::DIFFUSETEX);
+  ogl::fixedshader(ogl::DIFFUSETEX);
   ogl::immdrawelements(GL_TRIANGLES, index, GL_UNSIGNED_SHORT, indices, &verts[0][0]);
 }
 
@@ -200,7 +198,7 @@ static void drawenvboxface(float s0, float t0, int x0, int y0, int z0,
 
 void drawenvbox(int t, int w) {
   OGL(DepthMask, GL_FALSE);
-  ogl::bindshader(ogl::DIFFUSETEX);
+  ogl::fixedshader(ogl::DIFFUSETEX);
   ogl::setattribarray()(ogl::POS0, ogl::TEX0);
   drawenvboxface(1.0f, 1.0f, -w, -w,  w,
                  0.0f, 1.0f,  w, -w,  w,
