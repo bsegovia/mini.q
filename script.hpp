@@ -1,27 +1,25 @@
 /*-------------------------------------------------------------------------
- - game
+ - mini.q - a minimalistic multiplayer FPS
+ - script.hpp -> exposes embedded script / console language
  -------------------------------------------------------------------------*/
-namespace game {
-extern float lastmillis, speed, curtime;
-} /* namespace game */
+#pragma once
+#include "sys.hpp"
 
-/*-------------------------------------------------------------------------
- - console
- -------------------------------------------------------------------------*/
-
-/*-------------------------------------------------------------------------
- - simple script system mostly compatible with quake console
- -------------------------------------------------------------------------*/
+namespace q {
 namespace script {
 typedef void (CDECL *cb)();
 int ivar(const char *n, int m, int cur, int M, int *ptr, cb fun, bool persist);
 float fvar(const char *n, float m, float cur, float M, float *ptr, cb fun, bool persist);
 bool cmd(const char *n, cb fun, const char *proto);
-void execute(const char *str, int isdown=1);
+void execstring(const char *str, int isdown=1);
+void execcfg(const char *path);
+bool execfile(const char *path);
+void resetcomplete(void);
+void complete(string &s);
 
 // command with custom name
 #define CMDN(name, fun, proto) \
-  static bool __##fun = q::script::cmd(#name, (q::script::cb) fun, proto)
+  bool __##fun = q::script::cmd(#name, (q::script::cb) fun, proto)
 // command with automatic name
 #define CMD(name, proto) CMDN(name, name, proto)
 // float persistent variable
@@ -51,14 +49,6 @@ void execute(const char *str, int isdown=1);
 #define IVARF(name, min, cur, max, body) \
   void var_##name() { body; } \
   auto name = q::script::ivar(#name, min, cur, max, &name, var_##name, false);
-
 } /* namespace script */
-
-/*-------------------------------------------------------------------------
- - opengl interface
- -------------------------------------------------------------------------*/
-namespace ogl {
-
-} /* namespace ogl */
 } /* namespace q */
 
