@@ -502,7 +502,7 @@ template <typename U, int n> struct array {
   INLINE void assign(vec4<U> u, int &i) {v[i++]=u.x; v[i++]=u.y; v[i++]=u.z; v[i++]=u.w;}
   INLINE void set(int i) {}
   U &operator[] (int i) {return v[i];}
-  U  operator[] (int i) const {return v[i];}
+  const U &operator[] (int i) const {return v[i];}
   U v[n];
 };
 template <typename U, int n>

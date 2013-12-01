@@ -5,6 +5,7 @@
 #include "ogl.hpp"
 #include "con.hpp"
 #include "sys.hpp"
+#include <SDL/SDL_image.h>
 
 namespace q {
 namespace ogl {
@@ -155,6 +156,63 @@ void popmatrix(void) {
   assert(vpdepth>0);
   dirty.flags.mvp=1;
   vp[vpmode] = vpstack[--vpdepth][vpmode];
+}
+
+/*--------------------------------------------------------------------------
+ - very simple texture support
+ -------------------------------------------------------------------------*/
+static int glmaxtexsize = 256;
+void bindtexture(u32 target, u32 id, u32 texslot) {
+  if (bindedtexture[texslot] == id) return;
+  bindedtexture[texslot] = id;
+  OGL(ActiveTexture, GL_TEXTURE0 + texslot);
+  OGL(BindTexture, target, id);
+}
+
+INLINE bool ispoweroftwo(unsigned int x) { return ((x&(x-1))==0); }
+
+u32 installtex(int tnum, const char *texname, bool clamp) {
+  SDL_Surface *s = IMG_Load(texname);
+  if (!s) {
+    con::out("couldn't load texture %s", texname);
+    return false;
+  }
+#if !defined(__WEBGL__)
+  else if (s->format->BitsPerPixel!=24) {
+    con::out("texture must be 24bpp: %s (got %i bpp)", texname, s->format->BitsPerPixel);
+    return false;
+  }
+#endif // __WEBGL__
+
+  u32 id;
+  gentextures(1, &id);
+  loopi(int(TEX_NUM)) bindedtexture[i] = 0;
+  con::out("loading %s (%ix%i)", texname, s->w, s->h);
+  ogl::bindtexture(GL_TEXTURE_2D, tnum, 0);
+  OGL(PixelStorei, GL_UNPACK_ALIGNMENT, 1);
+  if (s->w>glmaxtexsize || s->h>glmaxtexsize)
+    sys::fatal("texture dimensions are too large");
+  if (s->format->BitsPerPixel == 24)
+    OGL(TexImage2D, GL_TEXTURE_2D, 0, GL_RGB, s->w, s->h, 0, GL_RGB, GL_UNSIGNED_BYTE, s->pixels);
+  else if (s->format->BitsPerPixel == 32)
+    OGL(TexImage2D, GL_TEXTURE_2D, 0, GL_RGBA, s->w, s->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, s->pixels);
+  else
+    sys::fatal("unsupported texture format");
+
+  if (ispoweroftwo(s->w) && ispoweroftwo(s->h)) {
+    OGL(GenerateMipmap, GL_TEXTURE_2D);
+    OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT);
+    OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT);
+    OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+  } else {
+    OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  }
+  SDL_FreeSurface(s);
+  return id;
 }
 
 /*--------------------------------------------------------------------------
@@ -522,7 +580,6 @@ void drawelements(int mode, int count, int type, const void *indices) {
   OGL(DrawElements, mode, count, type, indices);
 }
 
-static int glmaxtexsize = 256;
 void start(int w, int h) {
 #if !defined(__WEBGL__)
 // on windows, we directly load OpenGL 1.1 functions

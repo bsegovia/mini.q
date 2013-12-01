@@ -186,7 +186,7 @@ typedef unsigned      char u8;
 #endif // __MSVC__
 
 /*-------------------------------------------------------------------------
- - low-level system functions and program entry points
+ - low-level system functions and program entry / exit points
  -------------------------------------------------------------------------*/
 namespace sys {
 void fatal(const char *s, const char *o = "");

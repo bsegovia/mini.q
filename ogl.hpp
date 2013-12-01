@@ -26,7 +26,8 @@ enum {POS0, POS1, TEX0, TEX1, TEX2, NOR, COL, ATTRIB_NUM};
 
 // pre-allocated texture
 enum {
-  TEX_CROSSHAIR = 1,
+  TEX_UNUSED = 0,
+  TEX_CROSSHAIR,
   TEX_CHARACTERS,
   TEX_MARTIN_BASE,
   TEX_ITEM,
@@ -35,8 +36,9 @@ enum {
   TEX_MARTIN_SMOKE,
   TEX_MARTIN_BALL2,
   TEX_MARTIN_BALL3,
-  TEX_PREALLOCATED_NUM = TEX_MARTIN_BALL3
+  TEX_PREALLOCATED_NUM
 };
+extern u32 systex[TEX_PREALLOCATED_NUM];
 
 // quick, dirty and super simple uber-shader system
 static const u32 COLOR = 0;
@@ -63,7 +65,7 @@ void drawsphere(void);
 // following functions also ensure state tracking
 enum {ARRAY_BUFFER, ELEMENT_ARRAY_BUFFER, BUFFER_NUM};
 void bindbuffer(u32 target, u32 buffer);
-void bindgametexture(u32 target, u32 tex);
+void bindtexture(u32 target, u32 id, u32 slot=0);
 void enableattribarray(u32 target);
 void disableattribarray(u32 target);
 
