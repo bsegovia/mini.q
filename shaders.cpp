@@ -73,7 +73,7 @@ namespace shaders {
 "IF_NOT_WEBGL(out vec4 rt_c);\n"
 
 "void main() {\n"
-"  vec4 col = texture2D(u_diffuse, fs_tex);\n"
+"  vec4 col = smoothstep(0.35,0.45,texture2D(u_diffuse, fs_tex));\n"
 "  SWITCH_WEBGL(gl_FragColor = col;, rt_c = col;)\n"
 "}\n"
  };

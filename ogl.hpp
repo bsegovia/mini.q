@@ -49,7 +49,8 @@ static const u32 KEYFRAME = 1<<1;
 static const u32 DIFFUSETEX = 1<<2;
 static const int subtypen = 3;
 static const int shadern = 1<<subtypen;
-void fixedshader(u32 flags);
+void bindfixedshader(u32 flags);
+void bindfontshader();
 
 // track allocations
 void gentextures(s32 n, u32 *id);

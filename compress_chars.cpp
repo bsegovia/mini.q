@@ -15,15 +15,19 @@
 } while (0)
 
 int main(int argc, const char *argv[]) {
-  if (argc != 2) FATAL("usage: %s filename", argv[0]);
+  if (argc != 4) FATAL("usage: %s filename", argv[0]);
   auto s = IMG_Load(argv[1]);
+  auto fontw = atoi(argv[2]);
+  auto fonth = atoi(argv[3]);
   if (s == NULL) FATAL("unable to load font file %s", argv[1]);
   if (s->w%32 != 0) FATAL("unsupported width");
   if (s->format->BitsPerPixel != 32) FATAL("unsupported pixel format");
   uint32_t *src = (uint32_t*)(s->pixels);
   uint32_t k = 0;
   printf("static const int fontw = %d, fonth = %d;\n", s->w, s->h);
-  printf("static const int charxnum = %d;\n", s->w/8);
+  printf("static const int fontcol = %d;\n", s->w/fontw);
+  printf("static const int charw = %d;\n", fontw);
+  printf("static const int charh = %d;\n", fonth);
   printf("static const u32 fontdata[] = {\n");
   for (auto y = 0; y < s->h; ++y) {
     for (auto x = 0; x < s->w/32; ++x, ++k) {

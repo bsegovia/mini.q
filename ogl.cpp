@@ -428,7 +428,8 @@ static void bindshader(shader &shader) {
   }
 }
 
-void fixedshader(u32 flags) { bindshader(shaders[flags]); }
+void bindfixedshader(u32 flags) { bindshader(shaders[flags]); }
+void bindfontshader() { bindshader(fontshader); }
 
 static void linkshader(shader &shader) {
   OGL(LinkProgram, shader.program);
@@ -610,7 +611,6 @@ void start(int w, int h) {
 
   coretexarray[TEX_UNUSED]       = 0;
   coretexarray[TEX_CROSSHAIR]    = installtex("data/crosshair.png");
-  // coretexarray[TEX_CHARACTERS]   = installtex("data/newchars.png");
   coretexarray[TEX_CHARACTERS]   = text::buildfont();
   coretexarray[TEX_MARTIN_BASE]  = installtex("data/martin/base.png");
   coretexarray[TEX_ITEM]         = installtex("data/items.png");

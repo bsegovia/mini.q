@@ -25,8 +25,10 @@ shaders.o: shaders.cpp $(HEADERS)
 script.o: script.cpp $(HEADERS)
 sys.o: sys.cpp $(HEADERS)
 text.o: text.cpp font.hxx $(HEADERS)
-font.hxx: compress_chars data/font8x8.png
-	./compress_chars data/font8x8.png > font.hxx
+#font.hxx: compress_chars data/font8x8.png
+#	./compress_chars data/font8x8.png 8 8 > font.hxx
+font.hxx: compress_chars data/font8x16.png
+	./compress_chars data/font8x16.png 8 16 > font.hxx
 
 clean:
 	-rm -f $(OBJS) mini.q
