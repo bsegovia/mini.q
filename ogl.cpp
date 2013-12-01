@@ -7,6 +7,7 @@
 #include "shaders.hpp"
 #include "script.hpp"
 #include "math.hpp"
+#include "text.hpp"
 #include "ogl.hpp"
 
 #include <SDL/SDL_image.h>
@@ -165,7 +166,7 @@ void bindtexture(u32 target, u32 id, u32 texslot) {
 INLINE bool ispoweroftwo(unsigned int x) { return ((x&(x-1))==0); }
 
 u32 installtex(const char *texname, bool clamp) {
-  SDL_Surface *s = IMG_Load(texname);
+  auto s = IMG_Load(texname);
   if (!s) {
     con::out("couldn't load texture %s", texname);
     return 0;
@@ -415,7 +416,7 @@ static struct shader {
   u32 u_diffuse, u_delta, u_mvp; // uniforms
   u32 u_zaxis, u_fogstartend, u_fogcolor; // uniforms
 } shaders[shadern];
-
+static shader fontshader;
 static vec4f fogcolor;
 static vec2f fogstartend;
 
@@ -471,11 +472,14 @@ static bool compileshader(shader &shader, const char *vert, const char *frag, u3
   return true;
 }
 
-static bool buildshader(shader &shader, const char *vert, const char *frag, u32 rules) {
-  if (!compileshader(shader, vert, frag, rules)) return false;
-  linkshader(shader);
-  setshaderuniform(shader);
+static bool buildprogram(shader &shader, const char *vert, const char *frag, u32 rules) {
+  struct shader s;
+  if (!compileshader(s, vert, frag, rules)) return false;
+  linkshader(s);
+  setshaderuniform(s);
   dirty.any = ~0x0;
+  if (shader.program) deleteprogram(shader.program);
+  shader = s;
   return true;
 }
 
@@ -485,38 +489,58 @@ static char *loadshaderfile(const char *path) {
   return s;
 }
 
-static bool buildfixedshader(shader &shader, u32 rules, int fromfile) {
-  if (fromfile) {
-    auto fixed_vp = loadshaderfile("data/shaders/fixed_vp.glsl");
-    auto fixed_fp = loadshaderfile("data/shaders/fixed_fp.glsl");
-    if (fixed_fp == NULL || fixed_vp == NULL) return false;
-    auto ret = buildshader(shader, fixed_vp, fixed_fp, rules);
-    free(fixed_fp);
-    free(fixed_vp);
-    return ret;
-  } else
-    return buildshader(shader, shaders::fixed_vp, shaders::fixed_fp, rules);
+struct shaderresource {
+  const char *vppath, *fppath;
+  const char *vp, *fp;
+};
+static const struct shaderresource fixed_rsc = {
+  "data/shaders/fixed_vp.glsl",
+  "data/shaders/fixed_fp.glsl",
+  shaders::fixed_vp,
+  shaders::fixed_fp
+};
+static const struct shaderresource font_rsc = {
+  "data/shaders/fixed_vp.glsl",
+  "data/shaders/font_fp.glsl",
+  shaders::fixed_vp,
+  shaders::font_fp
+};
+
+static bool buildprogramfromfile(shader &s, const char *vppath, const char *fppath, u32 rules) {
+  auto fixed_vp = loadshaderfile(vppath);
+  auto fixed_fp = loadshaderfile(fppath);
+  if (fixed_fp == NULL || fixed_vp == NULL) return false;
+  auto ret = buildprogram(s, fixed_vp, fixed_fp, rules);
+  free(fixed_fp);
+  free(fixed_vp);
+  return ret;
+}
+static bool buildshader(shader &s, const shaderresource &rsc, u32 rules, int fromfile) {
+  if (fromfile)
+    return buildprogramfromfile(s, rsc.vppath, rsc.fppath, rules);
+  else
+    return buildprogram(s, rsc.vp, rsc.fp, rules);
 }
 IVAR(shaderfromfile, 0, 1, 1);
 
-static void buildshaders() {
-  loopi(shadern) if (!buildfixedshader(shaders[i], i, shaderfromfile))
-    sys::fatal("unable to build fixed shaders");
+static void shadererror(bool fatalerr, const char *msg) {
+  if (fatalerr)
+    sys::fatal("unable to build fixed shaders %s", msg);
+  else
+    con::out("unable to build fixed shaders %s", msg);
+}
+static void buildshaders(bool fatalerr) {
+  loopi(shadern) if (!buildshader(shaders[i], fixed_rsc, i, shaderfromfile))
+    shadererror(fatalerr, "fixed shader");
+  if (!buildshader(fontshader, font_rsc, DIFFUSETEX, shaderfromfile))
+    shadererror(fatalerr, "font shader");
 }
 
-static void destroyfixedshaders() {
+static void destroyshaders() {
   loopi(shadern) deleteprogram(shaders[i].program);
+  deleteprogram(fontshader.program);
 }
-
-static void reloadshaders() {
-  shader newshaders[shadern];
-  loopi(shadern) if (!buildfixedshader(newshaders[i], i, true)) {
-    con::out("unable to build fixed shader %i", i);
-    return;
-  }
-  destroyfixedshaders();
-  loopi(shadern) shaders[i] = newshaders[i];
-}
+static void reloadshaders() { buildshaders(false); }
 CMD(reloadshaders, "");
 
 /*--------------------------------------------------------------------------
@@ -579,14 +603,15 @@ void start(int w, int h) {
   OGL(CullFace, GL_FRONT);
   OGL(GetIntegerv, GL_MAX_TEXTURE_SIZE, &glmaxtexsize);
   dirty.any = ~0x0;
-  buildshaders();
+  buildshaders(true);
   imminit();
   loopi(ATTRIB_NUM) enabledattribarray[i] = 0;
   loopi(BUFFER_NUM) bindedvbo[i] = 0;
 
   coretexarray[TEX_UNUSED]       = 0;
   coretexarray[TEX_CROSSHAIR]    = installtex("data/crosshair.png");
-  coretexarray[TEX_CHARACTERS]   = installtex("data/newchars.png");
+  // coretexarray[TEX_CHARACTERS]   = installtex("data/newchars.png");
+  coretexarray[TEX_CHARACTERS]   = text::buildfont();
   coretexarray[TEX_MARTIN_BASE]  = installtex("data/martin/base.png");
   coretexarray[TEX_ITEM]         = installtex("data/items.png");
   coretexarray[TEX_EXPLOSION]    = installtex("data/explosion.jpg");
@@ -599,7 +624,7 @@ void start(int w, int h) {
       sys::fatal("could not find core textures");
 }
 void end() {
-  destroyfixedshaders();
+  destroyshaders();
   rangei(TEX_CROSSHAIR, TEX_PREALLOCATED_NUM)
     if (coretexarray[i]) OGL(DeleteTextures, 1, coretexarray+i);
 }

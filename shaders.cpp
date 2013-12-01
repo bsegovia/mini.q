@@ -67,5 +67,17 @@ namespace shaders {
 "}\n"
  };
 
+ const char font_fp[] = {
+"uniform sampler2D u_diffuse;\n"
+"PS_IN vec2 fs_tex;\n"
+"IF_NOT_WEBGL(out vec4 rt_c);\n"
+
+"void main() {\n"
+"  vec4 col = texture2D(u_diffuse, fs_tex);\n"
+"  SWITCH_WEBGL(gl_FragColor = col;, rt_c = col;)\n"
+"}\n"
+ };
+
 } /* namespace q */
 } /* namespace shaders */
+

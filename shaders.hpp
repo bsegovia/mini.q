@@ -5,8 +5,8 @@
 namespace q {
 namespace shaders {
 
-// fixed function shaders
 extern const char fixed_vp[], fixed_fp[];
+extern const char font_fp[];
 
 } /* namespace shaders */
 } /* namespace q */
