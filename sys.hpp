@@ -148,7 +148,7 @@
 #define loopi(m) loop(i,m)
 #define loopj(m) loop(j,m)
 #define loopk(m) loop(k,m)
-#define range(v,m,M) for(auto v = m; v < (M); ++v)
+#define range(v,m,M) for(int v = int(m); v < int(M); ++v)
 #define rangei(m,M) range(i,m,M)
 #define rangej(m,M) range(j,m,M)
 #define rangek(m,M) range(k,m,M)

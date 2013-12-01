@@ -38,7 +38,8 @@ enum {
   TEX_MARTIN_BALL3,
   TEX_PREALLOCATED_NUM
 };
-extern u32 systex[TEX_PREALLOCATED_NUM];
+u32 coretex(u32 index);
+u32 installtex(const char *texname, bool clamp=false);
 
 // quick, dirty and super simple uber-shader system
 static const u32 COLOR = 0;

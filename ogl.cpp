@@ -171,16 +171,16 @@ void bindtexture(u32 target, u32 id, u32 texslot) {
 
 INLINE bool ispoweroftwo(unsigned int x) { return ((x&(x-1))==0); }
 
-u32 installtex(int tnum, const char *texname, bool clamp) {
+u32 installtex(const char *texname, bool clamp) {
   SDL_Surface *s = IMG_Load(texname);
   if (!s) {
     con::out("couldn't load texture %s", texname);
-    return false;
+    return 0;
   }
 #if !defined(__WEBGL__)
   else if (s->format->BitsPerPixel!=24) {
     con::out("texture must be 24bpp: %s (got %i bpp)", texname, s->format->BitsPerPixel);
-    return false;
+    return 0;
   }
 #endif // __WEBGL__
 
@@ -188,7 +188,7 @@ u32 installtex(int tnum, const char *texname, bool clamp) {
   gentextures(1, &id);
   loopi(int(TEX_NUM)) bindedtexture[i] = 0;
   con::out("loading %s (%ix%i)", texname, s->w, s->h);
-  ogl::bindtexture(GL_TEXTURE_2D, tnum, 0);
+  ogl::bindtexture(GL_TEXTURE_2D, id, 0);
   OGL(PixelStorei, GL_UNPACK_ALIGNMENT, 1);
   if (s->w>glmaxtexsize || s->h>glmaxtexsize)
     sys::fatal("texture dimensions are too large");
@@ -579,6 +579,8 @@ void drawelements(int mode, int count, int type, const void *indices) {
   flush();
   OGL(DrawElements, mode, count, type, indices);
 }
+static u32 coretexarray[TEX_PREALLOCATED_NUM];
+u32 coretex(u32 index) { return coretexarray[index%TEX_PREALLOCATED_NUM]; }
 
 void start(int w, int h) {
 #if !defined(__WEBGL__)
@@ -609,6 +611,20 @@ void start(int w, int h) {
   imminit();
   loopi(ATTRIB_NUM) enabledattribarray[i] = 0;
   loopi(BUFFER_NUM) bindedvbo[i] = 0;
+
+  coretexarray[TEX_UNUSED]       = 0;
+  coretexarray[TEX_CROSSHAIR]    = installtex("data/crosshair.png");
+  coretexarray[TEX_CHARACTERS]   = installtex("data/newchars.png");
+  coretexarray[TEX_MARTIN_BASE]  = installtex("data/martin/base.png");
+  coretexarray[TEX_ITEM]         = installtex("data/items.png");
+  coretexarray[TEX_EXPLOSION]    = installtex("data/explosion.jpg");
+  coretexarray[TEX_MARTIN_BALL1] = installtex("data/martin/ball1.png");
+  coretexarray[TEX_MARTIN_SMOKE] = installtex("data/martin/smoke.png");
+  coretexarray[TEX_MARTIN_BALL2] = installtex("data/martin/ball2.png");
+  coretexarray[TEX_MARTIN_BALL3] = installtex("data/martin/ball3.png");
+  rangei(TEX_CROSSHAIR, TEX_PREALLOCATED_NUM)
+    if (coretexarray[i] == 0)
+      sys::fatal("could not find core textures");
 }
 void end() { destroyshaders(); }
 
