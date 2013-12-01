@@ -5,6 +5,7 @@
 #include "con.hpp"
 #include "sys.hpp"
 #include "shaders.hpp"
+#include "script.hpp"
 #include "math.hpp"
 #include "ogl.hpp"
 
@@ -474,21 +475,49 @@ static bool buildshader(shader &shader, const char *vert, const char *frag, u32 
   if (!compileshader(shader, vert, frag, rules)) return false;
   linkshader(shader);
   setshaderuniform(shader);
+  dirty.any = ~0x0;
   return true;
 }
 
-static bool buildfixedshader(shader &shader, u32 rules) {
-  return buildshader(shader, shaders::fixed_vp, shaders::fixed_fp, rules);
+static char *loadshaderfile(const char *path) {
+  char *s = sys::loadfile(path);
+  if (s == NULL) con::out("unable to load shader %s", path);
+  return s;
 }
 
-static void buildshaders(void) {
-  loopi(shadern) if (!buildfixedshader(shaders[i], i))
+static bool buildfixedshader(shader &shader, u32 rules, int fromfile) {
+  if (fromfile) {
+    auto fixed_vp = loadshaderfile("data/shaders/fixed_vp.glsl");
+    auto fixed_fp = loadshaderfile("data/shaders/fixed_fp.glsl");
+    if (fixed_fp == NULL || fixed_vp == NULL) return false;
+    auto ret = buildshader(shader, fixed_vp, fixed_fp, rules);
+    free(fixed_fp);
+    free(fixed_vp);
+    return ret;
+  } else
+    return buildshader(shader, shaders::fixed_vp, shaders::fixed_fp, rules);
+}
+IVAR(shaderfromfile, 0, 1, 1);
+
+static void buildshaders() {
+  loopi(shadern) if (!buildfixedshader(shaders[i], i, shaderfromfile))
     sys::fatal("unable to build fixed shaders");
 }
 
-static void destroyshaders(void) {
+static void destroyfixedshaders() {
   loopi(shadern) deleteprogram(shaders[i].program);
 }
+
+static void reloadshaders() {
+  shader newshaders[shadern];
+  loopi(shadern) if (!buildfixedshader(newshaders[i], i, true)) {
+    con::out("unable to build fixed shader %i", i);
+    return;
+  }
+  destroyfixedshaders();
+  loopi(shadern) shaders[i] = newshaders[i];
+}
+CMD(reloadshaders, "");
 
 /*--------------------------------------------------------------------------
  - base rendering functions
@@ -570,7 +599,7 @@ void start(int w, int h) {
       sys::fatal("could not find core textures");
 }
 void end() {
-  destroyshaders();
+  destroyfixedshaders();
   rangei(TEX_CROSSHAIR, TEX_PREALLOCATED_NUM)
     if (coretexarray[i]) OGL(DeleteTextures, 1, coretexarray+i);
 }

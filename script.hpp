@@ -31,24 +31,25 @@ void complete(string &s);
 // float persistent variable with code to run when changed
 #define FVARPF(name, min, cur, max, body) \
   void var_##name() { body; } \
-  float name = q::script::fvar(#name, min, cur, max, &name, var_##name, true);
+  float name = q::script::fvar(#name, min, cur, max, &name, var_##name, true)
 // float non-persistent variable with code to run when changed
 #define FVARF(name, min, cur, max, body) \
   void var_##name() { body; } \
-  float name = q::script::fvar(#name, min, cur, max, &name, var_##name, false);
+  float name = q::script::fvar(#name, min, cur, max, &name, var_##name, false)
 // int persistent variable
 #define IVARP(name, min, cur, max) \
-  auto name = q::script::ivar(#name, min, cur, max, &name, NULL, true)
+  int name = q::script::ivar(#name, min, cur, max, &name, NULL, true)
 // int non-persistent variable
 #define IVAR(name, min, cur, max) \
-  auto name = q::script::ivar(#name, min, cur, max, &name, NULL, false)
+  int name = q::script::ivar(#name, min, cur, max, &name, NULL, false)
 // int persistent variable with code to run when changed
 #define IVARPF(name, min, cur, max, body) \
   void var_##name() { body; } \
+  int name = q::script::ivar(#name, min, cur, max, &name, var_##name, true)
 // int non-persistent variable with code to run when changed
 #define IVARF(name, min, cur, max, body) \
   void var_##name() { body; } \
-  auto name = q::script::ivar(#name, min, cur, max, &name, var_##name, false);
+  int name = q::script::ivar(#name, min, cur, max, &name, var_##name, false)
 } /* namespace script */
 } /* namespace q */
 

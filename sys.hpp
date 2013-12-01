@@ -193,7 +193,7 @@ void fatal(const char *s, const char *o = "");
 void keyrepeat(bool on);
 float millis();
 char *path(char *s);
-char *loadfile(const char *fn, int *size);
+char *loadfile(const char *fn, int *size=NULL);
 void start(int argc, const char *argv[]);
 int run();
 } /* namespace sys */
