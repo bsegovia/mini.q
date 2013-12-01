@@ -1,8 +1,8 @@
 #CXX=clang++
 #CXX=~/src/emscripten/em++
-CXXOPTFLAGS=-Wall -Os -DNDEBUG -Wall -std=c++11
+CXXOPTFLAGS=-Wall -Os -DNDEBUG -std=c++11
 CXXDEBUGFLAGS=-Wall -O0 -g -std=c++11
-CXXFLAGS=$(CXXDEBUGFLAGS) -I../enet/include `sdl-config --cflags`
+CXXFLAGS=$(CXXDEBUGFLAGS) `sdl-config --cflags`
 LIBS=`sdl-config --libs`
 OBJS=con.o game.o mini.q.o ogl.o script.o sys.o
 HEADERS=con.hpp game.hpp ogl.hpp script.hpp sys.hpp
