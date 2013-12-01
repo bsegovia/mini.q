@@ -72,7 +72,7 @@ float millis() {
 }
 #endif
 
-static int scr_w = 800, scr_h = 600, grabmouse = 0;
+static int scrw = 800, scrh = 600, grabmouse = 0;
 
 static INLINE void end(void) { quit(); }
 
@@ -80,8 +80,8 @@ void start(int argc, const char *argv[]) {
   int fs = 0;
   rangei(1, argc) if (argv[i][0]=='-') switch (argv[i][1]) {
     case 't': fs     = 0; break;
-    case 'w': scr_w  = atoi(&argv[i][2]); break;
-    case 'h': scr_h  = atoi(&argv[i][2]); break;
+    case 'w': scrw  = atoi(&argv[i][2]); break;
+    case 'h': scrh  = atoi(&argv[i][2]); break;
     default: con::out("unknown commandline option");
   } else con::out("unknown commandline argument");
   if (SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO) < 0) fatal("SDL failed");
@@ -92,10 +92,10 @@ void start(int argc, const char *argv[]) {
 
   con::out("init: video: mode");
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-  if (!SDL_SetVideoMode(scr_w, scr_h, 0, SDL_OPENGL|fs)) fatal("OpenGL failed");
+  if (!SDL_SetVideoMode(scrw, scrh, 0, SDL_OPENGL|fs)) fatal("OpenGL failed");
 
   con::out("init: video: ogl");
-  ogl::start();
+  ogl::start(scrw, scrh);
 
   con::out("init: video: misc");
   SDL_WM_SetCaption("mini.q", NULL);

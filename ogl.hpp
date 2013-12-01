@@ -18,7 +18,7 @@ namespace ogl {
 #undef OGLPROC110
 #endif /* __WEBGL__ */
 
-void start();
+void start(int w, int h);
 void end();
 
 // vertex attributes

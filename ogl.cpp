@@ -32,22 +32,6 @@ static void *getfunction(const char *name) {
   if (ptr == NULL) sys::fatal("opengl 2 is required");
   return ptr;
 }
-void start() {
-
-#if !defined(__WEBGL__)
-// on windows, we directly load OpenGL 1.1 functions
-#if defined(__WIN32__)
-  #define OGLPROC110(FIELD,NAME,PROTOTYPE) FIELD = (PROTOTYPE) NAME;
-#else
-  #define OGLPROC110 OGLPROC
-#endif /* __WIN32__ */
-#define OGLPROC(FIELD,NAME,PROTO) FIELD = (PROTO) getfunction(#NAME);
-#include "ogl.hxx"
-#undef OGLPROC110
-#undef OGLPROC
-#endif /* __WEBGL__ */
-}
-void end() { }
 
 /*-------------------------------------------------------------------------
  - very simple state tracking
@@ -313,11 +297,11 @@ static bool checkshader(u32 shadername) {
   if (!shadername) return false;
   OGL(GetShaderiv, shadername, GL_COMPILE_STATUS, &result);
   OGL(GetShaderiv, shadername, GL_INFO_LOG_LENGTH, &infologlength);
-  if (infologlength) {
+  if (infologlength > 1) {
     char *buffer = (char*) malloc(infologlength+1);
     buffer[infologlength] = 0;
     OGL(GetShaderInfoLog, shadername, infologlength, NULL, buffer);
-    con::out("%s",buffer);
+    con::out("%d %s", buffer);
     free(buffer);
   }
   if (result == GL_FALSE) sys::fatal("ogl: failed to compile shader");
@@ -408,7 +392,6 @@ static const char uberfrag[] = {
   "  uniform vec2 u_fogstartend;\n"
   "  PS_IN float fs_fogz;\n"
   "#endif\n"
-  "uniform float u_overbright;\n"
   "PS_IN vec4 fs_col;\n"
   IF_NOT_WEBGL("out vec4 rt_c;\n")
   "void main() {\n"
@@ -423,7 +406,6 @@ static const char uberfrag[] = {
   "  float factor = clamp((-fs_fogz-u_fogstartend.x)*u_fogstartend.y,0.0,1.0)\n;"
   "  col.xyz = mix(col.xyz,u_fogcolor.xyz,factor);\n"
   "#endif\n"
-  "  col.xyz *= u_overbright;\n"
   SWITCH_WEBGL("gl_FragColor = col;\n", "rt_c = col;\n")
   "}\n"
 };
@@ -539,6 +521,39 @@ void drawelements(int mode, int count, int type, const void *indices) {
   flush();
   OGL(DrawElements, mode, count, type, indices);
 }
+
+static int glmaxtexsize = 256;
+void start(int w, int h) {
+#if !defined(__WEBGL__)
+// on windows, we directly load OpenGL 1.1 functions
+#if defined(__WIN32__)
+  #define OGLPROC110(FIELD,NAME,PROTOTYPE) FIELD = (PROTOTYPE) NAME;
+#else
+  #define OGLPROC110 OGLPROC
+#endif /* __WIN32__ */
+#define OGLPROC(FIELD,NAME,PROTO) FIELD = (PROTO) getfunction(#NAME);
+#include "ogl.hxx"
+#undef OGLPROC110
+#undef OGLPROC
+#endif /* __WEBGL__ */
+  OGL(Viewport, 0, 0, w, h);
+
+#if defined (__WEBGL__)
+  OGL(ClearDepthf,1.f);
+#else
+  OGL(ClearDepth,1.f);
+#endif // __WEBGL__
+  enablev(GL_DEPTH_TEST, GL_CULL_FACE);
+  OGL(DepthFunc, GL_LESS);
+  OGL(CullFace, GL_FRONT);
+  OGL(GetIntegerv, GL_MAX_TEXTURE_SIZE, &glmaxtexsize);
+  dirty.any = ~0x0;
+  buildshaders();
+  imminit();
+  loopi(ATTRIB_NUM) enabledattribarray[i] = 0;
+  loopi(BUFFER_NUM) bindedvbo[i] = 0;
+}
+void end() { destroyshaders(); }
 
 } /* namespace ogl */
 } /* namespace q */

@@ -37,7 +37,6 @@ float fvar(const char *n, float m, float cur, float M, float *ptr, cb fun, bool 
 bool cmd(const char *n, cb fun, const char *proto) {
   identifier v = {FUN}; v.fun = {proto, fun};
   idents().access(n, &v);
-  printf("%s\n",n);
   return true;
 }
 
