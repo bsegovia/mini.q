@@ -2,12 +2,14 @@
 #CXX=~/src/emscripten/em++
 CXXOPTFLAGS=-Wall -Os -DNDEBUG -std=c++11
 CXXDEBUGFLAGS=-Wall -O0 -g -std=c++11
-CXXFLAGS=$(CXXDEBUGFLAGS) `sdl-config --cflags`
+CXXFLAGS=$(CXXOPTFLAGS) `sdl-config --cflags`
 LIBS=`sdl-config --libs`
 OBJS=con.o game.o mini.q.o ogl.o script.o sys.o
+#OBJS=blob.o
 HEADERS=con.hpp game.hpp ogl.hpp script.hpp sys.hpp
 all: mini.q
 
+blob.o: blob.cpp $(HEADERS) Makefile
 con.o: con.cpp $(HEADERS) Makefile
 game.o: game.cpp $(HEADERS) Makefile
 ogl.o: ogl.cpp $(HEADERS) Makefile
