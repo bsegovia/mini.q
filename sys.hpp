@@ -189,6 +189,7 @@ typedef unsigned      char u8;
  - low-level system functions and program entry / exit points
  -------------------------------------------------------------------------*/
 namespace sys {
+extern int scrw, scrh;
 void fatal(const char *s, const char *o = "");
 void keyrepeat(bool on);
 float millis();

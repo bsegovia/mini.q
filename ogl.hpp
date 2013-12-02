@@ -43,14 +43,18 @@ u32 coretex(u32 index);
 u32 installtex(const char *texname, bool clamp=false);
 
 // quick, dirty and super simple shader system to replace fixed pipeline
-static const u32 COLOR = 0;
 static const u32 FOG = 1<<0;
 static const u32 KEYFRAME = 1<<1;
 static const u32 DIFFUSETEX = 1<<2;
-static const int subtypen = 3;
+static const u32 COLOR = 1<<3;
+static const int subtypen = 4;
 static const int shadern = 1<<subtypen;
 void bindfixedshader(u32 flags);
-void bindfontshader();
+enum {
+  FONT_SHADER,
+  DFRM_SHADER
+};
+void bindshader(u32 idx);
 
 // track allocations
 void gentextures(s32 n, u32 *id);

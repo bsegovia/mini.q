@@ -3,6 +3,7 @@
  - renderer.cpp -> handles rendering routines
  -------------------------------------------------------------------------*/
 #include "con.hpp"
+#include "math.hpp"
 #include "ogl.hpp"
 #include "text.hpp"
 #include "renderer.hpp"
@@ -20,13 +21,30 @@ void drawhud(int w, int h, int curfps) {
   ogl::popmatrix();
 
   OGL(DepthMask, GL_TRUE);
-  ogl::disablev(GL_BLEND);
-  ogl::enablev(GL_DEPTH_TEST);
+  ogl::disable(GL_BLEND);
+  ogl::enable(GL_DEPTH_TEST);
+}
+
+void drawdf() {
+  ogl::pushmatrix();
+  ogl::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
+  const array<float,3> verts[] = {
+    array<float,3>(-1.f, -1.f, 0.f),
+    array<float,3>(1.f, -1.f, 0.f),
+    array<float,3>(-1.f, 1.f, 0.f),
+    array<float,3>(1.f, 1.f, 0.f),
+  };
+  ogl::disablev(GL_CULL_FACE, GL_DEPTH_TEST);
+  ogl::bindshader(ogl::DFRM_SHADER);
+  ogl::immdraw(GL_TRIANGLE_STRIP, 3, 0, 0, 4, &verts[0][0]);
+  ogl::enablev(GL_CULL_FACE, GL_DEPTH_TEST);
+  ogl::popmatrix();
 }
 
 void drawframe(int w, int h, int curfps) {
   OGL(ClearColor, 0.f, 0.f, 0.f, 1.f);
   OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  drawdf();
   drawhud(w,h,0);
 }
 

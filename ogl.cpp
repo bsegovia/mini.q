@@ -6,6 +6,7 @@
 #include "sys.hpp"
 #include "shaders.hpp"
 #include "script.hpp"
+#include "game.hpp"
 #include "math.hpp"
 #include "text.hpp"
 #include "ogl.hpp"
@@ -41,7 +42,7 @@ union {
 } dirty;
 static u32 bindedvbo[BUFFER_NUM];
 static u32 enabledattribarray[ATTRIB_NUM];
-static struct shader *bindedshader = NULL;
+static struct shadertype *bindedshader = NULL;
 
 static const u32 TEX_NUM = 8;
 static u32 bindedtexture[TEX_NUM];
@@ -287,8 +288,8 @@ static bool immvertices(int sz, const void *vertices) {
   return immsetdata(ARRAY_BUFFER, sz, vertices);
 }
 
-void immdrawarrays(int mode, int count, int type) {
-  drawarrays(mode,count,type);
+void immdrawarrays(int mode, int first, int count) {
+  drawarrays(mode,first,count);
 }
 
 void immdrawelements(int mode, int count, int type, const void *indices, const void *vertices) {
@@ -394,10 +395,11 @@ static u32 loadshader(GLenum type, const char *source, const char *rulestr) {
 static u32 loadprogram(const char *vertstr, const char *fragstr, u32 rules) {
   u32 program = 0;
   sprintf_sd(rulestr)(OGL_PROGRAM_HEADER
+                      "#define USE_COL %i\n"
                       "#define USE_FOG %i\n"
                       "#define USE_KEYFRAME %i\n"
                       "#define USE_DIFFUSETEX %i\n",
-                      rules&FOG,rules&KEYFRAME,rules&DIFFUSETEX);
+                      rules&COLOR,rules&FOG,rules&KEYFRAME,rules&DIFFUSETEX);
   const u32 vert = loadshader(GL_VERTEX_SHADER, vertstr, rulestr);
   const u32 frag = loadshader(GL_FRAGMENT_SHADER, fragstr, rulestr);
   if (vert == 0 || frag == 0) return 0;
@@ -410,17 +412,17 @@ static u32 loadprogram(const char *vertstr, const char *fragstr, u32 rules) {
 }
 #undef OGL_PROGRAM_HEADER
 
-static struct shader {
+static struct shadertype {
   u32 rules; // fog,keyframe...?
   u32 program; // ogl program
   u32 u_diffuse, u_delta, u_mvp; // uniforms
   u32 u_zaxis, u_fogstartend, u_fogcolor; // uniforms
 } shaders[shadern];
-static shader fontshader;
+static shadertype fontshader;
 static vec4f fogcolor;
 static vec2f fogstartend;
 
-static void bindshader(shader &shader) {
+static void bindshader(shadertype &shader) {
   if (bindedshader != &shader) {
     bindedshader = &shader;
     dirty.any = ~0x0;
@@ -429,14 +431,13 @@ static void bindshader(shader &shader) {
 }
 
 void bindfixedshader(u32 flags) { bindshader(shaders[flags]); }
-void bindfontshader() { bindshader(fontshader); }
 
-static void linkshader(shader &shader) {
+static void linkshader(shadertype &shader) {
   OGL(LinkProgram, shader.program);
   OGL(ValidateProgram, shader.program);
 }
 
-static void setshaderuniform(shader &shader) {
+static void setshaderuniform(shadertype &shader) {
   OGL(UseProgram, shader.program);
   OGLR(shader.u_mvp, GetUniformLocation, shader.program, "u_mvp");
   if (shader.rules&KEYFRAME)
@@ -455,8 +456,8 @@ static void setshaderuniform(shader &shader) {
   OGL(UseProgram, 0);
 }
 
-static bool compileshader(shader &shader, const char *vert, const char *frag, u32 rules) {
-  memset(&shader, 0, sizeof(struct shader));
+static bool compileshader(shadertype &shader, const char *vert, const char *frag, u32 rules) {
+  memset(&shader, 0, sizeof(shadertype));
   if ((shader.program = loadprogram(vert, frag, rules))==0) return false;
   shader.rules = rules;
   if (shader.rules&KEYFRAME) {
@@ -473,14 +474,18 @@ static bool compileshader(shader &shader, const char *vert, const char *frag, u3
   return true;
 }
 
-static bool buildprogram(shader &shader, const char *vert, const char *frag, u32 rules) {
-  struct shader s;
+typedef void (CDECL *uniformcb)(shadertype&);
+static bool buildprogram(shadertype &shader, const char *vert, const char *frag, u32 rules, uniformcb cb = NULL) {
+  shadertype s;
   if (!compileshader(s, vert, frag, rules)) return false;
-  linkshader(s);
-  setshaderuniform(s);
-  dirty.any = ~0x0;
   if (shader.program) deleteprogram(shader.program);
+  // XXX we handle in a nasty way different shader size. I guess we should not
+  // make the copy like this
   shader = s;
+  linkshader(shader);
+  setshaderuniform(shader);
+  if (cb) cb(shader);
+  dirty.any = ~0x0;
   return true;
 }
 
@@ -493,34 +498,60 @@ static char *loadshaderfile(const char *path) {
 struct shaderresource {
   const char *vppath, *fppath;
   const char *vp, *fp;
+  uniformcb cb;
 };
 static const struct shaderresource fixed_rsc = {
   "data/shaders/fixed_vp.glsl",
   "data/shaders/fixed_fp.glsl",
   shaders::fixed_vp,
-  shaders::fixed_fp
+  shaders::fixed_fp,
+  NULL
 };
 static const struct shaderresource font_rsc = {
   "data/shaders/fixed_vp.glsl",
   "data/shaders/font_fp.glsl",
   shaders::fixed_vp,
-  shaders::font_fp
+  shaders::font_fp,
+  NULL
 };
 
-static bool buildprogramfromfile(shader &s, const char *vppath, const char *fppath, u32 rules) {
-  auto fixed_vp = loadshaderfile(vppath);
-  auto fixed_fp = loadshaderfile(fppath);
+static struct dfrmshadertype : shadertype {
+  u32 u_globaltime, u_iresolution;
+} dfrmshader;
+static void dfrmuniform(shadertype &s) {
+  auto &df = static_cast<dfrmshadertype&>(s);
+  OGLR(df.u_globaltime, GetUniformLocation, df.program, "iGlobalTime");
+  OGLR(df.u_iresolution, GetUniformLocation, df.program, "iResolution");
+}
+static const struct shaderresource dfrm_rsc = {
+  "data/shaders/fixed_vp.glsl",
+  "data/shaders/dfrm_fp.glsl",
+  shaders::fixed_vp,
+  shaders::dfrm_fp,
+  dfrmuniform
+};
+
+void bindshader(u32 idx) {
+  if (idx == FONT_SHADER)
+    bindshader(fontshader);
+  else
+    bindshader(dfrmshader);
+}
+
+static bool buildprogramfromfile(shadertype &s, const shaderresource &rsc, u32 rules) {
+  auto fixed_vp = loadshaderfile(rsc.vppath);
+  auto fixed_fp = loadshaderfile(rsc.fppath);
   if (fixed_fp == NULL || fixed_vp == NULL) return false;
-  auto ret = buildprogram(s, fixed_vp, fixed_fp, rules);
+  auto ret = buildprogram(s, fixed_vp, fixed_fp, rules, rsc.cb);
   free(fixed_fp);
   free(fixed_vp);
   return ret;
 }
-static bool buildshader(shader &s, const shaderresource &rsc, u32 rules, int fromfile) {
+static bool buildshader(shadertype &s, const shaderresource &rsc, u32 rules, int fromfile) {
   if (fromfile)
-    return buildprogramfromfile(s, rsc.vppath, rsc.fppath, rules);
+    return buildprogramfromfile(s, rsc, rules);
   else
-    return buildprogram(s, rsc.vp, rsc.fp, rules);
+    return buildprogram(s, rsc.vp, rsc.fp, rules, rsc.cb);
 }
 IVAR(shaderfromfile, 0, 1, 1);
 
@@ -535,11 +566,14 @@ static void buildshaders(bool fatalerr) {
     shadererror(fatalerr, "fixed shader");
   if (!buildshader(fontshader, font_rsc, DIFFUSETEX, shaderfromfile))
     shadererror(fatalerr, "font shader");
+  if (!buildshader(dfrmshader, dfrm_rsc, 0, shaderfromfile))
+    shadererror(fatalerr, "distance field shader");
 }
 
 static void destroyshaders() {
   loopi(shadern) deleteprogram(shaders[i].program);
   deleteprogram(fontshader.program);
+  deleteprogram(dfrmshader.program);
 }
 static void reloadshaders() { buildshaders(false); }
 CMD(reloadshaders, "");
@@ -566,6 +600,13 @@ static void flush(void) {
     viewproj = vp[PROJECTION]*vp[MODELVIEW];
     OGL(UniformMatrix4fv, bindedshader->u_mvp, 1, GL_FALSE, &viewproj.vx.x);
     dirty.flags.mvp = 0;
+  }
+  // XXX HACK!
+  if (bindedshader == &dfrmshader) {
+    auto dfrm = static_cast<dfrmshadertype*>(bindedshader);
+    const vec3f ires(float(sys::scrw), float(sys::scrh), 1.f);
+    OGL(Uniform3fv, dfrm->u_iresolution, 1, &ires.x);
+    OGL(Uniform1f, dfrm->u_globaltime, 1e-3f*game::lastmillis);
   }
 }
 void drawarrays(int mode, int first, int count) {

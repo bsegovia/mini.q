@@ -63,17 +63,19 @@ void keyrepeat(bool on) {
 float millis() {
   LARGE_INTEGER freq, val;
   QueryPerformanceFrequency(&freq);
-  QueryPerformanceCounter(&val);
-  return float(val.QuadPart) / float(freq.QuadPart) * 1e3f;
+  QueryPerformanceCounter(&val);ss
+  static double first = double(val.QuadPart) / double(freq.QuadPart) * 1e3;
+  return float(double(val.QuadPart) / double(freq.QuadPart) * 1e3 - first);
 }
 #else
 float millis() {
   struct timeval tp; gettimeofday(&tp,NULL);
-  return float(tp.tv_sec) * 1e3f + float(tp.tv_usec)/1e3f;
+  static double first = double(tp.tv_sec)*1e3 + double(tp.tv_usec)*1e-3;
+  return float(double(tp.tv_sec)*1e3 + double(tp.tv_usec)*1e-3 - first);
 }
 #endif
 
-static int scrw = 800, scrh = 600, grabmouse = 0;
+int scrw = 800, scrh = 600, grabmouse = 0;
 
 static INLINE void end(void) { quit(); }
 
@@ -137,6 +139,7 @@ static INLINE void mainloop() {
   }
 }
 int run() {
+  game::lastmillis = sys::millis() * game::speed/100.f;
   for (;;) q::sys::mainloop();
   return 0;
 }

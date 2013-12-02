@@ -41,7 +41,7 @@ int width(const char *str) {
     if (c==' ') { x += rr::FONTH/2; continue; };
     c -= 33;
     if (c<0 || c>=95) continue;
-    const int in_width = 80;
+    const int in_width = 100;
     x += in_width + 1;
   }
   return x;
@@ -76,8 +76,8 @@ void draw(const char *str, int left, int top) {
     const float in_top    = (float(c/fontcol)*float(charh)-0.5f) / float(fonth);
     const float in_right  = in_left + (float(charw)-0.5f)/float(fontw);
     const float in_bottom = in_top + (float(charh)-0.5f)/float(fonth);
-    const int in_width  = 50;
-    const int in_height = 100;
+    const int in_width  = 100;
+    const int in_height = 200;
 
     loopj(6) indices[index+j] = vert+twotriangles[j];
     verts[vert+0] = arrayf4(in_left, in_top,   float(x),         float(y));
@@ -94,7 +94,7 @@ void draw(const char *str, int left, int top) {
   ogl::immvertexsize(sizeof(float[4]));
   ogl::immattrib(ogl::POS0, 2, GL_FLOAT, sizeof(float[2]));
   ogl::immattrib(ogl::TEX0, 2, GL_FLOAT, 0);
-  ogl::bindfontshader();
+  ogl::bindshader(ogl::FONT_SHADER);
   ogl::immdrawelements(GL_TRIANGLES, index, GL_UNSIGNED_SHORT, indices, &verts[0][0]);
 }
 
