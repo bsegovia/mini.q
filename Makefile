@@ -2,9 +2,9 @@
 #CXX=~/src/emscripten/em++
 CXXOPTFLAGS=-Wall -Os -DNDEBUG -std=c++11
 CXXDEBUGFLAGS=-Wall -O0 -g -std=c++11
-CXXFLAGS=$(CXXOPTFLAGS) `sdl-config --cflags`
+CXXFLAGS=$(CXXOPTFLAGS) -I./ `sdl-config --cflags`
 LIBS=`sdl-config --libs` -lSDL_image
-OBJS=con.o game.o mini.q.o ogl.o renderer.o script.o shaders.o sys.o text.o
+OBJS=con.o game.o mini.q.o ogl.o renderer.o script.o shaders.o sys.o text.o enet.o
 #OBJS=blob.o
 HEADERS=con.hpp game.hpp ogl.hpp script.hpp shaders.hpp sys.hpp text.hpp
 all: mini.q compress_chars
@@ -37,8 +37,8 @@ font.hxx: compress_chars data/font8x16.png
 clean:
 	-rm -f $(OBJS) mini.q
 
-mini.q: $(OBJS)
-	$(CXX) $(CXXFLAGS) -o mini.q $(OBJS) $(LIBS)
+mini.q: $(OBJS) $(ENET_OBJS)
+	$(CXX) $(CXXFLAGS) -o mini.q $(OBJS) $(ENET_OBJS) $(LIBS)
 
 compress_chars: compress_chars.o
 	$(CXX) $(CXXFLAGS) -o compress_chars compress_chars.o $(LIBS)
