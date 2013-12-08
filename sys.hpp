@@ -200,18 +200,17 @@ typedef unsigned      char u8;
 namespace sys {
 
 /*-------------------------------------------------------------------------
- - low-level system functions and program entry / exit points
+ - low-level system functions
  -------------------------------------------------------------------------*/
-extern int scrw, scrh;
+extern int scrw, scrh, grabmouse;
 void fatal(const char *s, const char *o = "");
+void quit(const char *msg = NULL);
 void keyrepeat(bool on);
 float millis();
 char *path(char *s);
 char *loadfile(const char *fn, int *size=NULL);
 void initendiancheck(void);
 int islittleendian(void);
-void start(int argc, const char *argv[]);
-int run();
 
 /*-------------------------------------------------------------------------
  - memory debugging / tracking facilities

@@ -11,6 +11,8 @@
 
 namespace q {
 namespace sys {
+
+int scrw = 800, scrh = 600;
 static int islittleendian_ = 1;
 void initendiancheck(void) { islittleendian_ = *((char*)&islittleendian_); }
 int islittleendian(void) { return islittleendian_; }
@@ -162,7 +164,7 @@ char *newstringbuf(const char *s, const char *filename, int linenum) {
   return newstring(s, MAXDEFSTR-1, filename, linenum);
 }
 
-static void quit(const char *msg = NULL) {
+void quit(const char *msg) {
   if (msg && strlen(msg)) {
 #if defined(__WIN32__)
     MessageBox(NULL, msg, "cube fatal error", MB_OK|MB_SYSTEMMODAL);
@@ -202,75 +204,6 @@ float millis() {
 }
 #endif
 
-int scrw = 800, scrh = 600, grabmouse = 0;
-
-static INLINE void end(void) { quit(); }
-
-void start(int argc, const char *argv[]) {
-  int fs = 0;
-  rangei(1, argc) if (argv[i][0]=='-') switch (argv[i][1]) {
-    case 't': fs     = 0; break;
-    case 'w': scrw  = atoi(&argv[i][2]); break;
-    case 'h': scrh  = atoi(&argv[i][2]); break;
-    default: con::out("unknown commandline option");
-  } else con::out("unknown commandline argument");
-  if (SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO) < 0) fatal("SDL failed");
-
-  con::out("init: video: sdl");
-  if (SDL_InitSubSystem(SDL_INIT_VIDEO)<0) fatal("SDL video failed");
-  SDL_WM_GrabInput(grabmouse ? SDL_GRAB_ON : SDL_GRAB_OFF);
-
-  con::out("init: video: mode");
-  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-  if (!SDL_SetVideoMode(scrw, scrh, 0, SDL_OPENGL|fs)) fatal("OpenGL failed");
-  initendiancheck();
-
-  con::out("init: video: ogl");
-  ogl::start(scrw, scrh);
-
-  con::out("init: video: misc");
-  SDL_WM_SetCaption("mini.q", NULL);
-  keyrepeat(true);
-  SDL_ShowCursor(0);
-  script::execfile("data/keymap.q");
-}
-
-static INLINE void mainloop() {
-  const auto millis = sys::millis()*game::speed/100.f;
-  if (millis-game::lastmillis > 200.f) game::lastmillis = millis-200.f;
-  else if (millis-game::lastmillis < 1.f) game::lastmillis = millis-1.f;
-  static float fps = 30.0f;
-  fps = (1000.0f/game::curtime+fps*50.f)/51.f;
-  SDL_GL_SwapBuffers();
-  OGL(ClearColor, 0.f, 0.f, 0.f, 1.f);
-  OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-  rr::drawframe(scrw, scrh, int(fps));
-  SDL_Event e;
-  int lasttype = 0, lastbut = 0;
-  while (SDL_PollEvent(&e)) {
-    switch (e.type) {
-      case SDL_QUIT: quit(); break;
-      case SDL_KEYDOWN:
-      case SDL_KEYUP:
-        con::keypress(e.key.keysym.sym, e.key.state==SDL_PRESSED, e.key.keysym.unicode);
-      break;
-      case SDL_MOUSEMOTION: game::mousemove(e.motion.xrel, e.motion.yrel); break;
-      case SDL_MOUSEBUTTONDOWN:
-      case SDL_MOUSEBUTTONUP:
-        if (lasttype==e.type && lastbut==e.button.button) break;
-        // on_keypress(-e.button.button, e.button.state!=0, 0);
-        lasttype = e.type;
-        lastbut = e.button.button;
-      break;
-    }
-  }
-}
-int run() {
-  game::lastmillis = sys::millis() * game::speed/100.f;
-  for (;;) q::sys::mainloop();
-  return 0;
-}
 } /* namespace sys */
 } /* namespace q */
 
