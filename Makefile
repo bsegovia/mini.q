@@ -14,8 +14,7 @@ OBJS=\
   shaders.o\
   sound.o\
   sys.o\
-  text.o\
-  enet.o
+  text.o
 
 HEADERS=con.hpp game.hpp ogl.hpp script.hpp shaders.hpp sys.hpp text.hpp
 all: mini.q compress_chars
@@ -28,27 +27,6 @@ SHADERS=data/shaders/fixed_vp.glsl\
 ## build embedded shader source
 shaders.cpp: $(SHADERS)
 	./scripts/stringify_all_shaders.sh shaders.cpp shaders.hpp
-
-enet.o:\
-  enet/callbacks.h\
-  enet/enet.h\
-  enet/list.h\
-  enet/memory.h\
-  enet/protocol.h\
-  enet/time.h\
-  enet/types.h\
-  enet/unix.h\
-  enet/utility.h\
-  enet/win32.h\
-  enet/callbacks.c\
-  enet/host.c\
-  enet/list.c\
-  enet/memory.c\
-  enet/packet.c\
-  enet/peer.c\
-  enet/protocol.c\
-  enet/unix.c\
-  enet/win32.c
 
 blob.o: blob.cpp $(HEADERS)
 con.o: con.cpp $(HEADERS)
