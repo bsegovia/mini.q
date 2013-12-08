@@ -104,7 +104,7 @@ enum {MODELVIEW, PROJECTION, MATRIX_MODE};
 void matrixmode(int mode);
 void identity(void);
 void rotate(float angle, const vec3<float> &axis);
-void perspective(const mat4x4<float> &m, float fovy, float aspect, float znear, float zfar);
+void perspective(float fovy, float aspect, float znear, float zfar);
 void translate(const vec3<float> &v);
 void mulmatrix(const mat4x4<float> &m);
 void pushmatrix(void);
@@ -113,6 +113,14 @@ void loadmatrix(const mat4x4<float> &m);
 void ortho(float left, float right, float bottom, float top, float znear, float zfar);
 void scale(const vec3<float> &s);
 const mat4x4<float> &matrix(int mode);
+INLINE void pushmode(int mode) {
+  ogl::matrixmode(mode);
+  ogl::pushmatrix();
+}
+INLINE void popmode(int mode) {
+  ogl::matrixmode(mode);
+  ogl::popmatrix();
+}
 
 // OGL debug macros
 #if !defined(__EMSCRIPTEN__)

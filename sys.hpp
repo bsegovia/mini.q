@@ -202,7 +202,7 @@ namespace sys {
 /*-------------------------------------------------------------------------
  - low-level system functions
  -------------------------------------------------------------------------*/
-extern int scrw, scrh, grabmouse;
+extern int scrw, scrh;
 void fatal(const char *s, const char *o = "");
 void quit(const char *msg = NULL);
 void keyrepeat(bool on);

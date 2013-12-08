@@ -8,7 +8,7 @@ namespace q {
 namespace con {
 const char *curcmd();
 void out(const char *s, ...);
-void keypress(int code, bool isdown, int cooked);
+void keypress(int code, int isdown /* 0 or 1 */, int cooked);
 } /* namespace con */
 } /* namespace q */
 

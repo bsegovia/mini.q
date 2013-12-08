@@ -3,6 +3,7 @@
  - game.cpp -> implements game routines and variables
  -------------------------------------------------------------------------*/
 #include "script.hpp"
+#include "physics.hpp"
 #include "game.hpp"
 
 namespace q {
@@ -12,8 +13,8 @@ dynent player;
 float lastmillis = 0.f;
 float curtime = 1.f;
 FVARP(speed, 1.f, 100.f, 1000.f);
-IVARP(sensitivity, 0, 10, 10000);
-IVARP(sensitivityscale, 1, 1, 10000);
+FVARP(sensitivity, 0.f, 10.f, 10000.f);
+FVARP(sensitivityscale, 1.f, 1.f, 10000.f);
 IVARP(invmouse, 0, 0, 1);
 
 dynent::dynent() {
@@ -40,9 +41,9 @@ void fixplayerrange(void) {
 }
 
 void mousemove(int dx, int dy) {
-  const float SENSF = 33.0f; // try match quake sens
-  player.yaw += (dx/SENSF)*(sensitivity/float(sensitivityscale));
-  player.pitch -= (dy/SENSF)*(sensitivity/float(sensitivityscale))*(invmouse?-1:1);
+  const float SENSF = 33.0f;
+  player.yaw += (float(dx)/SENSF)*(sensitivity/sensitivityscale);
+  player.pitch -= (float(dy)/SENSF)*(sensitivity/sensitivityscale)*(invmouse?-1.f:1.f);
   fixplayerrange();
 }
 
@@ -51,13 +52,19 @@ static void name(const int &isdown) { \
   player.s = isdown; \
   player.v = isdown ? d : (player.os ? -(d) : 0); \
   player.lastmove = lastmillis; \
-}\
-CMD(name, "d");
+} CMD(name, "d");
 DIRECTION(backward, move,   -1, kdown,  kup);
-DIRECTION(forward,  move,    1, kup,    kdown);
-DIRECTION(left,     strafe,  1, kleft,  kright);
+DIRECTION(forward,  move,   +1, kup,    kdown);
+DIRECTION(left,     strafe, +1, kleft,  kright);
 DIRECTION(right,    strafe, -1, kright, kleft);
 #undef DIRECTION
+static const int moveres = 20;
+void updateworld(float millis) {
+  curtime = millis - lastmillis;
+  physics::frame();
+  physics::move(player, moveres);
+  lastmillis = millis;
+}
 
 } /* namespace game */
 } /* namespace q */

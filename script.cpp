@@ -121,7 +121,7 @@ static void execute(ctx &c, const char *pp, int isdown) {
         const auto proto = id->fun.proto;
         const auto arity = strlen(proto);
         loopi(min(arity, numargs-1)) {
-          if (proto[i]=='d') memcpy(w[i],&isdown,sizeof(isdown));
+          if (proto[i]=='d') memcpy(w[i+1],&isdown,sizeof(isdown));
 #define ARG(T,C,S) if(proto[i]==C){T x=ato##S(w[i]);memcpy(w[i],&x,sizeof(T));}
           ARG(int, 'i', i)
           ARG(float, 'f', f)

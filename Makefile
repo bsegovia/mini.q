@@ -2,7 +2,7 @@
 #CXX=~/src/emscripten/em++
 CXXOPTFLAGS=-Wall -Os -DNDEBUG -std=c++11
 CXXDEBUGFLAGS=-Wall -O0 -g -std=c++11
-CXXFLAGS=$(CXXOPTFLAGS) -I./ `sdl-config --cflags`
+CXXFLAGS=$(CXXDEBUGFLAGS) -I./ `sdl-config --cflags`
 LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer
 OBJS=\
   con.o\

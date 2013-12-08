@@ -13,8 +13,8 @@ static const int VIRTH = 1800; // screen height for text & HUD
 static const int FONTH = 64; // font height
 static const int PIXELTAB = VIRTW / 12; // tabulation size in pixels
 
-void drawhud(int w, int h, int curfps);
-void drawframe(int w, int h, int curfps);
+void hud(int w, int h, int curfps);
+void frame(int w, int h, int curfps);
 
 } /* namespace rr */
 } /* namespace q */

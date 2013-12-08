@@ -9,7 +9,7 @@
 namespace q {
 namespace physics {
 
-bool collide(game::dynent*, bool spawn) { return false; }
+bool collide(game::dynent&, bool spawn) { return false; }
 
 // physics simulated at 50fps or better
 static const float MINFRAMETIME = 20.f;
@@ -28,12 +28,12 @@ void frame() {
     repeat = 1;
 }
 
-static void move(game::dynent &p, int moveres, bool local, float curtime) {
+static void move(game::dynent &p, int moveres, float curtime) {
   vec3f d(zero);
-  d.x = float(p.move*cos(deg2rad(p.yaw-90.f)));
-  d.y = float(p.move*sin(deg2rad(p.yaw-90.f)));
-  d.x += float(p.strafe*cos(deg2rad(p.yaw-180.f)));
-  d.y += float(p.strafe*sin(deg2rad(p.yaw-180.f)));
+  d.x = float(p.move)*cos(deg2rad(p.yaw-90.f));
+  d.z = float(p.move)*sin(deg2rad(p.yaw-90.f));
+  d.x += float(p.strafe)*cos(deg2rad(p.yaw-180.f));
+  d.z += float(p.strafe)*sin(deg2rad(p.yaw-180.f));
 
   const auto speed = curtime/1000.0f*p.maxspeed;
   const auto friction = p.onfloor ? 6.0f : 30.0f;
@@ -44,23 +44,22 @@ static void move(game::dynent &p, int moveres, bool local, float curtime) {
   p.vel += d;
   p.vel /= fpsfric;
   d = p.vel;
-  d *= speed; // d is now frametime based velocity vector
+  p.o += d*speed;
 
   // automatically apply smooth roll when strafing
   if (p.strafe==0)
     p.roll = p.roll/(1.f+sqrt(curtime)/25.f);
   else {
     p.roll -= p.strafe*curtime/30.0f;
-    if (p.roll>maxroll) p.roll = float(maxroll);
-    if (p.roll<-maxroll) p.roll = -float(maxroll);
+    if (p.roll>maxroll) p.roll = maxroll;
+    if (p.roll<-maxroll) p.roll = -maxroll;
   }
 }
 
-void move(game::dynent &p, int moveres, bool local) {
+void move(game::dynent &p, int moveres) {
   using namespace game;
-  const auto frepeat = float(repeat);
-  loopi(repeat)
-    move(p, moveres, local, i ?curtime/frepeat : curtime-curtime/frepeat*(frepeat-1.f));
+  const auto frepeat = float(repeat), ratio = curtime/frepeat;
+  loopi(repeat) move(p, moveres, i ? ratio : curtime-ratio*(frepeat-1.f));
 }
 
 } /* namespace physics */

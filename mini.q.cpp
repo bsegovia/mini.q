@@ -38,15 +38,15 @@ void start(int argc, const char *argv[]) {
 
 static INLINE void mainloop() {
   const auto millis = sys::millis()*game::speed/100.f;
-  if (millis-game::lastmillis > 200.f) game::lastmillis = millis-200.f;
-  else if (millis-game::lastmillis < 1.f) game::lastmillis = millis-1.f;
+  physics::frame();
   static float fps = 30.0f;
   fps = (1000.0f/game::curtime+fps*50.f)/51.f;
   SDL_GL_SwapBuffers();
   OGL(ClearColor, 0.f, 0.f, 0.f, 1.f);
   OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  rr::drawframe(sys::scrw, sys::scrh, int(fps));
+  game::updateworld(millis);
+  rr::frame(sys::scrw, sys::scrh, int(fps));
   SDL_Event e;
   int lasttype = 0, lastbut = 0;
   while (SDL_PollEvent(&e)) {
@@ -54,13 +54,13 @@ static INLINE void mainloop() {
       case SDL_QUIT: sys::quit(); break;
       case SDL_KEYDOWN:
       case SDL_KEYUP:
-        con::keypress(e.key.keysym.sym, e.key.state==SDL_PRESSED, e.key.keysym.unicode);
+        con::keypress(e.key.keysym.sym, e.key.state==SDL_PRESSED?1:0, e.key.keysym.unicode);
       break;
       case SDL_MOUSEMOTION: game::mousemove(e.motion.xrel, e.motion.yrel); break;
       case SDL_MOUSEBUTTONDOWN:
       case SDL_MOUSEBUTTONUP:
         if (lasttype==e.type && lastbut==e.button.button) break;
-        // on_keypress(-e.button.button, e.button.state!=0, 0);
+        con::keypress(-e.button.button, e.button.state?1:0, 0);
         lasttype = e.type;
         lastbut = e.button.button;
       break;

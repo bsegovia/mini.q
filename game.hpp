@@ -30,6 +30,7 @@ struct dynent {
 extern dynent player;
 extern float lastmillis, curtime, speed;
 void mousemove(int dx, int dy);
+void updateworld(float millis);
 
 } /* namespace game */
 } /* namespace q */

@@ -7,7 +7,7 @@
 
 namespace q {
 namespace physics {
-void move(game::dynent&, int moveres, bool local);
+void move(game::dynent&, int moveres);
 bool collide(game::dynent&, bool spawn);
 void frame();
 } /* namespace physics */

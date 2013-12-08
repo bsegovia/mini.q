@@ -67,14 +67,14 @@ CMDN(conskip, setconskip, "i");
 
 static void saycommand(const char *init) {
   SDL_EnableUNICODE(saycommandon = (init!=NULL));
-  /* if (!editmode) */ sys::keyrepeat(saycommandon);
+  sys::keyrepeat(saycommandon);
   if (!init) init = "";
   strcpy_s(cmdbuf, init);
 }
 CMD(saycommand, "s");
 
-void keypress(int code, bool isdown, int cooked) {
-  static ringbuffer<string, 64> h;
+void keypress(int code, int isdown, int cooked) {
+  static ringbuffer<string,64> h;
   static int hpos = 0;
   if (saycommandon) { // keystrokes go to commandline
     if (isdown) {
@@ -103,18 +103,17 @@ void keypress(int code, bool isdown, int cooked) {
             strcpy_s(h.append(), cmdbuf);
           hpos = h.n;
           if (cmdbuf[0]=='/')
-            script::execstring(cmdbuf, true);
+            script::execstring(cmdbuf, isdown);
           else
             /*client::toserver(cmdbuf)*/;
         }
         saycommand(NULL);
-      }
-      else if (code==SDLK_ESCAPE)
+      } else if (code==SDLK_ESCAPE)
         saycommand(NULL);
     }
   } else /* if (!menu::key(code, isdown))*/ { // keystrokes go to menu
     loopi(numkm) if (keyms[i].code==code) { // keystrokes go to game
-      script::execstring(keyms[i].action);
+      script::execstring(keyms[i].action, isdown);
       return;
     }
   }
