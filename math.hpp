@@ -121,6 +121,7 @@ template<typename T> struct vec4;
 
 template<typename T> struct vec2 {
   typedef T scalar;
+  enum { channelnum = 2 };
   T x, y;
   INLINE vec2(void) {}
   INLINE vec2(const vec2& v) {x = v.x; y = v.y;}
@@ -192,6 +193,7 @@ INLINE bool all(const vec2<bool> &v) {return v.x&&v.y;}
 
 template<typename T> struct vec3 {
   typedef T scalar;
+  enum { channelnum = 3 };
   T x, y, z;
   INLINE vec3(void) {}
   INLINE vec3(const vec3& v) {x = v.x; y = v.y; z = v.z;}
@@ -268,6 +270,7 @@ INLINE bool all(const vec3<bool> &v) {return v.x&&v.y&&v.z;}
 
 template<typename T> struct vec4 {
   typedef T scalar;
+  enum { channelnum = 4 };
   T x, y, z, w;
   INLINE vec4(void) {}
   INLINE vec4(const vec4& v) {x = v.x; y = v.y; z = v.z; w = v.w;}

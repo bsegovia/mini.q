@@ -39,6 +39,10 @@ bool cmd(const char *n, cb fun, const char *proto) {
   idents().access(n, &v);
   return true;
 }
+void setivar(const char *name, int i)   {*idents().access(name)->ivar.storage = i;}
+void setfvar(const char *name, float f) {*idents().access(name)->fvar.storage = f;}
+int   getivar(const char *name) {return *idents().access(name)->ivar.storage;}
+float getfvar(const char *name) {return *idents().access(name)->fvar.storage;}
 
 typedef linear_allocator<1024> ctx;
 static char *parseword(ctx &c, const char *&p) {

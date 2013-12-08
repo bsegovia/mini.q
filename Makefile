@@ -3,8 +3,20 @@
 CXXOPTFLAGS=-Wall -Os -DNDEBUG -std=c++11
 CXXDEBUGFLAGS=-Wall -O0 -g -std=c++11
 CXXFLAGS=$(CXXOPTFLAGS) -I./ `sdl-config --cflags`
-LIBS=`sdl-config --libs` -lSDL_image
-OBJS=con.o game.o mini.q.o ogl.o renderer.o script.o shaders.o sys.o text.o enet.o
+LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer
+OBJS=\
+  con.o\
+  game.o\
+  mini.q.o\
+  ogl.o\
+  renderer.o\
+  script.o\
+  shaders.o\
+  sound.o\
+  sys.o\
+  text.o\
+  enet.o
+
 HEADERS=con.hpp game.hpp ogl.hpp script.hpp shaders.hpp sys.hpp text.hpp
 all: mini.q compress_chars
 

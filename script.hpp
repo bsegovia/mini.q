@@ -16,6 +16,8 @@ void execcfg(const char *path);
 bool execfile(const char *path);
 void resetcomplete(void);
 void complete(string &s);
+void setivar(const char *name, int i);
+int getivar(const char *name);
 
 // command with custom name
 #define CMDN(name, fun, proto) \
@@ -28,14 +30,19 @@ void complete(string &s);
 // float non-persistent variable
 #define FVAR(name, min, cur, max) \
   float name = q::script::fvar(#name, min, cur, max, &name, NULL, false)
+// float non-persistent variable with specific name
+#define FVARN(varname, name, min, cur, max) \
+  float varname = q::script::fvar(#name, min, cur, max, &varname, NULL, false)
 // float persistent variable with code to run when changed
 #define FVARPF(name, min, cur, max, body) \
+  void var_##name(); \
+  float name = q::script::fvar(#name, min, cur, max, &name, var_##name, true); \
   void var_##name() { body; } \
-  float name = q::script::fvar(#name, min, cur, max, &name, var_##name, true)
 // float non-persistent variable with code to run when changed
 #define FVARF(name, min, cur, max, body) \
-  void var_##name() { body; } \
-  float name = q::script::fvar(#name, min, cur, max, &name, var_##name, false)
+  void var_##name(); \
+  float name = q::script::fvar(#name, min, cur, max, &name, var_##name, false); \
+  void var_##name() { body; }
 // int persistent variable
 #define IVARP(name, min, cur, max) \
   int name = q::script::ivar(#name, min, cur, max, &name, NULL, true)
@@ -44,12 +51,14 @@ void complete(string &s);
   int name = q::script::ivar(#name, min, cur, max, &name, NULL, false)
 // int persistent variable with code to run when changed
 #define IVARPF(name, min, cur, max, body) \
-  void var_##name() { body; } \
-  int name = q::script::ivar(#name, min, cur, max, &name, var_##name, true)
+  void var_##name(); \
+  int name = q::script::ivar(#name, min, cur, max, &name, var_##name, true); \
+  void var_##name() { body; }
 // int non-persistent variable with code to run when changed
 #define IVARF(name, min, cur, max, body) \
-  void var_##name() { body; } \
-  int name = q::script::ivar(#name, min, cur, max, &name, var_##name, false)
+  void var_##name(); \
+  int name = q::script::ivar(#name, min, cur, max, &name, var_##name, false); \
+  void var_##name() { body; }
 } /* namespace script */
 } /* namespace q */
 
