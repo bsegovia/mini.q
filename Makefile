@@ -9,6 +9,7 @@ OBJS=\
   game.o\
   mini.q.o\
   ogl.o\
+  physics.o\
   renderer.o\
   script.o\
   shaders.o\
@@ -16,7 +17,7 @@ OBJS=\
   sys.o\
   text.o
 
-HEADERS=con.hpp game.hpp ogl.hpp script.hpp shaders.hpp sys.hpp text.hpp
+HEADERS=con.hpp game.hpp ogl.hpp physics.hpp script.hpp shaders.hpp sys.hpp text.hpp
 all: mini.q compress_chars
 
 SHADERS=data/shaders/fixed_vp.glsl\
@@ -33,6 +34,7 @@ con.o: con.cpp $(HEADERS)
 game.o: game.cpp $(HEADERS)
 mini.q.o: mini.q.cpp $(HEADERS)
 ogl.o: ogl.cpp $(HEADERS)
+physics.o: physics.cpp $(HEADERS)
 shaders.o: shaders.cpp $(HEADERS)
 script.o: script.cpp $(HEADERS)
 sys.o: sys.cpp $(HEADERS)
@@ -52,5 +54,4 @@ compress_chars: compress_chars.o
 
 clean:
 	-rm -f $(OBJS) mini.q compress_chars compress_chars.o
-
 

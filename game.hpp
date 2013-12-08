@@ -20,8 +20,9 @@ struct dynent {
   float eyeheight;        // height of the eye
   float aboveeye;         // size of what is below the eye
   int move, strafe;       // bwd, fwd, left, right
-  bool kleft, kright;     // see input code
-  bool kup, kdown;        // see input code
+  int kleft:1, kright:1;  // see input code
+  int kup:1, kdown:1;     // see input code
+  int onfloor:1;          // true if contact with floor
   string name;            // name of entity
   string team;            // team it belongs to
 };

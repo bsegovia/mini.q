@@ -26,7 +26,8 @@ dynent::dynent() {
   eyeheight = 1.80f;
   aboveeye = 0.2f;
   move = strafe = 0;
-  kleft = kright = kup = kdown = false;
+  kleft = kright = kup = kdown = 0;
+  onfloor = 1;
   name[0] = team[0] = '\0';
 }
 
@@ -47,8 +48,8 @@ void mousemove(int dx, int dy) {
 
 #define DIRECTION(name,v,d,s,os) \
 static void name(const int &isdown) { \
-  player.s = isdown!=0; \
-  player.v = isdown!=0 ? d : (player.os ? -(d) : 0); \
+  player.s = isdown; \
+  player.v = isdown ? d : (player.os ? -(d) : 0); \
   player.lastmove = lastmillis; \
 }\
 CMD(name, "d");
