@@ -37,15 +37,17 @@ void start(int argc, const char *argv[]) {
 }
 
 static INLINE void mainloop() {
+  static int frame = 0;
   const auto millis = sys::millis()*game::speed/100.f;
-  physics::frame();
   static float fps = 30.0f;
   fps = (1000.0f/game::curtime+fps*50.f)/51.f;
   SDL_GL_SwapBuffers();
   OGL(ClearColor, 0.f, 0.f, 0.f, 1.f);
   OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-  game::updateworld(millis);
+  if (frame++) {
+    physics::frame();
+    game::updateworld(millis);
+  }
   rr::frame(sys::scrw, sys::scrh, int(fps));
   SDL_Event e;
   int lasttype = 0, lastbut = 0;

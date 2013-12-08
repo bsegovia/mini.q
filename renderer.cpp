@@ -53,7 +53,7 @@ static void transplayer(void) {
   ogl::rotate(player.roll, vec3f(0.f,0.f,1.f));
   ogl::rotate(player.pitch, vec3f(1.f,0.f,0.f));
   ogl::rotate(player.yaw, vec3f(0.f,1.f,0.f));
-  ogl::translate(-player.o);
+  ogl::translate(-(player.o+vec3f(0.f,player.eyeheight,0.f)));
 }
 
 void frame(int w, int h, int curfps) {
@@ -71,15 +71,16 @@ void frame(int w, int h, int curfps) {
   ogl::pushmode(ogl::MODELVIEW);
   transplayer();
 
-  const array<float,3> verts[] = {
-    array<float,3>(-100.f, -10.f, -100.f),
-    array<float,3>( 100.f, -10.f, -100.f ),
-    array<float,3>( -100.f, -10.f, 100.f ),
-    array<float,3>( 100.f, -10.f, 100.f  ),
+  const array<float,5> verts[] = {
+    array<float,5>(-100.f, -100.f, -100.f, 0.f, -100.f),
+    array<float,5>(+100.f, -100.f, +100.f, 0.f, -100.f),
+    array<float,5>(-100.f, +100.f, -100.f, 0.f, +100.f),
+    array<float,5>(+100.f, +100.f, +100.f, 0.f, +100.f),
   };
   ogl::disablev(GL_CULL_FACE, GL_DEPTH_TEST);
-  ogl::bindfixedshader(0);
-  ogl::immdraw(GL_TRIANGLE_STRIP, 3, 0, 0, 4, &verts[0][0]);
+  ogl::bindfixedshader(ogl::DIFFUSETEX);
+  ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_CHECKBOARD));
+  ogl::immdraw(GL_TRIANGLE_STRIP, 3, 2, 0, 4, &verts[0][0]);
 
   ogl::popmode(ogl::MODELVIEW);
   ogl::popmode(ogl::PROJECTION);

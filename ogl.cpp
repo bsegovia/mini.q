@@ -620,6 +620,24 @@ void drawelements(int mode, int count, int type, const void *indices) {
 static u32 coretexarray[TEX_PREALLOCATED_NUM];
 u32 coretex(u32 index) { return coretexarray[index%TEX_PREALLOCATED_NUM]; }
 
+static u32 buildcheckboard() {
+  const u32 dim = 16;
+  u32 *cb = (u32*)malloc(dim*dim*sizeof(u32));
+  loopi(dim) loopj(dim) cb[i*dim+j]=(i==0)||(j==0)||(j==dim-1)||(j==dim-1)?0:~0;
+  u32 id;
+  ogl::gentextures(1, &id);
+  ogl::bindtexture(GL_TEXTURE_2D, id, 0);
+  OGL(PixelStorei, GL_UNPACK_ALIGNMENT, 1);
+  OGL(TexImage2D, GL_TEXTURE_2D, 0, GL_RGBA, dim, dim, 0, GL_RGBA, GL_UNSIGNED_BYTE, cb);
+  OGL(GenerateMipmap, GL_TEXTURE_2D);
+  OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+  free(cb);
+  return id;
+}
+
 void start(int w, int h) {
 #if !defined(__WEBGL__)
 // on windows, we directly load OpenGL 1.1 functions
@@ -653,6 +671,7 @@ void start(int w, int h) {
   coretexarray[TEX_UNUSED]       = 0;
   coretexarray[TEX_CROSSHAIR]    = installtex("data/crosshair.png");
   coretexarray[TEX_CHARACTERS]   = text::buildfont();
+  coretexarray[TEX_CHECKBOARD]   = buildcheckboard();
   coretexarray[TEX_MARTIN_BASE]  = installtex("data/martin/base.png");
   coretexarray[TEX_ITEM]         = installtex("data/items.png");
   coretexarray[TEX_EXPLOSION]    = installtex("data/explosion.jpg");
