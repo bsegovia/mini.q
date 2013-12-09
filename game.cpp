@@ -19,8 +19,7 @@ IVARP(invmouse, 0, 0, 1);
 
 dynent::dynent() {
   o = vel = zero;
-  yaw = 270.f;
-  roll = pitch = 0.f;
+  ypr = vec3f(270.f,0.f,0.f);
   lastmove = lastupdate = lastmillis;
   maxspeed = 8.f;
   radius = 0.5f;
@@ -34,16 +33,15 @@ dynent::dynent() {
 
 void fixplayerrange(void) {
   const float MAXPITCH = 90.0f;
-  if (player.pitch>MAXPITCH) player.pitch = MAXPITCH;
-  if (player.pitch<-MAXPITCH) player.pitch = -MAXPITCH;
-  while (player.yaw<0.0f) player.yaw += 360.0f;
-  while (player.yaw>=360.0f) player.yaw -= 360.0f;
+  clamp(player.ypr.y, -MAXPITCH, MAXPITCH);
+  while (player.ypr.x<0.0f) player.ypr.x += 360.0f;
+  while (player.ypr.x>=360.0f) player.ypr.x -= 360.0f;
 }
 
 void mousemove(int dx, int dy) {
   const float SENSF = 33.0f;
-  player.yaw += (float(dx)/SENSF)*(sensitivity/sensitivityscale);
-  player.pitch -= (float(dy)/SENSF)*(sensitivity/sensitivityscale)*(invmouse?-1.f:1.f);
+  player.ypr.x += (float(dx)/SENSF)*(sensitivity/sensitivityscale);
+  player.ypr.y -= (float(dy)/SENSF)*(sensitivity/sensitivityscale)*(invmouse?-1.f:1.f);
   fixplayerrange();
 }
 

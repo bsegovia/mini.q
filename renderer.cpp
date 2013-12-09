@@ -45,14 +45,9 @@ FVARP(fov, 30.f, 90.f, 160.f);
 static void transplayer(void) {
   using namespace game;
   ogl::identity();
-#if 1
-  printf("\r%f %f %f %f %f %f",
-      player.o.x, player.o.y, player.o.z,
-      player.roll, player.pitch, player.yaw);
-#endif
-  ogl::rotate(player.roll, vec3f(0.f,0.f,1.f));
-  ogl::rotate(player.pitch, vec3f(1.f,0.f,0.f));
-  ogl::rotate(player.yaw, vec3f(0.f,1.f,0.f));
+  ogl::rotate(player.ypr.z, vec3f(0.f,0.f,1.f));
+  ogl::rotate(player.ypr.y, vec3f(1.f,0.f,0.f));
+  ogl::rotate(player.ypr.x, vec3f(0.f,1.f,0.f));
   ogl::translate(-(player.o+vec3f(0.f,player.eyeheight,0.f)));
 }
 

@@ -80,7 +80,7 @@ TINLINE T max (T a, T b, T c, T d) {return max(max(a,b),max(c,d));}
 TINLINE T min (T a, T b, T c, T d) {return min(min(a,b),min(c,d));}
 TINLINE T min (T a, T b, T c, T d, T e) {return min(min(min(a,b),min(c,d)),e);}
 TINLINE T max (T a, T b, T c, T d, T e) {return max(max(max(a,b),max(c,d)),e);}
-TINLINE T clamp (T x, T lower = T(zero), T upper = T(one)) {return max(lower, min(x,upper));}
+TINLINE T clamp (T x, T lower = T(zero), T upper = T(one)) {return max(lower,min(x,upper));}
 TINLINE T deg2rad (T x) {return x * T(1.74532925199432957692e-2);}
 TINLINE T rad2deg (T x) {return x * T(5.72957795130823208768e1);}
 TINLINE T sin2cos (T x) {return sqrt(max(T(zero),T(one)-x*x));}

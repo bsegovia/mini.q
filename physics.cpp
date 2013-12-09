@@ -30,10 +30,10 @@ void frame() {
 
 static void move(game::dynent &p, int moveres, float curtime) {
   vec3f d(zero);
-  d.x = float(p.move)*cos(deg2rad(p.yaw-90.f));
-  d.z = float(p.move)*sin(deg2rad(p.yaw-90.f));
-  d.x += float(p.strafe)*cos(deg2rad(p.yaw-180.f));
-  d.z += float(p.strafe)*sin(deg2rad(p.yaw-180.f));
+  d.x = float(p.move)*cos(deg2rad(p.ypr.x-90.f));
+  d.z = float(p.move)*sin(deg2rad(p.ypr.x-90.f));
+  d.x += float(p.strafe)*cos(deg2rad(p.ypr.x-180.f));
+  d.z += float(p.strafe)*sin(deg2rad(p.ypr.x-180.f));
 
   const auto speed = curtime/1000.0f*p.maxspeed;
   const auto friction = p.onfloor ? 6.0f : 30.0f;
@@ -48,11 +48,11 @@ static void move(game::dynent &p, int moveres, float curtime) {
 
   // automatically apply smooth roll when strafing
   if (p.strafe==0)
-    p.roll = p.roll/(1.f+sqrt(curtime)/25.f);
+    p.ypr.z = p.ypr.z/(1.f+sqrt(curtime)/25.f);
   else {
-    p.roll -= p.strafe*curtime/30.0f;
-    if (p.roll>maxroll) p.roll = maxroll;
-    if (p.roll<-maxroll) p.roll = -maxroll;
+    p.ypr.z -= p.strafe*curtime/30.0f;
+    if (p.ypr.z>maxroll) p.ypr.z = maxroll;
+    if (p.ypr.z<-maxroll) p.ypr.z = -maxroll;
   }
 }
 
