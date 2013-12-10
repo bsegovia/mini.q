@@ -166,21 +166,29 @@ void bindtexture(u32 target, u32 id, u32 texslot) {
 
 INLINE bool ispoweroftwo(unsigned int x) { return ((x&(x-1))==0); }
 
-u32 maketext(const char *fmt, ...) {
+u32 maketex(const char *fmt, ...) {
   va_list args;
   u32 id, target = GL_TEXTURE_2D, internalfmt = GL_RGBA;
-  u32 datafmt = GL_RGBA, type = GL_UNSIGNED_BYTE;
+  u32 datafmt = GL_RGBA, type = GL_UNSIGNED_BYTE, filter = GL_NEAREST;
+  u32 wrap = GL_TEXTURE_WRAP_S, wrapmode = GL_CLAMP_TO_EDGE;
   u32 dim[3] = {0,0,0}, dimnum = 0;
   void *data = NULL;
+  char ch = '\0';
+
+#define PEEK \
+  ch = *fmt; ++fmt; ch = ch=='%' ? char(va_arg(args,int)) : ch; \
+  switch (ch)
 
   gentextures(1, &id);
   va_start(args, fmt);
   while (*fmt) {
-    switch (*fmt) {
+    PEEK {
       case 'B': // build the texture
-             if (*++fmt == '1') { target = GL_TEXTURE_1D; dimnum = 1; }
-        else if (*++fmt == '2') { target = GL_TEXTURE_2D; dimnum = 2; }
-        else { target = GL_TEXTURE_3D; dimnum = 3; }
+        PEEK {
+          case '1': target = GL_TEXTURE_1D; dimnum = 1; break;
+          case '2': target = GL_TEXTURE_2D; dimnum = 2; break;
+          case '3': target = GL_TEXTURE_3D; dimnum = 3; break;
+        }
         ogl::bindtexture(target, id, 0);
         OGL(PixelStorei, GL_UNPACK_ALIGNMENT, 1);
         data = va_arg(args, void*);
@@ -193,71 +201,63 @@ u32 maketext(const char *fmt, ...) {
           OGL(TexImage3D, target, 0, internalfmt, dim[0], dim[1], dim[2], 0, datafmt, type, data);
       break;
       case 'G': OGL(GenerateMipmap, GL_TEXTURE_2D); break;
-      case 'T': // type
-        switch (*++fmt) {
-#define TYPE(C, T) case C: type = T; break;
-          TYPE('b',GL_BYTE) TYPE('B',GL_UNSIGNED_BYTE)
-          TYPE('s',GL_SHORT) TYPE('S',GL_UNSIGNED_SHORT)
-          TYPE('i',GL_INT) TYPE('I',GL_UNSIGNED_INT)
-          TYPE('f',GL_FLOAT)
-#undef TYPE
-        }
+      case 'T': PEEK { // type
+        case 'b': type = GL_BYTE; break;
+        case 'B': type = GL_UNSIGNED_BYTE; break;
+        case 's': type = GL_SHORT; break;
+        case 'S': type = GL_UNSIGNED_SHORT; break;
+        case 'i': type = GL_INT; break;
+        case 'I': type = GL_UNSIGNED_INT; break;
+        case 'f': type = GL_FLOAT; break;
+      }
       break;
-      case 'D': // data format
-        switch (*++fmt) {
-          case '3': datafmt = GL_RGB; break;
-          case '4': datafmt = GL_RGBA; break;
-          case 'r': datafmt = GL_RED; break;
-        }
+      case 'D': PEEK { // data format
+        case '3': datafmt = GL_RGB; break;
+        case '4': datafmt = GL_RGBA; break;
+        case 'r': datafmt = GL_RED; break;
+      }
       break;
-      case 'I': // internal data format
-        switch (*++fmt) {
-          case '3': internalfmt = GL_RGB; break;
-          case '4': internalfmt = GL_RGBA; break;
-          case 'r': internalfmt = GL_RED; break;
-        }
+      case 'I': PEEK { // internal data format
+        case '3': internalfmt = GL_RGB; break;
+        case '4': internalfmt = GL_RGBA; break;
+        case 'r': internalfmt = GL_RED; break;
+      }
       break;
-      case 'N': { // minfilter
-        u32 filter = GL_NEAREST;
-        switch (*++fmt) {
+      case 'm': // minfilter
+        PEEK {
           case 'n': filter = GL_NEAREST; break;
           case 'l': filter = GL_LINEAR; break;
+          case 'm': filter = GL_NEAREST_MIPMAP_LINEAR; break;
           case 'N': filter = GL_NEAREST_MIPMAP_NEAREST; break;
           case 'L': filter = GL_LINEAR_MIPMAP_NEAREST; break;
-          case 'm': filter = GL_NEAREST_MIPMAP_LINEAR; break;
           case 'M': filter = GL_LINEAR_MIPMAP_LINEAR; break;
         }
         OGL(TexParameteri, target, GL_TEXTURE_MIN_FILTER, filter);
-      }
       break;
-      case 'M': { // magfilter
-        u32 filter = GL_NEAREST;
-        switch (*++fmt) {
+      case 'M': // magfilter
+        PEEK {
           case 'n': filter = GL_NEAREST; break;
           case 'l': filter = GL_LINEAR; break;
         }
         OGL(TexParameteri, target, GL_TEXTURE_MAG_FILTER, filter);
-      }
       break;
-      case 'W': { // wrap mode
-        u32 wrap = GL_TEXTURE_WRAP_S, wrapmode = GL_CLAMP_TO_EDGE;
-        switch (*++fmt) {
+      case 'W': // wrap mode
+        PEEK {
           case 's': wrap = GL_TEXTURE_WRAP_S; break;
           case 't': wrap = GL_TEXTURE_WRAP_T; break;
           case 'r': wrap = GL_TEXTURE_WRAP_R; break;
         }
-        switch (*++fmt) {
+        PEEK {
           case 'e': wrapmode = GL_CLAMP_TO_EDGE; break;
           case 'b': wrapmode = GL_CLAMP_TO_BORDER; break;
           case 'r': wrapmode = GL_REPEAT; break;
           case 'm': wrapmode = GL_MIRRORED_REPEAT; break;
-          OGL(TexParameteri, target, wrap, wrapmode);
         }
-      }
+        OGL(TexParameteri, target, wrap, wrapmode);
       break;
     }
-    while (*fmt == ' ') ++fmt; // skip spaces
   }
+#undef PEEK
   va_end(args);
   return id;
 }
@@ -275,41 +275,16 @@ u32 installtex(const char *texname, bool clamp) {
   }
 #endif // __WEBGL__
 
-  u32 id;
-  gentextures(1, &id);
   loopi(int(TEX_NUM)) bindedtexture[i] = 0;
   con::out("loading %s (%ix%i)", texname, s->w, s->h);
-  ogl::bindtexture(GL_TEXTURE_2D, id, 0);
-  OGL(PixelStorei, GL_UNPACK_ALIGNMENT, 1);
   if (s->w>glmaxtexsize || s->h>glmaxtexsize)
     sys::fatal("texture dimensions are too large");
-#if 1
-  if (s->format->BitsPerPixel == 24)
-    OGL(TexImage2D, GL_TEXTURE_2D, 0, GL_RGB, s->w, s->h, 0, GL_RGB, GL_UNSIGNED_BYTE, s->pixels);
-  else if (s->format->BitsPerPixel == 32)
-    OGL(TexImage2D, GL_TEXTURE_2D, 0, GL_RGBA, s->w, s->h, 0, GL_RGBA, GL_UNSIGNED_BYTE, s->pixels);
-  else
-    sys::fatal("unsupported texture format");
-
-  if (ispoweroftwo(s->w) && ispoweroftwo(s->h)) {
-    OGL(GenerateMipmap, GL_TEXTURE_2D);
-    OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT);
-    OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, clamp ? GL_CLAMP_TO_EDGE : GL_REPEAT);
-    OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-  } else {
-    OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  }
-#endif
-#if 0
-  const auto ispowof2 = ispoweroftwo(s->w) && ispoweroftwo(s->h);
-  const auto minfilter = ispoweroftwo ? 'l' : 'M';
+  const auto ispowerof2 = ispoweroftwo(s->w) && ispoweroftwo(s->h);
+  const auto minf = ispowerof2 ? 'l' : 'M';
+  const auto mm = ispowerof2 ? 'G' : ' ';
   const auto fmt = s->format->BitsPerPixel == 24 ? '3' : '4';
-  sprintf_sd(texfmt)("D%c I%c B2 Ws%c Wt%c B %c", fmt
-#endif
+  const auto wrap = clamp ? 'e' : 'r';
+  auto id = maketex("TB I% D% B2 % Ws% Wt% Ml m%",fmt,fmt,s->pixels,s->w,s->h,mm,wrap,wrap,minf);
   SDL_FreeSurface(s);
   return id;
 }
@@ -727,17 +702,8 @@ u32 coretex(u32 index) { return coretexarray[index%TEX_PREALLOCATED_NUM]; }
 static u32 buildcheckboard() {
   const u32 dim = 16;
   u32 *cb = (u32*)malloc(dim*dim*sizeof(u32));
-  loopi(dim) loopj(dim) cb[i*dim+j]=(i==0)||(j==0)||(j==dim-1)||(j==dim-1)?0:~0;
-  u32 id;
-  ogl::gentextures(1, &id);
-  ogl::bindtexture(GL_TEXTURE_2D, id, 0);
-  OGL(PixelStorei, GL_UNPACK_ALIGNMENT, 1);
-  OGL(TexImage2D, GL_TEXTURE_2D, 0, GL_RGBA, dim, dim, 0, GL_RGBA, GL_UNSIGNED_BYTE, cb);
-  OGL(GenerateMipmap, GL_TEXTURE_2D);
-  OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-  OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+  loopi(dim) loopj(dim) cb[i*dim+j]=(i==0)||(j==0)||(i==dim-1)||(j==dim-1)?0:~0;
+  u32 id = maketex("TB I4 D4 B2 G Wsr Wtr mM Ml", cb, 16, 16);
   free(cb);
   return id;
 }
