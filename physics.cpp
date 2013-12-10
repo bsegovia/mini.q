@@ -9,7 +9,12 @@
 namespace q {
 namespace physics {
 
-bool collide(game::dynent&, bool spawn) { return false; }
+INLINE bool collide(const aabb &box) {
+  return box.pmin.y < 0.f;
+}
+bool collide(game::dynent &d, bool spawn) {
+  return collide(game::getaabb(d));
+}
 
 // physics simulated at 50fps or better
 static const float MINFRAMETIME = 20.f;
@@ -17,6 +22,7 @@ static float fraction = 0.f;
 static int repeat = 0;
 
 FVARP(maxroll, 0.f, 3.f, 20.f);
+FVAR(gravity, 1.f, 20.f, 100.f);
 
 // optimally schedule physics frames inside the graphics frames
 void frame() {
@@ -44,7 +50,44 @@ static void move(game::dynent &p, int moveres, float curtime) {
   p.vel += d;
   p.vel /= fpsfric;
   d = p.vel;
-  p.o += d*speed;
+
+  // we apply the velocity vector directly if we are flying around
+  if (p.flycam) {
+    p.o += d*speed;
+    if (p.jump) {
+      p.vel.y += 2.f;
+      p.jump = 0;
+    }
+  }
+  // we have to handle collision (here just with plane y==0)
+  else {
+    // printf("\rjump %d                       ", p.jump);
+    // update *velocity* based on action and position in the world
+    if (p.onfloor) {
+      if (p.jump) {
+        p.jump = 0;
+        p.vel.y = 1.7f;
+      }
+      p.timeinair = 0.f;
+    } else
+      p.timeinair += curtime;
+
+    // update *position* with discrete step collision
+    const float f = 1.0f/float(moveres);
+    float dropf = ((gravity-1.f)+p.timeinair/15.0f); // incorrect, but works fine
+    const float drop = dropf*curtime/gravity/100./float(moveres); // at high fps, gravity kicks in too fast
+
+    loopi(moveres) {
+      // try to apply gravity
+      p.o.y -= drop;
+      if (collide(p, false)) {
+        p.o.y += drop;
+        p.onfloor = true;
+      } else
+        p.onfloor = false;
+      p.o += f*d;
+    }
+  }
 
   // automatically apply smooth roll when strafing
   if (p.strafe==0)

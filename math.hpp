@@ -594,5 +594,30 @@ typedef vec4<double> vec4d;
 #undef sw30
 #undef sw41
 #undef sw40
+
+// axis aligned bounding box
+struct aabb {
+  INLINE aabb() {}
+  INLINE aabb(float m, float M) : pmin(m), pmax(M) {}
+  INLINE aabb(vec3f m, vec3f M) : pmin(m), pmax(M) {}
+  INLINE void compose(const aabb &other) {
+    pmin = min(pmin, other.pmin);
+    pmax = max(pmax, other.pmax);
+  }
+  INLINE float halfarea(void) const {
+    const vec3f e(pmax-pmin);
+    return e.x*e.y + e.y*e.z + e.x*e.z;
+  }
+  vec3f pmin, pmax;
+};
+struct isecres {
+  INLINE isecres(bool isec, float t = FLT_MAX) : t(t), isec(isec) {}
+  float t;
+  bool isec;
+};
+INLINE bool intersect(const aabb &b0, const aabb &b1) {
+  return !(any(b0.pmin > b1.pmax)| any(b1.pmin > b0.pmax));
+}
+
 } /* namespace q */
 

@@ -19,17 +19,18 @@ IVARP(invmouse, 0, 0, 1);
 
 dynent::dynent() {
   o = vel = zero;
-  ypr = vec3f(270.f,0.f,0.f);
+  o.y = 1.90f;
+  ypr = vec3f(0.f,0.f,0.f);
   lastmove = lastupdate = lastmillis;
   maxspeed = 8.f;
   radius = 0.5f;
   eyeheight = 1.80f;
   aboveeye = 0.2f;
-  move = strafe = 0;
   kleft = kright = kup = kdown = 0;
-  onfloor = 1;
+  onfloor = move = strafe = jump = flycam = 0;
   name[0] = team[0] = '\0';
 }
+IVAR(flycam, 0, 0, 1);
 
 void fixplayerrange(void) {
   const float MAXPITCH = 90.0f;
@@ -56,6 +57,12 @@ DIRECTION(forward,  move,   +1, kup,    kdown);
 DIRECTION(left,     strafe, +1, kleft,  kright);
 DIRECTION(right,    strafe, -1, kright, kleft);
 #undef DIRECTION
+
+static void jump(const int &isdown) {
+  player.jump = isdown;
+}
+CMD(jump, "d");
+
 static const int moveres = 20;
 void updateworld(float millis) {
   curtime = millis - lastmillis;

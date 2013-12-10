@@ -79,7 +79,7 @@ static char *parseword(ctx &c, const char *&p) {
       }\
       s = i1;\
     }\
-    if (id->fun.fun) id->fun.fun();\
+    if (id->S##var.fun) id->S##var.fun();\
   }\
 } while (0)
 
