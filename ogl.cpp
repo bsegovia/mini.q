@@ -166,6 +166,102 @@ void bindtexture(u32 target, u32 id, u32 texslot) {
 
 INLINE bool ispoweroftwo(unsigned int x) { return ((x&(x-1))==0); }
 
+u32 maketext(const char *fmt, ...) {
+  va_list args;
+  u32 id, target = GL_TEXTURE_2D, internalfmt = GL_RGBA;
+  u32 datafmt = GL_RGBA, type = GL_UNSIGNED_BYTE;
+  u32 dim[3] = {0,0,0}, dimnum = 0;
+  void *data = NULL;
+
+  gentextures(1, &id);
+  va_start(args, fmt);
+  while (*fmt) {
+    switch (*fmt) {
+      case 'B': // build the texture
+             if (*++fmt == '1') { target = GL_TEXTURE_1D; dimnum = 1; }
+        else if (*++fmt == '2') { target = GL_TEXTURE_2D; dimnum = 2; }
+        else { target = GL_TEXTURE_3D; dimnum = 3; }
+        ogl::bindtexture(target, id, 0);
+        OGL(PixelStorei, GL_UNPACK_ALIGNMENT, 1);
+        data = va_arg(args, void*);
+        loopi(dimnum) dim[i] = va_arg(args, u32);
+        if (target == GL_TEXTURE_1D)
+          OGL(TexImage1D, target, 0, internalfmt, dim[0], 0, datafmt, type, data);
+        else if (target == GL_TEXTURE_2D)
+          OGL(TexImage2D, target, 0, internalfmt, dim[0], dim[1], 0, datafmt, type, data);
+        else if (target == GL_TEXTURE_3D)
+          OGL(TexImage3D, target, 0, internalfmt, dim[0], dim[1], dim[2], 0, datafmt, type, data);
+      break;
+      case 'G': OGL(GenerateMipmap, GL_TEXTURE_2D); break;
+      case 'T': // type
+        switch (*++fmt) {
+#define TYPE(C, T) case C: type = T; break;
+          TYPE('b',GL_BYTE) TYPE('B',GL_UNSIGNED_BYTE)
+          TYPE('s',GL_SHORT) TYPE('S',GL_UNSIGNED_SHORT)
+          TYPE('i',GL_INT) TYPE('I',GL_UNSIGNED_INT)
+          TYPE('f',GL_FLOAT)
+#undef TYPE
+        }
+      break;
+      case 'D': // data format
+        switch (*++fmt) {
+          case '3': datafmt = GL_RGB; break;
+          case '4': datafmt = GL_RGBA; break;
+          case 'r': datafmt = GL_RED; break;
+        }
+      break;
+      case 'I': // internal data format
+        switch (*++fmt) {
+          case '3': internalfmt = GL_RGB; break;
+          case '4': internalfmt = GL_RGBA; break;
+          case 'r': internalfmt = GL_RED; break;
+        }
+      break;
+      case 'N': { // minfilter
+        u32 filter = GL_NEAREST;
+        switch (*++fmt) {
+          case 'n': filter = GL_NEAREST; break;
+          case 'l': filter = GL_LINEAR; break;
+          case 'N': filter = GL_NEAREST_MIPMAP_NEAREST; break;
+          case 'L': filter = GL_LINEAR_MIPMAP_NEAREST; break;
+          case 'm': filter = GL_NEAREST_MIPMAP_LINEAR; break;
+          case 'M': filter = GL_LINEAR_MIPMAP_LINEAR; break;
+        }
+        OGL(TexParameteri, target, GL_TEXTURE_MIN_FILTER, filter);
+      }
+      break;
+      case 'M': { // magfilter
+        u32 filter = GL_NEAREST;
+        switch (*++fmt) {
+          case 'n': filter = GL_NEAREST; break;
+          case 'l': filter = GL_LINEAR; break;
+        }
+        OGL(TexParameteri, target, GL_TEXTURE_MAG_FILTER, filter);
+      }
+      break;
+      case 'W': { // wrap mode
+        u32 wrap = GL_TEXTURE_WRAP_S, wrapmode = GL_CLAMP_TO_EDGE;
+        switch (*++fmt) {
+          case 's': wrap = GL_TEXTURE_WRAP_S; break;
+          case 't': wrap = GL_TEXTURE_WRAP_T; break;
+          case 'r': wrap = GL_TEXTURE_WRAP_R; break;
+        }
+        switch (*++fmt) {
+          case 'e': wrapmode = GL_CLAMP_TO_EDGE; break;
+          case 'b': wrapmode = GL_CLAMP_TO_BORDER; break;
+          case 'r': wrapmode = GL_REPEAT; break;
+          case 'm': wrapmode = GL_MIRRORED_REPEAT; break;
+          OGL(TexParameteri, target, wrap, wrapmode);
+        }
+      }
+      break;
+    }
+    while (*fmt == ' ') ++fmt; // skip spaces
+  }
+  va_end(args);
+  return id;
+}
+
 u32 installtex(const char *texname, bool clamp) {
   auto s = IMG_Load(texname);
   if (!s) {
@@ -187,6 +283,7 @@ u32 installtex(const char *texname, bool clamp) {
   OGL(PixelStorei, GL_UNPACK_ALIGNMENT, 1);
   if (s->w>glmaxtexsize || s->h>glmaxtexsize)
     sys::fatal("texture dimensions are too large");
+#if 1
   if (s->format->BitsPerPixel == 24)
     OGL(TexImage2D, GL_TEXTURE_2D, 0, GL_RGB, s->w, s->h, 0, GL_RGB, GL_UNSIGNED_BYTE, s->pixels);
   else if (s->format->BitsPerPixel == 32)
@@ -206,6 +303,13 @@ u32 installtex(const char *texname, bool clamp) {
     OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   }
+#endif
+#if 0
+  const auto ispowof2 = ispoweroftwo(s->w) && ispoweroftwo(s->h);
+  const auto minfilter = ispoweroftwo ? 'l' : 'M';
+  const auto fmt = s->format->BitsPerPixel == 24 ? '3' : '4';
+  sprintf_sd(texfmt)("D%c I%c B2 Ws%c Wt%c B %c", fmt
+#endif
   SDL_FreeSurface(s);
   return id;
 }
