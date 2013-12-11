@@ -20,10 +20,7 @@ struct identifier {
     fn fun;
   };
 };
-static hashtable<identifier> &idents() {
-  static hashtable<identifier> internal;
-  return internal;
-}
+GLOBAL(hashtable<identifier>, idents);
 int ivar(const char *n, int m, int cur, int M, int *ptr, cb fun, bool persist) {
   identifier v = {IVAR}; v.ivar = {ptr, m, M, fun, persist};
   idents().access(n, &v);

@@ -30,6 +30,8 @@ struct dynent {
   string team;            // team it belongs to
 };
 
+struct mapmodelinfo { int rad, h, zoff, snap; const char *name; };
+
 INLINE aabb getaabb(const dynent &d) {
   const auto fmin = d.o-vec3f(d.radius, d.eyeheight, d.radius);
   const auto fmax = d.o+vec3f(d.radius, d.aboveeye, d.radius);

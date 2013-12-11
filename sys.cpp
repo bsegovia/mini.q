@@ -13,9 +13,19 @@ namespace q {
 namespace sys {
 
 int scrw = 800, scrh = 600;
+
 static int islittleendian_ = 1;
 void initendiancheck(void) { islittleendian_ = *((char*)&islittleendian_); }
 int islittleendian(void) { return islittleendian_; }
+void endianswap(void *memory, int stride, int length) {
+  if (*((char *)&stride)) return;
+  loop(w, length) loop(i, stride/2) {
+    u8 *p = (u8 *)memory+w*stride;
+    u8 t = p[i];
+    p[i] = p[stride-i-1];
+    p[stride-i-1] = t;
+  }
+}
 
 #if defined(MEMORY_DEBUGGER)
 struct DEFAULT_ALIGNED memblock : intrusive_list_node {
@@ -151,19 +161,6 @@ char *loadfile(const char *fn, int *size) {
   return buf;
 }
 
-char *newstring(const char *s, size_t l, const char *filename, int linenum) {
-  char *b = (char*) memalloc(l+1, filename, linenum);
-  strncpy(b,s,l);
-  b[l] = 0;
-  return b;
-}
-char *newstring(const char *s, const char *filename, int linenum) {
-  return newstring(s, strlen(s), filename, linenum);
-}
-char *newstringbuf(const char *s, const char *filename, int linenum) {
-  return newstring(s, MAXDEFSTR-1, filename, linenum);
-}
-
 void quit(const char *msg) {
   if (msg && strlen(msg)) {
 #if defined(__WIN32__)
@@ -203,7 +200,19 @@ float millis() {
   return float(double(tp.tv_sec)*1e3 + double(tp.tv_usec)*1e-3 - first);
 }
 #endif
-
 } /* namespace sys */
+
+char *newstring(const char *s, size_t l, const char *filename, int linenum) {
+  char *b = (char*) sys::memalloc(l+1, filename, linenum);
+  strncpy(b,s,l);
+  b[l] = 0;
+  return b;
+}
+char *newstring(const char *s, const char *filename, int linenum) {
+  return newstring(s, strlen(s), filename, linenum);
+}
+char *newstringbuf(const char *s, const char *filename, int linenum) {
+  return newstring(s, MAXDEFSTR-1, filename, linenum);
+}
 } /* namespace q */
 

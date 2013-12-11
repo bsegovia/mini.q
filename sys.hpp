@@ -211,6 +211,7 @@ char *path(char *s);
 char *loadfile(const char *fn, int *size=NULL);
 void initendiancheck(void);
 int islittleendian(void);
+void endianswap(void *memory, int stride, int length);
 
 /*-------------------------------------------------------------------------
  - memory debugging / tracking facilities
@@ -292,6 +293,9 @@ struct sprintfmt_s {
 #define sprintf_sd(d) string d; sprintf_s(d)
 #define sprintf_sdlv(d,last,fmt) string d; {va_list ap; va_start(ap,last); strfmt_s(d,fmt,ap); va_end(ap);}
 #define sprintf_sdv(d,fmt) sprintf_sdlv(d,fmt,fmt)
+
+// global variable with proper constructor
+#define GLOBAL(TYPE, NAME) static TYPE &NAME() {static TYPE var; return var;}
 
 // simple min/max that can convert
 template <class T, class U> INLINE T min(T t, U u) {return t<T(u)?t:T(u);}
