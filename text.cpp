@@ -16,15 +16,7 @@ u32 buildfont() {
   u8 *font = (u8*)malloc(fontw*fonth*sizeof(u8));
   loopi(fonth) loopj(fontw/32) loopk(32)
     font[i*fontw+j*32+k] = (fontdata[i*fontw/32+j]&(1<<k))?~0x0:0x0;
-  u32 id;
-  ogl::gentextures(1, &id);
-  ogl::bindtexture(GL_TEXTURE_2D, id, 0);
-  OGL(PixelStorei, GL_UNPACK_ALIGNMENT, 1);
-  OGL(TexImage2D, GL_TEXTURE_2D, 0, GL_RED, fontw, fonth, 0, GL_RED, GL_UNSIGNED_BYTE, font);
-  OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  OGL(TexParameteri, GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  u32 id = ogl::maketex("TB Ir Dr B2 Wse Wte Ml ml", font, fontw, fonth);
   free(font);
   return id;
 }

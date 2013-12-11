@@ -42,6 +42,7 @@ enum {
 };
 u32 coretex(u32 index);
 u32 installtex(const char *texname, bool clamp=false);
+u32 maketex(const char *fmt, ...);
 
 // quick, dirty and super simple shader system to replace fixed pipeline
 static const u32 FOG = 1<<0;
