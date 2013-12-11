@@ -6,6 +6,7 @@
 #include "con.hpp"
 #include "game.hpp"
 #include "math.hpp"
+#include "md2.hpp"
 #include "ogl.hpp"
 #include "renderer.hpp"
 #include "physics.hpp"

@@ -26,6 +26,7 @@ struct dynent {
   uint onfloor:1;         // true if contact with floor
   uint jump:1;            // need to apply jump related physics code
   uint flycam:1;          // no collision / free camera
+  uint gun:6;             // gun selected by the entity
   string name;            // name of entity
   string team;            // team it belongs to
 };

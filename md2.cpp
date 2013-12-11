@@ -28,6 +28,18 @@ struct frame {
 };
 
 struct mdl {
+  mdl(void) { memset(this,0,sizeof(mdl)); }
+  ~mdl(void) {
+    if (vbo) ogl::deletebuffers(1, &vbo);
+    SAFE_DELETEA(glcommands);
+    SAFE_DELETEA(frames);
+    SAFE_DELETEA(builtframes);
+    FREE(loadname);
+  }
+  bool load(char* filename);
+  void render(int numframe, int range, const vec3f &o,
+              const vec3f &ypr, float scale, float speed, int snap, float basetime);
+  void scale(int frame, float scale, int sn);
   enum {channenum = 5}; // s,t,x,y,z
   int numglcommands;
   int *glcommands;
@@ -39,20 +51,6 @@ struct mdl {
   char *loadname;
   int mdlnum;
   bool loaded;
-  bool load(char* filename);
-  void render(int numframe, int range, const vec3f &o,
-              const vec3f &ypr, float scale, float speed, int snap, float basetime);
-  void scale(int frame, float scale, int sn);
-
-  mdl(void) { memset(this,0,sizeof(mdl)); }
-
-  ~mdl(void) {
-    if (vbo) ogl::deletebuffers(1, &vbo);
-    SAFE_DELETEA(glcommands);
-    SAFE_DELETEA(frames);
-    SAFE_DELETEA(builtframes);
-    FREE(loadname);
-  }
 };
 
 bool mdl::load(char* filename) {
@@ -189,8 +187,7 @@ mdl *loadmodel(const char *name) {
 
 void mapmodel(const char *rad, const char *h, const char *zoff, const char *snap, const char *name) {
   auto m = loadmodel(name);
-  game::mapmodelinfo mmi = { atoi(rad), atoi(h), atoi(zoff), atoi(snap), m->loadname };
-  m->mmi = mmi;
+  m->mmi = { atoi(rad), atoi(h), atoi(zoff), atoi(snap), m->loadname };
   mapmodels.add(m);
 }
 
@@ -208,9 +205,9 @@ game::mapmodelinfo &getmminfo(int i) {
 CMD(mapmodel, "sssss");
 CMD(mapmodelreset, "");
 
-void rendermodel(const char *name, int frame, int range,
-                 float rad, const vec3f &o, const vec3f &ypr,
-                 bool teammate, float scale, float speed, int snap, float basetime) {
+void render(const char *name, int frame, int range,
+            float rad, const vec3f &o, const vec3f &ypr,
+            bool teammate, float scale, float speed, int snap, float basetime) {
   auto m = loadmodel(name);
   delayedload(m);
   ogl::bindtexture(GL_TEXTURE_2D, m->tex);

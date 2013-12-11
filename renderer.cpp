@@ -38,6 +38,46 @@ void drawdf() {
 }
 
 /*--------------------------------------------------------------------------
+ - handle the HUD gun
+ -------------------------------------------------------------------------*/
+static const char *hudgunnames[] = {
+  "hudguns/fist",
+  "hudguns/shotg",
+  "hudguns/chaing",
+  "hudguns/rocket",
+  "hudguns/rifle"
+};
+IVARP(hudgun, 0, 1, 1);
+
+static void drawhudmodel(int start, int end, float speed, int base) {
+  md2::render(hudgunnames[game::player.gun], start, end, 1.0f,
+              game::player.o, game::player.ypr+vec3f(90.f,0.f,0.f),
+              false, 1.0f, speed, 0, base);
+}
+
+static void drawhudgun(float fovy, float aspect, float farplane) {
+  if (!hudgun) return;
+
+  ogl::enablev(GL_CULL_FACE);
+  ogl::pushmode(ogl::PROJECTION);
+  ogl::identity();
+  ogl::perspective(fovy, aspect, 0.3f, farplane);
+  ogl::pushmode(ogl::MODELVIEW);
+#if 0
+  const int rtime = game::reloadtime(game::player.gunselect);
+  if (game::player.lastaction &&
+      game::player.lastattackgun==game::player.gunselect &&
+      game::lastmillis()-game::player.lastaction<rtime)
+    drawhudmodel(7, 18, rtime/18.0f, game::player.lastaction);
+  else
+#endif
+  drawhudmodel(6, 1, 100.f, 0);
+  ogl::popmode(ogl::PROJECTION);
+  ogl::popmode(ogl::MODELVIEW);
+  ogl::disablev(GL_CULL_FACE);
+}
+
+/*--------------------------------------------------------------------------
  - render the complete frame
  -------------------------------------------------------------------------*/
 FVARP(fov, 30.f, 90.f, 160.f);
