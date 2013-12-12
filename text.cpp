@@ -45,7 +45,6 @@ void drawf(const char *fstr, int left, int top, ...) {
 }
 
 void draw(const char *str, int left, int top) {
-  typedef array<float,4> arrayf4;
   OGL(BlendFunc, GL_ONE, GL_ONE);
   ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_CHARACTERS));
   OGL(VertexAttrib3f,ogl::COL,1.f,1.f,1.f);
@@ -53,7 +52,7 @@ void draw(const char *str, int left, int top) {
   // use a triangle mesh to display the text
   const size_t len = strlen(str);
   indextype *indices = (indextype*) alloca(6*len*sizeof(int));
-  array<float,4> *verts = (array<float,4>*) alloca(4*len*sizeof(array<float,4>));
+  auto verts = (vec4f*) alloca(4*len*sizeof(vec4f));
 
   // traverse the string and build the mesh
   int index = 0, vert = 0, x = left, y = top;
@@ -72,22 +71,17 @@ void draw(const char *str, int left, int top) {
     const int in_height = 200;
 
     loopj(6) indices[index+j] = vert+twotriangles[j];
-    verts[vert+0] = arrayf4(in_left, in_top,   float(x),         float(y));
-    verts[vert+1] = arrayf4(in_right,in_top,   float(x+in_width),float(y));
-    verts[vert+2] = arrayf4(in_right,in_bottom,float(x+in_width),float(y+in_height));
-    verts[vert+3] = arrayf4(in_left, in_bottom,float(x),         float(y+in_height));
+    verts[vert+0] = vec4f(in_left, in_top,   float(x),         float(y));
+    verts[vert+1] = vec4f(in_right,in_top,   float(x+in_width),float(y));
+    verts[vert+2] = vec4f(in_right,in_bottom,float(x+in_width),float(y+in_height));
+    verts[vert+3] = vec4f(in_left, in_bottom,float(x),         float(y+in_height));
 
     x += in_width + 1;
     index += 6;
     vert += 4;
   }
-
-  ogl::setattribarray()(ogl::POS0, ogl::TEX0);
-  ogl::immvertexsize(sizeof(float[4]));
-  ogl::immattrib(ogl::POS0, 2, GL_FLOAT, sizeof(float[2]));
-  ogl::immattrib(ogl::TEX0, 2, GL_FLOAT, 0);
   ogl::bindshader(ogl::FONT_SHADER);
-  ogl::immdrawelements(GL_TRIANGLES, index, GL_UNSIGNED_SHORT, indices, &verts[0][0]);
+  ogl::immdrawelememts("Tst2p2", index, indices, &verts[0].x);
 }
 
 static void drawenvboxface(float s0, float t0, int x0, int y0, int z0,

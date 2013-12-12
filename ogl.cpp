@@ -395,6 +395,42 @@ void immdrawelements(int mode, int count, int type, const void *indices, const v
   drawelements(mode, count, type, fake);
 }
 
+void immdrawelememts(const char *fmt, int count, const void *indices, const void *vertices) {
+  loopi(ATTRIB_NUM) disableattribarray(i);
+  int mode = GL_TRIANGLE_STRIP, type = GL_UNSIGNED_INT;
+  int offset = 0;
+  while (*fmt) {
+    switch (*fmt) {
+      case 'T': mode = GL_TRIANGLES; break;
+      case 'F': mode = GL_TRIANGLE_FAN; break;
+      case 'S': mode = GL_TRIANGLE_STRIP; break;
+      case 'i': type = GL_UNSIGNED_INT; break;
+      case 's': type = GL_UNSIGNED_SHORT; break;
+      case 'b': type = GL_UNSIGNED_BYTE; break;
+#define ATTRIB(CHAR, GL)\
+      case CHAR: ++fmt;\
+        enableattribarray(GL);\
+        immattrib(GL, int(*fmt-'0'), GL_FLOAT, offset);\
+        offset += int(*fmt-'0')*int(sizeof(float));\
+      break;
+      ATTRIB('p', POS0);
+      ATTRIB('t', TEX0);
+      ATTRIB('c', COL);
+#undef ATTRIB
+    }
+    ++fmt;
+  }
+  immvertexsize(offset);
+  immdrawelements(mode, count, type, indices, vertices);
+#if 0
+  ogl::setattribarray()(ogl::POS0, ogl::TEX0);
+  ogl::immvertexsize(sizeof(float[4]));
+  ogl::immattrib(ogl::POS0, 2, GL_FLOAT, sizeof(float[2]));
+  ogl::immattrib(ogl::TEX0, 2, GL_FLOAT, 0);
+  ogl::bindshader(ogl::FONT_SHADER);
+#endif
+}
+
 void immdraw(int mode, int pos, int tex, int col, size_t n, const float *data) {
   const int sz = (pos+tex+col)*sizeof(float);
   if (!immvertices(n*sz, data)) return;
