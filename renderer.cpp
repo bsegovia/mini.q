@@ -7,23 +7,9 @@
 namespace q {
 namespace rr {
 
-void hud(int w, int h, int curfps) {
-  auto cmd = con::curcmd();
-  ogl::pushmatrix();
-  ogl::ortho(0.f, float(VIRTW), float(VIRTH), 0.f, -1.f, 1.f);
-  ogl::enablev(GL_BLEND);
-  OGL(DepthMask, GL_FALSE);
-  if (cmd) text::drawf("> %s_", 20, 1570, cmd);
-  ogl::popmatrix();
-
-  OGL(DepthMask, GL_TRUE);
-  ogl::disable(GL_BLEND);
-  ogl::enable(GL_DEPTH_TEST);
-}
-
 void drawdf() {
   ogl::pushmatrix();
-  ogl::ortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
+  ogl::setortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
   const array<float,3> verts[] = {
     array<float,3>(-1.f, -1.f, 0.f),
     array<float,3>(1.f, -1.f, 0.f),
@@ -38,6 +24,26 @@ void drawdf() {
 }
 
 /*--------------------------------------------------------------------------
+ - handle the HUD (console, scores...)
+ -------------------------------------------------------------------------*/
+static void drawhud(int w, int h, int curfps) {
+  auto cmd = con::curcmd();
+  ogl::pushmode(ogl::MODELVIEW);
+  ogl::identity();
+  ogl::pushmode(ogl::PROJECTION);
+  ogl::setortho(0.f, float(VIRTW), float(VIRTH), 0.f, -1.f, 1.f);
+  ogl::enablev(GL_BLEND);
+  OGL(DepthMask, GL_FALSE);
+  if (cmd) text::drawf("> %s_", 20, 1570, cmd);
+  ogl::popmode(ogl::PROJECTION);
+  ogl::popmode(ogl::MODELVIEW);
+
+  OGL(DepthMask, GL_TRUE);
+  ogl::disable(GL_BLEND);
+  ogl::enable(GL_DEPTH_TEST);
+}
+
+/*--------------------------------------------------------------------------
  - handle the HUD gun
  -------------------------------------------------------------------------*/
 static const char *hudgunnames[] = {
@@ -47,22 +53,20 @@ static const char *hudgunnames[] = {
   "hudguns/rocket",
   "hudguns/rifle"
 };
-IVARP(hudgun, 0, 1, 1);
+IVARP(showhudgun, 0, 1, 1);
 
 static void drawhudmodel(int start, int end, float speed, int base) {
-  md2::render(hudgunnames[game::player.gun], start, end, 1.0f,
-              game::player.o, game::player.ypr+vec3f(90.f,0.f,0.f),
+  md2::render(hudgunnames[game::player.gun], start, end,
+              //game::player.o+vec3f(0.f,0.f,-10.f), game::player.ypr,
+              game::player.o+vec3f(0.f,0.f,0.f), game::player.ypr+vec3f(0.f,0.f,0.f),
+              //vec3f(zero), game::player.ypr+vec3f(90.f,0.f,0.f),
               false, 1.0f, speed, 0, base);
 }
 
 static void drawhudgun(float fovy, float aspect, float farplane) {
-  if (!hudgun) return;
+  if (!showhudgun) return;
 
   ogl::enablev(GL_CULL_FACE);
-  ogl::pushmode(ogl::PROJECTION);
-  ogl::identity();
-  ogl::perspective(fovy, aspect, 0.3f, farplane);
-  ogl::pushmode(ogl::MODELVIEW);
 #if 0
   const int rtime = game::reloadtime(game::player.gunselect);
   if (game::player.lastaction &&
@@ -72,8 +76,6 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
   else
 #endif
   drawhudmodel(6, 1, 100.f, 0);
-  ogl::popmode(ogl::PROJECTION);
-  ogl::popmode(ogl::MODELVIEW);
   ogl::disablev(GL_CULL_FACE);
 }
 
@@ -88,22 +90,18 @@ static void transplayer(void) {
   ogl::rotate(player.ypr.z, vec3f(0.f,0.f,1.f));
   ogl::rotate(player.ypr.y, vec3f(1.f,0.f,0.f));
   ogl::rotate(player.ypr.x, vec3f(0.f,1.f,0.f));
-  ogl::translate(-(player.o+vec3f(0.f,player.eyeheight,0.f)));
+  ogl::translate(-player.o);
 }
 
 void frame(int w, int h, int curfps) {
-  OGL(ClearColor, 0.f, 0.f, 0.f, 1.f);
-  OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-//  drawdf();
-
   const float farplane = 100.f;
   const float fovy = fov * float(sys::scrh) / float(sys::scrw);
   const float aspect = float(sys::scrw) / float(sys::scrh);
-
-  ogl::pushmode(ogl::PROJECTION);
-  ogl::identity();
-  ogl::perspective(fovy, aspect, 0.15f, farplane);
-  ogl::pushmode(ogl::MODELVIEW);
+  OGL(ClearColor, 0.f, 0.f, 0.f, 1.f);
+  OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  ogl::matrixmode(ogl::PROJECTION);
+  ogl::setperspective(fovy, aspect, 0.15f, farplane);
+  ogl::matrixmode(ogl::MODELVIEW);
   transplayer();
 
   const array<float,5> verts[] = {
@@ -117,12 +115,10 @@ void frame(int w, int h, int curfps) {
   ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_CHECKBOARD));
   ogl::immdraw(GL_TRIANGLE_STRIP, 3, 2, 0, 4, &verts[0][0]);
 
-  ogl::popmode(ogl::MODELVIEW);
-  ogl::popmode(ogl::PROJECTION);
 
-  hud(w,h,0);
+  drawhud(w,h,0);
+  drawhudgun(fovy, aspect, farplane);
 }
-
 } /* namespace rr */
 } /* namespace q */
 

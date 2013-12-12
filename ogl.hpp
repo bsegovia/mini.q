@@ -49,14 +49,15 @@ static const u32 FOG = 1<<0;
 static const u32 KEYFRAME = 1<<1;
 static const u32 DIFFUSETEX = 1<<2;
 static const u32 COLOR = 1<<3;
-static const int subtypen = 4;
-static const int shadern = 1<<subtypen;
+static const int subtypenum = 4;
+static const int shadernum = 1<<subtypenum;
 void bindfixedshader(u32 flags);
 enum {
   FONT_SHADER,
   DFRM_SHADER
 };
 void bindshader(u32 idx);
+void setshaderudelta(float delta); // XXX find a better way to handle this!
 
 // track allocations
 void gentextures(s32 n, u32 *id);
@@ -106,13 +107,13 @@ enum {MODELVIEW, PROJECTION, MATRIX_MODE};
 void matrixmode(int mode);
 void identity(void);
 void rotate(float angle, const vec3<float> &axis);
-void perspective(float fovy, float aspect, float znear, float zfar);
 void translate(const vec3<float> &v);
 void mulmatrix(const mat4x4<float> &m);
 void pushmatrix(void);
 void popmatrix(void);
 void loadmatrix(const mat4x4<float> &m);
-void ortho(float left, float right, float bottom, float top, float znear, float zfar);
+void setperspective(float fovy, float aspect, float znear, float zfar);
+void setortho(float left, float right, float bottom, float top, float znear, float zfar);
 void scale(const vec3<float> &s);
 const mat4x4<float> &matrix(int mode);
 INLINE void pushmode(int mode) {

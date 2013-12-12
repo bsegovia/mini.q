@@ -19,15 +19,16 @@ IVARP(invmouse, 0, 0, 1);
 
 dynent::dynent() {
   o = vel = zero;
-  o.y = 1.90f;
+  o.y = eyeheight = 1.80f;
+  o.y += 1.f;
   ypr = vec3f(0.f,0.f,0.f);
   lastmove = lastupdate = lastmillis;
   maxspeed = 8.f;
   radius = 0.5f;
-  eyeheight = 1.80f;
   aboveeye = 0.2f;
   kleft = kright = kup = kdown = 0;
   onfloor = move = strafe = jump = flycam = 0;
+  gun = 0;
   name[0] = team[0] = '\0';
 }
 IVAR(flycam, 0, 0, 1);
@@ -70,7 +71,6 @@ void updateworld(float millis) {
   physics::move(player, moveres);
   lastmillis = millis;
 }
-
 } /* namespace game */
 } /* namespace q */
 

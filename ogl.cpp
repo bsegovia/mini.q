@@ -131,13 +131,13 @@ void rotate(float angle, const vec3f &axis) {
   dirty.flags.mvp=1;
   vp[vpmode] = vp[vpmode]*mat4x4f::rotate(angle,axis);
 }
-void perspective(float fovy, float aspect, float znear, float zfar) {
+void setperspective(float fovy, float aspect, float znear, float zfar) {
   dirty.flags.mvp=1;
-  vp[vpmode] = vp[vpmode]*q::perspective(fovy,aspect,znear,zfar);
+  vp[vpmode] = /*vp[vpmode]**/q::perspective(fovy,aspect,znear,zfar);
 }
-void ortho(float left, float right, float bottom, float top, float znear, float zfar) {
+void setortho(float left, float right, float bottom, float top, float znear, float zfar) {
   dirty.flags.mvp=1;
-  vp[vpmode] = vp[vpmode]*q::ortho(left,right,bottom,top,znear,zfar);
+  vp[vpmode] = /*vp[vpmode]**/q::ortho(left,right,bottom,top,znear,zfar);
 }
 void scale(const vec3f &s) {
   dirty.flags.mvp=1;
@@ -422,17 +422,17 @@ void immdraw(int mode, int pos, int tex, int col, size_t n, const float *data) {
 /*--------------------------------------------------------------------------
  - quick and dirty shader management
  -------------------------------------------------------------------------*/
-static bool checkshader(const char *source, const char *rules, u32 shadername) {
+static bool checkshader(const char *source, const char *rules, u32 shadernumame) {
   GLint result = GL_FALSE;
   int infologlength;
 
-  if (!shadername) return false;
-  OGL(GetShaderiv, shadername, GL_COMPILE_STATUS, &result);
-  OGL(GetShaderiv, shadername, GL_INFO_LOG_LENGTH, &infologlength);
+  if (!shadernumame) return false;
+  OGL(GetShaderiv, shadernumame, GL_COMPILE_STATUS, &result);
+  OGL(GetShaderiv, shadernumame, GL_INFO_LOG_LENGTH, &infologlength);
   if (infologlength > 1) {
     char *buffer = (char*) malloc(infologlength+1);
     buffer[infologlength] = 0;
-    OGL(GetShaderInfoLog, shadername, infologlength, NULL, buffer);
+    OGL(GetShaderInfoLog, shadernumame, infologlength, NULL, buffer);
     con::out("%s", buffer);
     printf("in\n%s%s\n", rules, source);
     free(buffer);
@@ -496,7 +496,7 @@ static struct shadertype {
   u32 program; // ogl program
   u32 u_diffuse, u_delta, u_mvp; // uniforms
   u32 u_zaxis, u_fogstartend, u_fogcolor; // uniforms
-} shaders[shadern];
+} shaders[shadernum];
 static shadertype fontshader;
 static vec4f fogcolor;
 static vec2f fogstartend;
@@ -514,6 +514,9 @@ void bindfixedshader(u32 flags) { bindshader(shaders[flags]); }
 static void linkshader(shadertype &shader) {
   OGL(LinkProgram, shader.program);
   OGL(ValidateProgram, shader.program);
+}
+void setshaderudelta(float delta) { // XXX find a better way to handle this!
+  if (bindedshader) OGL(Uniform1f, bindedshader->u_delta, delta);
 }
 
 static void setshaderuniform(shadertype &shader) {
@@ -641,7 +644,7 @@ static void shadererror(bool fatalerr, const char *msg) {
     con::out("unable to build fixed shaders %s", msg);
 }
 static void buildshaders(bool fatalerr) {
-  loopi(shadern) if (!buildshader(shaders[i], fixed_rsc, i, shaderfromfile))
+  loopi(shadernum) if (!buildshader(shaders[i], fixed_rsc, i, shaderfromfile))
     shadererror(fatalerr, "fixed shader");
   if (!buildshader(fontshader, font_rsc, DIFFUSETEX, shaderfromfile))
     shadererror(fatalerr, "font shader");
@@ -650,7 +653,7 @@ static void buildshaders(bool fatalerr) {
 }
 
 static void destroyshaders() {
-  loopi(shadern) deleteprogram(shaders[i].program);
+  loopi(shadernum) deleteprogram(shaders[i].program);
   deleteprogram(fontshader.program);
   deleteprogram(dfrmshader.program);
 }
