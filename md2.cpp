@@ -31,29 +31,30 @@ struct mdl {
   mdl(void) { memset(this,0,sizeof(mdl)); }
   ~mdl(void) {
     if (vbo) ogl::deletebuffers(1, &vbo);
+    if (tex) ogl::deletetextures(1, &tex);
     FREE(loadname);
   }
   typedef array<float,5> tri; // x,y,z,s,t
-  bool load(char *filename, float scale, int snap);
+  bool load(const char *filename, float scale, int snap);
   void render(int frame, int range, const vec3f &o, const vec3f &ypr,
              float scale, float speed, int snap, float basetime);
   u32 vbo, tex;
-  int vboframesz;
+  u32 vboframesz;
   game::mapmodelinfo mmi;
   char *loadname;
-  int mdlnum;
-  bool loaded;
+  u32 mdlnum:31;
+  u32 loaded:1;
 };
 
 static INLINE float snap(int sn, float f) {
   return sn ? (float)(((int)(f+sn*0.5f))&(~(sn-1))) : f;
 }
 
-bool mdl::load(char *name, float scale, int sn) {
+bool mdl::load(const char *name, float scale, int sn) {
   FILE *file;
   header header;
 
-  if ((file= fopen(name, "rb"))==NULL) return false;
+  if ((file=fopen(name, "rb"))==NULL) return false;
 
   fread(&header, sizeof(header), 1, file);
   sys::endianswap(&header, sizeof(int), sizeof(header)/sizeof(int));
@@ -165,7 +166,7 @@ static void delayedload(mdl *m, float scale, int snap) {
       sys::fatal("loadmodel: ", mdlpath);
     sprintf_sd(texpath)("data/models/%s/skin.jpg", m->loadname);
     m->tex = ogl::installtex(texpath);
-    m->loaded = true;
+    m->loaded = 1;
   }
 }
 
