@@ -12,7 +12,7 @@ namespace con {
 static ringbuffer<pair<string,float>, 128> buffer;
 
 static void line(const char *sf, bool highlight) {
-  auto &cl = buffer.prepend();
+  auto &cl = buffer.addfront();
   cl.second = game::lastmillis;
   if (highlight) sprintf_s(cl.first)("\f%s", sf);
   else strcpy_s(cl.first, sf);
@@ -100,7 +100,7 @@ void keypress(int code, int isdown, int cooked) {
       if (code==SDLK_RETURN) {
         if (cmdbuf[0]) {
           if (h.empty() || strcmp(h.back(), cmdbuf))
-            strcpy_s(h.append(), cmdbuf);
+            strcpy_s(h.addback(), cmdbuf);
           hpos = h.n;
           if (cmdbuf[0]=='/')
             script::execstring(cmdbuf, isdown);

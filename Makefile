@@ -2,13 +2,14 @@
 #CXX=~/src/emscripten/em++
 CXXOPTFLAGS=-Wall -Os -DNDEBUG -std=c++11
 CXXDEBUGFLAGS=-Wall -O0 -g -std=c++11
-CXXFLAGS=$(CXXDEBUGFLAGS) -I./ `sdl-config --cflags`
+CXXFLAGS=$(CXXDEBUGFLAGS) -Wno-invalid-offsetof -I./ `sdl-config --cflags`
 LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer
 OBJS=\
   con.o\
   game.o\
   md2.o\
   mini.q.o\
+  net.o\
   ogl.o\
   physics.o\
   renderer.o\
@@ -16,9 +17,10 @@ OBJS=\
   shaders.o\
   sound.o\
   sys.o\
+  task.o\
   text.o
 
-HEADERS=con.hpp game.hpp ogl.hpp physics.hpp script.hpp shaders.hpp sys.hpp text.hpp
+HEADERS=con.hpp game.hpp net.hpp ogl.hpp physics.hpp script.hpp shaders.hpp sys.hpp task.hpp text.hpp
 all: mini.q compress_chars
 
 SHADERS=data/shaders/fixed_vp.glsl\
