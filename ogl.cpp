@@ -473,7 +473,6 @@ static bool checkshader(const char *source, const char *rules, u32 shadernumame)
     printf("in\n%s%s\n", rules, source);
     free(buffer);
   }
-  if (result == GL_FALSE) sys::fatal("ogl: failed to compile shader");
   return result == GL_TRUE;
 }
 

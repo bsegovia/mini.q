@@ -54,5 +54,5 @@ compress_chars: compress_chars.o
 	$(CXX) $(CXXFLAGS) -o compress_chars compress_chars.o $(LIBS)
 
 clean:
-	-rm -f $(OBJS) mini.q compress_chars compress_chars.o
+	rm -f $(OBJS) mini.q compress_chars compress_chars.o
 
