@@ -34,7 +34,7 @@ struct buffer {
   }
   template <typename T> INLINE void append(const T &x) {
     assert(m_len + sizeof(T) <= MTU);
-    (T&)m_data[m_len]=x;
+    memcpy(m_data + m_len, &x, sizeof(T));
     m_len+=sizeof(T);
   }
   INLINE void copy(const char *src, u32 sz) {
@@ -188,7 +188,7 @@ struct internal_header;
 struct internal_server;
 struct internal_channel;
 
-struct internal_header {
+struct MAYALIAS internal_header {
   static INLINE const internal_header &get(const buffer&);
   INLINE u32 rel() const { return ntohl(m_seq_rel) >> 31; }
   INLINE u32 seq() const { return ntohl(m_seq_rel) & 0x7fffffff; }

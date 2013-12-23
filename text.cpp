@@ -16,13 +16,14 @@ u32 buildfont() {
   u8 *font = (u8*)malloc(fontw*fonth*sizeof(u8));
   loopi(fonth) loopj(fontw/32) loopk(32)
     font[i*fontw+j*32+k] = (fontdata[i*fontw/32+j]&(1<<k))?~0x0:0x0;
-  u32 id = ogl::maketex("TB Ir Dr B2 Wse Wte Ml ml", font, fontw, fonth);
+  u32 id = ogl::maketex("TB Ir Dr B2 Wsr Wtr Mn mn", font, fontw, fonth);
   free(font);
   return id;
 }
 
 typedef u16 indextype;
 static const indextype twotriangles[] = {0,1,2,0,2,3};
+static const u32 in_width = 100, in_height = 200;
 
 int width(const char *str) {
   int x = 0;
@@ -33,7 +34,6 @@ int width(const char *str) {
     if (c==' ') { x += rr::FONTH/2; continue; };
     c -= 33;
     if (c<0 || c>=95) continue;
-    const int in_width = 100;
     x += in_width + 1;
   }
   return x;
@@ -67,8 +67,6 @@ void draw(const char *str, int left, int top) {
     const float in_top    = (float(c/fontcol)*float(charh)-0.5f) / float(fonth);
     const float in_right  = in_left + (float(charw)-0.5f)/float(fontw);
     const float in_bottom = in_top + (float(charh)-0.5f)/float(fonth);
-    const int in_width  = 100;
-    const int in_height = 200;
 
     loopj(6) indices[index+j] = vert+twotriangles[j];
     verts[vert+0] = vec4f(in_left, in_top,   float(x),         float(y));

@@ -1,7 +1,8 @@
-#CXX=clang++
+CXX=clang++
+CXXDEBUGFLAGS=-Wall -O0 -g -std=c++11 -fsanitize=address
 #CXX=~/src/emscripten/em++
 CXXOPTFLAGS=-Wall -Os -DNDEBUG -std=c++11
-CXXDEBUGFLAGS=-Wall -O0 -g -std=c++11
+#CXXDEBUGFLAGS=-Wall -O0 -g -std=c++11
 CXXFLAGS=$(CXXDEBUGFLAGS) -Wno-invalid-offsetof -I./ `sdl-config --cflags`
 LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer
 OBJS=\
