@@ -62,8 +62,6 @@ static INLINE void mainloop() {
       case SDL_MOUSEBUTTONDOWN:
       case SDL_MOUSEBUTTONUP:
         if (lasttype==e.type && lastbut==e.button.button) break;
-        printf("\r state %d         ", e.button.state);
-        fflush(stdout);
         con::keypress(-e.button.button, e.button.state, 0);
         lasttype = e.type;
         lastbut = e.button.button;
