@@ -274,6 +274,21 @@ template <typename T> INLINE void memdestroya(T *array) {
 /*-------------------------------------------------------------------------
  - very minimal "stdlib"
  -------------------------------------------------------------------------*/
+// get the power larger or equal than x
+INLINE u32 nextpowerof2(u32 x) {
+  --x;
+  x |= x >> 1;
+  x |= x >> 2;
+  x |= x >> 4;
+  x |= x >> 8;
+  x |= x >> 16;
+  return ++x;
+}
+
+// fast 32 bits murmur hash and its generic version
+u32 murmurhash2(const void *key, int len, u32 seed = 0xffffffffu);
+template <typename T> INLINE u32 murmurhash2(const T &x) { return murmurhash2(&x, sizeof(T)); }
+
 // more string operations
 INLINE char *strn0cpy(char *d, const char *s, int m) {strncpy(d,s,m); d[m-1]=0; return d;}
 
@@ -374,6 +389,10 @@ template <typename T, typename U> struct pair {
   INLINE pair(T t, U u) : first(t), second(u) {}
   T first; U second;
 };
+template <typename T, typename U>
+INLINE bool operator==(const pair<T,U> &x0, const pair<T,U> &x1) {
+  return x0.first == x1.first && x0.second == x1.second;
+}
 template <typename T, typename U>
 INLINE pair<T,U> makepair(const T &t, const U &u){return pair<T,U>(t,u);}
 

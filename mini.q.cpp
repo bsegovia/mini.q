@@ -5,7 +5,7 @@
 #include "mini.q.hpp"
 
 namespace q {
-IVARP(grabmouse, 0, 0, 1);
+IVARF(grabmouse, 0, 0, 1, SDL_WM_GrabInput(grabmouse ? SDL_GRAB_ON : SDL_GRAB_OFF););
 
 void start(int argc, const char *argv[]) {
   int fs = 0;

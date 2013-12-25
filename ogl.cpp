@@ -422,13 +422,6 @@ void immdrawelememts(const char *fmt, int count, const void *indices, const void
   }
   immvertexsize(offset);
   immdrawelements(mode, count, type, indices, vertices);
-#if 0
-  ogl::setattribarray()(ogl::POS0, ogl::TEX0);
-  ogl::immvertexsize(sizeof(float[4]));
-  ogl::immattrib(ogl::POS0, 2, GL_FLOAT, sizeof(float[2]));
-  ogl::immattrib(ogl::TEX0, 2, GL_FLOAT, 0);
-  ogl::bindshader(ogl::FONT_SHADER);
-#endif
 }
 
 void immdraw(int mode, int pos, int tex, int col, size_t n, const float *data) {

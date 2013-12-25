@@ -6,7 +6,7 @@
 
 namespace q {
 
-static const u16 edgeTable[256]= {
+static const u16 edgetable[256]= {
   0x0  , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
   0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
   0x190, 0x99 , 0x393, 0x29a, 0x596, 0x49f, 0x795, 0x69c,
@@ -41,7 +41,7 @@ static const u16 edgeTable[256]= {
   0x70c, 0x605, 0x50f, 0x406, 0x30a, 0x203, 0x109, 0x0
 };
 
-static const int triTable[256][16] = {
+static const s8 tritable[256][16] = {
   {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
   {0, 8, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
   {0, 1, 9, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
@@ -300,6 +300,10 @@ static const int triTable[256][16] = {
   {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
 };
 
+static const int interptable[12][2] = {
+  {0,1},{1,2},{2,3},{3,0},{4,5},{5,6},{6,7},{7,4},{0,4},{1,5},{2,6},{3,7}
+};
+
 static vec3f interp(vec3f p1, vec3f p2, float valp1, float valp2) {
    if (abs(valp1) < 0.00001f) return p1;
    if (abs(valp2) < 0.00001f) return p2;
@@ -307,56 +311,47 @@ static vec3f interp(vec3f p1, vec3f p2, float valp1, float valp2) {
    return p1 - valp1 / (valp2 - valp1) * (p2 - p1);
 }
 
-int tesselate(const gridcell &grid, triangle *triangles) {
-   int i,ntriang;
-   int cubeindex;
-   vec3f vertlist[12];
+int tesselate(const mcell &cell, mvert *tris) {
+   int cubeindex = 0;
+   loopi(8) if (cell[i] < 0.0f) cubeindex |= 1<<i;
 
-   cubeindex = 0;
-   if (grid.val[0] < 0.0) cubeindex |= 1;
-   if (grid.val[1] < 0.0) cubeindex |= 2;
-   if (grid.val[2] < 0.0) cubeindex |= 4;
-   if (grid.val[3] < 0.0) cubeindex |= 8;
-   if (grid.val[4] < 0.0) cubeindex |= 16;
-   if (grid.val[5] < 0.0) cubeindex |= 32;
-   if (grid.val[6] < 0.0) cubeindex |= 64;
-   if (grid.val[7] < 0.0) cubeindex |= 128;
+   // cube is entirely in/out of the surface
+   if (edgetable[cubeindex] == 0) return 0;
+
+   // find the vertices where the surface intersects the cube
+   mvert v[12];
+   loopi(12) if (edgetable[cubeindex] & (1<<i))
+     v[i] = vec2i(interptable[i][0], interptable[i][1]);
+
+   // create the triangle
+   int i = 0;
+   for (; tritable[cubeindex][i]!=-1; i+=3)
+     loopj(3) tris[i+j] = v[u32(tritable[cubeindex][i+j])];
+   return i;
+}
+
+int tesselate(const gridcell &grid, triangle *triangles) {
+   int cubeindex = 0;
+   loopi(8) if (grid.val[i] < 0.0f) cubeindex |= 1<<i;
 
    /* Cube is entirely in/out of the surface */
-   if (edgeTable[cubeindex] == 0) return 0;
+   if (edgetable[cubeindex] == 0) return 0;
 
    /* Find the vertices where the surface intersects the cube */
-   if (edgeTable[cubeindex] & 1)
-      vertlist[0] = interp(grid.p[0],grid.p[1],grid.val[0],grid.val[1]);
-   if (edgeTable[cubeindex] & 2)
-      vertlist[1] = interp(grid.p[1],grid.p[2],grid.val[1],grid.val[2]);
-   if (edgeTable[cubeindex] & 4)
-      vertlist[2] = interp(grid.p[2],grid.p[3],grid.val[2],grid.val[3]);
-   if (edgeTable[cubeindex] & 8)
-      vertlist[3] = interp(grid.p[3],grid.p[0],grid.val[3],grid.val[0]);
-   if (edgeTable[cubeindex] & 16)
-      vertlist[4] = interp(grid.p[4],grid.p[5],grid.val[4],grid.val[5]);
-   if (edgeTable[cubeindex] & 32)
-      vertlist[5] = interp(grid.p[5],grid.p[6],grid.val[5],grid.val[6]);
-   if (edgeTable[cubeindex] & 64)
-      vertlist[6] = interp(grid.p[6],grid.p[7],grid.val[6],grid.val[7]);
-   if (edgeTable[cubeindex] & 128)
-      vertlist[7] = interp(grid.p[7],grid.p[4],grid.val[7],grid.val[4]);
-   if (edgeTable[cubeindex] & 256)
-      vertlist[8] = interp(grid.p[0],grid.p[4],grid.val[0],grid.val[4]);
-   if (edgeTable[cubeindex] & 512)
-      vertlist[9] = interp(grid.p[1],grid.p[5],grid.val[1],grid.val[5]);
-   if (edgeTable[cubeindex] & 1024)
-      vertlist[10] = interp(grid.p[2],grid.p[6],grid.val[2],grid.val[6]);
-   if (edgeTable[cubeindex] & 2048)
-      vertlist[11] = interp(grid.p[3],grid.p[7],grid.val[3],grid.val[7]);
+   vec3f vert[12];
+   loopi(12) {
+     if (edgetable[cubeindex] & (1<<i)) {
+       const int idx0 = interptable[i][0], idx1 = interptable[i][1];
+       vert[i] = interp(grid.p[idx0],grid.p[idx1],grid.val[idx0],grid.val[idx1]);
+     }
+   }
 
    /* Create the triangle */
-   ntriang = 0;
-   for (i=0;triTable[cubeindex][i]!=-1;i+=3) {
-      triangles[ntriang].p[0] = vertlist[triTable[cubeindex][i  ]];
-      triangles[ntriang].p[1] = vertlist[triTable[cubeindex][i+1]];
-      triangles[ntriang].p[2] = vertlist[triTable[cubeindex][i+2]];
+   int ntriang = 0;
+   for (int i=0;tritable[cubeindex][i]!=-1;i+=3) {
+      triangles[ntriang].p[0] = vert[int(tritable[cubeindex][i+0])];
+      triangles[ntriang].p[2] = vert[int(tritable[cubeindex][i+1])];
+      triangles[ntriang].p[1] = vert[int(tritable[cubeindex][i+2])];
       ntriang++;
    }
 

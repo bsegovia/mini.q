@@ -180,8 +180,8 @@ TINLINE T reduceadd(v2arg a) {return a.x+a.y;}
 TINLINE T reducemul(v2arg a) {return a.x*a.y;}
 TINLINE T reducemin(v2arg a) {return min(a.x, a.y);}
 TINLINE T reducemax(v2arg a) {return max(a.x, a.y);}
-TINLINE vec2<bool> op== (v2arg a, v2arg b) {return vec2<bool>(a.x==b.x,a.y==b.y);}
-TINLINE vec2<bool> op!= (v2arg a, v2arg b) {return vec2<bool>(a.x!=b.x,a.y!=b.y);}
+TINLINE vec2<bool> eq (v2arg a, v2arg b) {return vec2<bool>(a.x==b.x,a.y==b.y);}
+TINLINE vec2<bool> ne (v2arg a, v2arg b) {return vec2<bool>(a.x!=b.x,a.y!=b.y);}
 TINLINE vec2<bool> op< (v2arg a, v2arg b) {return vec2<bool>(a.x<b.x,a.y<b.y);}
 TINLINE vec2<bool> op> (v2arg a, v2arg b) {return vec2<bool>(a.x>b.x,a.y>b.y);}
 TINLINE vec2<bool> op<= (v2arg a, v2arg b) {return vec2<bool>(a.x<=b.x,a.y<=b.y);}
@@ -190,6 +190,8 @@ TINLINE v2 select (bool s, v2arg t, v2arg f) { return v2(select(s,t.x,f.x), sele
 TINLINE v2 select (vec2<bool> s, v2arg t, v2arg f) { return v2(select(s.x,t.x,f.x), select(s.y,t.y,f.y)); }
 INLINE bool any(const vec2<bool> &v) {return v.x||v.y;}
 INLINE bool all(const vec2<bool> &v) {return v.x&&v.y;}
+TINLINE bool op== (v2arg a, v2arg b) {return all(eq(a,b)); }
+TINLINE bool op!= (v2arg a, v2arg b) {return any(ne(a,b)); }
 
 template<typename T> struct vec3 {
   typedef T scalar;
@@ -245,8 +247,8 @@ TINLINE v3 op-= (v3& a, v3arg b) {a.x-=b.x; a.y-=b.y; a.z-=b.z; return a;}
 TINLINE v3 op*= (v3& a, const T &b) {a.x*=b; a.y*=b; a.z*=b; return a;}
 TINLINE v3 op/= (v3& a, const T &b) {a.x/=b; a.y/=b; a.z/=b; return a;}
 TINLINE v3 op%= (v3& a, const T &b) {a.x%=b; a.y%=b; a.z%=b; return a;}
-TINLINE vec3<bool> op== (v3arg a, v3arg b) {return vec3<bool>(a.x==b.x,a.y==b.y,a.z==b.z);}
-TINLINE vec3<bool> op!= (v3arg a, v3arg b) {return vec3<bool>(a.x!=b.x,a.y!=b.y,a.z!=b.z);}
+TINLINE vec3<bool> eq (v3arg a, v3arg b) {return vec3<bool>(a.x==b.x,a.y==b.y,a.z==b.z);}
+TINLINE vec3<bool> ne (v3arg a, v3arg b) {return vec3<bool>(a.x!=b.x,a.y!=b.y,a.z!=b.z);}
 TINLINE vec3<bool> op< (v3arg a, v3arg b) {return vec3<bool>(a.x<b.x,a.y<b.y,a.z<b.z);}
 TINLINE vec3<bool> op> (v3arg a, v3arg b) {return vec3<bool>(a.x>b.x,a.y>b.y,a.z>b.z);}
 TINLINE vec3<bool> op<= (v3arg a, v3arg b) {return vec3<bool>(a.x<=b.x,a.y<=b.y,a.z<=b.z);}
@@ -267,6 +269,8 @@ TINLINE v3 normalize(v3arg a) {return a*rsqrt(dot(a,a));}
 TINLINE v3 cross(v3arg a, v3arg b) { return v3(a.y*b.z-a.z*b.y, a.z*b.x-a.x*b.z, a.x*b.y-a.y*b.x); }
 INLINE bool any(const vec3<bool> &v) {return v.x||v.y||v.z;}
 INLINE bool all(const vec3<bool> &v) {return v.x&&v.y&&v.z;}
+TINLINE bool op== (v3arg a, v3arg b) {return all(eq(a,b)); }
+TINLINE bool op!= (v3arg a, v3arg b) {return any(ne(a,b)); }
 
 template<typename T> struct vec4 {
   typedef T scalar;
@@ -313,8 +317,8 @@ TINLINE v4& op+= (v4& a, v4arg b) {a.x+=b.x; a.y+=b.y; a.z+=b.z; a.w+=b.w; retur
 TINLINE v4& op-= (v4& a, v4arg b) {a.x-=b.x; a.y-=b.y; a.z-=b.z; a.w-=b.w; return a;}
 TINLINE v4& op*= (v4& a, const T &b) {a.x*=b; a.y*=b; a.z*=b; a.w*=b; return a;}
 TINLINE v4& op/= (v4& a, const T &b) {a.x/=b; a.y/=b; a.z/=b; a.w/=b; return a;}
-TINLINE vec4<bool> op== (v4arg a, v4arg b) {return vec4<bool>(a.x==b.x,a.y==b.y,a.z==b.z,a.w==b.w);}
-TINLINE vec4<bool> op!= (v4arg a, v4arg b) {return vec4<bool>(a.x!=b.x,a.y!=b.y,a.z!=b.z,a.w!=b.w);}
+TINLINE vec4<bool> eq (v4arg a, v4arg b) {return vec4<bool>(a.x==b.x,a.y==b.y,a.z==b.z,a.w==b.w);}
+TINLINE vec4<bool> ne (v4arg a, v4arg b) {return vec4<bool>(a.x!=b.x,a.y!=b.y,a.z!=b.z,a.w!=b.w);}
 TINLINE vec4<bool> op< (v4arg a, v4arg b) {return vec4<bool>(a.x<b.x,a.y<b.y,a.z<b.z,a.w<b.w);}
 TINLINE vec4<bool> op> (v4arg a, v4arg b) {return vec4<bool>(a.x>b.x,a.y>b.y,a.z>b.z,a.w>b.w);}
 TINLINE vec4<bool> op<= (v4arg a, v4arg b) {return vec4<bool>(a.x<=b.x,a.y<=b.y,a.z<=b.z,a.w<=b.w);}
@@ -339,6 +343,8 @@ TINLINE v4 select (bool s, v4arg t, v4arg f) { return v4(select(s,t.x,f.x), sele
 TINLINE v4 select (vec4<bool> s, v4arg t, v4arg f) { return v4(select(s.x,t.x,f.x), select(s.y,t.y,f.y), select(s.z,t.z,f.z), select(s.w,t.w,f.w)); }
 INLINE bool any(const vec4<bool> &v) {return v.x||v.y||v.z||v.w;}
 INLINE bool all(const vec4<bool> &v) {return v.x&&v.y&&v.z&&v.w;}
+TINLINE bool op== (v4arg a, v4arg b) {return all(eq(a,b)); }
+TINLINE bool op!= (v4arg a, v4arg b) {return any(ne(a,b)); }
 
 template<typename T> struct mat4x4 {
   vec4<T> vx,vy,vz,vw;
@@ -432,8 +438,8 @@ TINLINE m44& op/= (m44& a, m44arg b) {return a = a/b;}
 TINLINE v4 op/ (m44arg m, v4arg v) {return m.inverse() * v;}
 TINLINE v4 op/ (v4arg v, m44arg m) {return v * m.inverse();}
 TINLINE m44 op/ (m44arg m, m44arg n) {return m * n.inverse();}
-TINLINE bool op== (m44arg m, m44arg n) {return (m.vx==n.x) && (m.vy==n.y) && (m.vz==n.z) && (m.vw==n.w);}
-TINLINE bool op!= (m44arg m, m44arg n) {return (m.vx!=n.x) || (m.vy!=n.y) || (m.vz!=n.z) || (m.vw!=n.w);}
+TINLINE bool eq (m44arg m, m44arg n) {return (m.vx==n.x) && (m.vy==n.y) && (m.vz==n.z) && (m.vw==n.w);}
+TINLINE bool ne (m44arg m, m44arg n) {return (m.vx!=n.x) || (m.vy!=n.y) || (m.vz!=n.z) || (m.vw!=n.w);}
 TINLINE m44 lookat(v3arg eye, v3arg center, v3arg up) {
   const v3 f = normalize(center - eye);
   const v3 u = normalize(up);
