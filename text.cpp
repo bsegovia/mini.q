@@ -6,6 +6,7 @@
 #include "text.hpp"
 #include "renderer.hpp"
 #include "math.hpp"
+#include "stl.hpp"
 
 namespace q {
 namespace text {

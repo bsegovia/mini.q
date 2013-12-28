@@ -3,7 +3,7 @@
  - renderer.cpp -> handles rendering routines
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
-#include "marching_cube.hpp"
+#include "iso_mc.hpp"
 
 namespace q {
 namespace rr {
@@ -96,24 +96,22 @@ const vec3i icubev[8] = {
   vec3i(1,0,0)/*4*/, vec3i(1,0,1)/*5*/, vec3i(1,1,1)/*6*/, vec3i(1,1,0)/*7*/
 };
 
-#if 0
-static void makescene() {
-  triangle tri[16];
-  u32 tot = 0;
-  loopi(32) loopj(32) loopk(32) {
-    gridcell cell;
-    loop(l, 8) cell.p[l] = 0.10f * (cubefverts[l] + vec3f(float(i), float(j), float(k)));
-    loop(l, 8) cell.val[l] = dist_sphere(cell.p[l]-vec3f(1.f,2.f,1.f), 1.f);
-    const int n = tesselate(cell, tri);
-    tot += n;
-    loopi(n) loopj(3) scene_tris.add(tri[i].p[j]);
-   // loopi(n) loopj(3) {printf("["); loopk(3) printf("%f ", tri[i].p[j][k]); printf("]\n");}
-  }
-  con::out("%d created triangles", tot);
-}
-#else
 INLINE u32 index(vec3i xyz, vec3i dim) {
   return dim.x*dim.y*xyz.z+dim.x*xyz.y+xyz.x;
+}
+
+INLINE float signed_box(vec3f p, vec3f b) {
+  const vec3f d = abs(p) - b;
+  return min(max(d.x,max(d.y,d.z)),0.0f) + length(max(d,vec3f(zero)));
+}
+
+float map(vec3f pos) { return dist_sphere(pos-vec3f(1.f,2.f,1.f), 1.f); }
+static const float grad_step = 0.1f;
+vec3f gradient(vec3f v) {
+  const vec3f dx = vec3f(grad_step, 0.0, 0.0);
+  const vec3f dy = vec3f(0.0, grad_step, 0.0);
+  const vec3f dz = vec3f(0.0, 0.0, grad_step);
+  return normalize(vec3f(map(v+dx)-map(v-dx), map(v+dy)-map(v-dy), map(v+dz)-map(v-dz)));
 }
 
 // define a vertex by the unique edge it belongs to
@@ -158,7 +156,8 @@ static INLINE vec3f interp(vec3i p1, vec3i p2, float valp1, float valp2) {
   return vec3f(p1) - valp1 / (valp2 - valp1) * (vec3f(p2) - vec3f(p1));
 }
 static vector<u32> indexbuffer;
-static vector<vec3f> vertexbuffer;
+struct vertex {float v[6]; };
+static vector<vertex> vertexbuffer;
 
 static void makescene() {
   auto scene = (float*) malloc(33*33*33*sizeof(float));
@@ -166,7 +165,7 @@ static void makescene() {
   loopi(dim.z) loopj(dim.y) loopk(dim.x) {
     const auto p = 0.10f * vec3f(float(k), float(j), float(i));
     const auto idx = index(vec3i(k,j,i), dim);
-    scene[idx] = dist_sphere(p-vec3f(1.f,2.f,1.f), 1.f);
+    scene[idx] = map(p);
   }
 
   // generate all the triangles. we do not care about vertex duplication yet
@@ -186,7 +185,10 @@ static void makescene() {
     const auto idx = table.insert(tris[i], vertexbuffer.length());
     if (idx == u32(vertexbuffer.length())) {
       const auto idx0 = index(tris[i].first, dim), idx1 = index(tris[i].second, dim);
-      vertexbuffer.add(interp(tris[i].first, tris[i].second, scene[idx0], scene[idx1]));
+      const vec3f p = interp(tris[i].first, tris[i].second, scene[idx0], scene[idx1]);
+      const vec3f n = abs(gradient(p));
+      const vertex v = {{n.x,n.y,n.z,p.x,p.y,p.z}};
+      vertexbuffer.add(v);
     }
     indexbuffer.add(idx);
   }
@@ -194,8 +196,6 @@ static void makescene() {
   con::out("%d triangles and %d vertices", indexbuffer.length()/3, vertexbuffer.length());
   free(scene);
 }
-
-#endif
 
 static void transplayer(void) {
   using namespace game;
@@ -228,11 +228,9 @@ void frame(int w, int h, int curfps) {
   ogl::immdraw(GL_TRIANGLE_STRIP, 3, 2, 0, 4, verts);
 
   if (indexbuffer.length() == 0) makescene();
-#if 0
   ogl::enable(GL_CULL_FACE);
-  ogl::bindfixedshader(0);
-  ogl::immdraw(GL_TRIANGLES, 3, 0, 0, scene_tris.length(), &scene_tris[0][0]);
-#endif
+  ogl::bindfixedshader(ogl::COLOR);
+  ogl::immdrawelememts("Tic3p3", indexbuffer.length(), &indexbuffer[0], &vertexbuffer[0].v[0]);
 
   drawhud(w,h,0);
   drawhudgun(fovy, aspect, farplane);

@@ -9,7 +9,7 @@ OBJS=\
   con.o\
   game.o\
   md2.o\
-  marching_cube.o\
+  iso_mc.o\
   mini.q.o\
   net.o\
   ogl.o\

@@ -5,6 +5,7 @@
 #include "script.hpp"
 #include "con.hpp"
 #include "sys.hpp"
+#include "stl.hpp"
 
 namespace q {
 namespace script {
@@ -116,7 +117,7 @@ static void execute(ctx &c, const char *pp, int isdown) {
     switch (id->type) {
       case FUN: {
         const auto proto = id->fun.proto;
-        const auto arity = strlen(proto);
+        const auto arity = int(strlen(proto));
         loopi(min(arity, numargs-1)) {
           if (proto[i]=='d') memcpy(w[i+1],&isdown,sizeof(isdown));
 #define ARG(T,C,S) if(proto[i]==C){T x=ato##S(w[i]);memcpy(w[i],&x,sizeof(T));}

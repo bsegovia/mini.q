@@ -4,6 +4,7 @@
  -------------------------------------------------------------------------*/
 #pragma once
 #include "math.hpp"
+#include "stl.hpp"
 
 namespace q {
 namespace game {

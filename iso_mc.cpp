@@ -2,7 +2,7 @@
  - mini.q - a minimalistic multiplayer FPS
  - marching_cube.cpp -> implements marching cube algorithm
  -------------------------------------------------------------------------*/
-#include "marching_cube.hpp"
+#include "iso_mc.hpp"
 
 namespace q {
 
