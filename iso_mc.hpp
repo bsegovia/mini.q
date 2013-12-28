@@ -4,15 +4,14 @@
  -------------------------------------------------------------------------*/
 #pragma once
 #include "math.hpp"
+#include "iso.hpp"
 
 namespace q {
-// define a vertex as two indices in the unit cube
-typedef vec2i mvert;
+namespace iso {
 
-// we simply provide the the distance field value for each value
-typedef float mcell[8];
+// tesselate along a grid the given distance field function
+mesh mc(const grid &grid, distance_field f);
 
-// we return as most 16 triangles per cell
-int tesselate(const mcell &cell, mvert *triangles);
+} /* namespace iso */
 } /* namespace q */
 

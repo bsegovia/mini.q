@@ -3,8 +3,10 @@
  - iso_mc.cpp -> implements marching cube algorithm
  -------------------------------------------------------------------------*/
 #include "iso_mc.hpp"
+#include "stl.hpp"
 
 namespace q {
+namespace iso {
 
 static const u16 edgetable[256]= {
   0x0  , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
@@ -304,7 +306,26 @@ static const int interptable[12][2] = {
   {0,1},{1,2},{2,3},{3,0},{4,5},{5,6},{6,7},{7,4},{0,4},{1,5},{2,6},{3,7}
 };
 
-int tesselate(const mcell &cell, mvert *tris) {
+static const vec3f fcubev[8] = {
+  vec3f(0.f,0.f,0.f)/*0*/, vec3f(0.f,0.f,1.f)/*1*/, vec3f(0.f,1.f,1.f)/*2*/, vec3f(0.f,1.f,0.f)/*3*/,
+  vec3f(1.f,0.f,0.f)/*4*/, vec3f(1.f,0.f,1.f)/*5*/, vec3f(1.f,1.f,1.f)/*6*/, vec3f(1.f,1.f,0.f)/*7*/
+};
+static const vec3i icubev[8] = {
+  vec3i(0,0,0)/*0*/, vec3i(0,0,1)/*1*/, vec3i(0,1,1)/*2*/, vec3i(0,1,0)/*3*/,
+  vec3i(1,0,0)/*4*/, vec3i(1,0,1)/*5*/, vec3i(1,1,1)/*6*/, vec3i(1,1,0)/*7*/
+};
+
+// define a vertex as two indices in the unit cube
+typedef vec2i mvert;
+
+// we simply provide the the distance field value for each value
+typedef float mcell[8];
+
+INLINE u32 index(vec3i xyz, vec3i dim) {
+  return dim.x*dim.y*xyz.z+dim.x*xyz.y+xyz.x;
+}
+
+static int tesselate(const mcell &cell, mvert *tris) {
    int cubeindex = 0;
    loopi(8) if (cell[i] < 0.0f) cubeindex |= 1<<i;
 
@@ -322,5 +343,88 @@ int tesselate(const mcell &cell, mvert *tris) {
      loopj(3) tris[i+j] = v[u32(tritable[cubeindex][i+j])];
    return i;
 }
+
+INLINE vec3f interp(vec3i p1, vec3i p2, float valp1, float valp2) {
+  if (abs(valp1) < 0.00001f) return vec3f(p1);
+  if (abs(valp2) < 0.00001f) return vec3f(p2);
+  if (abs(valp1-valp2) < 0.00001f) return vec3f(p1);
+  return vec3f(p1) - valp1 / (valp2 - valp1) * (vec3f(p2) - vec3f(p1));
+}
+
+// hash table using open addressing. It is allocated once in the constructor
+// with an optional parameter to extend key space and avoid massive collision.
+// fast and simple
+template <typename Key, typename Value>
+struct static_hash_table {
+  static_hash_table(Key *k, u32 elem_n, u32 extend=2) :
+    n(nextpowerof2(extend*elem_n)), table(n+elem_n), here(table.length()/32)
+  {
+    memset(&here[0], 0, here.size());
+  }
+  INLINE u32 ishere(u32 idx) const { return here[idx/32] & (1<<(idx%32)); }
+  INLINE void sethere(u32 idx) { here[idx/32] |= 1<<(idx%32); }
+  const Value &insert(const Key &k, const Value &v) {
+    auto i = murmurhash2(k) & (n-1);
+    const u32 elem_n = table.length();
+    for (; i<elem_n; ++i) {
+      if (ishere(i)) {
+        if (table[i].first == k) return table[i].second;
+      } else {
+        sethere(i);
+        table[i].first = k;
+        return table[i].second = v;
+      }
+    }
+    assert("unreachable: you must pre-allocate enough space");
+    return v;
+  }
+  u32 n;
+  vector<pair<Key, Value>> table;
+  vector<u32> here;
+};
+
+// really quick and dirty implementation
+mesh mc(const grid &grid, distance_field d) {
+  auto scene = (float*) malloc(33*33*33*sizeof(float));
+  const vec3i dim(33,33,33);
+  loopi(dim.z) loopj(dim.y) loopk(dim.x) {
+    const auto p = 0.10f * vec3f(float(k), float(j), float(i));
+    const auto idx = index(vec3i(k,j,i), dim);
+    scene[idx] = d(p);
+  }
+
+  // generate all the triangles. we do not care about vertex duplication yet
+  vector<pair<vec3i,vec3i>> tris;
+  loopi(32) loopj(32) loopk(32) {
+    mcell cell;
+    vec3i xyz(k,j,i);
+    loop(l,8) cell[l] = scene[index(icubev[l]+xyz, dim)];
+    mvert v[64];
+    const int n = tesselate(cell, v);
+    loop(l,n) tris.add(makepair(xyz+icubev[v[l].x], xyz+icubev[v[l].y]));
+  }
+
+  // now generate the vertex buffer and the index buffer
+  static_hash_table<pair<vec3i,vec3i>, u32> table(&tris[0], tris.length());
+  vector<u32> indexbuffer;
+  vector<vec3f> posbuffer, norbuffer;
+  loopv(tris) {
+    const auto idx = table.insert(tris[i], posbuffer.length());
+    if (idx == u32(posbuffer.length())) {
+      const auto idx0 = index(tris[i].first, dim), idx1 = index(tris[i].second, dim);
+      const auto p = interp(tris[i].first, tris[i].second, scene[idx0], scene[idx1]);
+      posbuffer.add(p);
+      norbuffer.add(abs(gradient(d, p)));
+    }
+    indexbuffer.add(idx);
+  }
+  free(scene);
+
+  const auto p = posbuffer.move();
+  const auto n = norbuffer.move();
+  const auto idx = indexbuffer.move();
+  return mesh(p.first, n.first, idx.first, p.second, idx.second);
+}
+} /* namespace iso */
 } /* namespace q */
 

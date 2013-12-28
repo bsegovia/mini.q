@@ -89,10 +89,6 @@ const vec3i icubev[8] = {
   vec3i(1,0,0)/*4*/, vec3i(1,0,1)/*5*/, vec3i(1,1,1)/*6*/, vec3i(1,1,0)/*7*/
 };
 
-INLINE u32 index(vec3i xyz, vec3i dim) {
-  return dim.x*dim.y*xyz.z+dim.x*xyz.y+xyz.x;
-}
-
 static float signed_sphere(vec3f v, float r) { return length(v) - r; }
 
 INLINE float signed_box(vec3f p, vec3f b) {
@@ -100,101 +96,33 @@ INLINE float signed_box(vec3f p, vec3f b) {
   return min(max(d.x,max(d.y,d.z)),0.0f) + length(max(d,vec3f(zero)));
 }
 
-float map(vec3f pos) {
+float map(const vec3f &pos) {
   const auto t = pos-vec3f(1.f,2.f,1.f);
   const auto d0 = signed_sphere(t, 1.f);
   const auto d1 = signed_box(t, vec3f(1.f));
   return max(d1, -d0);
 }
-static const float grad_step = 0.1f;
-vec3f gradient(vec3f v) {
-  const vec3f dx = vec3f(grad_step, 0.0, 0.0);
-  const vec3f dy = vec3f(0.0, grad_step, 0.0);
-  const vec3f dz = vec3f(0.0, 0.0, grad_step);
-  return normalize(vec3f(map(v+dx)-map(v-dx), map(v+dy)-map(v-dy), map(v+dz)-map(v-dz)));
-}
 
-// define a vertex by the unique edge it belongs to
-typedef vec3i vert[2];
-
-// hash table using open addressing. It is allocated once in the constructor
-// with an optional parameter to extend key space and avoid massive collision.
-// fast and simple
-template <typename Key, typename Value>
-struct static_hash_table {
-  static_hash_table(Key *k, u32 elem_n, u32 extend=2) :
-    n(nextpowerof2(extend*elem_n)), table(n+elem_n), here(table.length()/32)
-  {
-    memset(&here[0], 0, here.size());
-  }
-  INLINE u32 ishere(u32 idx) const { return here[idx/32] & (1<<(idx%32)); }
-  INLINE void sethere(u32 idx) { here[idx/32] |= 1<<(idx%32); }
-  const Value &insert(const Key &k, const Value &v) {
-    auto i = murmurhash2(k) & (n-1);
-    const u32 elem_n = table.length();
-    for (; i<elem_n; ++i) {
-      if (ishere(i)) {
-        if (table[i].first == k) return table[i].second;
-      } else {
-        sethere(i);
-        table[i].first = k;
-        return table[i].second = v;
-      }
-    }
-    assert("unreachable: you must pre-allocate enough space");
-    return v;
-  }
-  u32 n;
-  vector<pair<Key, Value>> table;
-  vector<u32> here;
-};
-
-static INLINE vec3f interp(vec3i p1, vec3i p2, float valp1, float valp2) {
-  if (abs(valp1) < 0.00001f) return vec3f(p1);
-  if (abs(valp2) < 0.00001f) return vec3f(p2);
-  if (abs(valp1-valp2) < 0.00001f) return vec3f(p1);
-  return vec3f(p1) - valp1 / (valp2 - valp1) * (vec3f(p2) - vec3f(p1));
-}
-static vector<u32> indexbuffer;
-struct vertex {float v[6]; };
-static vector<vertex> vertexbuffer;
+struct vertex { vec3f pos, nor; };
+static u32 vertnum = 0u, indexnum = 0u;
+static vertex *vertices = NULL;
+static u32 *indices = NULL;
+static bool initialized_m = false;
 
 static void makescene() {
-  auto scene = (float*) malloc(33*33*33*sizeof(float));
-  const vec3i dim(33,33,33);
-  loopi(dim.z) loopj(dim.y) loopk(dim.x) {
-    const auto p = 0.10f * vec3f(float(k), float(j), float(i));
-    const auto idx = index(vec3i(k,j,i), dim);
-    scene[idx] = map(p);
+  if (initialized_m) return;
+  const iso::grid g(vec3f(0.10f), vec3f(zero), vec3f(32));
+  auto m = iso::mc(g, map);
+  vertnum = m.m_vertnum;
+  indexnum = m.m_indexnum;
+  indices = m.m_index;
+  m.m_index = NULL;
+  vertices = (vertex*) malloc(sizeof(vertex) * vertnum);
+  loopi(vertnum) {
+    vertices[i].pos = m.m_pos[i];
+    vertices[i].nor = m.m_nor[i];
   }
-
-  // generate all the triangles. we do not care about vertex duplication yet
-  vector<pair<vec3i,vec3i>> tris;
-  loopi(32) loopj(32) loopk(32) {
-    mcell cell;
-    vec3i xyz(k,j,i);
-    loop(l,8) cell[l] = scene[index(icubev[l]+xyz, dim)];
-    mvert v[64];
-    const int n = tesselate(cell, v);
-    loop(l,n) tris.add(makepair(xyz+icubev[v[l].x], xyz+icubev[v[l].y]));
-  }
-
-  // now generate the vertex buffer and the index buffer
-  static_hash_table<pair<vec3i,vec3i>, u32> table(&tris[0], tris.length());
-  loopv(tris) {
-    const auto idx = table.insert(tris[i], vertexbuffer.length());
-    if (idx == u32(vertexbuffer.length())) {
-      const auto idx0 = index(tris[i].first, dim), idx1 = index(tris[i].second, dim);
-      const vec3f p = interp(tris[i].first, tris[i].second, scene[idx0], scene[idx1]);
-      const vec3f n = abs(gradient(p));
-      const vertex v = {{n.x,n.y,n.z,p.x,p.y,p.z}};
-      vertexbuffer.add(v);
-    }
-    indexbuffer.add(idx);
-  }
-
-  con::out("%d triangles and %d vertices", indexbuffer.length()/3, vertexbuffer.length());
-  free(scene);
+  initialized_m = true;
 }
 
 static void transplayer(void) {
@@ -227,9 +155,11 @@ void frame(int w, int h, int curfps) {
   ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_CHECKBOARD));
   ogl::immdraw(GL_TRIANGLE_STRIP, 3, 2, 0, 4, verts);
 
-  if (indexbuffer.length() == 0) makescene();
-  ogl::bindfixedshader(ogl::COLOR);
-  ogl::immdrawelememts("Tic3p3", indexbuffer.length(), &indexbuffer[0], &vertexbuffer[0].v[0]);
+  makescene();
+  if (vertnum != 0) {
+    ogl::bindfixedshader(ogl::COLOR);
+    ogl::immdrawelememts("Tip3c3", indexnum, indices, &vertices[0].pos[0]);
+  }
 
   drawhud(w,h,0);
   drawhudgun(fovy, aspect, farplane);
