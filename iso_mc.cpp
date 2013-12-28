@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------
  - mini.q - a minimalistic multiplayer FPS
- - marching_cube.cpp -> implements marching cube algorithm
+ - iso_mc.cpp -> implements marching cube algorithm
  -------------------------------------------------------------------------*/
 #include "iso_mc.hpp"
 
@@ -304,13 +304,6 @@ static const int interptable[12][2] = {
   {0,1},{1,2},{2,3},{3,0},{4,5},{5,6},{6,7},{7,4},{0,4},{1,5},{2,6},{3,7}
 };
 
-static vec3f interp(vec3f p1, vec3f p2, float valp1, float valp2) {
-   if (abs(valp1) < 0.00001f) return p1;
-   if (abs(valp2) < 0.00001f) return p2;
-   if (abs(valp1-valp2) < 0.00001f) return p1;
-   return p1 - valp1 / (valp2 - valp1) * (p2 - p1);
-}
-
 int tesselate(const mcell &cell, mvert *tris) {
    int cubeindex = 0;
    loopi(8) if (cell[i] < 0.0f) cubeindex |= 1<<i;
@@ -328,34 +321,6 @@ int tesselate(const mcell &cell, mvert *tris) {
    for (; tritable[cubeindex][i]!=-1; i+=3)
      loopj(3) tris[i+j] = v[u32(tritable[cubeindex][i+j])];
    return i;
-}
-
-int tesselate(const gridcell &grid, triangle *triangles) {
-   int cubeindex = 0;
-   loopi(8) if (grid.val[i] < 0.0f) cubeindex |= 1<<i;
-
-   /* Cube is entirely in/out of the surface */
-   if (edgetable[cubeindex] == 0) return 0;
-
-   /* Find the vertices where the surface intersects the cube */
-   vec3f vert[12];
-   loopi(12) {
-     if (edgetable[cubeindex] & (1<<i)) {
-       const int idx0 = interptable[i][0], idx1 = interptable[i][1];
-       vert[i] = interp(grid.p[idx0],grid.p[idx1],grid.val[idx0],grid.val[idx1]);
-     }
-   }
-
-   /* Create the triangle */
-   int ntriang = 0;
-   for (int i=0;tritable[cubeindex][i]!=-1;i+=3) {
-      triangles[ntriang].p[0] = vert[int(tritable[cubeindex][i+0])];
-      triangles[ntriang].p[2] = vert[int(tritable[cubeindex][i+1])];
-      triangles[ntriang].p[1] = vert[int(tritable[cubeindex][i+2])];
-      ntriang++;
-   }
-
-   return ntriang;
 }
 } /* namespace q */
 
