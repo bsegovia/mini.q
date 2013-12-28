@@ -1,9 +1,11 @@
+/*-------------------------------------------------------------------------
+ - mini.q - a minimalistic multiplayer FPS
+ - task.hpp -> exposes multi-threaded tasking system
+ -------------------------------------------------------------------------*/
 #pragma once
+#include "stl.hpp"
 #include "sys.hpp"
 
-/*-------------------------------------------------------------------------
- - tasking system: supports waitable tasks with input/output dependencies
- -------------------------------------------------------------------------*/
 namespace q {
 namespace tasking {
   void init(const u32 *queueinfo, u32 n);

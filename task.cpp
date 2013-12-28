@@ -1,3 +1,7 @@
+/*-------------------------------------------------------------------------
+ - mini.q - a minimalistic multiplayer FPS
+ - task.hpp -> implements multi-threaded tasking system
+ -------------------------------------------------------------------------*/
 #include "task.hpp"
 #include <SDL/SDL_thread.h>
 

@@ -80,18 +80,8 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
  -------------------------------------------------------------------------*/
 FVARP(fov, 30.f, 90.f, 160.f);
 
-static const vec3f cubefverts[8] = {
-  vec3f(0.f,0.f,0.f)/*0*/, vec3f(0.f,0.f,1.f)/*1*/, vec3f(0.f,1.f,1.f)/*2*/, vec3f(0.f,1.f,0.f)/*3*/,
-  vec3f(1.f,0.f,0.f)/*4*/, vec3f(1.f,0.f,1.f)/*5*/, vec3f(1.f,1.f,1.f)/*6*/, vec3f(1.f,1.f,0.f)/*7*/
-};
-const vec3i icubev[8] = {
-  vec3i(0,0,0)/*0*/, vec3i(0,0,1)/*1*/, vec3i(0,1,1)/*2*/, vec3i(0,1,0)/*3*/,
-  vec3i(1,0,0)/*4*/, vec3i(1,0,1)/*5*/, vec3i(1,1,1)/*6*/, vec3i(1,1,0)/*7*/
-};
-
-static float signed_sphere(vec3f v, float r) { return length(v) - r; }
-
-INLINE float signed_box(vec3f p, vec3f b) {
+float signed_sphere(vec3f v, float r) { return length(v) - r; }
+float signed_box(vec3f p, vec3f b) {
   const vec3f d = abs(p) - b;
   return min(max(d.x,max(d.y,d.z)),0.0f) + length(max(d,vec3f(zero)));
 }

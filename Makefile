@@ -25,7 +25,18 @@ OBJS=\
   task.o\
   text.o
 
-HEADERS=con.hpp game.hpp net.hpp ogl.hpp physics.hpp script.hpp shaders.hpp sys.hpp task.hpp text.hpp
+HEADERS=\
+  con.hpp\
+  game.hpp\
+  net.hpp\
+  ogl.hpp\
+  physics.hpp\
+  script.hpp\
+  shaders.hpp\
+  stl.hpp\
+  sys.hpp\
+  task.hpp\
+  text.hpp
 all: mini.q compress_chars
 
 SHADERS=data/shaders/fixed_vp.glsl\
@@ -41,11 +52,14 @@ blob.o: blob.cpp $(HEADERS)
 con.o: con.cpp $(HEADERS)
 game.o: game.cpp $(HEADERS)
 mini.q.o: mini.q.cpp $(HEADERS)
+net.o: net.cpp net.hpp stl.hpp sys.hpp
 ogl.o: ogl.cpp $(HEADERS)
 physics.o: physics.cpp $(HEADERS)
 shaders.o: shaders.cpp $(HEADERS)
 script.o: script.cpp $(HEADERS)
+stl.o: stl.cpp $(HEADERS)
 sys.o: sys.cpp $(HEADERS)
+task.o: task.cpp stl.hpp sys.hpp task.hpp
 text.o: text.cpp font.hxx $(HEADERS)
 
 ## build font header
