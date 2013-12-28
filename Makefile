@@ -28,6 +28,8 @@ OBJS=\
 HEADERS=\
   con.hpp\
   game.hpp\
+  iso.hpp\
+  iso_mc.hpp\
   net.hpp\
   ogl.hpp\
   physics.hpp\
@@ -51,13 +53,15 @@ shaders.cpp: $(SHADERS)
 blob.o: blob.cpp $(HEADERS)
 con.o: con.cpp $(HEADERS)
 game.o: game.cpp $(HEADERS)
+iso.o: iso.cpp iso.hpp math.hpp stl.hpp sys.hpp
+iso_mc.o: iso_mc.cpp iso_mc.hpp iso.hpp math.hpp stl.hpp sys.hpp
 mini.q.o: mini.q.cpp $(HEADERS)
 net.o: net.cpp net.hpp stl.hpp sys.hpp
 ogl.o: ogl.cpp $(HEADERS)
 physics.o: physics.cpp $(HEADERS)
 shaders.o: shaders.cpp $(HEADERS)
 script.o: script.cpp $(HEADERS)
-stl.o: stl.cpp $(HEADERS)
+stl.o: stl.cpp math.hpp stl.hpp sys.hpp
 sys.o: sys.cpp $(HEADERS)
 task.o: task.cpp stl.hpp sys.hpp task.hpp
 text.o: text.cpp font.hxx $(HEADERS)
