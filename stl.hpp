@@ -7,9 +7,6 @@
 #include "math.hpp"
 
 namespace q {
-/*-------------------------------------------------------------------------
- - very minimal "stdlib"
- -------------------------------------------------------------------------*/
 // get the power larger or equal than x
 INLINE u32 nextpowerof2(u32 x) {
   --x;
@@ -337,56 +334,8 @@ private:
 };
 
 /*-------------------------------------------------------------------------
- - atomics / barriers / locks
+ - atomics structure
  -------------------------------------------------------------------------*/
-#if defined(__MSVC__)
-INLINE s32 atomic_add(volatile s32* m, const s32 v) {
-  return _InterlockedExchangeAdd((volatile long*)m,v);
-}
-INLINE s32 atomic_cmpxchg(volatile s32* m, const s32 v, const s32 c) {
-  return _InterlockedCompareExchange((volatile long*)m,v,c);
-}
-#elif defined(__JAVASCRIPT__)
-INLINE s32 atomic_add(s32 volatile* value, s32 input) {
-  const s32 initial = value;
-  *value += input;
-  return initial;
-}
-INLINE s32 atomic_cmpxchg(volatile s32* m, const s32 v, const s32 c) {
-  const s32 initial = *m;
-  if (*m == c) *m = v;
-  return initial;
-}
-#else
-INLINE s32 atomic_add(s32 volatile* value, s32 input) {
-  asm volatile("lock xadd %0,%1" : "+r"(input), "+m"(*value) : "r"(input), "m"(*value));
-  return input;
-}
-
-INLINE s32 atomic_cmpxchg(s32 volatile* value, const s32 input, s32 comparand) {
-  asm volatile("lock cmpxchg %2,%0" : "=m"(*value), "=a"(comparand) : "r"(input), "m"(*value), "a"(comparand) : "flags");
-  return comparand;
-}
-#endif // __MSVC__
-
-#if defined(__X86__) || defined(__X86_64__) || defined(__JAVASCRIPT__)
-template <typename T>
-INLINE T loadacquire(volatile T *ptr) {
-  COMPILER_READ_WRITE_BARRIER;
-  T x = *ptr;
-  COMPILER_READ_WRITE_BARRIER;
-  return x;
-}
-template <typename T>
-INLINE void storerelease(volatile T *ptr, T x) {
-  COMPILER_READ_WRITE_BARRIER;
-  *ptr = x;
-  COMPILER_READ_WRITE_BARRIER;
-}
-#else
-#error "unknown platform"
-#endif
-
 struct atomic : noncopyable {
 public:
   INLINE atomic(void) {}

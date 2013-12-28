@@ -18,6 +18,7 @@ OBJS=\
   script.o\
   shaders.o\
   sound.o\
+  stl.o\
   sys.o\
   task.o\
   text.o
