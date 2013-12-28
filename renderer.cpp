@@ -108,8 +108,8 @@ INLINE float signed_box(vec3f p, vec3f b) {
 float map(vec3f pos) {
   const auto t = pos-vec3f(1.f,2.f,1.f);
   const auto d0 = signed_sphere(t, 1.f);
-  const auto d1 = signed_box(t, vec3f(0.8f));
-  return max(d0, -d1);
+  const auto d1 = signed_box(t, vec3f(1.3f));
+  return max(d1, -d0);
 }
 static const float grad_step = 0.1f;
 vec3f gradient(vec3f v) {
