@@ -8,12 +8,13 @@ LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer
 OBJS=\
   con.o\
   game.o\
-  md2.o\
   iso_mc.o\
+  md2.o\
   mini.q.o\
   net.o\
   ogl.o\
   physics.o\
+  qef.o\
   renderer.o\
   script.o\
   shaders.o\
