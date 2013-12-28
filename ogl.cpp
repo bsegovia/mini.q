@@ -761,7 +761,7 @@ void start(int w, int h) {
 #endif // __WEBGL__
   enablev(GL_DEPTH_TEST, GL_CULL_FACE);
   OGL(DepthFunc, GL_LESS);
-  OGL(CullFace, GL_FRONT);
+  OGL(CullFace, GL_BACK);
   OGL(GetIntegerv, GL_MAX_TEXTURE_SIZE, &glmaxtexsize);
   dirty.any = ~0x0;
   buildshaders(true);

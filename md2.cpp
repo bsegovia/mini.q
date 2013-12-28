@@ -108,8 +108,8 @@ bool mdl::load(const char *name, float scale, int sn) {
       loopi(n-2) { // just stolen from sauer. TODO use an index buffer
         if (moden <= 0) { // fan
           tris.add(trisv[0]);
-          tris.add(trisv[i+1]);
           tris.add(trisv[i+2]);
+          tris.add(trisv[i+1]);
         } else // strip
           loopk(3) tris.add(trisv[i&1 && k ? i+(1-(k-1))+1 : i+k]);
       }
@@ -135,6 +135,7 @@ void mdl::render(int frame, int range, const vec3f &o,
   ogl::rotate(90.f, vec3f(0.f,1.f,0.f));
 #endif
 
+  OGL(CullFace, GL_FRONT); // XXX change orientation of the triangles!
   const int n = vboframesz / sizeof(tri);
   const float time = game::lastmillis-basetime;
   intptr_t fr1 = intptr_t(time/speed);
@@ -154,6 +155,7 @@ void mdl::render(int frame, int range, const vec3f &o,
   ogl::drawarrays(GL_TRIANGLES, 0, n);
   ogl::bindbuffer(ogl::ARRAY_BUFFER, 0);
   ogl::popmatrix();
+  OGL(CullFace, GL_BACK); // XXX change orientation of the triangles!
 }
 
 static vector<mdl*> mapmodels;

@@ -11,15 +11,10 @@ namespace rr {
 void drawdf() {
   ogl::pushmatrix();
   ogl::setortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
-  const array<float,3> verts[] = {
-    array<float,3>(-1.f, -1.f, 0.f),
-    array<float,3>(1.f, -1.f, 0.f),
-    array<float,3>(-1.f, 1.f, 0.f),
-    array<float,3>(1.f, 1.f, 0.f),
-  };
+  const float verts[] = {-1.f,-1.f,0.f, 1.f,-1.f,0.f, -1.f,1.f,0.f, 1.f,1.f,0.f};
   ogl::disablev(GL_CULL_FACE, GL_DEPTH_TEST);
   ogl::bindshader(ogl::DFRM_SHADER);
-  ogl::immdraw(GL_TRIANGLE_STRIP, 3, 0, 0, 4, &verts[0][0]);
+  ogl::immdraw(GL_TRIANGLE_STRIP, 3, 0, 0, 4, verts);
   ogl::enablev(GL_CULL_FACE, GL_DEPTH_TEST);
   ogl::popmatrix();
 }
@@ -108,7 +103,7 @@ INLINE float signed_box(vec3f p, vec3f b) {
 float map(vec3f pos) {
   const auto t = pos-vec3f(1.f,2.f,1.f);
   const auto d0 = signed_sphere(t, 1.f);
-  const auto d1 = signed_box(t, vec3f(1.3f));
+  const auto d1 = signed_box(t, vec3f(1.f));
   return max(d1, -d0);
 }
 static const float grad_step = 0.1f;
@@ -233,7 +228,6 @@ void frame(int w, int h, int curfps) {
   ogl::immdraw(GL_TRIANGLE_STRIP, 3, 2, 0, 4, verts);
 
   if (indexbuffer.length() == 0) makescene();
-  ogl::enable(GL_CULL_FACE);
   ogl::bindfixedshader(ogl::COLOR);
   ogl::immdrawelememts("Tic3p3", indexbuffer.length(), &indexbuffer[0], &vertexbuffer[0].v[0]);
 
