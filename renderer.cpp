@@ -85,8 +85,6 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
  -------------------------------------------------------------------------*/
 FVARP(fov, 30.f, 90.f, 160.f);
 
-static float dist_sphere(vec3f v, float r) { return length(v) - r; }
-
 static const vec3f cubefverts[8] = {
   vec3f(0.f,0.f,0.f)/*0*/, vec3f(0.f,0.f,1.f)/*1*/, vec3f(0.f,1.f,1.f)/*2*/, vec3f(0.f,1.f,0.f)/*3*/,
   vec3f(1.f,0.f,0.f)/*4*/, vec3f(1.f,0.f,1.f)/*5*/, vec3f(1.f,1.f,1.f)/*6*/, vec3f(1.f,1.f,0.f)/*7*/
@@ -100,12 +98,19 @@ INLINE u32 index(vec3i xyz, vec3i dim) {
   return dim.x*dim.y*xyz.z+dim.x*xyz.y+xyz.x;
 }
 
+static float signed_sphere(vec3f v, float r) { return length(v) - r; }
+
 INLINE float signed_box(vec3f p, vec3f b) {
   const vec3f d = abs(p) - b;
   return min(max(d.x,max(d.y,d.z)),0.0f) + length(max(d,vec3f(zero)));
 }
 
-float map(vec3f pos) { return dist_sphere(pos-vec3f(1.f,2.f,1.f), 1.f); }
+float map(vec3f pos) {
+  const auto t = pos-vec3f(1.f,2.f,1.f);
+  const auto d0 = signed_sphere(t, 1.f);
+  const auto d1 = signed_box(t, vec3f(0.8f));
+  return max(d0, -d1);
+}
 static const float grad_step = 0.1f;
 vec3f gradient(vec3f v) {
   const vec3f dx = vec3f(grad_step, 0.0, 0.0);
