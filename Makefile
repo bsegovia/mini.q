@@ -30,11 +30,15 @@ HEADERS=\
   game.hpp\
   iso.hpp\
   iso_mc.hpp\
+  md2.hpp\
   net.hpp\
   ogl.hpp\
   physics.hpp\
+  qef.hpp\
+  renderer.hpp\
   script.hpp\
   shaders.hpp\
+  sound.hpp\
   stl.hpp\
   sys.hpp\
   task.hpp\
@@ -50,7 +54,6 @@ SHADERS=data/shaders/fixed_vp.glsl\
 shaders.cpp: $(SHADERS)
 	./scripts/stringify_all_shaders.sh shaders.cpp shaders.hpp
 
-blob.o: blob.cpp $(HEADERS)
 con.o: con.cpp $(HEADERS)
 game.o: game.cpp $(HEADERS)
 iso.o: iso.cpp iso.hpp math.hpp stl.hpp sys.hpp
@@ -58,7 +61,7 @@ iso_mc.o: iso_mc.cpp iso_mc.hpp iso.hpp math.hpp stl.hpp sys.hpp
 md2.o: md2.cpp $(HEADERS)
 mini.q.o: mini.q.cpp $(HEADERS)
 net.o: net.cpp net.hpp stl.hpp sys.hpp
-ogl.o: ogl.cpp $(HEADERS)
+ogl.o: ogl.cpp ogl.hxx $(HEADERS)
 qef.o: qef.cpp qef.hpp sys.hpp
 physics.o: physics.cpp $(HEADERS)
 renderer.o: renderer.cpp $(HEADERS)
