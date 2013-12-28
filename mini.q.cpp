@@ -8,6 +8,7 @@ namespace q {
 IVARF(grabmouse, 0, 0, 1, SDL_WM_GrabInput(grabmouse ? SDL_GRAB_ON : SDL_GRAB_OFF););
 
 void start(int argc, const char *argv[]) {
+  sys::meminit();
   int fs = 0;
   rangei(1, argc) if (argv[i][0]=='-') switch (argv[i][1]) {
     case 't': fs     = 0; break;
@@ -36,7 +37,7 @@ void start(int argc, const char *argv[]) {
   script::execfile("data/keymap.q");
 }
 
-static INLINE void mainloop() {
+INLINE void mainloop() {
   static int frame = 0;
   const auto millis = sys::millis()*game::speed/100.f;
   static float fps = 30.0f;

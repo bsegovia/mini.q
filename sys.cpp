@@ -8,6 +8,9 @@
 #include "game.hpp"
 #include "ogl.hpp"
 #include "sys.hpp"
+#if !defined(__WIN32__)
+#include <unistd.h>
+#endif
 
 namespace q {
 namespace sys {
@@ -33,9 +36,8 @@ struct DEFAULT_ALIGNED memblock : intrusive_list_node {
     file(file), linenum(linenum), allocnum(0), size(sz)
   {rbound() = lbound() = 0xdeadc0de;}
   const char *file;
-  u32 linenum, allocnum, size;
-  u32 bound;
-  INLINE u32 &rbound(void) {return (&bound)[size/sizeof(u32)+1];}
+  u32 linenum, allocnum, size, bound;
+  INLINE u32 &rbound(void) {return *(u32*)((char*)this+sizeof(memblock)+size); }
   INLINE u32 &lbound(void) {return bound;}
 };
 
@@ -47,7 +49,6 @@ static bool memfirstalloc = true;
 static void memlinkblock(memblock *node) {
   if (memmutex) SDL_LockMutex(memmutex);
   node->allocnum = memallocnum++;
-  // if (node->allocnum == 0) DEBUGBREAK;
   memlist->push_back(node);
   if (memmutex) SDL_UnlockMutex(memmutex);
 }
