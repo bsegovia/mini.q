@@ -10,6 +10,9 @@ IVARF(grabmouse, 0, 0, 1, SDL_WM_GrabInput(grabmouse ? SDL_GRAB_ON : SDL_GRAB_OF
 void start(int argc, const char *argv[]) {
   con::out("init: memory debugger");
   sys::memstart();
+  char *c = NEWAE(char,10);
+  printf("%d\n", c[0]);
+  exit(0);
   con::out("init: tasking system");
   const u32 threadnum = sys::threadnumber();
   task::start(&threadnum, 1);

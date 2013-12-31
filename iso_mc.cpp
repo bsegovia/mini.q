@@ -383,6 +383,7 @@ struct static_hash_table {
   vector<u32> here;
 };
 
+#if 1
 // really quick and dirty implementation
 mesh mc(const grid &grid, distance_field d) {
   auto scene = (float*) MALLOC(33*33*33*sizeof(float));
@@ -425,6 +426,57 @@ mesh mc(const grid &grid, distance_field d) {
   const auto idx = indexbuffer.move();
   return mesh(p.first, n.first, idx.first, p.second, idx.second);
 }
+#else
+struct slice {
+  slice(const vec2i &dim) m_pos(NEWAE(
+  vec3f *m_pos, *m_nor;
+  vec2i m_dim;
+};
+
+// really quick and dirty implementation
+mesh mc(const grid &grid, distance_field d) {
+  auto scene = (float*) MALLOC(33*33*33*sizeof(float));
+  const vec3i dim(33,33,33);
+  loopi(dim.z) loopj(dim.y) loopk(dim.x) {
+    const auto p = 0.10f * vec3f(float(k), float(j), float(i));
+    const auto idx = index(vec3i(k,j,i), dim);
+    scene[idx] = d(p);
+  }
+
+  // generate all the triangles. we do not care about vertex duplication yet
+  vector<pair<vec3i,vec3i>> tris;
+  loopi(32) loopj(32) loopk(32) {
+    mcell cell;
+    vec3i xyz(k,j,i);
+    loop(l,8) cell[l] = scene[index(icubev[l]+xyz, dim)];
+    mvert v[64];
+    const int n = tesselate(cell, v);
+    loop(l,n) tris.add(makepair(xyz+icubev[v[l].x], xyz+icubev[v[l].y]));
+  }
+
+  // now generate the vertex buffer and the index buffer
+  static_hash_table<pair<vec3i,vec3i>, u32> table(&tris[0], tris.length());
+  vector<u32> indexbuffer;
+  vector<vec3f> posbuffer, norbuffer;
+  loopv(tris) {
+    const auto idx = table.insert(tris[i], posbuffer.length());
+    if (idx == u32(posbuffer.length())) {
+      const auto idx0 = index(tris[i].first, dim), idx1 = index(tris[i].second, dim);
+      const auto p = interp(tris[i].first, tris[i].second, scene[idx0], scene[idx1]);
+      posbuffer.add(p);
+      norbuffer.add(abs(gradient(d, p)));
+    }
+    indexbuffer.add(idx);
+  }
+  FREE(scene);
+
+  const auto p = posbuffer.move();
+  const auto n = norbuffer.move();
+  const auto idx = indexbuffer.move();
+  return mesh(p.first, n.first, idx.first, p.second, idx.second);
+}
+#endif
+
 } /* namespace iso */
 } /* namespace q */
 

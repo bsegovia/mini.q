@@ -237,18 +237,29 @@ void memstart();
 void *memalloc(size_t sz, const char *filename, int linenum);
 void *memrealloc(void *ptr, size_t sz, const char *filename, int linenum);
 void memfree(void *);
+template <typename T> void callctor(void *ptr) { new (ptr) T; }
+template <typename T, typename... Args>
+void callctor(void *ptr, Args&&... args) { new (ptr) T(args...); }
+
 template <typename T, typename... Args>
 INLINE T *memconstructa(s32 n, const char *filename, int linenum, Args&&... args) {
   void *ptr = (void*) memalloc(n*sizeof(T)+DEFAULT_ALIGNMENT, filename, linenum);
   *(s32*)ptr = n;
   T *array = (T*)((char*)ptr+DEFAULT_ALIGNMENT);
-  loopi(n) new (array+i) T(args...);
+  loopi(n) callctor<T>(array+i, args...);
   return array;
 }
+
 template <typename T, typename... Args>
 INLINE T *memconstruct(const char *filename, int linenum, Args&&... args) {
   T *ptr = (T*) memalloc(sizeof(T), filename, linenum);
-  new (ptr) T(args...);
+  callctor<T>(ptr, args...);
+  return ptr;
+}
+template <typename T>
+INLINE T *memconstruct(const char *filename, int linenum) {
+  T *ptr = (T*) memalloc(sizeof(T), filename, linenum);
+  new (ptr) T;
   return ptr;
 }
 template <typename T> INLINE void memdestroy(T *ptr) {
