@@ -459,12 +459,12 @@ static bool checkshader(const char *source, const char *rules, u32 shadernumame)
   OGL(GetShaderiv, shadernumame, GL_COMPILE_STATUS, &result);
   OGL(GetShaderiv, shadernumame, GL_INFO_LOG_LENGTH, &infologlength);
   if (infologlength > 1) {
-    char *buffer = (char*) malloc(infologlength+1);
+    char *buffer = (char*) MALLOC(infologlength+1);
     buffer[infologlength] = 0;
     OGL(GetShaderInfoLog, shadernumame, infologlength, NULL, buffer);
     con::out("%s", buffer);
     printf("in\n%s%s\n", rules, source);
-    free(buffer);
+    FREE(buffer);
   }
   return result == GL_TRUE;
 }
@@ -653,8 +653,8 @@ static bool buildprogramfromfile(shadertype &s, const shaderresource &rsc, u32 r
   auto fixed_fp = loadshaderfile(rsc.fppath);
   if (fixed_fp == NULL || fixed_vp == NULL) return false;
   auto ret = buildprogram(s, fixed_vp, fixed_fp, rules, rsc.cb);
-  free(fixed_fp);
-  free(fixed_vp);
+  FREE(fixed_fp);
+  FREE(fixed_vp);
   return ret;
 }
 static bool buildshader(shadertype &s, const shaderresource &rsc, u32 rules, int fromfile) {
@@ -732,10 +732,10 @@ u32 coretex(u32 index) { return coretexarray[index%TEX_PREALLOCATED_NUM]; }
 
 static u32 buildcheckboard() {
   const u32 dim = 16;
-  u32 *cb = (u32*)malloc(dim*dim*sizeof(u32));
+  u32 *cb = (u32*)MALLOC(dim*dim*sizeof(u32));
   loopi(dim) loopj(dim) cb[i*dim+j]=(i==0)||(j==0)||(i==dim-1)||(j==dim-1)?0:~0;
   u32 id = maketex("TB I4 D4 B2 G Wsr Wtr mM Ml", cb, 16, 16);
-  free(cb);
+  FREE(cb);
   return id;
 }
 
@@ -784,7 +784,7 @@ void start(int w, int h) {
     if (coretexarray[i] == 0)
       sys::fatal("could not find core textures");
 }
-void end() {
+void finish() {
   destroyshaders();
   rangei(TEX_CROSSHAIR, TEX_PREALLOCATED_NUM)
     if (coretexarray[i]) OGL(DeleteTextures, 1, coretexarray+i);

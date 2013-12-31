@@ -170,7 +170,7 @@ bool execfile(const char *cfgfile) {
   char *buf = sys::loadfile(sys::path(s), NULL);
   if (!buf) return false;
   execstring(buf);
-  free(buf);
+  FREE(buf);
   return true;
 }
 

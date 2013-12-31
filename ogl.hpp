@@ -20,7 +20,7 @@ namespace ogl {
 #endif /* __WEBGL__ */
 
 void start(int w, int h);
-void end();
+void finish();
 
 // vertex attributes
 enum {POS0, POS1, TEX0, TEX1, TEX2, TEX3, NOR, COL, ATTRIB_NUM};

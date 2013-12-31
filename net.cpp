@@ -274,7 +274,7 @@ internal_channel::internal_channel(u32 ip, u16 port, u16 qport, internal_server 
 {init(ip, port, qport);}
 
 internal_channel::internal_channel(u32 ip, u16 port, u16 qport, u32 maxtimeout) :
-  m_owner(NULL), m_sock(new socket), m_maxtimeout(maxtimeout)
+  m_owner(NULL), m_sock(NEWE(socket)), m_maxtimeout(maxtimeout)
 {init(ip, port, qport);}
 
 void internal_channel::init(u32 ip, u16 port, u16 qport) {
@@ -295,7 +295,7 @@ internal_channel::~internal_channel() {
   if (m_owner != NULL)
     m_owner->remove(this);
   else
-    delete m_sock;
+    DEL(m_sock);
 }
 
 void internal_channel::atomic() {
@@ -451,7 +451,7 @@ internal_channel *internal_server::active() {
     internal_channel *c;
     if ((c = findchannel(addr.m_ip, header.m_qport)) == NULL) {
       if (u32(m_channels.length()) == m_maxclients) continue;
-      c = m_channels.add(new internal_channel(addr.m_ip, addr.m_port, header.m_qport, this));
+      c = m_channels.add(NEW(internal_channel,addr.m_ip, addr.m_port, header.m_qport, this));
     }
     if (!c->handle_reception(buf)) continue;
     return c;
@@ -508,9 +508,9 @@ static INLINE bool islocal(const channel *c) {
 channel *channel::create(local_type) { return local_c2s; }
 channel *channel::create(const address &addr, u32 maxtimeout) {
   const u32 qport = rand()&0xffff;
-  return (channel*) (new internal_channel(addr.m_ip, addr.m_port, qport, maxtimeout));
+  return (channel*) (NEW(internal_channel, addr.m_ip, addr.m_port, qport, maxtimeout));
 }
-void channel::destroy(channel *c) { if (!islocal(c)) delete CAST(channel, c); }
+void channel::destroy(channel *c) { if (!islocal(c)) DEL(CAST(channel, c)); }
 void channel::send(bool reliable, const char *fmt, ...) {
   va_list args;
   va_start(args, fmt);
@@ -541,10 +541,10 @@ void channel::flush() { if (!islocal(this)) CAST(channel,this)->flush(); }
 /* server interface */
 server *server::create(local_type) { return local_server; }
 server *server::create(u32 maxclients, u32 maxtimeout, u16 port) {
-  return (server*) (new internal_server(maxclients, maxtimeout, port));
+  return (server*) (NEW(internal_server, maxclients, maxtimeout, port));
 }
 void server::destroy(server *s) {
-  if (s != local_server) delete CAST(server,s);
+  if (s != local_server) DEL(CAST(server,s));
 }
 channel *server::active() {
   if (this == local_server)

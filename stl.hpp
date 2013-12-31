@@ -130,6 +130,10 @@ template <typename T, u32 max_n=1024> struct hashtable : noncopyable {
   hashtable() : n(0) {}
   INLINE pair<const char*, T> *begin() { return items; }
   INLINE pair<const char*, T> *end() { return items+n; }
+  INLINE void remove(pair<const char*, T> *it) {
+    assert(it >= begin() && it < end());
+    *it = items[(n--)-1];
+  }
   T *access(const char *key, const T *value = NULL) {
     u32 h = 5381;
     for (u32 i = 0, k; (k = key[i]) != 0; ++i) h = ((h<<5)+h)^k;
@@ -152,10 +156,10 @@ template <class T> struct vector : noncopyable {
   T *buf;
   int alen, ulen;
   INLINE vector(int len = 0) {
-    if (len) buf = (T*) malloc(len*sizeof(T)); else buf = NULL;
+    if (len) buf = (T*) MALLOC(len*sizeof(T)); else buf = NULL;
     alen = ulen = len;
   }
-  INLINE ~vector() { setsize(0); free(buf); }
+  INLINE ~vector() { setsize(0); FREE(buf); }
   INLINE T &add(const T &x) {
     if (ulen==alen) realloc();
     new (&buf[ulen]) T(x);
@@ -176,7 +180,7 @@ template <class T> struct vector : noncopyable {
     other.~vector<T>();
     other.alen = alen; alen = 0;
     other.ulen = ulen; ulen = 0;
-    other.buf = buf;  buf = NULL;
+    other.buf = buf; buf = NULL;
   }
   T *begin() { return buf; }
   T *end() { return buf+ulen; }
@@ -193,7 +197,7 @@ template <class T> struct vector : noncopyable {
   INLINE T *getbuf() { return buf; }
   INLINE void realloc() {
     alen = max(2*alen,1);
-    buf = (T*)::realloc(buf, alen*sizeof(T));
+    buf = (T*)REALLOC(buf, alen*sizeof(T));
   }
   void setsize(int i) { for(; ulen>i; ulen--) buf[ulen-1].~T(); }
   T remove(int i) {
@@ -381,7 +385,7 @@ struct refcount {
   INLINE void release(void) {
     if (--refcounter == 0) {
       auto ptr = this;
-      SAFE_DELETE(ptr);
+      DEL(ptr);
     }
   }
   atomic refcounter;

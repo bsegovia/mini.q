@@ -99,6 +99,12 @@ static vertex *vertices = NULL;
 static u32 *indices = NULL;
 static bool initialized_m = false;
 
+void start() {}
+void finish() {
+  FREE(vertices); vertices = NULL;
+  FREE(indices); indices = NULL;
+}
+
 static void makescene() {
   if (initialized_m) return;
   const iso::grid g(vec3f(0.10f), vec3f(zero), vec3f(32));
@@ -107,7 +113,7 @@ static void makescene() {
   indexnum = m.m_indexnum;
   indices = m.m_index;
   m.m_index = NULL;
-  vertices = (vertex*) malloc(sizeof(vertex) * vertnum);
+  vertices = (vertex*) MALLOC(sizeof(vertex) * vertnum);
   loopi(vertnum) {
     vertices[i].pos = m.m_pos[i];
     vertices[i].nor = m.m_nor[i];
@@ -134,7 +140,6 @@ void frame(int w, int h, int curfps) {
   ogl::setperspective(fovy, aspect, 0.15f, farplane);
   ogl::matrixmode(ogl::MODELVIEW);
   transplayer();
-
   const float verts[] = {
     -100.f, -100.f, -100.f, 0.f, -100.f,
     +100.f, -100.f, +100.f, 0.f, -100.f,

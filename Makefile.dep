@@ -36,4 +36,3 @@ sys.o: sys.cpp $(HEADERS)
 task.o: task.cpp stl.hpp sys.hpp task.hpp
 text.o: text.cpp font.hxx $(HEADERS)
 
-

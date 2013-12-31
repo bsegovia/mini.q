@@ -228,11 +228,12 @@ char *loadfile(const char *fn, int *size=NULL);
 void initendiancheck();
 int islittleendian();
 void endianswap(void *memory, int stride, int length);
+u32 threadnumber();
 
 /*-------------------------------------------------------------------------
  - memory debugging / tracking facilities
  -------------------------------------------------------------------------*/
-void meminit();
+void memstart();
 void *memalloc(size_t sz, const char *filename, int linenum);
 void *memrealloc(void *ptr, size_t sz, const char *filename, int linenum);
 void memfree(void *);
@@ -268,8 +269,10 @@ template <typename T> INLINE void memdestroya(T *array) {
 #define NEWAE(X,N) q::sys::memconstructa<X>(N,__FILE__,__LINE__)
 #define NEW(X,...) q::sys::memconstruct<X>(__FILE__,__LINE__,__VA_ARGS__)
 #define NEWA(X,N,...) q::sys::memconstructa<X>(N,__FILE__,__LINE__,__VA_ARGS__)
-#define SAFE_DELETE(X) do { if (X) q::sys::memdestroy(X); X = NULL; } while (0)
-#define SAFE_DELETEA(X) do { if (X) q::sys::memdestroya(X); X = NULL; } while (0)
+#define DEL(X) do { q::sys::memdestroy(X); } while (0)
+#define DELA(X) do { q::sys::memdestroya(X); } while (0)
+#define SAFE_DEL(X) do { if (X) DEL(X); } while (0)
+#define SAFE_DELA(X) do { if (X) DELA(X); X = NULL; } while (0)
 
 /*-------------------------------------------------------------------------
  - atomics / barriers / locks
@@ -321,7 +324,5 @@ INLINE void storerelease(volatile T *ptr, T x) {
 #else
 #error "unknown platform"
 #endif
-
-
 } /* namespace q */
 

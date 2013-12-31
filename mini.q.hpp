@@ -14,5 +14,6 @@
 #include "sound.hpp"
 #include "stl.hpp"
 #include "sys.hpp"
+#include "task.hpp"
 #include "text.hpp"
 

@@ -8,7 +8,11 @@ namespace q {
 IVARF(grabmouse, 0, 0, 1, SDL_WM_GrabInput(grabmouse ? SDL_GRAB_ON : SDL_GRAB_OFF););
 
 void start(int argc, const char *argv[]) {
-  sys::meminit();
+  con::out("init: memory debugger");
+  sys::memstart();
+  con::out("init: tasking system");
+  const u32 threadnum = sys::threadnumber();
+  task::start(&threadnum, 1);
   int fs = 0;
   rangei(1, argc) if (argv[i][0]=='-') switch (argv[i][1]) {
     case 't': fs     = 0; break;
@@ -34,6 +38,11 @@ void start(int argc, const char *argv[]) {
   SDL_WM_SetCaption("mini.q", NULL);
   sys::keyrepeat(true);
   SDL_ShowCursor(0);
+
+  con::out("init: md2 models");
+  md2::start();
+  con::out("init: renderer");
+  rr::start();
   script::execfile("data/keymap.q");
 }
 

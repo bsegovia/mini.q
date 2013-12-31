@@ -7,13 +7,10 @@
 #include "sys.hpp"
 
 namespace q {
-namespace tasking {
-  void init(const u32 *queueinfo, u32 n);
-  void clean(void);
-} /* namespace tasking */
-
 class CACHE_LINE_ALIGNED task : public noncopyable, public refcount {
 public:
+  static void start(const u32 *queueinfo, u32 n);
+  static void finish(void);
   task(const char *name, u32 elem=1, u32 waiter=0, u32 queue=0, u16 policy=0);
   virtual ~task(void);
   void starts(task&);

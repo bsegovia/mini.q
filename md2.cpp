@@ -117,8 +117,8 @@ bool mdl::load(const char *name, float scale, int sn) {
     OGL(BufferSubData, GL_ARRAY_BUFFER, vboframesz*j, vboframesz, &tris[0][0]);
   }
   ogl::bindbuffer(ogl::ARRAY_BUFFER, 0);
-  SAFE_DELETEA(frames);
-  SAFE_DELETEA(glcommands);
+  SAFE_DELA(frames);
+  SAFE_DELA(glcommands);
   return true;
 }
 
@@ -160,6 +160,7 @@ void mdl::render(int frame, int range, const vec3f &o,
 
 static vector<mdl*> mapmodels;
 static hashtable<mdl*> mdllookup;
+static int modelnum = 0;
 
 static void delayedload(mdl *m, float scale, int snap) {
   if (!m->loaded) {
@@ -172,7 +173,13 @@ static void delayedload(mdl *m, float scale, int snap) {
   }
 }
 
-static int modelnum = 0;
+void start() {}
+void finish() {
+  for (auto &m : mdllookup) {
+    DEL(m.second);
+    mdllookup.remove(&m);
+  }
+}
 
 mdl *loadmodel(const char *name) {
   auto mm = mdllookup.access(name);
@@ -193,7 +200,7 @@ void mapmodel(const char *rad, const char *h, const char *zoff, const char *snap
 
 void mapmodelreset(void) {
   auto &map = mdllookup;
-  for (auto item : map) SAFE_DELETE(item.second);
+  for (auto item : map) SAFE_DEL(item.second);
   mapmodels.setsize(0);
   modelnum = 0;
 }

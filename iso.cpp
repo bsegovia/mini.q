@@ -9,9 +9,9 @@ namespace q {
 namespace iso {
 
 mesh::~mesh() {
-  if (m_pos) free(m_pos);
-  if (m_nor) free(m_nor);
-  if (m_index) free(m_index);
+  if (m_pos) FREE(m_pos);
+  if (m_nor) FREE(m_nor);
+  if (m_index) FREE(m_index);
 }
 vec3f gradient(distance_field d, const vec3f &pos, float grad_step) {
   const vec3f dx = vec3f(grad_step, 0.f, 0.f);

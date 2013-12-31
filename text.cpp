@@ -14,11 +14,11 @@ namespace text {
 #include "font.hxx"
 
 u32 buildfont() {
-  u8 *font = (u8*)malloc(fontw*fonth*sizeof(u8));
+  u8 *font = (u8*)MALLOC(fontw*fonth*sizeof(u8));
   loopi(fonth) loopj(fontw/32) loopk(32)
     font[i*fontw+j*32+k] = (fontdata[i*fontw/32+j]&(1<<k))?~0x0:0x0;
   u32 id = ogl::maketex("TB Ir Dr B2 Wsr Wtr Mn mn", font, fontw, fonth);
-  free(font);
+  FREE(font);
   return id;
 }
 

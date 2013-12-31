@@ -207,17 +207,18 @@ queue::~queue(void) {
   SDL_DestroyMutex(mutex);
   SDL_DestroyCond(cond);
 }
-
-void init(const u32 *queueinfo, u32 n) {
-  vector<queue*>(n).moveto(queues);
-  loopi(s32(n)) queues[i] = NEW(queue, queueinfo[i]);
-}
-
-void clean(void) {
-  loopv(queues) SAFE_DELETE(queues[i]);
-  queues.setsize(0);
-}
 } /* namespace tasking */
+
+
+void task::start(const u32 *queueinfo, u32 n) {
+  vector<tasking::queue*>(n).moveto(tasking::queues);
+  loopi(s32(n)) tasking::queues[i] = NEW(tasking::queue, queueinfo[i]);
+}
+
+void task::finish(void) {
+  loopv(tasking::queues) DEL(tasking::queues[i]);
+  vector<tasking::queue*>().moveto(tasking::queues);
+}
 
 task::task(const char *name, u32 n, u32 waiternum, u32 queue, u16 policy) {
   new (opaque) tasking::internal(name,n,waiternum,queue,policy);

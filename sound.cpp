@@ -70,7 +70,6 @@ void clean(void) {
   if (nosound) return;
   stop();
   Mix_CloseAudio();
-  loopv(snames) free(snames[i]);
 }
 
 static void updatechanvol(int chan, const vec3f *loc) {

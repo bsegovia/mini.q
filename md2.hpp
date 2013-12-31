@@ -6,7 +6,8 @@
 
 namespace q {
 namespace md2 {
-
+void start();
+void finish();
 void render(const char *name, int frame, int range,
             const vec3f &o, const vec3f &ypr,
             bool teammate, float scale, float speed, int snap,

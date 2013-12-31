@@ -2,13 +2,8 @@
  - mini.q - a minimalistic multiplayer FPS
  - sys.cpp -> implements platform specific code, stdlib and main function
  -------------------------------------------------------------------------*/
-#include "con.hpp"
-#include "script.hpp"
-#include "renderer.hpp"
-#include "game.hpp"
-#include "ogl.hpp"
-#include "sys.hpp"
-#if !defined(__WIN32__)
+#include "mini.q.hpp"
+#if defined(__UNIX__)
 #include <unistd.h>
 #endif
 
@@ -29,6 +24,24 @@ void endianswap(void *memory, int stride, int length) {
     p[stride-i-1] = t;
   }
 }
+
+#if defined __WIN32__
+u32 threadnumber() {
+#if (_WIN32_WINNT >= 0x0601)
+  int groups = GetActiveProcessorGroupCount();
+  int totalProcessors = 0;
+  for (int i = 0; i < groups; i++) 
+    totalProcessors += GetActiveProcessorCount(i);
+  return totalProcessors;
+#else
+  SYSTEM_INFO sysinfo;
+  GetSystemInfo(&sysinfo);
+  return sysinfo.dwNumberOfProcessors;
+#endif
+}
+#else
+u32 threadnumber() { return sysconf(_SC_NPROCESSORS_CONF); }
+#endif
 
 #if defined(MEMORY_DEBUGGER)
 struct DEFAULT_ALIGNED memblock : intrusive_list_node {
@@ -90,7 +103,7 @@ static void memonfirstalloc(void) {
 }
 #undef MEMOUT
 
-void meminit(void) { memmutex = SDL_CreateMutex(); }
+void memstart(void) { memmutex = SDL_CreateMutex(); }
 void *memalloc(size_t sz, const char *filename, int linenum) {
   memonfirstalloc();
   if (sz) {
@@ -115,7 +128,7 @@ void memfree(void *ptr) {
 
 void *memrealloc(void *ptr, size_t sz, const char *filename, int linenum) {
   memonfirstalloc();
-  auto block = (memblock*)((char*)ptr-sizeof(memblock));
+  auto block = ptr==NULL?(memblock*)NULL:(memblock*)((char*)ptr-sizeof(memblock));
   if (ptr) {
     memcheckbounds(block);
     memunlinkblock(block);
@@ -149,13 +162,13 @@ char *loadfile(const char *fn, int *size) {
   fseek(f, 0, SEEK_END);
   u32 len = ftell(f);
   fseek(f, 0, SEEK_SET);
-  auto buf = (char *) malloc(len+1);
+  auto buf = (char *) MALLOC(len+1);
   if (!buf) return NULL;
   buf[len] = 0;
   size_t rlen = fread(buf, 1, len, f);
   fclose(f);
   if (len!=rlen || len<=0) {
-    free(buf);
+    FREE(buf);
     return NULL;
   }
   if (size!=NULL) *size = len;
@@ -170,7 +183,10 @@ void quit(const char *msg) {
     printf("%s\n", msg);
 #endif // __WIN32__
   } else {
-    ogl::end();
+    rr::finish();
+    md2::finish();
+    ogl::finish();
+    task::finish();
   }
   SDL_Quit();
   exit(msg && strlen(msg) ? EXIT_FAILURE : EXIT_SUCCESS);

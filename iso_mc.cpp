@@ -385,7 +385,7 @@ struct static_hash_table {
 
 // really quick and dirty implementation
 mesh mc(const grid &grid, distance_field d) {
-  auto scene = (float*) malloc(33*33*33*sizeof(float));
+  auto scene = (float*) MALLOC(33*33*33*sizeof(float));
   const vec3i dim(33,33,33);
   loopi(dim.z) loopj(dim.y) loopk(dim.x) {
     const auto p = 0.10f * vec3f(float(k), float(j), float(i));
@@ -418,7 +418,7 @@ mesh mc(const grid &grid, distance_field d) {
     }
     indexbuffer.add(idx);
   }
-  free(scene);
+  FREE(scene);
 
   const auto p = posbuffer.move();
   const auto n = norbuffer.move();
