@@ -9,6 +9,7 @@ OBJS=\
   con.o\
   game.o\
   iso.o\
+  iso_dc.o\
   iso_mc.o\
   md2.o\
   mini.q.o\

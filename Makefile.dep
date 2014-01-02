@@ -2,7 +2,6 @@ HEADERS=\
   con.hpp\
   game.hpp\
   iso.hpp\
-  iso_mc.hpp\
   md2.hpp\
   net.hpp\
   ogl.hpp\
@@ -20,7 +19,8 @@ HEADERS=\
 con.o: con.cpp $(HEADERS)
 game.o: game.cpp $(HEADERS)
 iso.o: iso.cpp iso.hpp math.hpp stl.hpp sys.hpp
-iso_mc.o: iso_mc.cpp iso_mc.hpp iso.hpp math.hpp stl.hpp sys.hpp
+iso_mc.o: iso_mc.cpp iso.hpp math.hpp stl.hpp sys.hpp
+iso_dc.o: iso_dc.cpp iso.hpp math.hpp stl.hpp sys.hpp
 md2.o: md2.cpp $(HEADERS)
 mini.q.o: mini.q.cpp $(HEADERS)
 net.o: net.cpp net.hpp stl.hpp sys.hpp

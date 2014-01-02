@@ -3,7 +3,7 @@
  - renderer.cpp -> handles rendering routines
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
-#include "iso_mc.hpp"
+#include "iso.hpp"
 
 namespace q {
 namespace rr {

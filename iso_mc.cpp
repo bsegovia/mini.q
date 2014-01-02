@@ -2,7 +2,7 @@
  - mini.q - a minimalistic multiplayer FPS
  - iso_mc.cpp -> implements marching cube algorithm
  -------------------------------------------------------------------------*/
-#include "iso_mc.hpp"
+#include "iso.hpp"
 #include "stl.hpp"
 
 namespace q {
@@ -317,7 +317,6 @@ static const vec3i icubev[8] = {
 
 typedef vec2i mvert[64];
 typedef float mcell[8];
-
 static int tesselate(const mcell &cell, mvert &tris) {
   int cubeindex = 0;
   loopi(8) if (cell[i] < 0.0f) cubeindex |= 1<<i;

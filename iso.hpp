@@ -38,6 +38,12 @@ typedef float (*distance_field)(const vec3f &pos);
 static const float DEFAULT_GRAD_STEP = 1e-3f;
 vec3f gradient(distance_field d, const vec3f &pos, float grad_step = DEFAULT_GRAD_STEP);
 
+// tesselate along a grid the distance field with dual contouring algorithm
+mesh dc(const grid &grid, distance_field f);
+
+// tesselate along a grid the distance field with marching cube algorithm
+mesh mc(const grid &grid, distance_field f);
+
 // helper macros
 #define loopxy(org, end, Z)\
   for (int Y = int(org.y); Y < int(end.y); ++Y)\
