@@ -346,7 +346,7 @@ INLINE vec3f interp(vec3i p1, vec3i p2, float valp1, float valp2) {
 }
 
 INLINE pair<vec3i,u32> edge(vec3i start, vec3i end) {
-  const auto lower = select(start<end, start, end);\
+  const auto lower = select(start<end, start, end);
   const auto delta = select(eq(start,end), vec3i(zero), vec3i(one));
   assert(reduceadd(delta) == 1);
   return makepair(lower, u32(delta.y+2*delta.z));
@@ -364,10 +364,7 @@ struct slicebuilder {
   }
   void init_slice(u32 z) {
     const vec2i org(zero), end(m_grid.m_dim.x+1,m_grid.m_dim.y+1);
-    loopxy(org, end, z) {
-      field(xyz) = m_df(vertex(xyz));
-      printf("%f %i %i %i\n",field(xyz), xyz.x, xyz.y, xyz.z);
-    }
+    loopxy(org, end, z) field(xyz) = m_df(vertex(xyz));
     loopxy(org, end, z) loopi(3) index(xyz,i) = NOINDEX;
   }
   void tesselate_slice(u32 z) {
