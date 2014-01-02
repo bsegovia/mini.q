@@ -38,6 +38,14 @@ typedef float (*distance_field)(const vec3f &pos);
 static const float DEFAULT_GRAD_STEP = 1e-3f;
 vec3f gradient(distance_field d, const vec3f &pos, float grad_step = DEFAULT_GRAD_STEP);
 
+// helper macros
+#define loopxy(org, end, Z)\
+  for (int Y = int(org.y); Y < int(end.y); ++Y)\
+  for (auto xyz = vec3i(org.x,Y,Z); xyz.x < int(end.x); ++xyz.x)
+#define loopxyz(org, end, Z)\
+  for (int Z = int(org.z); Z < int(end.z); ++Z)\
+  for (int Y = int(org.y(; Y < int(end.y); ++Y)\
+  for (auto xyz = vec3i(org.x,Y,Z); xyz.x < vec3i(end).x; ++xyz.x)
 } /* namespace iso */
 } /* namespace q */
 

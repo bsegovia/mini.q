@@ -253,10 +253,10 @@ TINLINE vec3<bool> op< (v3arg a, v3arg b) {return vec3<bool>(a.x<b.x,a.y<b.y,a.z
 TINLINE vec3<bool> op> (v3arg a, v3arg b) {return vec3<bool>(a.x>b.x,a.y>b.y,a.z>b.z);}
 TINLINE vec3<bool> op<= (v3arg a, v3arg b) {return vec3<bool>(a.x<=b.x,a.y<=b.y,a.z<=b.z);}
 TINLINE vec3<bool> op>= (v3arg a, v3arg b) {return vec3<bool>(a.x>=b.x,a.y>=b.y,a.z>=b.z);}
-TINLINE T reduceadd (v3arg a) {return a.x+a.y+a.z;}
-TINLINE T reducemul (v3arg a) {return a.x*a.y*a.z;}
-TINLINE T reducemin (v3arg a) {return min(a.x,a.y,a.z);}
-TINLINE T reducemax (v3arg a) {return max(a.x,a.y,a.z);}
+TINLINE T reduceadd(v3arg a) {return a.x+a.y+a.z;}
+TINLINE T reducemul(v3arg a) {return a.x*a.y*a.z;}
+TINLINE T reducemin(v3arg a) {return min(a.x,a.y,a.z);}
+TINLINE T reducemax(v3arg a) {return max(a.x,a.y,a.z);}
 TINLINE v3 min (v3arg a, v3arg b) {return v3(min(a.x,b.x),min(a.y,b.y),min(a.z,b.z));}
 TINLINE v3 max (v3arg a, v3arg b) {return v3(max(a.x,b.x),max(a.y,b.y),max(a.z,b.z));}
 TINLINE v3 clamp(v3arg v, v3arg m, v3arg M)  {return v3(clamp(v.x,m.x,M.x),clamp(v.y,m.y,M.y),clamp(v.z,m.z,M.z));}

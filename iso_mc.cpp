@@ -315,168 +315,121 @@ static const vec3i icubev[8] = {
   vec3i(1,0,0)/*4*/, vec3i(1,0,1)/*5*/, vec3i(1,1,1)/*6*/, vec3i(1,1,0)/*7*/
 };
 
-// define a vertex as two indices in the unit cube
-typedef vec2i mvert;
-
-// we simply provide the the distance field value for each value
+typedef vec2i mvert[64];
 typedef float mcell[8];
 
-INLINE u32 index(vec3i xyz, vec3i dim) {
-  return dim.x*dim.y*xyz.z+dim.x*xyz.y+xyz.x;
+static int tesselate(const mcell &cell, mvert &tris) {
+  int cubeindex = 0;
+  loopi(8) if (cell[i] < 0.0f) cubeindex |= 1<<i;
+
+  // cube is entirely in/out of the surface
+  if (edgetable[cubeindex] == 0) return 0;
+
+  // find the vertices where the surface intersects the cube
+  vec2i v[12];
+  loopi(12) if (edgetable[cubeindex] & (1<<i))
+    v[i] = vec2i(interptable[i][0], interptable[i][1]);
+
+  // create the triangle
+  int i = 0;
+  for (; tritable[cubeindex][i]!=-1; i+=3)
+    loopj(3) tris[i+j] = v[u32(tritable[cubeindex][i+j])];
+  return i;
 }
 
-static int tesselate(const mcell &cell, mvert *tris) {
-   int cubeindex = 0;
-   loopi(8) if (cell[i] < 0.0f) cubeindex |= 1<<i;
-
-   // cube is entirely in/out of the surface
-   if (edgetable[cubeindex] == 0) return 0;
-
-   // find the vertices where the surface intersects the cube
-   mvert v[12];
-   loopi(12) if (edgetable[cubeindex] & (1<<i))
-     v[i] = vec2i(interptable[i][0], interptable[i][1]);
-
-   // create the triangle
-   int i = 0;
-   for (; tritable[cubeindex][i]!=-1; i+=3)
-     loopj(3) tris[i+j] = v[u32(tritable[cubeindex][i+j])];
-   return i;
-}
-
+static const float EPSILON = 0.00001f;
 INLINE vec3f interp(vec3i p1, vec3i p2, float valp1, float valp2) {
-  if (abs(valp1) < 0.00001f) return vec3f(p1);
-  if (abs(valp2) < 0.00001f) return vec3f(p2);
-  if (abs(valp1-valp2) < 0.00001f) return vec3f(p1);
+  if (abs(valp1) < EPSILON) return vec3f(p1);
+  if (abs(valp2) < EPSILON) return vec3f(p2);
+  if (abs(valp1-valp2) < EPSILON) return vec3f(p1);
   return vec3f(p1) - valp1 / (valp2 - valp1) * (vec3f(p2) - vec3f(p1));
 }
 
-// hash table using open addressing. It is allocated once in the constructor
-// with an optional parameter to extend key space and avoid massive collision.
-// fast and simple
-template <typename Key, typename Value>
-struct static_hash_table {
-  static_hash_table(Key *k, u32 elem_n, u32 extend=2) :
-    n(nextpowerof2(extend*elem_n)), table(n+elem_n), here(table.length()/32)
-  {
-    memset(&here[0], 0, here.size());
+INLINE pair<vec3i,u32> edge(vec3i start, vec3i end) {
+  const auto lower = select(start<end, start, end);\
+  const auto delta = select(eq(start,end), vec3i(zero), vec3i(one));
+  assert(reduceadd(delta) == 1);
+  return makepair(lower, u32(delta.y+2*delta.z));
+}
+
+struct slicebuilder {
+  enum { NOINDEX = ~0x0u };
+  slicebuilder(const grid &grid, distance_field df) :
+    m_df(df), m_grid(grid),
+    m_field(2*(grid.m_dim.x+1)*(grid.m_dim.y+1)),
+    m_index(6*(grid.m_dim.x+1)*(grid.m_dim.y+1))
+  {}
+  INLINE vec3f vertex(const vec3i &p) {
+    return m_grid.m_org + m_grid.m_cellsize * vec3f(p);
   }
-  INLINE u32 ishere(u32 idx) const { return here[idx/32] & (1<<(idx%32)); }
-  INLINE void sethere(u32 idx) { here[idx/32] |= 1<<(idx%32); }
-  const Value &insert(const Key &k, const Value &v) {
-    auto i = murmurhash2(k) & (n-1);
-    const u32 elem_n = table.length();
-    for (; i<elem_n; ++i) {
-      if (ishere(i)) {
-        if (table[i].first == k) return table[i].second;
-      } else {
-        sethere(i);
-        table[i].first = k;
-        return table[i].second = v;
+  void init_slice(u32 z) {
+    const vec2i org(zero), end(m_grid.m_dim.x+1,m_grid.m_dim.y+1);
+    loopxy(org, end, z) {
+      field(xyz) = m_df(vertex(xyz));
+      printf("%f %i %i %i\n",field(xyz), xyz.x, xyz.y, xyz.z);
+    }
+    loopxy(org, end, z) loopi(3) index(xyz,i) = NOINDEX;
+  }
+  void tesselate_slice(u32 z) {
+    loopxy(vec2i(0,0), vec2i(m_grid.m_dim.x,m_grid.m_dim.y), z) {
+      mcell cell;
+      mvert v;
+      loopi(8) cell[i] = field(icubev[i]+xyz);
+      const int n = iso::tesselate(cell, v);
+      loopi(n) {
+        const vec3i edge[] = {xyz+icubev[v[i].x], xyz+icubev[v[i].y]};
+        const float value[] = {field(edge[0]), field(edge[1])};
+        u32 &idx = index(edge[0], edge[1]);
+        if (idx == NOINDEX) {
+          const auto p = interp(edge[0], edge[1], value[0], value[1]);
+          idx = m_vertexbuffer.length();
+          m_vertexbuffer.add(p);
+        }
+        m_indexbuffer.add(idx);
       }
     }
-    assert("unreachable: you must pre-allocate enough space");
-    return v;
   }
-  u32 n;
-  vector<pair<Key, Value>> table;
-  vector<u32> here;
+  void build() {
+    init_slice(0);
+    loopz(m_grid.m_dim.z) {
+      init_slice(z+1);
+      tesselate_slice(z);
+    }
+  }
+  INLINE u32 &index(const vec3i &lower, u32 edge) {
+    const auto &dim = m_grid.m_dim;
+    const auto offset = (3*(lower.z%2)+edge) * (dim.x+1) * (dim.y+1);
+    return m_index[offset+lower.y*dim.x+lower.x];
+  }
+  INLINE u32 &index(const vec3i &start, const vec3i &end) {
+    const auto e = edge(start, end);
+    return index(e.first, e.second);
+  }
+  INLINE float &field(const vec3i &xyz) {
+    const auto &dim = m_grid.m_dim;
+    const auto offset = (xyz.z%2) * (dim.x+1) * (dim.y+1);
+    return m_field[offset+xyz.y*(dim.x+1)+xyz.x];
+  }
+
+  distance_field m_df;
+  grid m_grid;
+  vector<float> m_field;
+  vector<u32> m_index;
+  vector<vec3f> m_vertexbuffer;
+  vector<u32> m_indexbuffer;
 };
 
-#if 1
-// really quick and dirty implementation
+// fast per-slice marching cube tesselation
 mesh mc(const grid &grid, distance_field d) {
-  auto scene = (float*) MALLOC(33*33*33*sizeof(float));
-  const vec3i dim(33,33,33);
-  loopi(dim.z) loopj(dim.y) loopk(dim.x) {
-    const auto p = 0.10f * vec3f(float(k), float(j), float(i));
-    const auto idx = index(vec3i(k,j,i), dim);
-    scene[idx] = d(p);
-  }
-
-  // generate all the triangles. we do not care about vertex duplication yet
-  vector<pair<vec3i,vec3i>> tris;
-  loopi(32) loopj(32) loopk(32) {
-    mcell cell;
-    vec3i xyz(k,j,i);
-    loop(l,8) cell[l] = scene[index(icubev[l]+xyz, dim)];
-    mvert v[64];
-    const int n = tesselate(cell, v);
-    loop(l,n) tris.add(makepair(xyz+icubev[v[l].x], xyz+icubev[v[l].y]));
-  }
-
-  // now generate the vertex buffer and the index buffer
-  static_hash_table<pair<vec3i,vec3i>, u32> table(&tris[0], tris.length());
-  vector<u32> indexbuffer;
-  vector<vec3f> posbuffer, norbuffer;
-  loopv(tris) {
-    const auto idx = table.insert(tris[i], posbuffer.length());
-    if (idx == u32(posbuffer.length())) {
-      const auto idx0 = index(tris[i].first, dim), idx1 = index(tris[i].second, dim);
-      const auto p = interp(tris[i].first, tris[i].second, scene[idx0], scene[idx1]);
-      posbuffer.add(p);
-      norbuffer.add(abs(gradient(d, p)));
-    }
-    indexbuffer.add(idx);
-  }
-  FREE(scene);
-
-  const auto p = posbuffer.move();
+  slicebuilder s(grid, d);
+  s.build();
+  vector<vec3f> norbuffer(s.m_vertexbuffer.length());
+  loopv(norbuffer) { norbuffer[i] = gradient(d, s.m_vertexbuffer[i]); }
+  const auto p = s.m_vertexbuffer.move();
   const auto n = norbuffer.move();
-  const auto idx = indexbuffer.move();
+  const auto idx = s.m_indexbuffer.move();
   return mesh(p.first, n.first, idx.first, p.second, idx.second);
 }
-#else
-struct slice {
-  slice(const vec2i &dim) m_pos(NEWAE(
-  vec3f *m_pos, *m_nor;
-  vec2i m_dim;
-};
-
-// really quick and dirty implementation
-mesh mc(const grid &grid, distance_field d) {
-  auto scene = (float*) MALLOC(33*33*33*sizeof(float));
-  const vec3i dim(33,33,33);
-  loopi(dim.z) loopj(dim.y) loopk(dim.x) {
-    const auto p = 0.10f * vec3f(float(k), float(j), float(i));
-    const auto idx = index(vec3i(k,j,i), dim);
-    scene[idx] = d(p);
-  }
-
-  // generate all the triangles. we do not care about vertex duplication yet
-  vector<pair<vec3i,vec3i>> tris;
-  loopi(32) loopj(32) loopk(32) {
-    mcell cell;
-    vec3i xyz(k,j,i);
-    loop(l,8) cell[l] = scene[index(icubev[l]+xyz, dim)];
-    mvert v[64];
-    const int n = tesselate(cell, v);
-    loop(l,n) tris.add(makepair(xyz+icubev[v[l].x], xyz+icubev[v[l].y]));
-  }
-
-  // now generate the vertex buffer and the index buffer
-  static_hash_table<pair<vec3i,vec3i>, u32> table(&tris[0], tris.length());
-  vector<u32> indexbuffer;
-  vector<vec3f> posbuffer, norbuffer;
-  loopv(tris) {
-    const auto idx = table.insert(tris[i], posbuffer.length());
-    if (idx == u32(posbuffer.length())) {
-      const auto idx0 = index(tris[i].first, dim), idx1 = index(tris[i].second, dim);
-      const auto p = interp(tris[i].first, tris[i].second, scene[idx0], scene[idx1]);
-      posbuffer.add(p);
-      norbuffer.add(abs(gradient(d, p)));
-    }
-    indexbuffer.add(idx);
-  }
-  FREE(scene);
-
-  const auto p = posbuffer.move();
-  const auto n = norbuffer.move();
-  const auto idx = indexbuffer.move();
-  return mesh(p.first, n.first, idx.first, p.second, idx.second);
-}
-#endif
-
 } /* namespace iso */
 } /* namespace q */
 

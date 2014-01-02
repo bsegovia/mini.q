@@ -61,6 +61,7 @@ struct sprintfmt_s {
 // global variable with proper constructor
 #define GLOBAL(TYPE, NAME) static TYPE &NAME() {static TYPE var; return var;}
 
+template <typename T> void swap(T &x, T &y) { T tmp = x; x = y; y = tmp; }
 // makes a class non-copyable
 class noncopyable {
 protected:
@@ -157,6 +158,7 @@ template <class T> struct vector : noncopyable {
   int alen, ulen;
   INLINE vector(int len = 0) {
     if (len) buf = (T*) MALLOC(len*sizeof(T)); else buf = NULL;
+    loopi(len) sys::callctor<T>(buf+i);
     alen = ulen = len;
   }
   INLINE ~vector() { setsize(0); FREE(buf); }

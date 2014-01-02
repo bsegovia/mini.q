@@ -80,13 +80,13 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
  -------------------------------------------------------------------------*/
 FVARP(fov, 30.f, 90.f, 160.f);
 
-float signed_sphere(vec3f v, float r) { return length(v) - r; }
-float signed_box(vec3f p, vec3f b) {
+static float signed_sphere(vec3f v, float r) { return length(v) - r; }
+static float signed_box(vec3f p, vec3f b) {
   const vec3f d = abs(p) - b;
   return min(max(d.x,max(d.y,d.z)),0.0f) + length(max(d,vec3f(zero)));
 }
 
-float map(const vec3f &pos) {
+static float map(const vec3f &pos) {
   const auto t = pos-vec3f(1.f,2.f,1.f);
   const auto d0 = signed_sphere(t, 1.f);
   const auto d1 = signed_box(t, vec3f(1.f));
@@ -107,7 +107,7 @@ void finish() {
 
 static void makescene() {
   if (initialized_m) return;
-  const iso::grid g(vec3f(0.10f), vec3f(zero), vec3f(32));
+  const iso::grid g(vec3f(0.10f), vec3f(zero), vec3i(32));
   auto m = iso::mc(g, map);
   vertnum = m.m_vertnum;
   indexnum = m.m_indexnum;
@@ -118,6 +118,7 @@ static void makescene() {
     vertices[i].pos = m.m_pos[i];
     vertices[i].nor = m.m_nor[i];
   }
+  con::out("tris %i verts %i", indexnum, vertnum);
   initialized_m = true;
 }
 
