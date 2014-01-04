@@ -5,6 +5,7 @@
  -------------------------------------------------------------------------*/
 #pragma once
 #include "sys.hpp"
+#include "stl.hpp"
 #include "math.hpp"
 
 namespace q {
@@ -22,14 +23,28 @@ struct mesh {
   u32 m_indexnum;
 };
 
-// describes a grid
+// describes a grid with a given location in the world
 struct grid {
   grid(const vec3f &cellsize, const vec3f &org, const vec3i &dim) :
     m_cellsize(cellsize), m_org(org), m_dim(dim) {}
+  INLINE vec3f vertex(const vec3i &p) {return m_org+m_cellsize*vec3f(p);}
   vec3f m_cellsize;
   vec3f m_org;
   vec3i m_dim;
 };
+
+INLINE pair<vec3i,u32> edge(vec3i start, vec3i end) {
+  const auto lower = select(start<end, start, end);
+  const auto delta = select(eq(start,end), vec3i(zero), vec3i(one));
+  assert(reduceadd(delta) == 1);
+  return makepair(lower, u32(delta.y+2*delta.z));
+}
+
+// helper tables for both mc and dc algorithms
+extern const vec3f fcubev[8];
+extern const vec3i icubev[8];
+extern const u16 edgetable[256];
+extern const int interptable[12][2];
 
 // get the distance to the field from 'pos'
 typedef float (*distance_field)(const vec3f &pos);
@@ -39,10 +54,10 @@ static const float DEFAULT_GRAD_STEP = 1e-3f;
 vec3f gradient(distance_field d, const vec3f &pos, float grad_step = DEFAULT_GRAD_STEP);
 
 // tesselate along a grid the distance field with dual contouring algorithm
-mesh dc(const grid &grid, distance_field f);
+mesh dc_mesh(const grid &grid, distance_field f);
 
 // tesselate along a grid the distance field with marching cube algorithm
-mesh mc(const grid &grid, distance_field f);
+mesh mc_mesh(const grid &grid, distance_field f);
 
 // helper macros
 #define loopxy(org, end, Z)\

@@ -88,7 +88,7 @@ static float signed_box(vec3f p, vec3f b) {
 
 static float map(const vec3f &pos) {
   const auto t = pos-vec3f(1.f,2.f,1.f);
-  const auto d0 = signed_sphere(t, 1.f);
+  const auto d0 = signed_sphere(t, 1.2f);
   const auto d1 = signed_box(t, vec3f(1.f));
   return max(d1, -d0);
 }
@@ -107,8 +107,9 @@ void finish() {
 
 static void makescene() {
   if (initialized_m) return;
-  const iso::grid g(vec3f(0.10f), vec3f(zero), vec3i(32));
-  auto m = iso::mc(g, map);
+  const iso::grid g(vec3f(0.1f), vec3f(-1.f), vec3i(64));
+  //auto m = iso::mc_mesh(g, map);
+  auto m = iso::dc_mesh(g, map);
   vertnum = m.m_vertnum;
   indexnum = m.m_indexnum;
   indices = m.m_index;
@@ -118,7 +119,7 @@ static void makescene() {
     vertices[i].pos = m.m_pos[i];
     vertices[i].nor = m.m_nor[i];
   }
-  con::out("tris %i verts %i", indexnum, vertnum);
+  con::out("tris %i verts %i", indexnum/3, vertnum);
   initialized_m = true;
 }
 
@@ -153,8 +154,10 @@ void frame(int w, int h, int curfps) {
 
   makescene();
   if (vertnum != 0) {
+  //  ogl::disable(GL_CULL_FACE);
     ogl::bindfixedshader(ogl::COLOR);
     ogl::immdrawelememts("Tip3c3", indexnum, indices, &vertices[0].pos[0]);
+    ogl::enable(GL_CULL_FACE);
   }
 
   drawhud(w,h,0);

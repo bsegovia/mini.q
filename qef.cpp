@@ -702,7 +702,7 @@ static void solveSVD(
   }
 }
 
-void evaluate(double mat[][3], double *vec, int rows, vec3f *point) {
+vec3f evaluate(double mat[][3], double *vec, int rows) {
   // perform singular value decomposition on matrix mat
   // into u, v and d.
   // u is a matrix of rows x 3 (same as mat);
@@ -720,7 +720,7 @@ void evaluate(double mat[][3], double *vec, int rows, vec3f *point) {
 
   double x[3];
   solveSVD(u, v, d, vec, x, rows);
-  *point = vec3f((float)x[0], (float)x[1], (float)x[2]);
+  return vec3f(float(x[0]), float(x[1]), float(x[2]));
 }
 } /* namespace qef */
 } /* namespace q */

@@ -7,41 +7,7 @@
 
 namespace q {
 namespace iso {
-
-static const u16 edgetable[256]= {
-  0x0  , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
-  0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
-  0x190, 0x99 , 0x393, 0x29a, 0x596, 0x49f, 0x795, 0x69c,
-  0x99c, 0x895, 0xb9f, 0xa96, 0xd9a, 0xc93, 0xf99, 0xe90,
-  0x230, 0x339, 0x33 , 0x13a, 0x636, 0x73f, 0x435, 0x53c,
-  0xa3c, 0xb35, 0x83f, 0x936, 0xe3a, 0xf33, 0xc39, 0xd30,
-  0x3a0, 0x2a9, 0x1a3, 0xaa , 0x7a6, 0x6af, 0x5a5, 0x4ac,
-  0xbac, 0xaa5, 0x9af, 0x8a6, 0xfaa, 0xea3, 0xda9, 0xca0,
-  0x460, 0x569, 0x663, 0x76a, 0x66 , 0x16f, 0x265, 0x36c,
-  0xc6c, 0xd65, 0xe6f, 0xf66, 0x86a, 0x963, 0xa69, 0xb60,
-  0x5f0, 0x4f9, 0x7f3, 0x6fa, 0x1f6, 0xff , 0x3f5, 0x2fc,
-  0xdfc, 0xcf5, 0xfff, 0xef6, 0x9fa, 0x8f3, 0xbf9, 0xaf0,
-  0x650, 0x759, 0x453, 0x55a, 0x256, 0x35f, 0x55 , 0x15c,
-  0xe5c, 0xf55, 0xc5f, 0xd56, 0xa5a, 0xb53, 0x859, 0x950,
-  0x7c0, 0x6c9, 0x5c3, 0x4ca, 0x3c6, 0x2cf, 0x1c5, 0xcc ,
-  0xfcc, 0xec5, 0xdcf, 0xcc6, 0xbca, 0xac3, 0x9c9, 0x8c0,
-  0x8c0, 0x9c9, 0xac3, 0xbca, 0xcc6, 0xdcf, 0xec5, 0xfcc,
-  0xcc , 0x1c5, 0x2cf, 0x3c6, 0x4ca, 0x5c3, 0x6c9, 0x7c0,
-  0x950, 0x859, 0xb53, 0xa5a, 0xd56, 0xc5f, 0xf55, 0xe5c,
-  0x15c, 0x55 , 0x35f, 0x256, 0x55a, 0x453, 0x759, 0x650,
-  0xaf0, 0xbf9, 0x8f3, 0x9fa, 0xef6, 0xfff, 0xcf5, 0xdfc,
-  0x2fc, 0x3f5, 0xff , 0x1f6, 0x6fa, 0x7f3, 0x4f9, 0x5f0,
-  0xb60, 0xa69, 0x963, 0x86a, 0xf66, 0xe6f, 0xd65, 0xc6c,
-  0x36c, 0x265, 0x16f, 0x66 , 0x76a, 0x663, 0x569, 0x460,
-  0xca0, 0xda9, 0xea3, 0xfaa, 0x8a6, 0x9af, 0xaa5, 0xbac,
-  0x4ac, 0x5a5, 0x6af, 0x7a6, 0xaa , 0x1a3, 0x2a9, 0x3a0,
-  0xd30, 0xc39, 0xf33, 0xe3a, 0x936, 0x83f, 0xb35, 0xa3c,
-  0x53c, 0x435, 0x73f, 0x636, 0x13a, 0x33 , 0x339, 0x230,
-  0xe90, 0xf99, 0xc93, 0xd9a, 0xa96, 0xb9f, 0x895, 0x99c,
-  0x69c, 0x795, 0x49f, 0x596, 0x29a, 0x393, 0x99 , 0x190,
-  0xf00, 0xe09, 0xd03, 0xc0a, 0xb06, 0xa0f, 0x905, 0x80c,
-  0x70c, 0x605, 0x50f, 0x406, 0x30a, 0x203, 0x109, 0x0
-};
+namespace mc {
 
 static const s8 tritable[256][16] = {
   {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1},
@@ -302,19 +268,6 @@ static const s8 tritable[256][16] = {
   {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
 };
 
-static const int interptable[12][2] = {
-  {0,1},{1,2},{2,3},{3,0},{4,5},{5,6},{6,7},{7,4},{0,4},{1,5},{2,6},{3,7}
-};
-
-static const vec3f fcubev[8] = {
-  vec3f(0.f,0.f,0.f)/*0*/, vec3f(0.f,0.f,1.f)/*1*/, vec3f(0.f,1.f,1.f)/*2*/, vec3f(0.f,1.f,0.f)/*3*/,
-  vec3f(1.f,0.f,0.f)/*4*/, vec3f(1.f,0.f,1.f)/*5*/, vec3f(1.f,1.f,1.f)/*6*/, vec3f(1.f,1.f,0.f)/*7*/
-};
-static const vec3i icubev[8] = {
-  vec3i(0,0,0)/*0*/, vec3i(0,0,1)/*1*/, vec3i(0,1,1)/*2*/, vec3i(0,1,0)/*3*/,
-  vec3i(1,0,0)/*4*/, vec3i(1,0,1)/*5*/, vec3i(1,1,1)/*6*/, vec3i(1,1,0)/*7*/
-};
-
 typedef vec2i mvert[64];
 typedef float mcell[8];
 static int tesselate(const mcell &cell, mvert &tris) {
@@ -329,7 +282,7 @@ static int tesselate(const mcell &cell, mvert &tris) {
   loopi(12) if (edgetable[cubeindex] & (1<<i))
     v[i] = vec2i(interptable[i][0], interptable[i][1]);
 
-  // create the triangle
+  // create the triangles
   int i = 0;
   for (; tritable[cubeindex][i]!=-1; i+=3)
     loopj(3) tris[i+j] = v[u32(tritable[cubeindex][i+j])];
@@ -342,13 +295,6 @@ INLINE vec3f interp(vec3i p1, vec3i p2, float valp1, float valp2) {
   if (abs(valp2) < EPSILON) return vec3f(p2);
   if (abs(valp1-valp2) < EPSILON) return vec3f(p1);
   return vec3f(p1) - valp1 / (valp2 - valp1) * (vec3f(p2) - vec3f(p1));
-}
-
-INLINE pair<vec3i,u32> edge(vec3i start, vec3i end) {
-  const auto lower = select(start<end, start, end);
-  const auto delta = select(eq(start,end), vec3i(zero), vec3i(one));
-  assert(reduceadd(delta) == 1);
-  return makepair(lower, u32(delta.y+2*delta.z));
 }
 
 struct slicebuilder {
@@ -367,11 +313,11 @@ struct slicebuilder {
     loopxy(org, end, z) loopi(3) index(xyz,i) = NOINDEX;
   }
   void tesselate_slice(u32 z) {
-    loopxy(vec2i(0,0), vec2i(m_grid.m_dim.x,m_grid.m_dim.y), z) {
+    loopxy(vec2i(zero), vec2i(m_grid.m_dim.x,m_grid.m_dim.y), z) {
       mcell cell;
       mvert v;
       loopi(8) cell[i] = field(icubev[i]+xyz);
-      const int n = iso::tesselate(cell, v);
+      const int n = tesselate(cell, v);
       loopi(n) {
         const vec3i edge[] = {xyz+icubev[v[i].x], xyz+icubev[v[i].y]};
         const float value[] = {field(edge[0]), field(edge[1])};
@@ -379,7 +325,7 @@ struct slicebuilder {
         if (idx == NOINDEX) {
           const auto p = interp(edge[0], edge[1], value[0], value[1]);
           idx = m_vertexbuffer.length();
-          m_vertexbuffer.add(p);
+          m_vertexbuffer.add(p*m_grid.m_cellsize+m_grid.m_org);
         }
         m_indexbuffer.add(idx);
       }
@@ -414,10 +360,11 @@ struct slicebuilder {
   vector<vec3f> m_vertexbuffer;
   vector<u32> m_indexbuffer;
 };
+} /* namespace dc */
 
 // fast per-slice marching cube tesselation
-mesh mc(const grid &grid, distance_field d) {
-  slicebuilder s(grid, d);
+mesh mc_mesh(const grid &grid, distance_field d) {
+  mc::slicebuilder s(grid, d);
   s.build();
   vector<vec3f> norbuffer(s.m_vertexbuffer.length());
   loopv(norbuffer) { norbuffer[i] = gradient(d, s.m_vertexbuffer[i]); }

@@ -12,7 +12,7 @@ namespace qef {
   //      E[x] = P - Ni . Pi
   // Given at least three points Pi, each with its respective normal vector Ni,
   // that describe at least two planes, the QEF evalulates to the point x.
-  void evaluate(double mat[][3], double *vec, int rows, vec3f *point);
+  vec3f evaluate(double mat[][3], double *vec, int rows);
 } /* namespace qef */
 } /* namespace q */
 

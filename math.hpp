@@ -224,11 +224,11 @@ template<typename T> struct vec3 {
 #undef sw32
 };
 
-TINLINE v3 abs (v3arg a) {return v3(abs(a.x), abs(a.y), abs(a.z));}
-TINLINE v3 rcp (v3arg a) {return v3(rcp(a.x), rcp(a.y), rcp(a.z));}
-TINLINE v3 sqrt (v3arg a) {return v3(sqrt (a.x), sqrt (a.y), sqrt(a.z));}
-TINLINE v3 rsqrt (v3arg a) {return v3(rsqrt(a.x), rsqrt(a.y), rsqrt(a.z));}
-TINLINE v3 floor (v3arg a) {return v3(floor(a.x), floor(a.y), floor(a.z));}
+TINLINE v3 abs(v3arg a) {return v3(abs(a.x), abs(a.y), abs(a.z));}
+TINLINE v3 rcp(v3arg a) {return v3(rcp(a.x), rcp(a.y), rcp(a.z));}
+TINLINE v3 sqrt(v3arg a) {return v3(sqrt (a.x), sqrt (a.y), sqrt(a.z));}
+TINLINE v3 rsqrt(v3arg a) {return v3(rsqrt(a.x), rsqrt(a.y), rsqrt(a.z));}
+TINLINE v3 floor(v3arg a) {return v3(floor(a.x), floor(a.y), floor(a.z));}
 TINLINE v3 op+ (v3arg a) {return v3(+a.x, +a.y, +a.z);}
 TINLINE v3 op- (v3arg a) {return v3(-a.x, -a.y, -a.z);}
 TINLINE v3 op+ (v3arg a, v3arg b) {return v3(a.x+b.x, a.y+b.y, a.z+b.z);}
@@ -257,14 +257,15 @@ TINLINE T reduceadd(v3arg a) {return a.x+a.y+a.z;}
 TINLINE T reducemul(v3arg a) {return a.x*a.y*a.z;}
 TINLINE T reducemin(v3arg a) {return min(a.x,a.y,a.z);}
 TINLINE T reducemax(v3arg a) {return max(a.x,a.y,a.z);}
-TINLINE v3 min (v3arg a, v3arg b) {return v3(min(a.x,b.x),min(a.y,b.y),min(a.z,b.z));}
-TINLINE v3 max (v3arg a, v3arg b) {return v3(max(a.x,b.x),max(a.y,b.y),max(a.z,b.z));}
+TINLINE v3 min(v3arg a, v3arg b) {return v3(min(a.x,b.x),min(a.y,b.y),min(a.z,b.z));}
+TINLINE v3 max(v3arg a, v3arg b) {return v3(max(a.x,b.x),max(a.y,b.y),max(a.z,b.z));}
 TINLINE v3 clamp(v3arg v, v3arg m, v3arg M)  {return v3(clamp(v.x,m.x,M.x),clamp(v.y,m.y,M.y),clamp(v.z,m.z,M.z));}
-TINLINE v3 select (bool s, v3arg t, v3arg f) { return v3(select(s,t.x,f.x), select(s,t.y,f.y), select(s,t.z,f.z)); }
-TINLINE v3 select (vec3<bool> s, v3arg t, v3arg f) { return v3(select(s.x,t.x,f.x), select(s.y,t.y,f.y), select(s.z,t.z,f.z)); }
-TINLINE T length (v3arg a) {return sqrt(dot(a,a));}
-TINLINE T dot (v3arg a, v3arg b) {return a.x*b.x + a.y*b.y + a.z*b.z;}
-TINLINE T distance (v3arg a, v3arg b) {return length(a-b);}
+TINLINE v3 select(bool s, v3arg t, v3arg f) { return v3(select(s,t.x,f.x), select(s,t.y,f.y), select(s,t.z,f.z)); }
+TINLINE v3 select(vec3<bool> s, v3arg t, v3arg f) { return v3(select(s.x,t.x,f.x), select(s.y,t.y,f.y), select(s.z,t.z,f.z)); }
+TINLINE T length(v3arg a) {return sqrt(dot(a,a));}
+TINLINE T dot(v3arg a, v3arg b) {return a.x*b.x + a.y*b.y + a.z*b.z;}
+TINLINE T distance(v3arg a, v3arg b) {return length(a-b);}
+TINLINE T distance2(v3arg a, v3arg b) {return dot(a-b,a-b);}
 TINLINE v3 normalize(v3arg a) {return a*rsqrt(dot(a,a));}
 TINLINE v3 cross(v3arg a, v3arg b) { return v3(a.y*b.z-a.z*b.y, a.z*b.x-a.x*b.z, a.x*b.y-a.y*b.x); }
 INLINE bool any(const vec3<bool> &v) {return v.x||v.y||v.z;}
