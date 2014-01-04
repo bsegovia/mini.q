@@ -108,8 +108,10 @@ void finish() {
 static void makescene() {
   if (initialized_m) return;
   const iso::grid g(vec3f(0.1f), vec3f(-1.f), vec3i(64));
-  //auto m = iso::mc_mesh(g, map);
+  const float start = sys::millis();
   auto m = iso::dc_mesh(g, map);
+  //auto m = iso::mc_mesh(g, map);
+  con::out("elapsed %f ms", sys::millis() - start);
   vertnum = m.m_vertnum;
   indexnum = m.m_indexnum;
   indices = m.m_index;
@@ -154,10 +156,8 @@ void frame(int w, int h, int curfps) {
 
   makescene();
   if (vertnum != 0) {
-  //  ogl::disable(GL_CULL_FACE);
     ogl::bindfixedshader(ogl::COLOR);
     ogl::immdrawelememts("Tip3c3", indexnum, indices, &vertices[0].pos[0]);
-    ogl::enable(GL_CULL_FACE);
   }
 
   drawhud(w,h,0);

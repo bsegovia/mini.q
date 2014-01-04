@@ -12,7 +12,7 @@ namespace dc {
 
 static const float TOLERANCE_DENSITY = 1e-3f;
 static const float TOLERANCE_DIST2   = 1e-2f;
-static const int MAX_STEPS = 4;
+static const int MAX_STEPS = 8;
 
 static vec3f false_position(distance_field df, const grid &grid, vec3f org, vec3f p0, vec3f p1, float v0, float v1) {
   vec3f p;
@@ -24,7 +24,7 @@ static vec3f false_position(distance_field df, const grid &grid, vec3f org, vec3
   loopi(MAX_STEPS) {
     p = p1 - v1 * (p1 - p0) / (v1 - v0);
     const auto density = df(org+grid.m_cellsize*p) + 1e-4f;
-    if (fabs(density) < TOLERANCE_DENSITY) break;
+    if (abs(density) < TOLERANCE_DENSITY) break;
     if (distance2(p0,p1) < TOLERANCE_DIST2) break;
     if (density < 0.f) {
       p0 = p;
@@ -38,18 +38,8 @@ static vec3f false_position(distance_field df, const grid &grid, vec3f org, vec3
 }
 
 typedef float mcell[8];
-#if 0
-struct bitarray {
-  bitarray(u32 num) : m_bits(num/32+(num%32?1:0)) {}
-  bitarray(bitarray &&other) { other.m_bits.moveto(m_bits); }
-  void clear() { memset(&m_bits[0],0,m_bits.size()); }
-  void set(u32 idx) { m_bits[idx/32] |= 1<<(idx%32); }
-  bool get(u32 idx) const { return (m_bits[idx/32]&(1<<(idx%32))) != 0; }
-  vector<u32> m_bits;
-};
-#endif
-
 static const vec3i axis[] = {vec3i(1,0,0), vec3i(0,1,0), vec3i(0,0,1)};
+static const vec3i faxis[] = {vec3f(1.f,0.f,0.f), vec3i(0.f,1.f,0.f), vec3i(0.f,0.f,1.f)};
 static const u32 quadtotris[] = {0,1,2,0,2,3};
 
 struct slicebuilder {
@@ -57,6 +47,9 @@ struct slicebuilder {
   slicebuilder(const grid &grid, distance_field df) :
     m_df(df), m_grid(grid),
     m_cube_per_slice((grid.m_dim.x+1)*(grid.m_dim.y+1)),
+    m_vertex_per_slice((grid.m_dim.x+2)*(grid.m_dim.y+2)),
+    m_field(3*m_vertex_per_slice),
+    m_edge(9*m_vertex_per_slice),
     m_qef_pos(2*m_cube_per_slice),
     m_qef_nor(2*m_cube_per_slice),
     m_qef_index(2*m_cube_per_slice)
@@ -65,6 +58,40 @@ struct slicebuilder {
   INLINE u32 index(const vec3i &xyz) {
     const auto offset = (xyz.z%2) * m_cube_per_slice;
     return offset+xyz.y*m_grid.m_dim.x+xyz.x;
+  }
+
+  INLINE float &field(const vec3i &xyz) {
+    const auto &dim = m_grid.m_dim;
+    const auto offset = (xyz.z%2)*(dim.x+2)*(dim.y+2);
+    return m_field[offset+xyz.y*(dim.x+2)+xyz.x];
+  }
+
+  INLINE pair<vec3f,vec3f> &edge(const vec3i &xyz, u32 e) {
+    const auto &dim = m_grid.m_dim;
+    const auto offset = (e+3*(xyz.z%2))*(dim.x+2)*(dim.y+2);
+    return m_edge[offset+xyz.y*(dim.x+2)+xyz.x];
+  }
+
+  void init_field(u32 z) {
+    const vec2i org(zero), end(m_grid.m_dim.x+2,m_grid.m_dim.y+2);
+    loopxy(org, end, z)
+      field(xyz) = m_df(m_grid.vertex(xyz));
+  }
+
+  void init_edge(u32 z) {
+    const vec2i org(zero), end(m_grid.m_dim.x+2,m_grid.m_dim.y+2);
+    loopxy(org, end, z) {
+      const auto v0 = field(xyz);
+      const auto org = m_grid.vertex(xyz);
+      const vec3f p0(zero);
+      loopi(3) {
+        const vec3f p1 = faxis[i];
+        const auto v1 = field(xyz+axis[i]);
+        const auto p = false_position(m_df, m_grid, org, p0, p1, v0, v1);
+        const auto n = gradient(m_df, p);
+        edge(xyz,i) = makepair(p,n);
+      }
+    }
   }
 
   void init_slice(u32 z) {
@@ -154,7 +181,9 @@ struct slicebuilder {
 
   distance_field m_df;
   grid m_grid;
-  u32 m_cube_per_slice;
+  u32 m_cube_per_slice, m_vertex_per_slice;
+  vector<float> m_field;
+  vector<pair<vec3f,vec3f>> m_edge;
   vector<vec3f> m_qef_pos, m_qef_nor;
   vector<u32> m_qef_index;
   vector<vec3f> m_positionbuffer;

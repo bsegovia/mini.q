@@ -1,9 +1,9 @@
 #CXX=clang++
 #CXXDEBUGFLAGS=-Wall -O0 -DMEMORY_DEBUGGER -g -std=c++11 -fsanitize=address
 #CXX=~/src/emscripten/em++
-#CXXOPTFLAGS=-Wall -DMEMORY_DEBUGGER -Os -DNDEBUG -std=c++11
-CXXDEBUGFLAGS=-Wall -DMEMORY_DEBUGGER -O0 -g -std=c++11
-CXXFLAGS=$(CXXDEBUGFLAGS) -Wno-invalid-offsetof -I./ `sdl-config --cflags`
+CXXOPTFLAGS=-Wall -DMEMORY_DEBUGGER -Os -DNDEBUG -std=c++11
+#CXXDEBUGFLAGS=-Wall -DMEMORY_DEBUGGER -O0 -g -std=c++11
+CXXFLAGS=$(CXXOPTFLAGS) -Wno-invalid-offsetof -I./ `sdl-config --cflags`
 LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer
 OBJS=\
   con.o\
