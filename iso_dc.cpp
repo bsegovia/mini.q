@@ -49,7 +49,7 @@ struct slicebuilder {
     m_cube_per_slice((grid.m_dim.x+1)*(grid.m_dim.y+1)),
     m_vertex_per_slice((grid.m_dim.x+2)*(grid.m_dim.y+2)),
     m_field(3*m_vertex_per_slice),
-    m_edge(9*m_vertex_per_slice),
+    m_edge(6*m_vertex_per_slice),
     m_qef_pos(2*m_cube_per_slice),
     m_qef_nor(2*m_cube_per_slice),
     m_qef_index(2*m_cube_per_slice)
@@ -62,7 +62,7 @@ struct slicebuilder {
 
   INLINE float &field(const vec3i &xyz) {
     const auto &dim = m_grid.m_dim;
-    const auto offset = (xyz.z%2)*(dim.x+2)*(dim.y+2);
+    const auto offset = (xyz.z%3)*(dim.x+2)*(dim.y+2);
     return m_field[offset+xyz.y*(dim.x+2)+xyz.x];
   }
 
@@ -74,8 +74,7 @@ struct slicebuilder {
 
   void init_field(u32 z) {
     const vec2i org(zero), end(m_grid.m_dim.x+2,m_grid.m_dim.y+2);
-    loopxy(org, end, z)
-      field(xyz) = m_df(m_grid.vertex(xyz));
+    loopxy(org, end, z) field(xyz) = m_df(m_grid.vertex(xyz));
   }
 
   void init_edge(u32 z) {
@@ -172,6 +171,8 @@ struct slicebuilder {
   }
 
   void build() {
+    //loopi(3) init_field(i);
+    //loopi(2) init_edge(i);
     init_slice(0);
     rangei(1,m_grid.m_dim.z+1) {
       init_slice(i);
