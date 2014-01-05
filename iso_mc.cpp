@@ -297,19 +297,14 @@ INLINE vec3f interp(vec3i p1, vec3i p2, float valp1, float valp2) {
   return vec3f(p1) - valp1 / (valp2 - valp1) * (vec3f(p2) - vec3f(p1));
 }
 
-struct slicebuilder {
-  enum { NOINDEX = ~0x0u };
-  slicebuilder(const grid &grid, distance_field df) :
-    m_df(df), m_grid(grid),
-    m_field(2*(grid.m_dim.x+1)*(grid.m_dim.y+1)),
+struct slicebuilder : iso::slicebuilder<1,2> {
+  slicebuilder(distance_field df, const grid &grid) :
+    iso::slicebuilder<1,2>(df, grid),
     m_index(6*(grid.m_dim.x+1)*(grid.m_dim.y+1))
   {}
-  INLINE vec3f vertex(const vec3i &p) {
-    return m_grid.m_org + m_grid.m_cellsize * vec3f(p);
-  }
-  void init_slice(u32 z) {
+  void initslice(u32 z) {
+    initfield(z);
     const vec2i org(zero), end(m_grid.m_dim.x+1,m_grid.m_dim.y+1);
-    loopxy(org, end, z) field(xyz) = m_df(vertex(xyz));
     loopxy(org, end, z) loopi(3) index(xyz,i) = NOINDEX;
   }
   void tesselate_slice(u32 z) {
@@ -323,18 +318,20 @@ struct slicebuilder {
         const float value[] = {field(edge[0]), field(edge[1])};
         u32 &idx = index(edge[0], edge[1]);
         if (idx == NOINDEX) {
-          const auto p = interp(edge[0], edge[1], value[0], value[1]);
-          idx = m_vertexbuffer.length();
-          m_vertexbuffer.add(p*m_grid.m_cellsize+m_grid.m_org);
+          const auto pos = interp(edge[0], edge[1], value[0], value[1]);
+          const auto world_pos = pos*m_grid.m_cellsize+m_grid.m_org;
+          m_pos_buffer.add(world_pos);
+          m_nor_buffer.add(gradient(m_df, world_pos));
+          idx = m_pos_buffer.length();
         }
-        m_indexbuffer.add(idx);
+        m_idx_buffer.add(idx);
       }
     }
   }
   void build() {
-    init_slice(0);
+    initslice(0);
     loopz(m_grid.m_dim.z) {
-      init_slice(z+1);
+      initslice(z+1);
       tesselate_slice(z);
     }
   }
@@ -353,24 +350,18 @@ struct slicebuilder {
     return m_field[offset+xyz.y*(dim.x+1)+xyz.x];
   }
 
-  distance_field m_df;
-  grid m_grid;
   vector<float> m_field;
   vector<u32> m_index;
-  vector<vec3f> m_vertexbuffer;
-  vector<u32> m_indexbuffer;
 };
 } /* namespace dc */
 
 // fast per-slice marching cube tesselation
 mesh mc_mesh(const grid &grid, distance_field d) {
-  mc::slicebuilder s(grid, d);
+  mc::slicebuilder s(d, grid);
   s.build();
-  vector<vec3f> norbuffer(s.m_vertexbuffer.length());
-  loopv(norbuffer) { norbuffer[i] = gradient(d, s.m_vertexbuffer[i]); }
-  const auto p = s.m_vertexbuffer.move();
-  const auto n = norbuffer.move();
-  const auto idx = s.m_indexbuffer.move();
+  const auto p = s.m_pos_buffer.move();
+  const auto n = s.m_nor_buffer.move();
+  const auto idx = s.m_idx_buffer.move();
   return mesh(p.first, n.first, idx.first, p.second, idx.second);
 }
 } /* namespace iso */

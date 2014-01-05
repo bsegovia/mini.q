@@ -11,16 +11,16 @@ namespace iso {
 namespace dc {
 
 static const float TOLERANCE_DENSITY = 1e-3f;
-static const float TOLERANCE_DIST2   = 1e-2f;
-static const int MAX_STEPS = 8;
+static const float TOLERANCE_DIST2   = 1e-8f;
+static const int MAX_STEPS = 4;
 
-static vec3f false_position(distance_field df, const grid &grid, vec3f org, vec3f p0, vec3f p1, float v0, float v1) {
-  vec3f p;
+static vec3f INLINE false_position(distance_field df, const grid &grid, vec3f org, vec3f p0, vec3f p1, float v0, float v1) {
   if (v1 < 0.f) {
     swap(p0,p1);
     swap(v0,v1);
   }
 
+  vec3f p;
   loopi(MAX_STEPS) {
     p = p1 - v1 * (p1 - p0) / (v1 - v0);
     const auto density = df(org+grid.m_cellsize*p) + 1e-4f;
@@ -42,14 +42,10 @@ static const vec3i axis[] = {vec3i(1,0,0), vec3i(0,1,0), vec3i(0,0,1)};
 static const vec3i faxis[] = {vec3f(1.f,0.f,0.f), vec3i(0.f,1.f,0.f), vec3i(0.f,0.f,1.f)};
 static const u32 quadtotris[] = {0,1,2,0,2,3};
 
-struct slicebuilder {
-  enum { NOINDEX = ~0x0u };
-  slicebuilder(const grid &grid, distance_field df) :
-    m_df(df), m_grid(grid),
+struct slicebuilder : iso::slicebuilder<2,3> {
+  slicebuilder(distance_field df, const grid &grid) :
+    iso::slicebuilder<2,3>(df, grid),
     m_cube_per_slice((grid.m_dim.x+1)*(grid.m_dim.y+1)),
-    m_vertex_per_slice((grid.m_dim.x+2)*(grid.m_dim.y+2)),
-    m_field(3*m_vertex_per_slice),
-    m_edge(6*m_vertex_per_slice),
     m_qef_pos(2*m_cube_per_slice),
     m_qef_nor(2*m_cube_per_slice),
     m_qef_index(2*m_cube_per_slice)
@@ -60,46 +56,13 @@ struct slicebuilder {
     return offset+xyz.y*m_grid.m_dim.x+xyz.x;
   }
 
-  INLINE float &field(const vec3i &xyz) {
-    const auto &dim = m_grid.m_dim;
-    const auto offset = (xyz.z%3)*(dim.x+2)*(dim.y+2);
-    return m_field[offset+xyz.y*(dim.x+2)+xyz.x];
-  }
-
-  INLINE pair<vec3f,vec3f> &edge(const vec3i &xyz, u32 e) {
-    const auto &dim = m_grid.m_dim;
-    const auto offset = (e+3*(xyz.z%2))*(dim.x+2)*(dim.y+2);
-    return m_edge[offset+xyz.y*(dim.x+2)+xyz.x];
-  }
-
-  void init_field(u32 z) {
-    const vec2i org(zero), end(m_grid.m_dim.x+2,m_grid.m_dim.y+2);
-    loopxy(org, end, z) field(xyz) = m_df(m_grid.vertex(xyz));
-  }
-
-  void init_edge(u32 z) {
-    const vec2i org(zero), end(m_grid.m_dim.x+2,m_grid.m_dim.y+2);
-    loopxy(org, end, z) {
-      const auto v0 = field(xyz);
-      const auto org = m_grid.vertex(xyz);
-      const vec3f p0(zero);
-      loopi(3) {
-        const vec3f p1 = faxis[i];
-        const auto v1 = field(xyz+axis[i]);
-        const auto p = false_position(m_df, m_grid, org, p0, p1, v0, v1);
-        const auto n = gradient(m_df, p);
-        edge(xyz,i) = makepair(p,n);
-      }
-    }
-  }
-
-  void init_slice(u32 z) {
+  void initslice(u32 z) {
     const u32 offset = (z%2)*m_cube_per_slice;
     loopi(m_cube_per_slice) m_qef_index[offset+i] = NOINDEX;
     loopxy(vec2i(zero), vec2i(m_grid.m_dim.x+1,m_grid.m_dim.y+1), z) {
       vec3f pos, nor;
       mcell cell;
-      loopi(8) cell[i] = m_df(m_grid.vertex(icubev[i]+xyz));
+      loopi(8) cell[i] = field(icubev[i]+xyz);
       if (qef_vertex(cell, xyz, pos, nor)) {
         m_qef_pos[index(xyz)] = m_grid.vertex(xyz)+pos*m_grid.m_cellsize;
         m_qef_nor[index(xyz)] = normalize(nor);
@@ -110,6 +73,7 @@ struct slicebuilder {
   void tesselate_slice(u32 z) {
     loopxy(vec2i(one), vec2i(m_grid.m_dim.x+1,m_grid.m_dim.y+1), z) {
       const int start_sign = m_df(m_grid.vertex(xyz)) < 0.f ? 1 : 0;
+
       // look the three edges that start on xyz
       loopi(3) {
         const int end_sign = m_df(m_grid.vertex(xyz+axis[i])) < 0.f ? 1 : 0;
@@ -122,13 +86,13 @@ struct slicebuilder {
         loopj(4) {
           const auto idx = index(p[j]);
           if (m_qef_index[idx] == NOINDEX) {
-            m_qef_index[idx] = m_positionbuffer.length();
-            m_positionbuffer.add(m_qef_pos[idx]);
-            m_normalbuffer.add(m_qef_nor[idx]);
+            m_qef_index[idx] = m_pos_buffer.length();
+            m_pos_buffer.add(m_qef_pos[idx]);
+            m_nor_buffer.add(m_qef_nor[idx]);
           }
           quad[j] = m_qef_index[idx];
         }
-        loopj(6) m_indexbuffer.add(quad[quadtotris[j]]);
+        loopj(6) m_idx_buffer.add(quad[quadtotris[j]]);
       }
     }
   }
@@ -163,7 +127,7 @@ struct slicebuilder {
     loopi(num) {
       loopj(3) matrix[i][j] = double(n[i][j]);
       const auto d = p[i] - mass;
-      vector[i] = double(reduceadd(n[i] * d));
+      vector[i] = double(dot(n[i],d));
     }
     pos = mass + qef::evaluate(matrix, vector, num);
     nor = abs(normalize(nor));
@@ -171,35 +135,28 @@ struct slicebuilder {
   }
 
   void build() {
-    //loopi(3) init_field(i);
-    //loopi(2) init_edge(i);
-    init_slice(0);
+    loopi(3) initfield(i);
+    initslice(0);
     rangei(1,m_grid.m_dim.z+1) {
-      init_slice(i);
+      initfield(i+2);
+      initslice(i);
       tesselate_slice(i);
     }
   }
 
-  distance_field m_df;
-  grid m_grid;
-  u32 m_cube_per_slice, m_vertex_per_slice;
-  vector<float> m_field;
-  vector<pair<vec3f,vec3f>> m_edge;
+  u32 m_cube_per_slice;
   vector<vec3f> m_qef_pos, m_qef_nor;
   vector<u32> m_qef_index;
-  vector<vec3f> m_positionbuffer;
-  vector<vec3f> m_normalbuffer;
-  vector<u32> m_indexbuffer;
 };
 } /* namespace dc */
 
 // fast per-slice dual contouring tesselation
 mesh dc_mesh(const grid &grid, distance_field d) {
-  dc::slicebuilder s(grid, d);
+  dc::slicebuilder s(d, grid);
   s.build();
-  const auto p = s.m_positionbuffer.move();
-  const auto n = s.m_normalbuffer.move();
-  const auto idx = s.m_indexbuffer.move();
+  const auto p = s.m_pos_buffer.move();
+  const auto n = s.m_nor_buffer.move();
+  const auto idx = s.m_idx_buffer.move();
   return mesh(p.first, n.first, idx.first, p.second, idx.second);
 }
 } /* namespace iso */

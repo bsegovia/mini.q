@@ -625,6 +625,5 @@ struct isecres {
 INLINE bool intersect(const aabb &b0, const aabb &b1) {
   return !(any(b0.pmin > b1.pmax)| any(b1.pmin > b0.pmax));
 }
-
 } /* namespace q */
 

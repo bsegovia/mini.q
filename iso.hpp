@@ -53,12 +53,6 @@ typedef float (*distance_field)(const vec3f &pos);
 static const float DEFAULT_GRAD_STEP = 1e-3f;
 vec3f gradient(distance_field d, const vec3f &pos, float grad_step = DEFAULT_GRAD_STEP);
 
-// tesselate along a grid the distance field with dual contouring algorithm
-mesh dc_mesh(const grid &grid, distance_field f);
-
-// tesselate along a grid the distance field with marching cube algorithm
-mesh mc_mesh(const grid &grid, distance_field f);
-
 // helper macros
 #define loopxy(org, end, Z)\
   for (int Y = int(org.y); Y < int(end.y); ++Y)\
@@ -67,6 +61,38 @@ mesh mc_mesh(const grid &grid, distance_field f);
   for (int Z = int(org.z); Z < int(end.z); ++Z)\
   for (int Y = int(org.y(; Y < int(end.y); ++Y)\
   for (auto xyz = vec3i(org.x,Y,Z); xyz.x < vec3i(end).x; ++xyz.x)
+
+// helper structure to build mesh slice by slice inside a regular grid
+template <u32 extra, u32 slicenum>
+struct slicebuilder {
+  enum { NOINDEX = ~0x0u };
+  INLINE slicebuilder(distance_field df, const grid &grid) :
+    m_df(df), m_grid(grid), m_field(slicenum*(grid.m_dim.x+extra)*(grid.m_dim.y+extra)) {}
+  void initfield(u32 z) {
+    const vec2i org(zero), dim(extra+m_grid.m_dim.x, extra+m_grid.m_dim.y);
+    loopxy(org, dim, z) field(xyz) = m_df(m_grid.vertex(xyz));
+  }
+  void resetbuffer() {
+    m_pos_buffer.setsize(0);
+    m_nor_buffer.setsize(0);
+  }
+  INLINE float &field(const vec3i &xyz) {
+    const vec2i dim(extra+m_grid.m_dim.x, extra+m_grid.m_dim.y);
+    const auto offset = (xyz.z%slicenum)*dim.x*dim.y;
+    return m_field[offset+dim.x*xyz.y+xyz.x];
+  }
+  distance_field m_df;
+  grid m_grid;
+  vector<float> m_field;
+  vector<vec3f> m_pos_buffer, m_nor_buffer;
+  vector<u32> m_idx_buffer;
+};
+
+// tesselate along a grid the distance field with dual contouring algorithm
+mesh dc_mesh(const grid &grid, distance_field f);
+
+// tesselate along a grid the distance field with marching cube algorithm
+mesh mc_mesh(const grid &grid, distance_field f);
 } /* namespace iso */
 } /* namespace q */
 
