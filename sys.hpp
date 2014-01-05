@@ -181,6 +181,14 @@
 #define rangei(m,M) range(i,m,M)
 #define rangej(m,M) range(j,m,M)
 #define rangek(m,M) range(k,m,M)
+#define loopxy(org, end, Z)\
+  for (int Y = int(org.y); Y < int(end.y); ++Y)\
+  for (auto xyz = vec3i(org.x,Y,Z); xyz.x < int(end.x); ++xyz.x)
+#define loopxyz(org, end) \
+  for (int Z = int(org.z); Z < int(end.z); ++Z)\
+  for (int Y = int(org.y); Y < int(end.y); ++Y)\
+  for (auto xyz = vec3i(org.x,Y,Z); xyz.x < int(end.x); ++xyz.x)
+
 #define ZERO(PTR, SIZE) memset(PTR, 0, sizeof(SIZE))
 #define MAKE_VARIADIC(NAME)\
 INLINE void NAME##v(void) {}\

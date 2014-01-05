@@ -153,7 +153,6 @@ void frame(int w, int h, int curfps) {
   const float farplane = 100.f;
   const float fovy = fov * float(sys::scrh) / float(sys::scrw);
   const float aspect = float(sys::scrw) / float(sys::scrh);
-  printf("\r%f %f %f        ", game::player.o.x, game::player.o.y,  game::player.o.z);
   OGL(ClearColor, 0.f, 0.f, 0.f, 1.f);
   OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   ogl::matrixmode(ogl::PROJECTION);
