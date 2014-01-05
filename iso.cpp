@@ -14,12 +14,18 @@ mesh::~mesh() {
   if (m_nor) FREE(m_nor);
   if (m_index) FREE(m_index);
 }
+
 vec3f gradient(distance_field d, const vec3f &pos, float grad_step) {
-  const vec3f dx = vec3f(grad_step, 0.f, 0.f);
-  const vec3f dy = vec3f(0.f, grad_step, 0.f);
-  const vec3f dz = vec3f(0.f, 0.f, grad_step);
-  const float c = d(pos);
-  return normalize(vec3f(c-d(pos-dx), c-d(pos-dy), c-d(pos-dz)));
+  const auto dx = vec3f(grad_step, 0.f, 0.f);
+  const auto dy = vec3f(0.f, grad_step, 0.f);
+  const auto dz = vec3f(0.f, 0.f, grad_step);
+  const auto c = d(pos);
+  const auto n = vec3f(c-d(pos-dx), c-d(pos-dy), c-d(pos-dz));
+  if (n==vec3f(zero)) {
+    exit(-1);
+    return vec3f(zero);}
+  else
+    return normalize(n);
 }
 
 static const float TOLERANCE_DENSITY = 1e-3f;
@@ -243,7 +249,7 @@ struct recursive_builder {
 
   void recurse(const vec3i &xyz, u32 cellnum, float half_diag, float half_side_len) {
     const float dist = m_df(pos(xyz) + vec3f(half_side_len));
-    if (dist > half_diag) return;
+    if (abs(dist) > half_diag) return;
     if (cellnum > SUBGRID) {
       loopi(8) {
         const vec3i childxyz = xyz+int(cellnum/2)*icubev[i];
