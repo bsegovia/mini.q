@@ -344,13 +344,6 @@ struct slicebuilder : iso::slicebuilder<1,2> {
     const auto e = edge(start, end);
     return index(e.first, e.second);
   }
-  INLINE float &field(const vec3i &xyz) {
-    const auto &dim = m_grid.m_dim;
-    const auto offset = (xyz.z%2) * (dim.x+1) * (dim.y+1);
-    return m_field[offset+xyz.y*(dim.x+1)+xyz.x];
-  }
-
-  vector<float> m_field;
   vector<u32> m_index;
 };
 } /* namespace dc */

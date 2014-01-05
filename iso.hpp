@@ -57,10 +57,10 @@ vec3f gradient(distance_field d, const vec3f &pos, float grad_step = DEFAULT_GRA
 #define loopxy(org, end, Z)\
   for (int Y = int(org.y); Y < int(end.y); ++Y)\
   for (auto xyz = vec3i(org.x,Y,Z); xyz.x < int(end.x); ++xyz.x)
-#define loopxyz(org, end, Z)\
+#define loopxyz(org, end) \
   for (int Z = int(org.z); Z < int(end.z); ++Z)\
-  for (int Y = int(org.y(; Y < int(end.y); ++Y)\
-  for (auto xyz = vec3i(org.x,Y,Z); xyz.x < vec3i(end).x; ++xyz.x)
+  for (int Y = int(org.y); Y < int(end.y); ++Y)\
+  for (auto xyz = vec3i(org.x,Y,Z); xyz.x < int(end.x); ++xyz.x)
 
 // helper structure to build mesh slice by slice inside a regular grid
 template <u32 extra, u32 slicenum>

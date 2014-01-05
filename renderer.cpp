@@ -80,47 +80,62 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
  -------------------------------------------------------------------------*/
 FVARP(fov, 30.f, 90.f, 160.f);
 
-static float signed_sphere(vec3f v, float r) { return length(v) - r; }
-static float signed_box(vec3f p, vec3f b) {
+INLINE float U(float d0, float d1) { return min(d0, d1); }
+INLINE float D(float d0, float d1) { return max(d0,-d1); }
+INLINE float signed_sphere(const vec3f &v, float r) { return length(v) - r; }
+INLINE float signed_box(const vec3f &p, const vec3f &b) {
   const vec3f d = abs(p) - b;
   return min(max(d.x,max(d.y,d.z)),0.0f) + length(max(d,vec3f(zero)));
 }
-
-static float map(const vec3f &pos) {
-  const auto t = pos-vec3f(1.f,2.f,1.f);
-  const auto d0 = signed_sphere(t, 1.2f);
-  const auto d1 = signed_box(t, vec3f(1.f));
-  return max(d1, -d0);
+INLINE float signed_cyl(const vec3f &p, const vec2f &cxz, float r) {
+  return length(p.xz()-cxz) - r;
+}
+INLINE float signed_plane(const vec3f &p, const vec4f &n) {
+  return dot(p,n.xyz())+n.w;
+}
+INLINE float signed_cyl(const vec3f &p, const vec2f &cxz, const vec3f &ryminymax) {
+  const auto cyl = signed_cyl(p, cxz, ryminymax.x);
+  const auto plane0 = signed_plane(p, vec4f(0.f,1.f,0.f,ryminymax.y));
+  const auto plane1 = signed_plane(p, vec4f(0.f,-1.f,0.f,ryminymax.z));
+  return D(D(cyl, plane0), plane1);
 }
 
-struct vertex { vec3f pos, nor; };
+static float map(const vec3f &pos) {
+  const auto t = pos-vec3f(7.f,5.f,7.f);
+  const auto d0 = signed_sphere(t, 4.2f);
+  const auto d1 = signed_box(t, vec3f(4.f));
+  const auto c = signed_cyl(pos, vec2f(2.f,2.f), vec3f(1.f,0.f,1.f));
+  return U(D(d1, d0), c);
+}
+
+typedef pair<vec3f,vec3f> vertex;
 static u32 vertnum = 0u, indexnum = 0u;
-static vertex *vertices = NULL;
-static u32 *indices = NULL;
+static vector<vertex> vertices;
+static vector<u32> indices;
 static bool initialized_m = false;
 
 void start() {}
 void finish() {
-  FREE(vertices); vertices = NULL;
-  FREE(indices); indices = NULL;
+  vector<vertex>().moveto(vertices);
+  vector<u32>().moveto(indices);
 }
 
+static const float cellsize = 0.1f;
+static const int griddim = 64;
 static void makescene() {
   if (initialized_m) return;
-  const iso::grid g(vec3f(0.1f), vec3f(-1.f), vec3i(64));
+  const vec3f dim(float(griddim) * cellsize);
   const float start = sys::millis();
-  auto m = iso::dc_mesh(g, map);
-  //auto m = iso::mc_mesh(g, map);
-  con::out("elapsed %f ms", sys::millis() - start);
-  vertnum = m.m_vertnum;
-  indexnum = m.m_indexnum;
-  indices = m.m_index;
-  m.m_index = NULL;
-  vertices = (vertex*) MALLOC(sizeof(vertex) * vertnum);
-  loopi(vertnum) {
-    vertices[i].pos = m.m_pos[i];
-    vertices[i].nor = m.m_nor[i];
+  loopxyz(vec3i(zero), vec3i(4,2,4)) {
+    const iso::grid g(vec3f(cellsize), vec3f(xyz)*dim, vec3i(griddim));
+    const auto oldnum = vertnum;
+    auto m = iso::dc_mesh(g, map);
+    loopi(m.m_vertnum) vertices.add(makepair(m.m_pos[i], m.m_nor[i]));
+    loopi(m.m_indexnum) indices.add(m.m_index[i]+oldnum);
+    vertnum += m.m_vertnum;
+    indexnum += m.m_indexnum;
   }
+  con::out("elapsed %f ms", sys::millis() - start);
   con::out("tris %i verts %i", indexnum/3, vertnum);
   initialized_m = true;
 }
@@ -138,6 +153,7 @@ void frame(int w, int h, int curfps) {
   const float farplane = 100.f;
   const float fovy = fov * float(sys::scrh) / float(sys::scrw);
   const float aspect = float(sys::scrw) / float(sys::scrh);
+  printf("\r%f %f %f        ", game::player.o.x, game::player.o.y,  game::player.o.z);
   OGL(ClearColor, 0.f, 0.f, 0.f, 1.f);
   OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   ogl::matrixmode(ogl::PROJECTION);
@@ -157,7 +173,7 @@ void frame(int w, int h, int curfps) {
   makescene();
   if (vertnum != 0) {
     ogl::bindfixedshader(ogl::COLOR);
-    ogl::immdrawelememts("Tip3c3", indexnum, indices, &vertices[0].pos[0]);
+    ogl::immdrawelememts("Tip3c3", indexnum, &indices[0], &vertices[0].first[0]);
   }
 
   drawhud(w,h,0);
