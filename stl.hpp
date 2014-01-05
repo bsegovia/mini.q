@@ -17,6 +17,7 @@ INLINE u32 nextpowerof2(u32 x) {
   x |= x >> 16;
   return ++x;
 }
+INLINE bool ispoweroftwo(unsigned int x) { return ((x&(x-1))==0); }
 
 // fast 32 bits murmur hash and its generic version
 u32 murmurhash2(const void *key, int len, u32 seed = 0xffffffffu);

@@ -23,9 +23,11 @@ struct mesh {
   u32 m_indexnum;
 };
 
-// describes a grid with a given location in the world
+// describe a grid with a given location in the world
 struct grid {
-  grid(const vec3f &cellsize, const vec3f &org, const vec3i &dim) :
+  INLINE grid(const vec3f &cellsize = vec3f(one),
+              const vec3f &org = vec3f(zero),
+              const vec3i &dim = vec3i(one)) :
     m_cellsize(cellsize), m_org(org), m_dim(dim) {}
   INLINE vec3f vertex(const vec3i &p) {return m_org+m_cellsize*vec3f(p);}
   vec3f m_cellsize;
@@ -42,6 +44,8 @@ vec3f gradient(distance_field d, const vec3f &pos, float grad_step = DEFAULT_GRA
 
 // tesselate along a grid the distance field with dual contouring algorithm
 mesh dc_mesh(const grid &grid, distance_field f);
+
+mesh dc_mesh(const vec3f &org, u32 cellnum, float cellsize, distance_field f);
 } /* namespace iso */
 } /* namespace q */
 

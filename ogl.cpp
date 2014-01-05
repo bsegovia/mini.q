@@ -164,8 +164,6 @@ void bindtexture(u32 target, u32 id, u32 texslot) {
   OGL(BindTexture, target, id);
 }
 
-INLINE bool ispoweroftwo(unsigned int x) { return ((x&(x-1))==0); }
-
 u32 maketex(const char *fmt, ...) {
   va_list args;
   u32 id, target = GL_TEXTURE_2D, internalfmt = GL_RGBA;

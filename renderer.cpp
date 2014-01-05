@@ -121,20 +121,16 @@ void finish() {
 }
 
 static const float cellsize = 0.1f;
-static const int griddim = 64;
+static const int griddim = 16;
 static void makescene() {
   if (initialized_m) return;
   const vec3f dim(float(griddim) * cellsize);
   const float start = sys::millis();
-  loopxyz(vec3i(zero), vec3i(4,2,4)) {
-    const iso::grid g(vec3f(cellsize), vec3f(xyz)*dim, vec3i(griddim));
-    const auto oldnum = vertnum;
-    auto m = iso::dc_mesh(g, map);
-    loopi(m.m_vertnum) vertices.add(makepair(m.m_pos[i], m.m_nor[i]));
-    loopi(m.m_indexnum) indices.add(m.m_index[i]+oldnum);
-    vertnum += m.m_vertnum;
-    indexnum += m.m_indexnum;
-  }
+  auto m = iso::dc_mesh(vec3f(zero), 256, cellsize, map);
+  loopi(m.m_vertnum) vertices.add(makepair(m.m_pos[i], m.m_nor[i]));
+  loopi(m.m_indexnum) indices.add(m.m_index[i]);
+  vertnum = m.m_vertnum;
+  indexnum = m.m_indexnum;
   con::out("elapsed %f ms", sys::millis() - start);
   con::out("tris %i verts %i", indexnum/3, vertnum);
   initialized_m = true;
@@ -171,8 +167,10 @@ void frame(int w, int h, int curfps) {
 
   makescene();
   if (vertnum != 0) {
+    OGL(PolygonMode, GL_FRONT_AND_BACK, GL_LINE);
     ogl::bindfixedshader(ogl::COLOR);
     ogl::immdrawelememts("Tip3c3", indexnum, &indices[0], &vertices[0].first[0]);
+    OGL(PolygonMode, GL_FRONT_AND_BACK, GL_FILL);
   }
 
   drawhud(w,h,0);

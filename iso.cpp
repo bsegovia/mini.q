@@ -104,20 +104,23 @@ static const vec3i icubev[8] = {
 static const int interptable[12][2] = {
   {0,1},{1,2},{2,3},{3,0},{4,5},{5,6},{6,7},{7,4},{0,4},{1,5},{2,6},{3,7}
 };
+static const u32 NOINDEX = ~0x0u;
 
 struct dc_gridbuilder {
-  dc_gridbuilder(distance_field df, const grid &grid) :
-    m_df(df), m_grid(grid), m_field(3*(grid.m_dim.x+2)*(grid.m_dim.y+2)),
-    m_cube_per_slice((grid.m_dim.x+1)*(grid.m_dim.y+1)),
+  dc_gridbuilder(distance_field df, const vec3i &dim) :
+    m_df(df), m_grid(vec3f(one), vec3f(zero), dim),
+    m_field(3*(dim.x+2)*(dim.y+2)),
+    m_cube_per_slice((dim.x+1)*(dim.y+1)),
     m_qef_pos(2*m_cube_per_slice),
     m_qef_nor(2*m_cube_per_slice),
     m_qef_index(2*m_cube_per_slice)
   {}
 
-  enum { NOINDEX = ~0x0u };
-  INLINE u32 index(const vec3i &xyz) {
+  INLINE void setorg(const vec3f &org) { m_grid.m_org = org; }
+  INLINE void setsize(const vec3f &size) { m_grid.m_cellsize = size; }
+  INLINE u32 index(const vec3i &xyz) const {
     const auto offset = (xyz.z%2) * m_cube_per_slice;
-    return offset+xyz.y*m_grid.m_dim.x+xyz.x;
+    return offset+xyz.y*(m_grid.m_dim.x+1)+xyz.x;
   }
   INLINE float &field(const vec3i &xyz) {
     const vec2i dim(2+m_grid.m_dim.x, 2+m_grid.m_dim.y);
@@ -227,15 +230,51 @@ struct dc_gridbuilder {
   vector<u32> m_qef_index;
 };
 
-// fast per-slice dual contouring tesselation
-mesh dc_mesh(const grid &grid, distance_field d) {
-  dc_gridbuilder s(d, grid);
-  s.build();
-  const auto p = s.m_pos_buffer.move();
-  const auto n = s.m_nor_buffer.move();
-  const auto idx = s.m_idx_buffer.move();
+static const u32 SUBGRID = 16;
+struct recursive_builder {
+  recursive_builder(distance_field df, const vec3f &org, float cellsize, u32 dim) :
+    s(df,vec3i(SUBGRID)), m_df(df), m_org(org), m_cellsize(cellsize), m_dim(dim)
+  {
+    s.setsize(vec3f(cellsize));
+    assert(ispoweroftwo(dim) && dim % SUBGRID == 0);
+  }
+  INLINE vec3f pos(const vec3i &xyz) { return m_org+m_cellsize*vec3f(xyz); }
+
+  void recurse(const vec3i &xyz, u32 cellnum, float half_diag, float half_side_len) {
+    const float dist = m_df(pos(xyz) + vec3f(half_side_len));
+    if (dist > half_diag) return;
+    if (cellnum > SUBGRID) {
+      loopi(8) {
+        const vec3i childxyz = xyz+int(cellnum/2)*icubev[i];
+        recurse(childxyz, cellnum/2, half_diag/2.f, half_side_len/2.f);
+      }
+      return;
+    }
+    s.setorg(pos(xyz));
+    s.build();
+  }
+
+  void build() {
+    const auto half_side_len = float(m_dim) * m_cellsize * 0.5f;
+    const auto half_diag = sqrt(3.f) * half_side_len;
+    recurse(vec3i(zero), m_dim, half_diag, half_side_len);
+  }
+  dc_gridbuilder s;
+  distance_field m_df;
+  vec3f m_org;
+  float m_cellsize;
+  u32 m_dim;
+};
+
+mesh dc_mesh(const vec3f &org, u32 cellnum, float cellsize, distance_field d) {
+  recursive_builder r(d, org, cellsize, cellnum);
+  r.build();
+  const auto p = r.s.m_pos_buffer.move();
+  const auto n = r.s.m_nor_buffer.move();
+  const auto idx = r.s.m_idx_buffer.move();
   return mesh(p.first, n.first, idx.first, p.second, idx.second);
 }
+
 } /* namespace iso */
 } /* namespace q */
 
