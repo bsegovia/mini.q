@@ -18,7 +18,8 @@ vec3f gradient(distance_field d, const vec3f &pos, float grad_step) {
   const vec3f dx = vec3f(grad_step, 0.f, 0.f);
   const vec3f dy = vec3f(0.f, grad_step, 0.f);
   const vec3f dz = vec3f(0.f, 0.f, grad_step);
-  return normalize(vec3f(d(pos+dx)-d(pos-dx), d(pos+dy)-d(pos-dy), d(pos+dz)-d(pos-dz)));
+  const float c = d(pos);
+  return normalize(vec3f(c-d(pos-dx), c-d(pos-dy), c-d(pos-dz)));
 }
 
 static const float TOLERANCE_DENSITY = 1e-3f;
@@ -274,7 +275,6 @@ mesh dc_mesh(const vec3f &org, u32 cellnum, float cellsize, distance_field d) {
   const auto idx = r.s.m_idx_buffer.move();
   return mesh(p.first, n.first, idx.first, p.second, idx.second);
 }
-
 } /* namespace iso */
 } /* namespace q */
 
