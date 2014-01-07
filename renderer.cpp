@@ -100,17 +100,19 @@ INLINE float sd_cyl(const vec3f &p, const vec2f &cxz, const vec3f &ryminymax) {
   return D(D(cyl, plane0), plane1);
 }
 
+// static int eval = 0;
 static float map(const vec3f &pos) {
+//  eval++;
   const auto t = pos-vec3f(7.f,5.f,7.f);
   const auto d0 = sd_sphere(t, 4.2f);
   const auto d1 = sd_box(t, vec3f(4.f));
   auto c = D(d1, d0);
-  loopi(16) {
+  loopi(0) {
     const auto center = vec2f(2.f,2.f+2.f*float(i));
-    const auto ryminymax = vec3f(1.f,0.f,float(i)+1.f);
+    const auto ryminymax = vec3f(1.f,0.f,2*float(i)+1.f);
     c = U(c, sd_cyl(pos, center, ryminymax));
   }
-  return c;
+  return D(c, sd_box(pos-vec3f(2.f,5.f,18.f), vec3f(3.5f,4.f,3.5f)));
 }
 
 typedef pair<vec3f,vec3f> vertex;
@@ -125,18 +127,20 @@ void finish() {
   vector<u32>().moveto(indices);
 }
 
-static const float cellsize = 0.1f;
+static const float cellsize = 0.2f;
 static const int griddim = 16;
 static void makescene() {
   if (initialized_m) return;
   const vec3f dim(float(griddim) * cellsize);
   const float start = sys::millis();
-  auto m = iso::dc_mesh(vec3f(0.01f), 1024, cellsize, map);
+  auto m = iso::dc_mesh(vec3f(0.01f), 256, cellsize, map);
   loopi(m.m_vertnum) vertices.add(makepair(m.m_pos[i], m.m_nor[i]));
   loopi(m.m_indexnum) indices.add(m.m_index[i]);
   vertnum = m.m_vertnum;
   indexnum = m.m_indexnum;
-  con::out("elapsed %f ms", sys::millis() - start);
+  const auto duration = sys::millis() - start;
+  // con::out("elapsed %f ms eval/sec %f", duration, 1000.f*float(eval)/duration);
+  con::out("elapsed %f ms ", duration);
   con::out("tris %i verts %i", indexnum/3, vertnum);
   initialized_m = true;
 }

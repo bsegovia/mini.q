@@ -21,9 +21,8 @@ vec3f gradient(distance_field d, const vec3f &pos, float grad_step) {
   const auto dz = vec3f(0.f, 0.f, grad_step);
   const auto c = d(pos);
   const auto n = vec3f(c-d(pos-dx), c-d(pos-dy), c-d(pos-dz));
-  if (n==vec3f(zero)) {
-    exit(-1);
-    return vec3f(zero);}
+  if (n==vec3f(zero))
+    return vec3f(zero);
   else
     return normalize(n);
 }
@@ -111,13 +110,57 @@ static const vec3i icubev[8] = {
 static const int interptable[12][2] = {
   {0,1},{1,2},{2,3},{3,0},{4,5},{5,6},{6,7},{7,4},{0,4},{1,5},{2,6},{3,7}
 };
+#if 0
+struct bitvector {
+  INLINE bitvector(u32 len=0) : m_bits(len%32?len/32+1:len/32), m_len(len) {}
+  INLINE bool get(u32 idx) const {
+    assert(idx<m_len);
+    return (m_bits[idx/32] & (1<<(idx%32))) != 0;
+  }
+  INLINE void set(u32 idx, bool v) {
+    assert(idx<m_len);
+    m_bits[idx/32] &= ~(1<<(idx%32));
+    m_bits[idx/32] |= v?1<<(idx%32):0;
+  }
+  INLINE u32 length() const { return m_len; }
+  INLINE void resetsize() { m_len = 0; }
+  void clear(u32 start, u32 end) {
+    assert(start<m_len && end<m_len);
+    const u32 safe_start = start%32?start/32+1:start/32;
+    const u32 safe_end = end%32?end/32:end/32+1;
+    rangei(safe_start, safe_end) m_bits[i] = 0;
+    rangei(start,safe_start*32) set(i,0);
+    rangei(safe_end,end*32) set(i,0);
+  }
+  INLINE void add(bool v) {
+    if (m_len%32)
+      set(m_len%32, v);
+    else
+      m_bits.add(v?1:0);
+    ++m_len;
+  }
+  vector<u32> m_bits;
+  u32 m_len;
+};
+#endif
+
 static const u32 NOINDEX = ~0x0u;
+static const u32 BORDER = 0x80000000u;
+static const u32 OUTSIDE = 0x40000000u;
+INLINE u32 isborder(u32 x) { return (x & BORDER) != 0; }
+INLINE u32 isoutside(u32 x) { return (x & OUTSIDE) != 0; }
+INLINE u32 unpackidx(u32 x) { return x & ~(OUTSIDE|OUTSIDE); }
 
 struct dc_gridbuilder {
   dc_gridbuilder(distance_field df, const vec3i &dim) :
     m_df(df), m_grid(vec3f(one), vec3f(zero), dim),
+#if 0
     m_field(3*(dim.x+2)*(dim.y+2)),
     m_cube_per_slice((dim.x+1)*(dim.y+1)),
+#else
+    m_field(3*(dim.x+4)*(dim.y+4)),
+    m_cube_per_slice((dim.x+3)*(dim.y+3)),
+#endif
     m_qef_pos(2*m_cube_per_slice),
     m_qef_nor(2*m_cube_per_slice),
     m_qef_index(2*m_cube_per_slice)
@@ -125,6 +168,7 @@ struct dc_gridbuilder {
 
   INLINE void setorg(const vec3f &org) { m_grid.m_org = org; }
   INLINE void setsize(const vec3f &size) { m_grid.m_cellsize = size; }
+#if 0
   INLINE u32 index(const vec3i &xyz) const {
     const auto offset = (xyz.z%2) * m_cube_per_slice;
     return offset+xyz.y*(m_grid.m_dim.x+1)+xyz.x;
@@ -134,18 +178,43 @@ struct dc_gridbuilder {
     const auto offset = (xyz.z%3)*dim.x*dim.y;
     return m_field[offset+dim.x*xyz.y+xyz.x];
   }
+#else
+  INLINE u32 index(const vec3i &xyz) const {
+    const vec3i p = xyz + vec3i(one);
+    const auto offset = (p.z%2) * m_cube_per_slice;
+    return offset+p.y*(m_grid.m_dim.x+3)+p.x;
+  }
+  INLINE float &field(const vec3i &xyz) {
+    const vec3i p = xyz + vec3i(one);
+    const vec2i dim(m_grid.m_dim.x+4, m_grid.m_dim.y+4);
+    const auto offset = (p.z%3)*dim.x*dim.y;
+    return m_field[offset+dim.x*p.y+p.x];
+  }
+#endif
   void resetbuffer() {
     m_pos_buffer.setsize(0);
     m_nor_buffer.setsize(0);
+    m_border_remap.setsize(0);
   }
   void initfield(u32 z) {
+#if 0
     const vec2i org(zero), dim(2+m_grid.m_dim.x, 2+m_grid.m_dim.y);
     loopxy(org, dim, z) field(xyz) = m_df(m_grid.vertex(xyz));
+#else
+    const vec2i org(-1), dim(m_grid.m_dim.x+3, m_grid.m_dim.y+3);
+    loopxy(org, dim, z) field(xyz) = m_df(m_grid.vertex(xyz));
+#endif
   }
   void initslice(u32 z) {
+#if 0
     const u32 offset = (z%2)*m_cube_per_slice;
     loopi(m_cube_per_slice) m_qef_index[offset+i] = NOINDEX;
     loopxy(vec2i(zero), vec2i(m_grid.m_dim.x+1,m_grid.m_dim.y+1), z) {
+#else
+    loopxy(vec2i(-1), vec2i(m_grid.m_dim.x+2,m_grid.m_dim.y+2), z)
+      m_qef_index[index(xyz)] = NOINDEX;
+    loopxy(vec2i(-1), vec2i(m_grid.m_dim.x+2,m_grid.m_dim.y+2), z) {
+#endif
       vec3f pos, nor;
       mcell cell;
       loopi(8) cell[i] = field(icubev[i]+xyz);
@@ -156,7 +225,11 @@ struct dc_gridbuilder {
     }
   }
   void tesselate_slice(u32 z) {
+#if 0
     loopxy(vec2i(one), vec2i(m_grid.m_dim.x+1,m_grid.m_dim.y+1), z) {
+#else
+    loopxy(vec2i(zero), vec2i(m_grid.m_dim.x+2,m_grid.m_dim.y+2), z) {
+#endif
       const int start_sign = m_df(m_grid.vertex(xyz)) < 0.f ? 1 : 0;
 
       // look the three edges that start on xyz
@@ -168,16 +241,23 @@ struct dc_gridbuilder {
         const auto axis0 = axis[(i+1)%3], axis1 = axis[(i+2)%3];
         const vec3i p[] = {xyz, xyz-axis0, xyz-axis0-axis1, xyz-axis1};
         u32 quad[4];
+        bool borderquad = false;
         loopj(4) {
           const auto idx = index(p[j]);
+          const bool bordervert = any(p[j]<vec3i(zero))||any(p[j]>m_grid.m_dim+vec3i(one));
+          borderquad = borderquad || bordervert;
           if (m_qef_index[idx] == NOINDEX) {
+            const u32 msk = bordervert?OUTSIDE:0u;
             m_qef_index[idx] = m_pos_buffer.length();
+            m_border_remap.add(msk);
             m_pos_buffer.add(m_qef_pos[idx]);
             m_nor_buffer.add(m_qef_nor[idx]);
           }
           quad[j] = m_qef_index[idx];
         }
-        loopj(6) m_idx_buffer.add(quad[quadtotris[j]]);
+        // loopj(6) if (quad[quadtotris[j]] == 794) DEBUGBREAK;
+        const u32 msk = borderquad?OUTSIDE:0u;
+        loopj(6) m_idx_buffer.add(quad[quadtotris[j]]|msk);
       }
     }
   }
@@ -217,7 +297,61 @@ struct dc_gridbuilder {
     nor = abs(normalize(nor));
     return true;
   }
+  void removeborders(u32 first_idx, u32 first_vertex) {
+    // compact the vertex buffers and create the remap table at the same time
+    u32 last = m_border_remap.length()-1, first = first_vertex;
+    for (;;) {
+      while (first <= last && isoutside(m_border_remap[last])) --last;
+      while (first <= last && !isoutside(m_border_remap[first])) {
+        m_border_remap[first] = first;
+        ++first;
+      }
+      if (first > last) break;
+      else if (first != last) {
+        m_border_remap[last] = first;
+        m_pos_buffer[first] = m_pos_buffer[last];
+        m_nor_buffer[first] = m_nor_buffer[last];
+      }
+      ++first;
+      --last;
+    }
+    const u32 vert_buf_len = first;
+
+    // compact the index buffer and remap the indices
+    last = m_idx_buffer.length()-1, first = first_idx;
+    for (;;) {
+      // skip two triangles at once (since they will be both outside anyway)
+      while (first <= last && isoutside(m_idx_buffer[last])) last -= 6;
+      while (first <= last && !isoutside(m_idx_buffer[first])) {
+        assert(m_border_remap[m_idx_buffer[first]] < vert_buf_len);
+        m_idx_buffer[first] = m_border_remap[m_idx_buffer[first]];
+        ++first;
+      }
+      if (first > last) break;
+      assert(last-first >= 6);
+      last -= 5;
+      loopi(6) {
+        assert(isoutside(m_idx_buffer[first]));
+        assert(!isoutside(m_idx_buffer[last+i]));
+        const u32 idx = unpackidx(m_idx_buffer[last+i]);
+        assert(m_border_remap[idx] < vert_buf_len);
+        m_idx_buffer[first++] = m_border_remap[idx];
+      }
+      --last;
+    }
+    m_pos_buffer.setsize(vert_buf_len);
+    m_nor_buffer.setsize(vert_buf_len);
+    m_border_remap.setsize(vert_buf_len);
+    m_idx_buffer.setsize(first);
+#if 0
+    for (int i = first_idx; i < m_idx_buffer.length(); ++i)
+      printf("%i ", m_idx_buffer[i]);
+    printf("\n");
+#endif
+  }
   void build() {
+    const u32 first_idx = m_idx_buffer.length();
+    const u32 first_vertex = m_pos_buffer.length();
     loopi(3) initfield(i);
     initslice(0);
     rangei(1,m_grid.m_dim.z+1) {
@@ -225,6 +359,7 @@ struct dc_gridbuilder {
       initslice(i);
       tesselate_slice(i);
     }
+    removeborders(first_idx, first_vertex);
   }
 
   distance_field m_df;
@@ -232,6 +367,7 @@ struct dc_gridbuilder {
   vector<float> m_field;
   vector<vec3f> m_pos_buffer, m_nor_buffer;
   vector<u32> m_idx_buffer;
+  vector<u32> m_border_remap;
   u32 m_cube_per_slice;
   vector<vec3f> m_qef_pos, m_qef_nor;
   vector<u32> m_qef_index;
