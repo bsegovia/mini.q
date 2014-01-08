@@ -110,40 +110,6 @@ static const vec3i icubev[8] = {
 static const int interptable[12][2] = {
   {0,1},{1,2},{2,3},{3,0},{4,5},{5,6},{6,7},{7,4},{0,4},{1,5},{2,6},{3,7}
 };
-#if 0
-struct bitvector {
-  INLINE bitvector(u32 len=0) : m_bits(len%32?len/32+1:len/32), m_len(len) {}
-  INLINE bool get(u32 idx) const {
-    assert(idx<m_len);
-    return (m_bits[idx/32] & (1<<(idx%32))) != 0;
-  }
-  INLINE void set(u32 idx, bool v) {
-    assert(idx<m_len);
-    m_bits[idx/32] &= ~(1<<(idx%32));
-    m_bits[idx/32] |= v?1<<(idx%32):0;
-  }
-  INLINE u32 length() const { return m_len; }
-  INLINE void resetsize() { m_len = 0; }
-  void clear(u32 start, u32 end) {
-    assert(start<m_len && end<m_len);
-    const u32 safe_start = start%32?start/32+1:start/32;
-    const u32 safe_end = end%32?end/32:end/32+1;
-    rangei(safe_start, safe_end) m_bits[i] = 0;
-    rangei(start,safe_start*32) set(i,0);
-    rangei(safe_end,end*32) set(i,0);
-  }
-  INLINE void add(bool v) {
-    if (m_len%32)
-      set(m_len%32, v);
-    else
-      m_bits.add(v?1:0);
-    ++m_len;
-  }
-  vector<u32> m_bits;
-  u32 m_len;
-};
-#endif
-
 static const u32 NOINDEX = ~0x0u;
 static const u32 BORDER = 0x80000000u;
 static const u32 OUTSIDE = 0x40000000u;
