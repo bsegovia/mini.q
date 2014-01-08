@@ -118,6 +118,90 @@ INLINE u32 isborder(u32 x) { return (x & BORDER) != 0; }
 INLINE u32 isoutside(u32 x) { return (x & OUTSIDE) != 0; }
 INLINE u32 unpackidx(u32 x) { return x & ~(OUTSIDE|OUTSIDE); }
 
+struct indexed_mesh {
+  struct edge {
+    int vertex[2];
+    int face[2];
+  };
+
+  struct face {
+    int vertex[3];
+    int face[3];
+  };
+
+  struct vertex {
+    int vertnum;
+    int edgenum;
+    int idx[];
+  };
+
+  // code heavily inspired by http://www.terathon.com/code/edges.html
+  int buildedges(int vertexnum, int trinum, const int *triarray, edge *edgearray) {
+    int maxedgenum = trinum * 3;
+    auto firstedge = new int[vertexnum + maxedgenum];
+    auto nextedge = firstedge + vertexnum;
+
+    loopi(vertexnum) firstedge[i] = NOINDEX;
+
+    // find all edges with first index smaller than second one
+    int edgenum = 0;
+    auto tri = triarray;
+    for (int a = 0; a < trinum; a++) {
+      int i1 = tri[2];
+      for (int b = 0; b < 3; b++) {
+        int i2 = tri[b];
+        if (i1 < i2) {
+          auto edge = &edgearray[edgenum];
+          edge->vertex[0] = i1;
+          edge->vertex[1] = i2;
+          edge->face[0] = a;
+          edge->face[1] = a;
+
+          int edgeidx = firstedge[i1];
+          if (edgeidx == int(NOINDEX))
+            firstedge[i1] = edgenum;
+          else for (;;) {
+            int index = nextedge[edgeidx];
+            if (index == int(NOINDEX)) {
+              nextedge[edgeidx] = edgenum;
+              break;
+            }
+            edgeidx = index;
+          }
+          nextedge[edgenum] = NOINDEX;
+          edgenum++;
+        }
+        i1 = i2;
+      }
+      tri += 3;
+    }
+
+    // now, go over all edges with first index greater than the second one
+    tri = triarray;
+    for (int a = 0; a < trinum; a++) {
+      int i1 = tri[2];
+      for (int b = 0; b < 3; b++) {
+        int i2 = tri[b];
+        if (i1 > i2) {
+          for (int edgeidx = firstedge[i2]; edgeidx != int(NOINDEX);
+              edgeidx = nextedge[edgeidx]) {
+            auto edge = &edgearray[edgeidx];
+            if ((edge->vertex[1] == i1) && (edge->face[0] == edge->face[1])) {
+              edge->face[1] = a;
+              break;
+            }
+          }
+        }
+        i1 = i2;
+      }
+      tri += 3;
+    }
+
+    delete[] firstedge;
+    return edgenum;
+  }
+};
+
 struct dc_gridbuilder {
   dc_gridbuilder(distance_field df, const vec3i &dim) :
     m_df(df), m_grid(vec3f(one), vec3f(zero), dim),
@@ -141,15 +225,18 @@ struct dc_gridbuilder {
     const auto offset = (p.z%3)*dim.x*dim.y;
     return m_field[offset+dim.x*p.y+p.x];
   }
+
   void resetbuffer() {
     m_pos_buffer.setsize(0);
     m_nor_buffer.setsize(0);
     m_border_remap.setsize(0);
   }
+
   void initfield(u32 z) {
     const vec2i org(-1), dim(m_grid.m_dim.x+3, m_grid.m_dim.y+3);
     loopxy(org, dim, z) field(xyz) = m_df(m_grid.vertex(xyz));
   }
+
   void initslice(u32 z) {
     loopxy(vec2i(-1), vec2i(m_grid.m_dim.x+2,m_grid.m_dim.y+2), z)
       m_qef_index[index(xyz)] = NOINDEX;
@@ -163,6 +250,7 @@ struct dc_gridbuilder {
       }
     }
   }
+
   void tesselate_slice(u32 z) {
     loopxy(vec2i(zero), vec2i(m_grid.m_dim.x+2,m_grid.m_dim.y+2), z) {
       const int start_sign = m_df(m_grid.vertex(xyz)) < 0.f ? 1 : 0;
@@ -192,6 +280,7 @@ struct dc_gridbuilder {
       }
     }
   }
+
   bool qef_vertex(const mcell &cell, const vec3i &xyz, vec3f &pos, vec3f &nor) {
     int cubeindex = 0, num = 0;
     loopi(8) if (cell[i] < 0.0f) cubeindex |= 1<<i;
@@ -228,6 +317,7 @@ struct dc_gridbuilder {
     nor = abs(normalize(nor));
     return true;
   }
+
   void removeborders(u32 first_idx, u32 first_vertex) {
     // find the list of vertex which is actually used. initially, they are all
     // considered outside
@@ -283,6 +373,11 @@ struct dc_gridbuilder {
     m_border_remap.setsize(vert_buf_len);
     m_idx_buffer.setsize(first);
   }
+
+  void sharpedge() {
+    
+  }
+
   void build() {
     const u32 first_idx = m_idx_buffer.length();
     const u32 first_vertex = m_pos_buffer.length();
