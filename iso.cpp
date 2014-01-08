@@ -65,6 +65,7 @@ typedef float mcell[8];
 static const vec3i axis[] = {vec3i(1,0,0), vec3i(0,1,0), vec3i(0,0,1)};
 static const vec3i faxis[] = {vec3f(1.f,0.f,0.f), vec3i(0.f,1.f,0.f), vec3i(0.f,0.f,1.f)};
 static const u32 quadtotris[] = {0,1,2,0,2,3};
+static const u32 quadtotris_cc[] = {0,2,1,0,3,2};
 static const u16 edgetable[256]= {
   0x0  , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
   0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
@@ -185,8 +186,9 @@ struct dc_gridbuilder {
           }
           quad[j] = m_qef_index[idx];
         }
+        const auto orientation = start_sign==1 ? quadtotris : quadtotris_cc;
         const u32 msk = any(eq(xyz,vec3i(zero)))||any(xyz>m_grid.m_dim)?OUTSIDE:0u;
-        loopj(6) m_idx_buffer.add(quad[quadtotris[j]]|msk);
+        loopj(6) m_idx_buffer.add(quad[orientation[j]]|msk);
       }
     }
   }

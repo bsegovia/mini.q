@@ -62,7 +62,6 @@ static void drawhudmodel(int start, int end, float speed, int base) {
 static void drawhudgun(float fovy, float aspect, float farplane) {
   if (!showhudgun) return;
 
-  ogl::enablev(GL_CULL_FACE);
 #if 0
   const int rtime = game::reloadtime(game::player.gunselect);
   if (game::player.lastaction &&
@@ -72,7 +71,6 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
   else
 #endif
   drawhudmodel(6, 1, 100.f, 0);
-  ogl::disablev(GL_CULL_FACE);
 }
 
 /*--------------------------------------------------------------------------
@@ -166,8 +164,8 @@ void frame(int w, int h, int curfps) {
   transplayer();
   const float verts[] = {
     -100.f, -100.f, -100.f, 0.f, -100.f,
-    +100.f, -100.f, +100.f, 0.f, -100.f,
     -100.f, +100.f, -100.f, 0.f, +100.f,
+    +100.f, -100.f, +100.f, 0.f, -100.f,
     +100.f, +100.f, +100.f, 0.f, +100.f
   };
   ogl::bindfixedshader(ogl::DIFFUSETEX);
@@ -176,10 +174,8 @@ void frame(int w, int h, int curfps) {
 
   makescene();
   if (vertnum != 0) {
-  //  OGL(PolygonMode, GL_FRONT_AND_BACK, GL_LINE);
     ogl::bindfixedshader(ogl::COLOR);
     ogl::immdrawelememts("Tip3c3", indexnum, &indices[0], &vertices[0].first[0]);
-  //  OGL(PolygonMode, GL_FRONT_AND_BACK, GL_FILL);
   }
 
   drawhud(w,h,0);
