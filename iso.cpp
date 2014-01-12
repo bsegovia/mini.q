@@ -30,7 +30,9 @@ static const float TOLERANCE_DENSITY = 1e-3f;
 static const float TOLERANCE_DIST2   = 1e-8f;
 static const int MAX_STEPS = 4;
 
-static vec3f false_position(distance_field df, const grid &grid, vec3f org, vec3f p0, vec3f p1, float v0, float v1) {
+static vec3f falsepos(distance_field df, const grid &grid, vec3f org, vec3f p0, vec3f p1, float v0, float v1) {
+  if (abs(v0) < 1e-3f) return p0;
+  if (abs(v1) < 1e-3f) return p1;
   if (v1 < 0.f) {
     swap(p0,p1);
     swap(v0,v1);
@@ -113,6 +115,7 @@ static const int interptable[12][2] = {
 static const float SHARP_EDGE = 0.2f;
 static const u32 MAX_NEW_VERT = 8;
 static const u32 NOINDEX = ~0x0u;
+static const u32 NOTRIANGLE = ~0x0u-1;
 static const u32 BORDER = 0x80000000u;
 static const u32 OUTSIDE = 0x40000000u;
 INLINE u32 isborder(u32 x) { return (x & BORDER) != 0; }
@@ -148,18 +151,18 @@ struct edge_creaser {
     int edgenum = 0;
     loopi(m_trinum) {
       const auto tri = &t[m_first_idx + 3*i];
-      int i1 = unpackidx(tri[2]);
+      int i1 = unpackidx(tri[2]) - m_first_vert;
       loopj(3) {
-        int i2 = unpackidx(tri[j]);
+        int i2 = unpackidx(tri[j]) - m_first_vert;
         if (i1 < i2) {
           auto e = &m_edges[edgenum];
           e->vertex[0] = i1;
           e->vertex[1] = i2;
           e->face[0] = e->face[1] = i;
 
-          u32 idx = m_edgelists[i1 - m_first_vert];
+          u32 idx = m_edgelists[i1];
           if (idx == NOINDEX)
-            m_edgelists[i1 - m_first_vert] = edgenum;
+            m_edgelists[i1] = edgenum;
           else for (;;) {
             const u32 index = nextedge[idx];
             if (index == NOINDEX) {
@@ -177,11 +180,11 @@ struct edge_creaser {
     // step 2 - go over all edges with first index greater than the second one
     loopi(m_trinum) {
       const auto tri = &t[m_first_idx + 3*i];
-      int i1 = unpackidx(tri[2]);
+      int i1 = unpackidx(tri[2]) - m_first_vert;
       loopj(3) {
-        int i2 = unpackidx(tri[j]);
+        int i2 = unpackidx(tri[j]) - m_first_vert;
         if (i1 > i2) {
-          u32 idx = m_edgelists[i2 - m_first_vert];
+          u32 idx = m_edgelists[i2];
           for (; idx != NOINDEX; idx = nextedge[idx]) {
             auto e = &m_edges[idx];
             if (e->vertex[1] == u32(i1) && e->face[0] == e->face[1]) {
@@ -211,56 +214,34 @@ struct edge_creaser {
     auto &t = *m_idx_buffer;
     auto &p = *m_pos_buffer;
     auto &n = *m_nor_buffer;
-    printf("%d edges %d triangles %d vertices\n", edgenum, m_trinum, m_vertnum);
-    printf("[triangles]\n");
-    loopi(m_trinum) printf("%d [%d %d %d]\n",
-      i,
-      unpackidx(t[m_first_idx+3*i+0])-m_first_vert,
-      unpackidx(t[m_first_idx+3*i+1])-m_first_vert,
-      unpackidx(t[m_first_idx+3*i+2])-m_first_vert);
-    printf("[edges]\n");
-    loopi(edgenum) printf("%d [%d %d]\n", i, m_edges[i].vertex[0], m_edges[i].vertex[1]);
+    const u32 firsttri = m_first_idx / 3;
 
-    // step 1 - find vertices points using edges and their adjacent triangles
-    // we chain triangles in an indexed list
-    u32 listindex = m_vertnum;
-    loopi(m_vertnum) m_sharp[i].first = NOINDEX;
+    // step 1 - find sharp vertices edges they belong to
+    loopi(m_vertnum) m_sharp[i].first = m_sharp[i].second = NOINDEX;
     loopi(edgenum) {
       const auto idx0 = m_edges[i].face[0], idx1 = m_edges[i].face[1];
       if (idx0 == idx1) continue;
-      const auto n0 = trinormal(idx0), n1 = trinormal(idx1);
+      const auto n0 = trinormal(firsttri+idx0), n1 = trinormal(firsttri+idx1);
       if (dot(n0, n1) > SHARP_EDGE) continue;
-
-      // for each vertex of the edge
       loopj(2) {
-        const auto idx = m_edges[i].vertex[j] - m_first_vert;
-
-        // for each triangle of the edge, append it per vertex. we do not care if
-        // one triangle is more than once in the list
-        loopk(2) {
-          m_sharp[listindex].first = m_sharp[idx].first;
-          m_sharp[listindex].second = m_sharp[idx].second;
-          m_sharp[idx].first = listindex++;
-          m_sharp[idx].second = m_edges[i].face[k];
-        }
+        const auto idx = m_edges[i].vertex[j];
+        m_sharp[idx].second = NOTRIANGLE;
       }
     }
 
-    loopi(m_vertnum) {
-      auto curr = m_sharp[i];
-      if (curr.first == NOINDEX) continue;
-      printf("sharp vert %d [", i);
-      do {
-        const auto v = curr.second;
-        curr = m_sharp[curr.first];
-        const auto n = trinormal(v);
-        printf("%d (%f %f %f) %s", v, n.x, n.y, n.z, curr.first == NOINDEX ? "]" : " ");
-      } while (curr.first != NOINDEX);
-      printf("\n");
-    }
+    // step 2 - chain triangles that contain sharp vertices
+    u32 listindex = m_vertnum;
+    loopi(m_trinum)
+      loopj(3) {
+        const auto idx = unpackidx(t[3*(firsttri+i)+j]) - m_first_vert;
+        if (m_sharp[idx].second == NOINDEX) continue;
+        m_sharp[listindex].first = m_sharp[idx].first;
+        m_sharp[listindex].second = m_sharp[idx].second;
+        m_sharp[idx].first = listindex++;
+        m_sharp[idx].second = i+firsttri;
+      }
 
-    // step 2 - go over all "sharp" vertices and duplicate them as many times as
-    // we need
+    // step 3 - go over all "sharp" vertices and duplicate them as needed
     loopi(m_vertnum) {
       if (m_sharp[i].first == NOINDEX) continue;
       pair<vec3f, u32> verts[MAX_NEW_VERT];
@@ -283,18 +264,23 @@ struct edge_creaser {
           assert(vertnum < MAX_NEW_VERT);
           verts[vertnum++] = makepair(nor, u32(p.length()));
           p.add(p[m_first_vert+i]);
-          n.add(nor);
+          n.add(vec3f(zero));
         }
 
         // update the index in the triangle
-        loopj(3)
-          if (unpackidx(t[3*curr.second+j]) == u32(m_first_vert+i))
-            t[3*curr.second+j] = verts[matched].second;
+        loopj(3) {
+          const auto idx = t[3*curr.second+j];
+          if (unpackidx(idx) == u32(m_first_vert+i)) {
+            u32 mask = isoutside(idx) ? OUTSIDE : 0;
+            mask |= isborder(idx) ? BORDER : 0;
+            t[3*curr.second+j] = mask | verts[matched].second;
+          }
+        }
         curr = m_sharp[curr.first];
       }
     }
 
-    // step 3 - recompute vertex normals (weighted by triangle areas)
+    // step 4 - recompute vertex normals (weighted by triangle areas)
     m_vertnum = p.length() - m_first_vert;
     loopi(m_vertnum) n[m_first_vert+i] = vec3f(zero);
     loopi(m_trinum) {
@@ -303,16 +289,6 @@ struct edge_creaser {
       loopj(3) n[unpackidx(tri[j])] += nor;
     }
     loopi(m_vertnum) n[m_first_vert+i] = abs(normalize(n[m_first_vert+i]));
-
-    // step 4 - reset properly outside triangles
-    for (int idx = m_first_idx; idx < t.length(); idx += 6) {
-      bool outside = false;
-      loopi(6) if (isoutside(t[idx+i])) {
-        outside = true;
-        break;
-      }
-      if (outside) loopi(6) t[idx+i] |= OUTSIDE;
-    }
   }
 
   vector<meshedge> m_edges;
@@ -421,7 +397,7 @@ struct dc_gridbuilder {
       const auto idx0 = interptable[i][0], idx1 = interptable[i][1];
       const auto v0 = cell[idx0], v1 = cell[idx1];
       const auto p0 = fcubev[idx0], p1 = fcubev[idx1];
-      p[num] = false_position(m_df, m_grid, org, p0, p1, v0, v1);
+      p[num] = falsepos(m_df, m_grid, org, p0, p1, v0, v1);
       n[num] = gradient(m_df, org+p[num]*m_grid.m_cellsize);
       nor += n[num];
       mass += p[num++];
@@ -437,7 +413,6 @@ struct dc_gridbuilder {
       vector[i] = double(dot(n[i],d));
     }
     pos = mass + qef::evaluate(matrix, vector, num);
-    nor = abs(normalize(nor));
     return true;
   }
 
@@ -495,11 +470,12 @@ struct dc_gridbuilder {
     m_nor_buffer.setsize(vert_buf_len);
     m_border_remap.setsize(vert_buf_len);
     m_idx_buffer.setsize(first);
+    return;
   }
 
   void build() {
-    const u32 first_idx = m_idx_buffer.length();
-    const u32 first_vert = m_pos_buffer.length();
+    const int first_idx = m_idx_buffer.length();
+    const int first_vert = m_pos_buffer.length();
     loopi(3) initfield(i);
     initslice(0);
     rangei(1,m_grid.m_dim.z+1) {
@@ -507,10 +483,12 @@ struct dc_gridbuilder {
       initslice(i);
       tesselate_slice(i);
     }
-    if (first_vert != u32(m_pos_buffer.length())) {
-      creaser.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, first_vert, first_idx);
-      creaser.doit();
-    }
+
+    if (first_vert == m_pos_buffer.length())
+      return;
+
+    creaser.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, first_vert, first_idx);
+    creaser.doit();
     m_border_remap.setsize(m_pos_buffer.length());
     removeborders(first_idx, first_vert);
   }

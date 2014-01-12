@@ -145,7 +145,7 @@ void *memrealloc(void *ptr, size_t sz, const char *filename, int linenum) {
 }
 
 #else
-void meminit(void) {}
+void memstart(void) {}
 void *memalloc(size_t sz, const char*, int) {return malloc(sz);}
 void *memrealloc(void *ptr, size_t sz, const char *, int) {return realloc(ptr,sz);}
 void memfree(void *ptr) {if (ptr) free(ptr);}

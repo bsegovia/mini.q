@@ -175,8 +175,9 @@ template <class T> struct vector : noncopyable {
     return buf[ulen++];
   }
   INLINE T &add(const T &x) {
+    const T copy(x);
     if (ulen==alen) realloc();
-    return addn(x);
+    return addn(copy);
   }
   INLINE T &add() {
     if (ulen==alen) realloc();
@@ -222,7 +223,7 @@ template <class T> struct vector : noncopyable {
       for(; ulen>i; --ulen) buf[ulen-1].~T();
     else if (i>ulen) {
       prealloc(i);
-      for(; i>ulen; ++ulen) sys::callctor<T>(buf+ulen-1);
+      for(; i>ulen; ++ulen) sys::callctor<T>(buf+ulen);
     }
   }
   T remove(int i) {

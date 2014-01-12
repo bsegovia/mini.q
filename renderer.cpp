@@ -93,21 +93,19 @@ INLINE float sd_plane(const vec3f &p, const vec4f &n) {
 }
 INLINE float sd_cyl(const vec3f &p, const vec2f &cxz, const vec3f &ryminymax) {
   const auto cyl = sd_cyl(p, cxz, ryminymax.x);
-  const auto plane0 = sd_plane(p, vec4f(0.f,1.f,0.f,ryminymax.y));
+  const auto plane0 = sd_plane(p, vec4f(0.f,1.f,0.f,-ryminymax.y));
   const auto plane1 = sd_plane(p, vec4f(0.f,-1.f,0.f,ryminymax.z));
   return D(D(cyl, plane0), plane1);
 }
 
-// static int eval = 0;
 static float map(const vec3f &pos) {
-//  eval++;
   const auto t = pos-vec3f(7.f,5.f,7.f);
   const auto d0 = sd_sphere(t, 4.2f);
   const auto d1 = sd_box(t, vec3f(4.f));
   auto c = D(d1, d0);
-  loopi(0) {
+  loopi(16) {
     const auto center = vec2f(2.f,2.f+2.f*float(i));
-    const auto ryminymax = vec3f(1.f,0.f,2*float(i)+1.f);
+    const auto ryminymax = vec3f(1.f,1.f,2*float(i)+2.f);
     c = U(c, sd_cyl(pos, center, ryminymax));
   }
   return D(c, sd_box(pos-vec3f(2.f,5.f,18.f), vec3f(3.5f,4.f,3.5f)));
@@ -126,17 +124,16 @@ void finish() {
 }
 
 static const float cellsize = 0.2f;
-static const int griddim = 32;
 static void makescene() {
   if (initialized_m) return;
-  const vec3f dim(float(griddim) * cellsize);
   const float start = sys::millis();
-  auto m = iso::dc_mesh(vec3f(0.01f), 32, cellsize, map);
+  auto m = iso::dc_mesh(vec3f(0.01f), 256, cellsize, map);
   loopi(m.m_vertnum) vertices.add(makepair(m.m_pos[i], m.m_nor[i]));
   loopi(m.m_indexnum) indices.add(m.m_index[i]);
   vertnum = m.m_vertnum;
   indexnum = m.m_indexnum;
   const auto duration = sys::millis() - start;
+  assert(indexnum%3 == 0);
   con::out("elapsed %f ms ", duration);
   con::out("tris %i verts %i", indexnum/3, vertnum);
   initialized_m = true;

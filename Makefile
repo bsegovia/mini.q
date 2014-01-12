@@ -1,10 +1,13 @@
-#CXX=clang++
-#CXXDEBUGFLAGS=-Wall -O0 -DMEMORY_DEBUGGER -g -std=c++11 -fsanitize=address
+CXX=clang++
+CXXOPTFLAGS=-Wall -O1 -g
+CXXDEBUGFLAGS=-Wall -O0 -DMEMORY_DEBUGGER -g
 #CXX=~/src/emscripten/em++
-CXXOPTFLAGS=-Wall -DMEMORY_DEBUGGER -pg -O3 -DNDEBUG -std=c++11
-CXXDEBUGFLAGS=-Wall -DMEMORY_DEBUGGER -O0 -g -std=c++11
-CXXFLAGS=$(CXXDEBUGFLAGS) -Wno-invalid-offsetof -I./ `sdl-config --cflags`
-LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer
+#CXXOPTFLAGS=-Wall -DMEMORY_DEBUGGER -pg -O3 -DNDEBUG -std=c++11
+#CXXDEBUGFLAGS=-Wall -DMEMORY_DEBUGGER -O0 -g -std=c++11
+
+#CXXFLAGS=$(CXXDEBUGFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags`
+CXXFLAGS=$(CXXOPTFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags` -fsanitize=address
+LIBS=`sdl-config --libs` -g -lSDL_image -lSDL_mixer
 OBJS=\
   con.o\
   game.o\
