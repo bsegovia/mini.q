@@ -1,7 +1,6 @@
 /*-------------------------------------------------------------------------
- - mini.q - a minimalistic multiplayer FPS
- - iso.hpp -> implements common functions for iso surface tesselation, collision
- - ...etc
+ - mini.q - a minimalistic multiplayer fps
+ - iso.cpp -> implements routines for iso surface
  -------------------------------------------------------------------------*/
 #include "iso.hpp"
 #include "stl.hpp"
@@ -111,6 +110,8 @@ static const vec3i icubev[8] = {
 static const int interptable[12][2] = {
   {0,1},{1,2},{2,3},{3,0},{4,5},{5,6},{6,7},{7,4},{0,4},{1,5},{2,6},{3,7}
 };
+static const float SHARP_EDGE = 0.2f;
+static const u32 MAX_NEW_VERT = 8;
 static const u32 NOINDEX = ~0x0u;
 static const u32 BORDER = 0x80000000u;
 static const u32 OUTSIDE = 0x40000000u;
@@ -118,88 +119,210 @@ INLINE u32 isborder(u32 x) { return (x & BORDER) != 0; }
 INLINE u32 isoutside(u32 x) { return (x & OUTSIDE) != 0; }
 INLINE u32 unpackidx(u32 x) { return x & ~(OUTSIDE|OUTSIDE); }
 
-struct indexed_mesh {
-  struct edge {
-    int vertex[2];
-    int face[2];
+struct edge_creaser {
+  struct meshedge {
+    u32 vertex[2];
+    u32 face[2];
   };
 
-  struct face {
-    int vertex[3];
-    int face[3];
-  };
+  void set(vector<vec3f> &p, vector<vec3f> &n, vector<u32> &t, int first_vert, int first_idx) {
+    m_pos_buffer = &p;
+    m_nor_buffer = &n;
+    m_idx_buffer = &t;
+    m_first_vert = first_vert;
+    m_first_idx = first_idx;
+    m_vertnum = (p.length() - m_first_vert);
+    m_trinum = (t.length() - m_first_idx) / 3;
+    m_edges.setsize(3*m_trinum);
+    m_edgelists.setsize(m_vertnum + 3*m_trinum);
+    m_sharp.setsize(m_vertnum + 6*m_trinum);
+  }
 
-  struct vertex {
-    int vertnum;
-    int edgenum;
-    int idx[];
-  };
+  int buildedges() {
+    const auto &t = *m_idx_buffer;
+    auto nextedge = &m_edgelists[0] + m_vertnum;
 
-  // code heavily inspired by http://www.terathon.com/code/edges.html
-  int buildedges(int vertexnum, int trinum, const int *triarray, edge *edgearray) {
-    int maxedgenum = trinum * 3;
-    auto firstedge = new int[vertexnum + maxedgenum];
-    auto nextedge = firstedge + vertexnum;
+    loopi(m_vertnum) m_edgelists[i] = NOINDEX;
 
-    loopi(vertexnum) firstedge[i] = NOINDEX;
-
-    // find all edges with first index smaller than second one
+    // step 1 - find all edges with first index smaller than the second one
     int edgenum = 0;
-    auto tri = triarray;
-    for (int a = 0; a < trinum; a++) {
-      int i1 = tri[2];
-      for (int b = 0; b < 3; b++) {
-        int i2 = tri[b];
+    loopi(m_trinum) {
+      const auto tri = &t[m_first_idx + 3*i];
+      int i1 = unpackidx(tri[2]);
+      loopj(3) {
+        int i2 = unpackidx(tri[j]);
         if (i1 < i2) {
-          auto edge = &edgearray[edgenum];
-          edge->vertex[0] = i1;
-          edge->vertex[1] = i2;
-          edge->face[0] = a;
-          edge->face[1] = a;
+          auto e = &m_edges[edgenum];
+          e->vertex[0] = i1;
+          e->vertex[1] = i2;
+          e->face[0] = e->face[1] = i;
 
-          int edgeidx = firstedge[i1];
-          if (edgeidx == int(NOINDEX))
-            firstedge[i1] = edgenum;
+          u32 idx = m_edgelists[i1 - m_first_vert];
+          if (idx == NOINDEX)
+            m_edgelists[i1 - m_first_vert] = edgenum;
           else for (;;) {
-            int index = nextedge[edgeidx];
-            if (index == int(NOINDEX)) {
-              nextedge[edgeidx] = edgenum;
+            const u32 index = nextedge[idx];
+            if (index == NOINDEX) {
+              nextedge[idx] = edgenum;
               break;
             }
-            edgeidx = index;
+            idx = index;
           }
-          nextedge[edgenum] = NOINDEX;
-          edgenum++;
+          nextedge[edgenum++] = NOINDEX;
         }
         i1 = i2;
       }
-      tri += 3;
     }
 
-    // now, go over all edges with first index greater than the second one
-    tri = triarray;
-    for (int a = 0; a < trinum; a++) {
-      int i1 = tri[2];
-      for (int b = 0; b < 3; b++) {
-        int i2 = tri[b];
+    // step 2 - go over all edges with first index greater than the second one
+    loopi(m_trinum) {
+      const auto tri = &t[m_first_idx + 3*i];
+      int i1 = unpackidx(tri[2]);
+      loopj(3) {
+        int i2 = unpackidx(tri[j]);
         if (i1 > i2) {
-          for (int edgeidx = firstedge[i2]; edgeidx != int(NOINDEX);
-              edgeidx = nextedge[edgeidx]) {
-            auto edge = &edgearray[edgeidx];
-            if ((edge->vertex[1] == i1) && (edge->face[0] == edge->face[1])) {
-              edge->face[1] = a;
+          u32 idx = m_edgelists[i2 - m_first_vert];
+          for (; idx != NOINDEX; idx = nextedge[idx]) {
+            auto e = &m_edges[idx];
+            if (e->vertex[1] == u32(i1) && e->face[0] == e->face[1]) {
+              e->face[1] = i;
               break;
             }
           }
         }
         i1 = i2;
       }
-      tri += 3;
     }
-
-    delete[] firstedge;
     return edgenum;
   }
+
+  INLINE vec3f trinormalu(u32 idx) {
+    auto &t = *m_idx_buffer;
+    auto &p = *m_pos_buffer;
+    const auto t0 = unpackidx(t[3*idx+0]);
+    const auto t1 = unpackidx(t[3*idx+1]);
+    const auto t2 = unpackidx(t[3*idx+2]);
+    return cross(p[t0]-p[t2], p[t0]-p[t1]);
+  }
+  INLINE vec3f trinormal(u32 idx) { return normalize(trinormalu(idx)); }
+
+  void doit() {
+    const auto edgenum = buildedges();
+    auto &t = *m_idx_buffer;
+    auto &p = *m_pos_buffer;
+    auto &n = *m_nor_buffer;
+    printf("%d edges %d triangles %d vertices\n", edgenum, m_trinum, m_vertnum);
+    printf("[triangles]\n");
+    loopi(m_trinum) printf("%d [%d %d %d]\n",
+      i,
+      unpackidx(t[m_first_idx+3*i+0])-m_first_vert,
+      unpackidx(t[m_first_idx+3*i+1])-m_first_vert,
+      unpackidx(t[m_first_idx+3*i+2])-m_first_vert);
+    printf("[edges]\n");
+    loopi(edgenum) printf("%d [%d %d]\n", i, m_edges[i].vertex[0], m_edges[i].vertex[1]);
+
+    // step 1 - find vertices points using edges and their adjacent triangles
+    // we chain triangles in an indexed list
+    u32 listindex = m_vertnum;
+    loopi(m_vertnum) m_sharp[i].first = NOINDEX;
+    loopi(edgenum) {
+      const auto idx0 = m_edges[i].face[0], idx1 = m_edges[i].face[1];
+      if (idx0 == idx1) continue;
+      const auto n0 = trinormal(idx0), n1 = trinormal(idx1);
+      if (dot(n0, n1) > SHARP_EDGE) continue;
+
+      // for each vertex of the edge
+      loopj(2) {
+        const auto idx = m_edges[i].vertex[j] - m_first_vert;
+
+        // for each triangle of the edge, append it per vertex. we do not care if
+        // one triangle is more than once in the list
+        loopk(2) {
+          m_sharp[listindex].first = m_sharp[idx].first;
+          m_sharp[listindex].second = m_sharp[idx].second;
+          m_sharp[idx].first = listindex++;
+          m_sharp[idx].second = m_edges[i].face[k];
+        }
+      }
+    }
+
+    loopi(m_vertnum) {
+      auto curr = m_sharp[i];
+      if (curr.first == NOINDEX) continue;
+      printf("sharp vert %d [", i);
+      do {
+        const auto v = curr.second;
+        curr = m_sharp[curr.first];
+        const auto n = trinormal(v);
+        printf("%d (%f %f %f) %s", v, n.x, n.y, n.z, curr.first == NOINDEX ? "]" : " ");
+      } while (curr.first != NOINDEX);
+      printf("\n");
+    }
+
+    // step 2 - go over all "sharp" vertices and duplicate them as many times as
+    // we need
+    loopi(m_vertnum) {
+      if (m_sharp[i].first == NOINDEX) continue;
+      pair<vec3f, u32> verts[MAX_NEW_VERT];
+
+      // we already have a valid vertex that we can use
+      verts[0] = makepair(trinormal(m_sharp[i].second), u32(m_first_vert+i));
+      u32 vertnum = 1;
+
+      // go over all triangles the find best vertex for each of them
+      auto curr = m_sharp[m_sharp[i].first];
+      while (curr.first != NOINDEX) {
+        const auto nor = trinormal(curr.second);
+        u32 matched = 0;
+        for (; matched < vertnum; ++matched)
+          if (dot(nor, verts[matched].first) > SHARP_EDGE)
+            break;
+
+        // we need to create a new vertex for this triangle
+        if (matched == vertnum) {
+          assert(vertnum < MAX_NEW_VERT);
+          verts[vertnum++] = makepair(nor, u32(p.length()));
+          p.add(p[m_first_vert+i]);
+          n.add(nor);
+        }
+
+        // update the index in the triangle
+        loopj(3)
+          if (unpackidx(t[3*curr.second+j]) == u32(m_first_vert+i))
+            t[3*curr.second+j] = verts[matched].second;
+        curr = m_sharp[curr.first];
+      }
+    }
+
+    // step 3 - recompute vertex normals (weighted by triangle areas)
+    m_vertnum = p.length() - m_first_vert;
+    loopi(m_vertnum) n[m_first_vert+i] = vec3f(zero);
+    loopi(m_trinum) {
+      const auto tri = &t[m_first_idx+3*i];
+      const auto nor = trinormalu(i+m_first_idx/3);
+      loopj(3) n[unpackidx(tri[j])] += nor;
+    }
+    loopi(m_vertnum) n[m_first_vert+i] = abs(normalize(n[m_first_vert+i]));
+
+    // step 4 - reset properly outside triangles
+    for (int idx = m_first_idx; idx < t.length(); idx += 6) {
+      bool outside = false;
+      loopi(6) if (isoutside(t[idx+i])) {
+        outside = true;
+        break;
+      }
+      if (outside) loopi(6) t[idx+i] |= OUTSIDE;
+    }
+  }
+
+  vector<meshedge> m_edges;
+  vector<int> m_edgelists;
+  vector<pair<u32,u32>> m_sharp;
+  vector<vec3f> *m_pos_buffer;
+  vector<vec3f> *m_nor_buffer;
+  vector<u32> *m_idx_buffer;
+  int m_first_idx, m_first_vert;
+  int m_vertnum, m_trinum;
 };
 
 struct dc_gridbuilder {
@@ -374,13 +497,9 @@ struct dc_gridbuilder {
     m_idx_buffer.setsize(first);
   }
 
-  void sharpedge() {
-    
-  }
-
   void build() {
     const u32 first_idx = m_idx_buffer.length();
-    const u32 first_vertex = m_pos_buffer.length();
+    const u32 first_vert = m_pos_buffer.length();
     loopi(3) initfield(i);
     initslice(0);
     rangei(1,m_grid.m_dim.z+1) {
@@ -388,11 +507,17 @@ struct dc_gridbuilder {
       initslice(i);
       tesselate_slice(i);
     }
-    removeborders(first_idx, first_vertex);
+    if (first_vert != u32(m_pos_buffer.length())) {
+      creaser.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, first_vert, first_idx);
+      creaser.doit();
+    }
+    m_border_remap.setsize(m_pos_buffer.length());
+    removeborders(first_idx, first_vert);
   }
 
   distance_field m_df;
   grid m_grid;
+  edge_creaser creaser;
   vector<float> m_field;
   vector<vec3f> m_pos_buffer, m_nor_buffer;
   vector<u32> m_idx_buffer;
@@ -402,7 +527,7 @@ struct dc_gridbuilder {
   vector<u32> m_qef_index;
 };
 
-static const u32 SUBGRID = 16;
+static const u32 SUBGRID = 32;
 struct recursive_builder {
   recursive_builder(distance_field df, const vec3f &org, float cellsize, u32 dim) :
     s(df,vec3i(SUBGRID)), m_df(df), m_org(org), m_cellsize(cellsize), m_dim(dim)

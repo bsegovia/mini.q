@@ -126,18 +126,17 @@ void finish() {
 }
 
 static const float cellsize = 0.2f;
-static const int griddim = 16;
+static const int griddim = 32;
 static void makescene() {
   if (initialized_m) return;
   const vec3f dim(float(griddim) * cellsize);
   const float start = sys::millis();
-  auto m = iso::dc_mesh(vec3f(0.01f), 256, cellsize, map);
+  auto m = iso::dc_mesh(vec3f(0.01f), 32, cellsize, map);
   loopi(m.m_vertnum) vertices.add(makepair(m.m_pos[i], m.m_nor[i]));
   loopi(m.m_indexnum) indices.add(m.m_index[i]);
   vertnum = m.m_vertnum;
   indexnum = m.m_indexnum;
   const auto duration = sys::millis() - start;
-  // con::out("elapsed %f ms eval/sec %f", duration, 1000.f*float(eval)/duration);
   con::out("elapsed %f ms ", duration);
   con::out("tris %i verts %i", indexnum/3, vertnum);
   initialized_m = true;
@@ -178,7 +177,9 @@ void frame(int w, int h, int curfps) {
     ogl::immdrawelememts("Tip3c3", indexnum, &indices[0], &vertices[0].first[0]);
   }
 
+  ogl::disable(GL_CULL_FACE);
   drawhud(w,h,0);
+  ogl::enable(GL_CULL_FACE);
   drawhudgun(fovy, aspect, farplane);
 }
 } /* namespace rr */

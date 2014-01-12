@@ -163,15 +163,24 @@ template <class T> struct vector : noncopyable {
     alen = ulen = len;
   }
   INLINE ~vector() { setsize(0); FREE(buf); }
+  INLINE T &addn() {
+    assert(ulen < alen);
+    new (&buf[ulen]) T;
+    return buf[ulen++];
+  }
+  INLINE T &addn(const T &x) {
+    assert(ulen < alen);
+    const T copy(x);
+    new (&buf[ulen]) T(copy);
+    return buf[ulen++];
+  }
   INLINE T &add(const T &x) {
     if (ulen==alen) realloc();
-    new (&buf[ulen]) T(x);
-    return buf[ulen++];
+    return addn(x);
   }
   INLINE T &add() {
     if (ulen==alen) realloc();
-    new (&buf[ulen]) T;
-    return buf[ulen++];
+    return addn();
   }
   pair<T*,u32> move() {
     const auto dst = makepair(buf,u32(ulen));
@@ -198,11 +207,24 @@ template <class T> struct vector : noncopyable {
   INLINE const T &operator[](int i) const { assert(i>=0 && i<ulen); return buf[i]; }
   INLINE T &operator[](int i) { assert(i>=0 && i<ulen); return buf[i]; }
   INLINE T *getbuf() { return buf; }
+  INLINE void prealloc(int len) {
+    if (len > alen) {
+      alen = nextpowerof2(len);
+      buf = (T*)REALLOC(buf, alen*sizeof(T));
+    }
+  }
   INLINE void realloc() {
     alen = max(2*alen,1);
     buf = (T*)REALLOC(buf, alen*sizeof(T));
   }
-  void setsize(int i) { for(; ulen>i; ulen--) buf[ulen-1].~T(); }
+  void setsize(int i) {
+    if (i<ulen)
+      for(; ulen>i; --ulen) buf[ulen-1].~T();
+    else if (i>ulen) {
+      prealloc(i);
+      for(; i>ulen; ++ulen) sys::callctor<T>(buf+ulen-1);
+    }
+  }
   T remove(int i) {
     T e = buf[i];
     for(int p = i+1; p<ulen; p++) buf[p-1] = buf[p];

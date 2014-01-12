@@ -197,6 +197,7 @@ INLINE void NAME##v(First first, Rest... rest) {\
   NAME(first);\
   NAME##v(rest...);\
 }
+#define COMMA ,
 
 namespace q {
 

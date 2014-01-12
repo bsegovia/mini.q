@@ -1,7 +1,6 @@
 /*-------------------------------------------------------------------------
- - mini.q - a minimalistic multiplayer FPS
- - iso.hpp -> exposes common functions for both marching cubes and dual
- - contouring
+ - mini.q - a minimalistic multiplayer fps
+ - iso.cpp -> implements routines for iso surface
  -------------------------------------------------------------------------*/
 #pragma once
 #include "sys.hpp"
