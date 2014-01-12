@@ -163,25 +163,16 @@ template <class T> struct vector : noncopyable {
     alen = ulen = len;
   }
   INLINE ~vector() { setsize(0); FREE(buf); }
-  INLINE T &addn() {
-    assert(ulen < alen);
-    new (&buf[ulen]) T;
-    return buf[ulen++];
-  }
-  INLINE T &addn(const T &x) {
-    assert(ulen < alen);
-    const T copy(x);
-    new (&buf[ulen]) T(copy);
-    return buf[ulen++];
-  }
   INLINE T &add(const T &x) {
     const T copy(x);
     if (ulen==alen) realloc();
-    return addn(copy);
+    sys::callctor<T>(buf+ulen, copy);
+    return buf[ulen++];
   }
   INLINE T &add() {
     if (ulen==alen) realloc();
-    return addn();
+    sys::callctor<T>(buf+ulen);
+    return buf[ulen++];
   }
   pair<T*,u32> move() {
     const auto dst = makepair(buf,u32(ulen));

@@ -231,15 +231,14 @@ struct edge_creaser {
 
     // step 2 - chain triangles that contain sharp vertices
     u32 listindex = m_vertnum;
-    loopi(m_trinum)
-      loopj(3) {
-        const auto idx = unpackidx(t[3*(firsttri+i)+j]) - m_first_vert;
-        if (m_sharp[idx].second == NOINDEX) continue;
-        m_sharp[listindex].first = m_sharp[idx].first;
-        m_sharp[listindex].second = m_sharp[idx].second;
-        m_sharp[idx].first = listindex++;
-        m_sharp[idx].second = i+firsttri;
-      }
+    loopi(m_trinum) loopj(3) {
+      const auto idx = unpackidx(t[3*(firsttri+i)+j]) - m_first_vert;
+      if (m_sharp[idx].second == NOINDEX) continue;
+      m_sharp[listindex].first = m_sharp[idx].first;
+      m_sharp[listindex].second = m_sharp[idx].second;
+      m_sharp[idx].first = listindex++;
+      m_sharp[idx].second = i+firsttri;
+    }
 
     // step 3 - go over all "sharp" vertices and duplicate them as needed
     loopi(m_vertnum) {
@@ -284,8 +283,9 @@ struct edge_creaser {
     m_vertnum = p.length() - m_first_vert;
     loopi(m_vertnum) n[m_first_vert+i] = vec3f(zero);
     loopi(m_trinum) {
-      const auto tri = &t[m_first_idx+3*i];
-      const auto nor = trinormalu(i+m_first_idx/3);
+      const auto idx = firsttri+i;
+      const auto tri = &t[3*idx];
+      const auto nor = trinormalu(idx);
       loopj(3) n[unpackidx(tri[j])] += nor;
     }
     loopi(m_vertnum) n[m_first_vert+i] = abs(normalize(n[m_first_vert+i]));
@@ -484,6 +484,7 @@ struct dc_gridbuilder {
       tesselate_slice(i);
     }
 
+    // stop here if we do not create anything
     if (first_vert == m_pos_buffer.length())
       return;
 
