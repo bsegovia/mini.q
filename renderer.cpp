@@ -122,7 +122,7 @@ void finish() {
   vector<vertex>().moveto(vertices);
   vector<u32>().moveto(indices);
 }
-static const float CELLSIZE = 0.2f, GRIDJITTER = 0.01f;
+static const float CELLSIZE = 0.4f, GRIDJITTER = 0.01f;
 
 static void makescene() {
   if (initialized_m) return;

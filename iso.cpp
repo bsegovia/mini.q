@@ -113,6 +113,7 @@ static const int interptable[12][2] = {
   {0,1},{1,2},{2,3},{3,0},{4,5},{5,6},{6,7},{7,4},{0,4},{1,5},{2,6},{3,7}
 };
 static const float SHARP_EDGE = 0.2f;
+static const u32 SUBGRID = 32;
 static const u32 MAX_NEW_VERT = 8;
 static const u32 NOINDEX = ~0x0u;
 static const u32 NOTRIANGLE = ~0x0u-1;
@@ -301,6 +302,22 @@ struct edge_creaser {
   int m_vertnum, m_trinum;
 };
 
+struct octree {
+  struct node {
+    INLINE node() :
+      m_children(NULL), m_first_idx(0), m_first_vert(0),
+      m_idxnum(0), m_vertnum(0), m_isleaf(0), m_empty(0)
+    {}
+    ~node() { SAFE_DELA(m_children); }
+    node *m_children;
+    u32 m_first_idx, m_first_vert;
+    u32 m_idxnum:15, m_vertnum:15;
+    u32 m_isleaf:1, m_empty:1;
+  };
+  static const u32 MAX_ITEM_NUM = (1<<15)-1;
+  node m_root;
+};
+
 struct dc_gridbuilder {
   dc_gridbuilder(distance_field df, const vec3i &dim) :
     m_df(df), m_grid(vec3f(one), vec3f(zero), dim),
@@ -473,7 +490,7 @@ struct dc_gridbuilder {
     return;
   }
 
-  void build() {
+  void build(octree::node &node) {
     const int first_idx = m_idx_buffer.length();
     const int first_vert = m_pos_buffer.length();
     loopi(3) initfield(i);
@@ -492,6 +509,13 @@ struct dc_gridbuilder {
     creaser.doit();
     m_border_remap.setsize(m_pos_buffer.length());
     removeborders(first_idx, first_vert);
+    assert(node.m_vertnum <= octree::MAX_ITEM_NUM);
+    assert(node.m_idxnum <= octree::MAX_ITEM_NUM);
+    node.m_first_vert = first_vert;
+    node.m_first_idx = first_idx;
+    node.m_vertnum = m_pos_buffer.length() - first_vert;
+    node.m_idxnum = m_idx_buffer.length() - first_idx;
+    node.m_isleaf = 1;
   }
 
   distance_field m_df;
@@ -506,50 +530,234 @@ struct dc_gridbuilder {
   vector<u32> m_qef_index;
 };
 
-static const u32 SUBGRID = 32;
 struct recursive_builder {
   recursive_builder(distance_field df, const vec3f &org, float cellsize, u32 dim) :
-    s(df,vec3i(SUBGRID)), m_df(df), m_org(org), m_cellsize(cellsize), m_dim(dim)
+    s(df,vec3i(SUBGRID)), m_df(df), m_org(org),
+    m_cellsize(cellsize),
+    m_half_side_len(float(dim) * m_cellsize * 0.5f),
+    m_half_diag_len(sqrt(3.f) * m_half_side_len),
+    m_dim(dim)
   {
     s.setsize(vec3f(cellsize));
     assert(ispoweroftwo(dim) && dim % SUBGRID == 0);
   }
   INLINE vec3f pos(const vec3i &xyz) { return m_org+m_cellsize*vec3f(xyz); }
 
-  void recurse(const vec3i &xyz, u32 cellnum, float half_diag, float half_side_len) {
-    const float dist = m_df(pos(xyz) + vec3f(half_side_len));
-    if (abs(dist) > half_diag) return;
+  void build(octree::node &node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
+    const auto scale = 1.f / float(1<<level);
+    const auto cellnum = m_dim >> level;
+    const auto dist = m_df(pos(xyz) + scale*vec3f(m_half_side_len));
+    if (abs(dist) > m_half_diag_len * scale) {
+      node.m_empty = 1;
+      return;
+    }
     if (cellnum > SUBGRID) {
+      node.m_children = NEWAE(octree::node, 8);
       loopi(8) {
-        const vec3i childxyz = xyz+int(cellnum/2)*icubev[i];
-        recurse(childxyz, cellnum/2, half_diag/2.f, half_side_len/2.f);
+        const auto childxyz = xyz+int(cellnum/2)*icubev[i];
+        build(node.m_children[i], childxyz, level+1);
       }
       return;
     }
-    s.setorg(pos(xyz));
-    s.build();
+    node.m_isleaf = 1;
   }
 
-  void build() {
-    const auto half_side_len = float(m_dim) * m_cellsize * 0.5f;
-    const auto half_diag = sqrt(3.f) * half_side_len;
-    recurse(vec3i(zero), m_dim, half_diag, half_side_len);
+  void recurse(octree::node &node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
+    if (node.m_empty)
+      return;
+    else if (node.m_isleaf) {
+      s.setorg(pos(xyz));
+      s.build(node);
+    } else {
+      loopi(8) {
+        const auto cellnum = m_dim >> level;
+        const auto childxyz = xyz+int(cellnum/2)*icubev[i];
+        recurse(node.m_children[i], childxyz, level+1);
+      }
+    }
   }
+
   dc_gridbuilder s;
   distance_field m_df;
   vec3f m_org;
-  float m_cellsize;
+  float m_cellsize, m_half_side_len, m_half_diag_len;
   u32 m_dim;
 };
 
 mesh dc_mesh(const vec3f &org, u32 cellnum, float cellsize, distance_field d) {
+  octree o;
   recursive_builder r(d, org, cellsize, cellnum);
-  r.build();
+  r.build(o.m_root);
+  r.recurse(o.m_root);
   const auto p = r.s.m_pos_buffer.move();
   const auto n = r.s.m_nor_buffer.move();
   const auto idx = r.s.m_idx_buffer.move();
   return mesh(p.first, n.first, idx.first, p.second, idx.second);
 }
+
+#if 0
+
+struct octree {
+  struct node {
+    INLINE node() : m_children(NULL) {}
+    INLINE ~node() { SAFE_DELA(m_children); }
+    INLINE float &field(const vec3i &xyz) {
+      const auto zoffset = xyz.z * (SUBGRID+1) * (SUBGRID+1);
+      return m_field[zoffset + (SUBGRID+1)*xyz.y + xyz.x];
+    }
+    INLINE u32 index(const vec3i &xyz) const {
+      const auto zoffset = xyz.z * SUBGRID * SUBGRID;
+      return zoffset + xyz.y*SUBGRID + xyz.x;
+    }
+    INLINE u32 &qefindex(const vec3i &xyz) { return m_grid[index(xyz)]; }
+    INLINE vec3f &qef(const vec3i &xyz) { return m_qef[index(xyz)]; }
+    void setasleaf() {
+      const u32 cellnum = SUBGRID * SUBGRID * SUBGRID;
+      const u32 fieldnum = (SUBGRID+1) * (SUBGRID+1) * (SUBGRID+1);
+      m_grid.setsize(cellnum);
+      m_field.setsize(fieldnum);
+      loopv(m_grid) m_grid[i] = NOINDEX;
+    }
+
+    vector<vec3f> m_qef;
+    vector<u32> m_grid;
+    vector<float> m_field;
+    node *m_children;
+  };
+  node m_root;
+};
+
+struct qef_builder {
+  qef_builder(distance_field df, const vec3i &dim) :
+    m_df(df), m_grid(vec3f(one), vec3f(zero), dim), m_node(NULL)
+  {}
+  INLINE void setnode(octree::node *node) { m_node = node; }
+  INLINE void setorg(const vec3f &org) { m_grid.m_org = org; }
+  INLINE void setsize(const vec3f &size) { m_grid.m_cellsize = size; }
+
+  void initfield(u32 z) {
+    const vec2i org(zero), dim(SUBGRID+1);
+    loopxy(org, dim, z) m_node->field(xyz) = m_df(m_grid.vertex(xyz));
+  }
+
+  void initslice(u32 z) {
+    const vec2i org(zero), dim(SUBGRID);
+    loopxy(org, dim, z) {
+      vec3f pos, nor;
+      mcell cell;
+      loopi(8) cell[i] = m_node->field(icubev[i]+xyz);
+      if (qef_vertex(cell, xyz, pos, nor)) {
+        m_node->qefindex(xyz) = m_node->m_qef.length();
+        m_node->m_qef.add(m_grid.vertex(xyz)+pos*m_grid.m_cellsize);
+      }
+    }
+  }
+
+  bool qef_vertex(const mcell &cell, const vec3i &xyz, vec3f &pos, vec3f &nor) {
+    int cubeindex = 0, num = 0;
+    loopi(8) if (cell[i] < 0.0f) cubeindex |= 1<<i;
+
+    // cube is entirely in/out of the surface
+    if (edgetable[cubeindex] == 0) return false;
+
+    // find the vertices where the surface intersects the cube
+    const auto org = m_grid.vertex(xyz);
+    vec3f p[12], n[12], mass(zero);
+    nor = zero;
+    loopi(12) {
+      if ((edgetable[cubeindex] & (1<<i)) == 0)
+        continue;
+      const auto idx0 = interptable[i][0], idx1 = interptable[i][1];
+      const auto v0 = cell[idx0], v1 = cell[idx1];
+      const auto p0 = fcubev[idx0], p1 = fcubev[idx1];
+      p[num] = falsepos(m_df, m_grid, org, p0, p1, v0, v1);
+      n[num] = gradient(m_df, org+p[num]*m_grid.m_cellsize);
+      nor += n[num];
+      mass += p[num++];
+    }
+    mass /= float(num);
+
+    // compute the QEF minimizing point
+    double matrix[12][3];
+    double vector[12];
+    loopi(num) {
+      loopj(3) matrix[i][j] = double(n[i][j]);
+      const auto d = p[i] - mass;
+      vector[i] = double(dot(n[i],d));
+    }
+    pos = mass + qef::evaluate(matrix, vector, num);
+    return true;
+  }
+
+  void build() {
+    loopi(3) initfield(i);
+    initslice(0);
+    rangei(1,m_grid.m_dim.z+1) {
+      initfield(i+2);
+      initslice(i);
+    }
+  }
+
+  distance_field m_df;
+  grid m_grid;
+  octree::node *m_node;
+};
+
+struct recursive_builder {
+
+  recursive_builder(distance_field df, const vec3f &org, float cellsize, u32 dim) :
+    qb(df,vec3i(SUBGRID)), m_df(df), m_org(org),
+    m_cellsize(cellsize),
+    m_half_side_len(float(dim) * m_cellsize * 0.5f),
+    m_half_diag_len(sqrt(3.f) * m_half_side_len),
+    m_dim(dim)
+  {
+    qb.setsize(vec3f(cellsize));
+    assert(ispoweroftwo(dim) && dim % SUBGRID == 0);
+  }
+  INLINE vec3f pos(const vec3i &xyz) { return m_org+m_cellsize*vec3f(xyz); }
+
+  void build(octree &o) {
+    buildqef(&o.m_root);
+    buildmesh(&o.m_root);
+  }
+
+  void buildqef(octree::node *node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
+    const auto scale = 1.f / float(1<<level);
+    const auto cellnum = m_dim >> level;
+    const float dist = m_df(pos(xyz) + scale*vec3f(m_half_side_len));
+    if (abs(dist) > m_half_diag_len * scale) return;
+    if (cellnum > SUBGRID) {
+      node->m_children = NEWAE(octree::node, 8);
+      loopi(8) {
+        const vec3i childxyz = xyz+int(cellnum/2)*icubev[i];
+        buildqef(node->m_children+i, childxyz, level+1);
+      }
+      return;
+    }
+    node->setasleaf();
+    qb.setorg(pos(xyz));
+    qb.setnode(node);
+    qb.build();
+  }
+
+  void buildmesh(octree::node *node) {
+  
+  }
+
+  qef_builder qb;
+  distance_field m_df;
+  vec3f m_org;
+  float m_cellsize, m_half_side_len, m_half_diag_len;
+  u32 m_dim;
+};
+
+mesh dc_mesh(const vec3f &org, u32 cellnum, float cellsize, distance_field d)
+{
+
+}
+#endif
+
 } /* namespace iso */
 } /* namespace q */
 

@@ -41,7 +41,7 @@ static void move(game::dynent &p, int moveres, float curtime) {
   d.x += float(p.strafe)*cos(deg2rad(p.ypr.x-180.f));
   d.z += float(p.strafe)*sin(deg2rad(p.ypr.x-180.f));
 
-  const auto speed = curtime/1000.0f*p.maxspeed;
+  const auto speed = 4.f*curtime/1000.0f*p.maxspeed;
   const auto friction = p.onfloor ? 6.0f : 30.0f;
   const auto fpsfric = friction/curtime*20.0f;
 
@@ -50,10 +50,17 @@ static void move(game::dynent &p, int moveres, float curtime) {
   p.vel += d;
   p.vel /= fpsfric;
   d = p.vel;
+  d *= speed; // d is now frametime based velocity vector
+
+  if (p.flycam) {
+    d.x *= float(cos(deg2rad(p.ypr.y)));
+    d.y  = -float(p.move*sin(deg2rad(p.ypr.y)));
+    d.z *= float(cos(deg2rad(p.ypr.y)));
+  }
 
   // we apply the velocity vector directly if we are flying around
   if (p.flycam) {
-    p.o += d*speed;
+    p.o += d;
     if (p.jump) {
       p.vel.y += 2.f;
       p.jump = 0;

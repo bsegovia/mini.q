@@ -31,7 +31,7 @@ dynent::dynent() {
   gun = 0;
   name[0] = team[0] = '\0';
 }
-IVAR(flycam, 0, 0, 1);
+IVARF(flycam, 0, 0, 1, player.flycam = flycam);
 
 void fixplayerrange(void) {
   const float MAXPITCH = 90.0f;
