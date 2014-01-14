@@ -276,15 +276,16 @@ namespace shaders {
 "}\n"
  };
 
-
  const char font_fp[] = {
 
 "uniform sampler2D u_diffuse;\n"
+"uniform float u_fontw, u_fonth;\n"
+"uniform float u_font_thickness;\n"
+"uniform float u_outline_width;\n"
+"uniform vec4 u_outline_color;\n"
 "PS_IN vec2 fs_tex;\n"
 "IF_NOT_WEBGL(out vec4 rt_c);\n"
 
-"#define FONTW 128\n"
-"#define FONTH 96\n"
 "#define RSQ2 0.7071078\n"
 
 "void distseg(inout float dist, vec2 start, vec2 end, vec2 nor, vec2 pos) {\n"
@@ -295,9 +296,9 @@ namespace shaders {
 "void main() {\n"
 "  vec2 uv = fs_tex;\n"
 "  vec2 c = vec2(0.5);\n"
-"  vec2 pos = fract(uv * vec2(FONTW, FONTH));\n"
-"  float du = 1.0 / float(FONTW);\n"
-"  float dv = 1.0 / float(FONTH);\n"
+"  vec2 pos = fract(uv * vec2(u_fontw, u_fonth));\n"
+"  float du = 1.0 / u_fontw;\n"
+"  float dv = 1.0 / u_fonth;\n"
 "  float s  = texture2D(u_diffuse, uv).r;\n"
 "  float l  = texture2D(u_diffuse, uv+vec2(-du,0.0)).r;\n"
 "  float r  = texture2D(u_diffuse, uv+vec2(+du,0.0)).r;\n"
@@ -324,7 +325,10 @@ namespace shaders {
 "    if (b!=0.0&&r!=0.0&&br==0.0) distseg(dist, vec2(0.5,-0.5), vec2(+1.5,0.5), vec2(-RSQ2,+RSQ2), pos);\n"
 "    if (b!=0.0&&l!=0.0&&bl==0.0) distseg(dist, vec2(0.5,-0.5), vec2(-0.5,0.5), vec2(+RSQ2,+RSQ2), pos);\n"
 "  }\n"
-"  vec4 col = dist < 0.4 ? vec4(1.0) : vec4(0.0);\n"
+"  float non_outline = u_font_thickness-u_outline_width;\n"
+"  float outline = u_font_thickness;\n"
+"  vec4 col = vec4(1.0-smoothstep(non_outline-0.1, non_outline, dist));\n"
+"  col += u_outline_color * (1.0-smoothstep(outline-0.1, outline, dist));\n"
 "  SWITCH_WEBGL(gl_FragColor = col, rt_c = col);\n"
 "}\n"
  };

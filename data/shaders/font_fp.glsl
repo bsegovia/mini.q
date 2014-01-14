@@ -1,12 +1,13 @@
-
 //## const char font_fp[] = {
 
 uniform sampler2D u_diffuse;
+uniform float u_fontw, u_fonth;
+uniform float u_font_thickness;
+uniform float u_outline_width;
+uniform vec4 u_outline_color;
 PS_IN vec2 fs_tex;
 IF_NOT_WEBGL(out vec4 rt_c);
 
-#define FONTW 128
-#define FONTH 96
 #define RSQ2 0.7071078
 
 void distseg(inout float dist, vec2 start, vec2 end, vec2 nor, vec2 pos) {
@@ -17,9 +18,9 @@ void distseg(inout float dist, vec2 start, vec2 end, vec2 nor, vec2 pos) {
 void main() {
   vec2 uv = fs_tex;
   vec2 c = vec2(0.5);
-  vec2 pos = fract(uv * vec2(FONTW, FONTH));
-  float du = 1.0 / float(FONTW);
-  float dv = 1.0 / float(FONTH);
+  vec2 pos = fract(uv * vec2(u_fontw, u_fonth));
+  float du = 1.0 / u_fontw;
+  float dv = 1.0 / u_fonth;
   float s  = texture2D(u_diffuse, uv).r;
   float l  = texture2D(u_diffuse, uv+vec2(-du,0.0)).r;
   float r  = texture2D(u_diffuse, uv+vec2(+du,0.0)).r;
@@ -46,7 +47,10 @@ void main() {
     if (b!=0.0&&r!=0.0&&br==0.0) distseg(dist, vec2(0.5,-0.5), vec2(+1.5,0.5), vec2(-RSQ2,+RSQ2), pos);
     if (b!=0.0&&l!=0.0&&bl==0.0) distseg(dist, vec2(0.5,-0.5), vec2(-0.5,0.5), vec2(+RSQ2,+RSQ2), pos);
   }
-  vec4 col = dist < 0.4 ? vec4(1.0) : vec4(0.0);
+  float non_outline = u_font_thickness-u_outline_width;
+  float outline = u_font_thickness;
+  vec4 col = vec4(1.0-smoothstep(non_outline-0.1, non_outline, dist));
+  col += u_outline_color * (1.0-smoothstep(outline-0.1, outline, dist));
   SWITCH_WEBGL(gl_FragColor = col, rt_c = col);
 }
 //## };

@@ -44,21 +44,6 @@ u32 coretex(u32 index);
 u32 installtex(const char *texname, bool clamp=false);
 u32 maketex(const char *fmt, ...);
 
-// quick, dirty and super simple shader system to replace fixed pipeline
-static const u32 FOG = 1<<0;
-static const u32 KEYFRAME = 1<<1;
-static const u32 DIFFUSETEX = 1<<2;
-static const u32 COLOR = 1<<3;
-static const int subtypenum = 4;
-static const int shadernum = 1<<subtypenum;
-void bindfixedshader(u32 flags);
-enum {
-  FONT_SHADER,
-  DFRM_SHADER
-};
-void bindshader(u32 idx);
-void setshaderudelta(float delta); // XXX find a better way to handle this!
-
 // track allocations
 void gentextures(s32 n, u32 *id);
 void genbuffers(s32 n, u32 *id);
@@ -125,6 +110,38 @@ INLINE void popmode(int mode) {
   ogl::matrixmode(mode);
   ogl::popmatrix();
 }
+
+// basic shader type
+struct shadertype {
+  INLINE shadertype() : rules(0), program(0) {}
+  u32 rules; // fog,keyframe...?
+  u32 program; // ogl program
+  u32 u_diffuse, u_delta, u_mvp; // uniforms
+  u32 u_zaxis, u_fogstartend, u_fogcolor; // uniforms
+};
+void destroyshader(shadertype &s);
+
+// quick, dirty and super simple shader system to replace fixed pipeline
+static const u32 FOG = 1<<0;
+static const u32 KEYFRAME = 1<<1;
+static const u32 DIFFUSETEX = 1<<2;
+static const u32 COLOR = 1<<3;
+static const int subtypenum = 4;
+static const int shadernum = 1<<subtypenum;
+void bindfixedshader(u32 flags);
+void bindshader(shadertype&);
+void setshaderudelta(float delta); // XXX find a better way to handle this!
+
+// to create shaders with any extra uniforms
+typedef void (CDECL *uniformcb)(shadertype&);
+struct shaderresource {
+  const char *vppath, *fppath;
+  const char *vp, *fp;
+  uniformcb cb;
+};
+bool buildshader(shadertype &s, const shaderresource &rsc, u32 rules, int fromfile);
+void shadererror(bool fatalerr, const char *msg);
+bool loadfromfile();
 
 // OGL debug macros
 #if !defined(__EMSCRIPTEN__)

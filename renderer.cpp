@@ -8,6 +8,7 @@
 namespace q {
 namespace rr {
 
+#if 0
 void drawdf() {
   ogl::pushmatrix();
   ogl::setortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
@@ -18,6 +19,7 @@ void drawdf() {
   ogl::enablev(GL_CULL_FACE, GL_DEPTH_TEST);
   ogl::popmatrix();
 }
+#endif
 
 /*--------------------------------------------------------------------------
  - handle the HUD (console, scores...)
@@ -30,7 +32,11 @@ static void drawhud(int w, int h, int curfps) {
   ogl::setortho(0.f, float(VIRTW), float(VIRTH), 0.f, -1.f, 1.f);
   ogl::enablev(GL_BLEND);
   OGL(DepthMask, GL_FALSE);
-  if (cmd) text::drawf("> %s_", 20, 1570, cmd);
+  if (cmd) {
+    text::charwidth(64);
+    text::thickness(0.5f);
+    text::drawf("> %s_", 32, 400, cmd);
+  }
   ogl::popmode(ogl::PROJECTION);
   ogl::popmode(ogl::MODELVIEW);
 
@@ -148,6 +154,8 @@ static void transplayer(void) {
   ogl::translate(-player.o);
 }
 
+IVAR(linemode, 0, 0, 1);
+
 void frame(int w, int h, int curfps) {
   const float farplane = 100.f;
   const float fovy = fov * float(sys::scrh) / float(sys::scrw);
@@ -170,8 +178,10 @@ void frame(int w, int h, int curfps) {
 
   makescene();
   if (vertnum != 0) {
+    if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_LINE);
     ogl::bindfixedshader(ogl::COLOR);
     ogl::immdrawelememts("Tip3c3", indexnum, &indices[0], &vertices[0].first[0]);
+    if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_FILL);
   }
 
   ogl::disable(GL_CULL_FACE);

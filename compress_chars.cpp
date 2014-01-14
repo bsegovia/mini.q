@@ -14,31 +14,43 @@
   exit(EXIT_FAILURE);\
 } while (0)
 
+template <typename T>
+void loaddata(SDL_Surface *s, bool invert) {
+  uint32_t k = 0;
+  T *src = (T*) s->pixels;
+  const bool pos = invert ? 0 : 1;
+  const bool neg = invert ? 1 : 0;
+  for (auto y = 0; y < s->h; ++y) {
+    for (auto x = 0; x < s->w/32; ++x, ++k) {
+      uint32_t out = 0;
+      for (auto i = 0; i < 32; ++i)
+        out |= ((src[y*s->w+32*x+i]!=0?pos:neg) << i);
+      printf("0x%08x, ", out);
+      if (k%8==7)printf("\n");
+    }
+  }
+}
 int main(int argc, const char *argv[]) {
-  if (argc != 4) FATAL("usage: %s filename", argv[0]);
+  if (argc != 5) FATAL("usage: %s filename width height invert", argv[0]);
   auto s = IMG_Load(argv[1]);
   auto fontw = atoi(argv[2]);
   auto fonth = atoi(argv[3]);
+  auto invert = atoi(argv[4]);
   if (s == NULL) FATAL("unable to load font file %s", argv[1]);
   if (s->w%32 != 0) FATAL("unsupported width");
-  if (s->format->BitsPerPixel != 32) FATAL("unsupported pixel format");
-  uint32_t *src = (uint32_t*)(s->pixels);
-  uint32_t k = 0;
+  if (s->format->BitsPerPixel != 8 && s->format->BitsPerPixel != 32)
+    FATAL("unsupported pixel format (%d bpp)", s->format->BitsPerPixel);
   printf("static const int fontw = %d, fonth = %d;\n", s->w, s->h);
   printf("static const int fontcol = %d;\n", s->w/fontw);
   printf("static const int charw = %d;\n", fontw);
   printf("static const int charh = %d;\n", fonth);
   printf("static const u32 fontdata[] = {\n");
-  for (auto y = 0; y < s->h; ++y) {
-    for (auto x = 0; x < s->w/32; ++x, ++k) {
-      uint32_t out = 0;
-      for (auto i = 0; i < 32; ++i)
-        out |= ((src[y*s->w+32*x+i]!=0?1:0) << i);
-      printf("0x%08x, ", out);
-      if (k%8==7)printf("\n");
-    }
-  }
+  if (s->format->BitsPerPixel == 8)
+    loaddata<uint8_t>(s, invert);
+  else
+    loaddata<uint32_t>(s, invert);
   printf("};\n");
+
   SDL_FreeSurface(s);
   return 0;
 }

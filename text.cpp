@@ -7,32 +7,84 @@
 #include "renderer.hpp"
 #include "math.hpp"
 #include "stl.hpp"
+#include "shaders.hpp"
 
 namespace q {
 namespace text {
 
 #include "font.hxx"
 
-u32 buildfont() {
+// ogl is responsible for the texture destruction
+static u32 textfont = 0;
+u32 getoglfont() { return textfont; }
+static void buildfont() {
   u8 *font = (u8*)MALLOC(fontw*fonth*sizeof(u8));
   loopi(fonth) loopj(fontw/32) loopk(32)
     font[i*fontw+j*32+k] = (fontdata[i*fontw/32+j]&(1<<k))?~0x0:0x0;
   u32 id = ogl::maketex("TB Ir Dr B2 Wsr Wtr Mn mn", font, fontw, fonth);
   FREE(font);
-  return id;
+  textfont = id;
+}
+
+// handle font shaders
+static struct fontshadertype : ogl::shadertype {
+  u32 u_fontw, u_fonth, u_font_thickness;
+  u32 u_outline_width, u_outline_color;
+} fontshader;
+static void fontuniform(ogl::shadertype &s) {
+  auto &df = static_cast<fontshadertype&>(s);
+  OGLR(df.u_fontw, GetUniformLocation, df.program, "u_fontw");
+  OGLR(df.u_fonth, GetUniformLocation, df.program, "u_fonth");
+  OGLR(df.u_font_thickness, GetUniformLocation, df.program, "u_font_thickness");
+  OGLR(df.u_outline_width, GetUniformLocation, df.program, "u_outline_width");
+  OGLR(df.u_outline_color, GetUniformLocation, df.program, "u_outline_color");
+}
+static const ogl::shaderresource font_rsc = {
+  "data/shaders/fixed_vp.glsl",
+  "data/shaders/font_fp.glsl",
+  shaders::fixed_vp,
+  shaders::font_fp,
+  fontuniform
+};
+void loadfontshader(bool fatalerr, bool fromfile) {
+  using namespace ogl;
+  if (!buildshader(fontshader, font_rsc, DIFFUSETEX, fromfile))
+    shadererror(fatalerr, "font shader");
+}
+void start() {
+  loadfontshader(true, false);
+  buildfont();
+}
+void finish() { ogl::destroyshader(fontshader); }
+
+// font parameters
+static vec4f fontoutlinecolor = zero;
+static float fontthickness = 0.5f, fontoutlinewidth = 0.0f;
+static u32 in_width = charw * rr::FONTH / charh, in_height = rr::FONTH;
+
+void charwidth(u32 w) { in_width = w; in_height = w * charh / charw; }
+void thickness(float t) { fontthickness = t; }
+void outlinecolor(const vec4f &c) { fontoutlinecolor = c; }
+void outlinewidth(float w) { fontoutlinewidth = w; }
+static void bindfontshader() {
+  ogl::bindshader(fontshader);
+  OGL(Uniform1f, fontshader.u_fontw, float(fontw));
+  OGL(Uniform1f, fontshader.u_fonth, float(fonth));
+  OGL(Uniform1f, fontshader.u_font_thickness, fontthickness);
+  OGL(Uniform4fv, fontshader.u_outline_color, 1, &fontoutlinecolor.x);
+  OGL(Uniform1f, fontshader.u_outline_width, fontoutlinewidth);
 }
 
 typedef u16 indextype;
 static const indextype twotriangles[] = {0,1,2,0,2,3};
-static const u32 in_width = 100, in_height = 200;
 
 int width(const char *str) {
   int x = 0;
   for (int i = 0; str[i] != 0; i++) {
     int c = str[i];
     if (c=='\t') { x = (x+rr::PIXELTAB)/rr::PIXELTAB*rr::PIXELTAB; continue; }; 
-    if (c=='\f') continue; 
-    if (c==' ') { x += rr::FONTH/2; continue; };
+    if (c=='\f') continue;
+    if (c==' ') { x += in_height; continue; };
     c -= 33;
     if (c<0 || c>=95) continue;
     x += in_width + 1;
@@ -57,16 +109,16 @@ void draw(const char *str, int left, int top) {
 
   // traverse the string and build the mesh
   int index = 0, vert = 0, x = left, y = top;
-  for (int i = 0; str[i] !=	 0; ++i) {
+  for (int i = 0; str[i] != 0; ++i) {
     int c = str[i];
     if (c=='\t') { x = (x-left+rr::PIXELTAB)/rr::PIXELTAB*rr::PIXELTAB+left; continue; }
     if (c=='\f') { OGL(VertexAttrib3f,ogl::COL,0.25f,1.f,0.5f); continue; }
-    if (c==' ') { x += rr::FONTH/2; continue; }
+    if (c==' ') { x += in_height; continue; }
     c -= 32;
     if (c<0 || c>=95) continue;
-    const float in_left   = (float(c%fontcol)*float(charw)-0.5f) / float(fontw);
-    const float in_top    = (float(c/fontcol)*float(charh)-0.5f) / float(fonth);
-    const float in_right  = in_left + (float(charw)-0.5f)/float(fontw);
+    const float in_left   = (float(c%fontcol)*float(charw)) / float(fontw);
+    const float in_top    = (float(c/fontcol)*float(charh)) / float(fonth);
+    const float in_right  = in_left + (float(charw))/float(fontw);
     const float in_bottom = in_top + (float(charh)-0.5f)/float(fonth);
 
     loopj(6) indices[index+j] = vert+twotriangles[j];
@@ -79,7 +131,7 @@ void draw(const char *str, int left, int top) {
     index += 6;
     vert += 4;
   }
-  ogl::bindshader(ogl::FONT_SHADER);
+  bindfontshader();
   ogl::immdrawelememts("Tst2p2", index, indices, &verts[0].x);
 }
 
