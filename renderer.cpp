@@ -8,39 +8,30 @@
 namespace q {
 namespace rr {
 
-#if 0
-void drawdf() {
-  ogl::pushmatrix();
-  ogl::setortho(-1.f, 1.f, -1.f, 1.f, -1.f, 1.f);
-  const float verts[] = {-1.f,-1.f,0.f, 1.f,-1.f,0.f, -1.f,1.f,0.f, 1.f,1.f,0.f};
-  ogl::disablev(GL_CULL_FACE, GL_DEPTH_TEST);
-  ogl::bindshader(ogl::DFRM_SHADER);
-  ogl::immdraw(GL_TRIANGLE_STRIP, 3, 0, 0, 4, verts);
-  ogl::enablev(GL_CULL_FACE, GL_DEPTH_TEST);
-  ogl::popmatrix();
+float VIRTH = 1.f;
+static void sethudmatrices() {
+  ogl::pushmode(ogl::MODELVIEW);
+  ogl::identity();
+  ogl::pushmode(ogl::PROJECTION);
+  ogl::setortho(0.f, VIRTW, VIRTH, 0.f, -1.f, 1.f);
 }
-#endif
+static void popmatrices() {
+  ogl::popmode(ogl::PROJECTION);
+  ogl::popmode(ogl::MODELVIEW);
+}
 
 /*--------------------------------------------------------------------------
  - handle the HUD (console, scores...)
  -------------------------------------------------------------------------*/
 static void drawhud(int w, int h, int curfps) {
   auto cmd = con::curcmd();
-  ogl::pushmode(ogl::MODELVIEW);
-  ogl::identity();
-  ogl::pushmode(ogl::PROJECTION);
-  ogl::setortho(0.f, float(VIRTW), float(VIRTH), 0.f, -1.f, 1.f);
   ogl::enablev(GL_BLEND);
-  OGL(DepthMask, GL_FALSE);
-  if (cmd) {
-    text::charwidth(64);
-    text::thickness(0.5f);
-    text::drawf("> %s_", 32, 400, cmd);
-  }
-  ogl::popmode(ogl::PROJECTION);
-  ogl::popmode(ogl::MODELVIEW);
-
-  OGL(DepthMask, GL_TRUE);
+  ogl::disable(GL_DEPTH_TEST);
+  sethudmatrices();
+  text::charwidth(8.f);
+  if (cmd) text::drawf("> %s_", vec2f(8.f, VIRTH-100.f), cmd);
+  con::render();
+  popmatrices();
   ogl::disable(GL_BLEND);
   ogl::enable(GL_DEPTH_TEST);
 }
@@ -158,8 +149,8 @@ IVAR(linemode, 0, 0, 1);
 
 void frame(int w, int h, int curfps) {
   const float farplane = 100.f;
-  const float fovy = fov * float(sys::scrh) / float(sys::scrw);
   const float aspect = float(sys::scrw) / float(sys::scrh);
+  const float fovy = fov / aspect;
   OGL(ClearColor, 0.f, 0.f, 0.f, 1.f);
   OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   ogl::matrixmode(ogl::PROJECTION);

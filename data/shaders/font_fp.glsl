@@ -50,7 +50,8 @@ void main() {
   float non_outline = u_font_thickness-u_outline_width;
   float outline = u_font_thickness;
   vec4 col = vec4(1.0-smoothstep(non_outline-0.1, non_outline, dist));
-  col += u_outline_color * (1.0-smoothstep(outline-0.1, outline, dist));
+
+  // col += u_outline_color * (1.0-smoothstep(outline-0.1, outline, dist));
   SWITCH_WEBGL(gl_FragColor = col, rt_c = col);
 }
 //## };

@@ -12,14 +12,13 @@ void start();
 void finish();
 u32 getoglfont();
 void loadfontshader(bool fatalerr, bool fromfile);
-void charwidth(u32 w);
+void charwidth(float w);
 void thickness(float t);
 void outlinecolor(const vec4f &c);
 void outlinewidth(float w);
-int width(const char *str);
-void drawf(const char *fstr, int left, int top, ...);
-void draw(const char *str, int left, int top);
-void drawenvbox(int t, int w);
+float width(const char *str);
+void drawf(const char *fstr, const vec2f &pos, ...);
+void draw(const char *str, const vec2f &pos);
 } /* namespace text */
 } /* namespace q */
 

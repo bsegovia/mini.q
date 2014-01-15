@@ -11,7 +11,6 @@ namespace q {
 namespace sys {
 
 int scrw = 800, scrh = 600;
-
 static int islittleendian_ = 1;
 void initendiancheck(void) { islittleendian_ = *((char*)&islittleendian_); }
 int islittleendian(void) { return islittleendian_; }
@@ -90,7 +89,8 @@ static void memoutputalloc(void) {
       sz += it->size;
     }
     if (sz > 0) fprintf(stderr, "total unfreed: %fKB \n", float(sz)/1000.f);
-    delete memlist; 
+    delete memlist;
+    _exit(EXIT_FAILURE);
   }
 }
 
@@ -187,6 +187,7 @@ void quit(const char *msg) {
     md2::finish();
     ogl::finish();
     task::finish();
+    con::finish();
   }
   SDL_Quit();
   exit(msg && strlen(msg) ? EXIT_FAILURE : EXIT_SUCCESS);

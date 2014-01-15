@@ -22,6 +22,7 @@ void start(int argc, const char *argv[]) {
   } else con::out("unknown commandline argument");
   if (SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO) < 0) sys::fatal("SDL failed");
 
+  rr::VIRTH = rr::VIRTW * float(sys::scrh) / float(sys::scrw);
   con::out("init: video: sdl");
   if (SDL_InitSubSystem(SDL_INIT_VIDEO)<0) sys::fatal("SDL video failed");
   SDL_WM_GrabInput(grabmouse ? SDL_GRAB_ON : SDL_GRAB_OFF);

@@ -34,8 +34,10 @@ INLINE char *strn0cpy(char *d, const char *s, int m) {strncpy(d,s,m); d[m-1]=0; 
 // easy safe string
 static const u32 MAXDEFSTR = 260, WORDWRAP = 80;
 typedef char string[MAXDEFSTR];
-INLINE void strcpy_s(string &d, const char *s) { strn0cpy(d,s,MAXDEFSTR); }
-INLINE void strcat_s(string &d, const char *s) { size_t n = strlen(d); strn0cpy(d+n,s,MAXDEFSTR-n); }
+INLINE void strcpy_cs(char *d, const char *s) { strn0cpy(d,s,MAXDEFSTR); }
+INLINE void strcat_cs(char *d, const char *s) { size_t n = strlen(d); strn0cpy(d+n,s,MAXDEFSTR-n); }
+INLINE void strcpy_s(string &d, const char *s) { strcpy_cs(d,s); }
+INLINE void strcat_s(string &d, const char *s) { strcat_cs(d,s); }
 INLINE void strfmt_s(string &d, const char *fmt, va_list v) {
   vsnprintf(d, MAXDEFSTR, fmt, v);
   d[MAXDEFSTR-1] = 0;

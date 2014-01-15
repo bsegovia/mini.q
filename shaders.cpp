@@ -328,7 +328,8 @@ namespace shaders {
 "  float non_outline = u_font_thickness-u_outline_width;\n"
 "  float outline = u_font_thickness;\n"
 "  vec4 col = vec4(1.0-smoothstep(non_outline-0.1, non_outline, dist));\n"
-"  col += u_outline_color * (1.0-smoothstep(outline-0.1, outline, dist));\n"
+
+"  // col += u_outline_color * (1.0-smoothstep(outline-0.1, outline, dist));\n"
 "  SWITCH_WEBGL(gl_FragColor = col, rt_c = col);\n"
 "}\n"
  };
