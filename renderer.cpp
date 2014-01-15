@@ -13,7 +13,7 @@ namespace rr {
  -------------------------------------------------------------------------*/
 float VIRTH = 1.f;
 vec2f scrdim() { return vec2f(float(sys::scrw), float(sys::scrh)); }
-static void sethudmatrices() {
+static void setphysicalhud() {
   const auto scr = scrdim();
   ogl::pushmode(ogl::MODELVIEW);
   ogl::identity();
@@ -35,7 +35,7 @@ static void drawhud(int w, int h, int curfps) {
   const auto fontdim = text::fontdim();
   ogl::enablev(GL_BLEND);
   ogl::disable(GL_DEPTH_TEST);
-  sethudmatrices();
+  setphysicalhud();
   text::displaywidth(text::fontdim().x);
   if (cmd) text::drawf("> %s_", vec2f(8.f, scr.y-50.f), cmd);
   con::render();
@@ -190,10 +190,10 @@ void frame(int w, int h, int curfps) {
     if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_FILL);
   }
 
-  ogl::enable(GL_CULL_FACE);
   drawhudgun(fovy, aspect, farplane);
   ogl::disable(GL_CULL_FACE);
   drawhud(w,h,curfps);
+  ogl::enable(GL_CULL_FACE);
 }
 } /* namespace rr */
 } /* namespace q */
