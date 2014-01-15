@@ -28,13 +28,12 @@ static void buildfont() {
 
 // handle font shaders
 static struct fontshadertype : ogl::shadertype {
-  u32 u_fontw, u_fonth, u_font_thickness;
+  u32 u_fontwh, u_font_thickness;
   u32 u_outline_width, u_outline_color;
 } fontshader;
 static void fontuniform(ogl::shadertype &s) {
   auto &df = static_cast<fontshadertype&>(s);
-  OGLR(df.u_fontw, GetUniformLocation, df.program, "u_fontw");
-  OGLR(df.u_fonth, GetUniformLocation, df.program, "u_fonth");
+  OGLR(df.u_fontwh, GetUniformLocation, df.program, "u_fontwh");
   OGLR(df.u_font_thickness, GetUniformLocation, df.program, "u_font_thickness");
   OGLR(df.u_outline_width, GetUniformLocation, df.program, "u_outline_width");
   OGLR(df.u_outline_color, GetUniformLocation, df.program, "u_outline_color");
@@ -70,8 +69,7 @@ void outlinecolor(const vec4f &c) { fontoutlinecolor = c; }
 void outlinewidth(float w) { fontoutlinewidth = w; }
 static void bindfontshader() {
   ogl::bindshader(fontshader);
-  OGL(Uniform1f, fontshader.u_fontw, float(fontw));
-  OGL(Uniform1f, fontshader.u_fonth, float(fonth));
+  OGL(Uniform2f, fontshader.u_fontwh, float(fontw), float(fonth));
   OGL(Uniform1f, fontshader.u_font_thickness, fontthickness);
   OGL(Uniform4fv, fontshader.u_outline_color, 1, &fontoutlinecolor.x);
   OGL(Uniform1f, fontshader.u_outline_width, fontoutlinewidth);

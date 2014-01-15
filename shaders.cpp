@@ -279,7 +279,8 @@ namespace shaders {
  const char font_fp[] = {
 
 "uniform sampler2D u_diffuse;\n"
-"uniform float u_fontw, u_fonth;\n"
+"// uniform float u_fontw, u_fonth;\n"
+"uniform vec2 u_fontwh;\n"
 "uniform float u_font_thickness;\n"
 "uniform float u_outline_width;\n"
 "uniform vec4 u_outline_color;\n"
@@ -296,9 +297,9 @@ namespace shaders {
 "void main() {\n"
 "  vec2 uv = fs_tex;\n"
 "  vec2 c = vec2(0.5);\n"
-"  vec2 pos = fract(uv * vec2(u_fontw, u_fonth));\n"
-"  float du = 1.0 / u_fontw;\n"
-"  float dv = 1.0 / u_fonth;\n"
+"  vec2 pos = fract(uv * u_fontwh);\n"
+"  float du = 1.0 / u_fontwh.x;\n"
+"  float dv = 1.0 / u_fontwh.y;\n"
 "  float s  = texture2D(u_diffuse, uv).r;\n"
 "  float l  = texture2D(u_diffuse, uv+vec2(-du,0.0)).r;\n"
 "  float r  = texture2D(u_diffuse, uv+vec2(+du,0.0)).r;\n"

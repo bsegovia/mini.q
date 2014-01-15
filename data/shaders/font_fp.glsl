@@ -1,7 +1,7 @@
 //## const char font_fp[] = {
 
 uniform sampler2D u_diffuse;
-uniform float u_fontw, u_fonth;
+uniform vec2 u_fontwh;
 uniform float u_font_thickness;
 uniform float u_outline_width;
 uniform vec4 u_outline_color;
@@ -18,9 +18,9 @@ void distseg(inout float dist, vec2 start, vec2 end, vec2 nor, vec2 pos) {
 void main() {
   vec2 uv = fs_tex;
   vec2 c = vec2(0.5);
-  vec2 pos = fract(uv * vec2(u_fontw, u_fonth));
-  float du = 1.0 / u_fontw;
-  float dv = 1.0 / u_fonth;
+  vec2 pos = fract(uv * u_fontwh);
+  float du = 1.0 / u_fontwh.x;
+  float dv = 1.0 / u_fontwh.y;
   float s  = texture2D(u_diffuse, uv).r;
   float l  = texture2D(u_diffuse, uv+vec2(-du,0.0)).r;
   float r  = texture2D(u_diffuse, uv+vec2(+du,0.0)).r;
