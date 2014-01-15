@@ -1,7 +1,9 @@
 static const int fontw = 128, fonth = 96;
+static const vec2f fontwh(128.000000, 96.000000);
 static const int fontcol = 16;
 static const int charw = 8;
 static const int charh = 16;
+static const vec2f charwh(8.000000,16.000000);
 static const u32 fontdata[] = {
 0x14140800, 0x080e0008, 0x00140808, 0x00000000, 0x14140800, 0x0811023e, 0x00081004, 0x00000000, 
 0x14140800, 0x08114509, 0x08141004, 0x40000000, 0x7f000800, 0x00112209, 0x08001004, 0x20000000, 

@@ -100,9 +100,9 @@ void render() {
     }
   }
   const auto font = text::fontdim();
-  text::charwidth(font.x);
+  text::displaywidth(font.x);
   loopj(nd) {
-    const vec2f pos(2.f*font.x, font.y*float(nd-j-1));
+    const vec2f pos(font.x, font.y*float(nd-j-1));
     text::draw(refs[j], pos);
   }
 }

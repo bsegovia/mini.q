@@ -36,7 +36,7 @@ static void drawhud(int w, int h, int curfps) {
   ogl::enablev(GL_BLEND);
   ogl::disable(GL_DEPTH_TEST);
   sethudmatrices();
-  text::charwidth(text::fontdim().x);
+  text::displaywidth(text::fontdim().x);
   if (cmd) text::drawf("> %s_", vec2f(8.f, scr.y-50.f), cmd);
   con::render();
   if (showstats) {

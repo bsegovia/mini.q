@@ -723,7 +723,7 @@ void start(int w, int h) {
 
   coretexarray[TEX_UNUSED]       = 0;
   coretexarray[TEX_CROSSHAIR]    = installtex("data/crosshair.png");
-  coretexarray[TEX_CHARACTERS]   = text::getoglfont();
+  coretexarray[TEX_CHARACTERS]   = text::oglfont();
   coretexarray[TEX_CHECKBOARD]   = buildcheckboard();
   coretexarray[TEX_MARTIN_BASE]  = installtex("data/martin/base.png");
   coretexarray[TEX_ITEM]         = installtex("data/items.png");

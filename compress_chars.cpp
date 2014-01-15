@@ -41,9 +41,11 @@ int main(int argc, const char *argv[]) {
   if (s->format->BitsPerPixel != 8 && s->format->BitsPerPixel != 32)
     FATAL("unsupported pixel format (%d bpp)", s->format->BitsPerPixel);
   printf("static const int fontw = %d, fonth = %d;\n", s->w, s->h);
+  printf("static const vec2f fontwh(%f, %f);\n", float(s->w), float(s->h));
   printf("static const int fontcol = %d;\n", s->w/fontw);
   printf("static const int charw = %d;\n", fontw);
   printf("static const int charh = %d;\n", fonth);
+  printf("static const vec2f charwh(%f,%f);\n", float(fontw), float(fonth));
   printf("static const u32 fontdata[] = {\n");
   if (s->format->BitsPerPixel == 8)
     loaddata<uint8_t>(s, invert);

@@ -16,7 +16,7 @@ namespace text {
 
 // ogl is responsible for the texture destruction
 static u32 textfont = 0;
-u32 getoglfont() { return textfont; }
+u32 oglfont() { return textfont; }
 static void buildfont() {
   u8 *font = (u8*)MALLOC(fontw*fonth*sizeof(u8));
   loopi(fonth) loopj(fontw/32) loopk(32)
@@ -62,8 +62,9 @@ static vec4f fontoutlinecolor = zero;
 static float fontthickness = 0.5f, fontoutlinewidth = 0.0f;
 static float in_width = float(charw), in_height = float(charh);
 
-vec2f fontdim() { return vec2f(in_width, in_height); }
-void charwidth(float w) { in_width = w; in_height = w * charh / charw; }
+vec2f fontdim() { return vec2f(float(charw), float(charh)); }
+vec2f displaydim() { return vec2f(in_width, in_height); }
+void displaywidth(float w) { in_width = w; in_height = w * charh / charw; }
 void thickness(float t) { fontthickness = t; }
 void outlinecolor(const vec4f &c) { fontoutlinecolor = c; }
 void outlinewidth(float w) { fontoutlinewidth = w; }

@@ -11,9 +11,9 @@ namespace text {
 void start();
 void finish();
 vec2f fontdim();
-u32 getoglfont();
+u32 oglfont();
 void loadfontshader(bool fatalerr, bool fromfile);
-void charwidth(float w);
+void displaywidth(float w);
 void thickness(float t);
 void outlinecolor(const vec4f &c);
 void outlinewidth(float w);
