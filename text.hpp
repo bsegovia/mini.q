@@ -11,6 +11,7 @@ namespace text {
 void start();
 void finish();
 vec2f fontdim();
+vec2f displaydim();
 u32 oglfont();
 void loadfontshader(bool fatalerr, bool fromfile);
 void displaywidth(float w);

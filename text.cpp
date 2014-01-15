@@ -60,11 +60,11 @@ void finish() { ogl::destroyshader(fontshader); }
 // font parameters
 static vec4f fontoutlinecolor = zero;
 static float fontthickness = 0.5f, fontoutlinewidth = 0.0f;
-static float in_width = float(charw), in_height = float(charh);
+static float displayw = float(charw), displayh = float(charh);
 
-vec2f fontdim() { return vec2f(float(charw), float(charh)); }
-vec2f displaydim() { return vec2f(in_width, in_height); }
-void displaywidth(float w) { in_width = w; in_height = w * charh / charw; }
+vec2f fontdim() { return charwh; }
+vec2f displaydim() { return vec2f(displayw, displayh); }
+void displaywidth(float w) { displayw = w; displayh = w * charh / charw; }
 void thickness(float t) { fontthickness = t; }
 void outlinecolor(const vec4f &c) { fontoutlinecolor = c; }
 void outlinewidth(float w) { fontoutlinewidth = w; }
@@ -86,10 +86,10 @@ float width(const char *str) {
     int c = str[i];
     if (c=='\t') { x = (x+rr::PIXELTAB)/rr::PIXELTAB*rr::PIXELTAB; continue; }; 
     if (c=='\f') continue;
-    if (c==' ') { x += in_width; continue; };
+    if (c==' ') { x += displayw; continue; };
     c -= 33;
     if (c<0 || c>=95) continue;
-    x += in_width;
+    x += displayw;
   }
   return x;
 }
@@ -116,7 +116,7 @@ void draw(const char *str, const vec2f &pos) {
     int c = str[i];
     if (c=='\t') { x = (x-pos.y+rr::PIXELTAB)/rr::PIXELTAB*rr::PIXELTAB+pos.y; continue; }
     if (c=='\f') { OGL(VertexAttrib3f,ogl::COL,0.25f,1.f,0.5f); continue; }
-    if (c==' ')  { x += in_width; continue; }
+    if (c==' ')  { x += displayw; continue; }
     c -= 32;
     if (c<0 || c>=95) continue;
     const float in_left   = (float(c%fontcol)*float(charw)-0.05f) / float(fontw);
@@ -126,11 +126,11 @@ void draw(const char *str, const vec2f &pos) {
 
     loopj(6) indices[index+j] = vert+twotriangles[j];
     verts[vert+0] = vec4f(in_left, in_top,   x,         y);
-    verts[vert+1] = vec4f(in_right,in_top,   x+in_width,y);
-    verts[vert+2] = vec4f(in_right,in_bottom,x+in_width,y+in_height);
-    verts[vert+3] = vec4f(in_left, in_bottom,x,         y+in_height);
+    verts[vert+1] = vec4f(in_right,in_top,   x+displayw,y);
+    verts[vert+2] = vec4f(in_right,in_bottom,x+displayw,y+displayh);
+    verts[vert+3] = vec4f(in_left, in_bottom,x,         y+displayh);
 
-    x += in_width;
+    x += displayw;
     index += 6;
     vert += 4;
   }
