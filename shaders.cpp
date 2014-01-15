@@ -325,11 +325,10 @@ namespace shaders {
 "    if (b!=0.0&&r!=0.0&&br==0.0) distseg(dist, vec2(0.5,-0.5), vec2(+1.5,0.5), vec2(-RSQ2,+RSQ2), pos);\n"
 "    if (b!=0.0&&l!=0.0&&bl==0.0) distseg(dist, vec2(0.5,-0.5), vec2(-0.5,0.5), vec2(+RSQ2,+RSQ2), pos);\n"
 "  }\n"
-"  float non_outline = u_font_thickness-u_outline_width;\n"
-"  float outline = u_font_thickness;\n"
-"  vec4 col = vec4(1.0-smoothstep(non_outline-0.1, non_outline, dist));\n"
-
-"  // col += u_outline_color * (1.0-smoothstep(outline-0.1, outline, dist));\n"
+"  float no = u_font_thickness-u_outline_width;\n"
+"  float o = u_font_thickness;\n"
+"  vec4 col = vec4(1.0-smoothstep(no-0.1, no, dist));\n"
+"  col += u_outline_color * (1.0-smoothstep(o-0.1, o, dist));\n"
 "  SWITCH_WEBGL(gl_FragColor = col, rt_c = col);\n"
 "}\n"
  };
