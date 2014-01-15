@@ -10,6 +10,7 @@ namespace q {
 namespace text {
 void start();
 void finish();
+vec2f fontdim();
 u32 getoglfont();
 void loadfontshader(bool fatalerr, bool fromfile);
 void charwidth(float w);

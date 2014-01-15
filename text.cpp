@@ -62,6 +62,7 @@ static vec4f fontoutlinecolor = zero;
 static float fontthickness = 0.5f, fontoutlinewidth = 0.0f;
 static float in_width = float(charw), in_height = float(charh);
 
+vec2f fontdim() { return vec2f(in_width, in_height); }
 void charwidth(float w) { in_width = w; in_height = w * charh / charw; }
 void thickness(float t) { fontthickness = t; }
 void outlinecolor(const vec4f &c) { fontoutlinecolor = c; }

@@ -8,12 +8,17 @@
 namespace q {
 namespace rr {
 
+/*--------------------------------------------------------------------------
+ - HUD transformation and dimensions
+ -------------------------------------------------------------------------*/
 float VIRTH = 1.f;
+vec2f scrdim() { return vec2f(float(sys::scrw), float(sys::scrh)); }
 static void sethudmatrices() {
+  const auto scr = scrdim();
   ogl::pushmode(ogl::MODELVIEW);
   ogl::identity();
   ogl::pushmode(ogl::PROJECTION);
-  ogl::setortho(0.f, VIRTW, VIRTH, 0.f, -1.f, 1.f);
+  ogl::setortho(0.f, scr.x, scr.y, 0.f, -1.f, 1.f);
 }
 static void popmatrices() {
   ogl::popmode(ogl::PROJECTION);
@@ -23,14 +28,24 @@ static void popmatrices() {
 /*--------------------------------------------------------------------------
  - handle the HUD (console, scores...)
  -------------------------------------------------------------------------*/
+IVAR(showstats, 0, 0, 1);
 static void drawhud(int w, int h, int curfps) {
   auto cmd = con::curcmd();
+  const auto scr = scrdim();
+  const auto fontdim = text::fontdim();
   ogl::enablev(GL_BLEND);
   ogl::disable(GL_DEPTH_TEST);
   sethudmatrices();
-  text::charwidth(8.f);
-  if (cmd) text::drawf("> %s_", vec2f(8.f, VIRTH-100.f), cmd);
+  text::charwidth(text::fontdim().x);
+  if (cmd) text::drawf("> %s_", vec2f(8.f, scr.y-50.f), cmd);
   con::render();
+  if (showstats) {
+    vec2f textpos(scr.x-400.f, scr.y-50.f);
+    const vec3f player = game::player.o;
+    text::drawf("x: %f y: %f z: %f", textpos, player.x, player.y, player.z);
+    textpos.y += fontdim.y;
+    text::drawf("%i f/s", textpos, curfps);
+  }
   popmatrices();
   ogl::disable(GL_BLEND);
   ogl::enable(GL_DEPTH_TEST);
@@ -175,10 +190,10 @@ void frame(int w, int h, int curfps) {
     if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_FILL);
   }
 
-  ogl::disable(GL_CULL_FACE);
-  drawhud(w,h,0);
   ogl::enable(GL_CULL_FACE);
   drawhudgun(fovy, aspect, farplane);
+  ogl::disable(GL_CULL_FACE);
+  drawhud(w,h,curfps);
 }
 } /* namespace rr */
 } /* namespace q */

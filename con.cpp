@@ -50,7 +50,8 @@ CMDN(bind, bindkey, "ss");
 
 void finish() {
   loopv(conlines) FREE(conlines[i].cref);
-  vector<cline>().moveto(conlines);
+  loopv(vhistory) FREE(vhistory[i]);
+  conlines.destroy();
   loopi(numkm) {
     FREE(keyms[i].name);
     FREE(keyms[i].action);
@@ -87,20 +88,21 @@ void out(const char *s, ...) {
   line(s, n!=0);
 }
 
+FVAR(confadeout, 1.f, 5000.f, 256000.f);
 void render() {
   int nd = 0;
   char *refs[ndraw];
   loopv(conlines) {
     if (conskip ? i>=conskip-1 || i>=conlines.length()-ndraw :
-       game::lastmillis-conlines[i].outtime < 20000.f) {
+       game::lastmillis-conlines[i].outtime < confadeout) {
       refs[nd++] = conlines[i].cref;
       if (nd==ndraw) break;
     }
   }
-  const float h = 8.f;
-  text::charwidth(h);
+  const auto font = text::fontdim();
+  text::charwidth(font.x);
   loopj(nd) {
-    const vec2f pos(16.f, 16*float(nd-j-1)+h/3.f);
+    const vec2f pos(2.f*font.x, font.y*float(nd-j-1));
     text::draw(refs[j], pos);
   }
 }
