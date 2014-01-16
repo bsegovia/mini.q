@@ -10,6 +10,7 @@ CXXFLAGS=$(CXXOPTFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cfla
 LIBS=`sdl-config --libs` -g -lSDL_image -lSDL_mixer
 OBJS=\
   con.o\
+  csg.o\
   game.o\
   iso.o\
   md2.o\

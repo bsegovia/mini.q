@@ -17,6 +17,7 @@ HEADERS=\
   text.hpp
 
 con.o: con.cpp $(HEADERS)
+csg.o: csg.cpp sys.hpp stl.hpp math.hpp
 game.o: game.cpp $(HEADERS)
 iso.o: iso.cpp iso.hpp math.hpp stl.hpp sys.hpp
 md2.o: md2.cpp $(HEADERS)
