@@ -64,17 +64,23 @@ node *capped_cylinder(const vec2f &cxz, const vec3f &ryminymax) {
 }
 
 node *makescene() {
+  const auto t = vec3f(7.f, 5.f, 7.f);
   const auto s = NEW(sphere, 4.2f);
-  const auto d0 = NEW(translation, vec3f(7.f, 5.f, 7.f), s);
-  const auto d1 = NEW(box, vec3f(4.f));
-  node *c = NEW(U, d0, d1);
-  loopi(16) {
+  const auto b0 = NEW(box, vec3f(4.f));
+  const auto d0 = NEW(translation, t, s);
+  const auto d1 = NEW(translation, t, b0);
+  node *c = NEW(D, d1, d0);
+#if 0
+  loopi(1) {
     const auto center = vec2f(2.f,2.f+2.f*float(i));
     const auto ryminymax = vec3f(1.f,1.f,2*float(i)+2.f);
     c = NEW(U, c, capped_cylinder(center, ryminymax));
   }
   const auto b = NEW(box, vec3f(2.f, 5.f, 18.f));
   return NEW(D, c, NEW(translation, vec3f(2.f,5.f,18.f), b));
+#else
+  return c;
+#endif
 }
 
 float dist(const vec3f &pos, node *n) {
@@ -89,7 +95,7 @@ float dist(const vec3f &pos, node *n) {
     }
     case DIFFERENCE: {
       const auto d = static_cast<D*>(n);
-      return min(dist(pos, d->left), -dist(pos, d->right));
+      return max(dist(pos, d->left), -dist(pos, d->right));
     }
     case TRANSLATION: {
       const auto t = static_cast<translation*>(n);

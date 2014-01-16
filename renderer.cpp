@@ -4,6 +4,7 @@
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
 #include "iso.hpp"
+#include "csg.hpp"
 
 namespace q {
 namespace rr {
@@ -89,7 +90,7 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
  - render the complete frame
  -------------------------------------------------------------------------*/
 FVARP(fov, 30.f, 90.f, 160.f);
-
+#if 0
 INLINE float U(float d0, float d1) { return min(d0, d1); }
 INLINE float D(float d0, float d1) { return max(d0,-d1); }
 INLINE float sdsphere(const vec3f &v, float r) { return length(v) - r; }
@@ -114,6 +115,9 @@ static float map(const vec3f &pos) {
   const auto t = pos-vec3f(7.f,5.f,7.f);
   const auto d0 = sdsphere(t, 4.2f);
   const auto d1 = sdbox(t, vec3f(4.f));
+#if 1
+  return D(d1,d0);
+#else
   auto c = D(d1, d0);
   loopi(16) {
     const auto center = vec2f(2.f,2.f+2.f*float(i));
@@ -121,8 +125,16 @@ static float map(const vec3f &pos) {
     c = U(c, sdcyl(pos, center, ryminymax));
   }
   return D(c, sdbox(pos-vec3f(2.f,5.f,18.f), vec3f(3.5f,4.f,3.5f)));
+#endif
 }
 
+#else
+static float map(const vec3f &pos) {
+  static csg::node *n = NULL;
+  if (n == NULL) n = csg::makescene();
+  return csg::dist(pos, n);
+}
+#endif
 typedef pair<vec3f,vec3f> vertex;
 static u32 vertnum = 0u, indexnum = 0u;
 static vector<vertex> vertices;
@@ -135,7 +147,6 @@ void finish() {
   vector<u32>().moveto(indices);
 }
 static const float CELLSIZE = 0.4f, GRIDJITTER = 0.01f;
-
 static void makescene() {
   if (initialized_m) return;
   const float start = sys::millis();
