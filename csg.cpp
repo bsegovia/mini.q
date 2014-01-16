@@ -70,13 +70,13 @@ node *makescene() {
   const auto d0 = NEW(translation, t, s);
   const auto d1 = NEW(translation, t, b0);
   node *c = NEW(D, d1, d0);
-#if 0
-  loopi(1) {
+#if 1
+  loopi(16) {
     const auto center = vec2f(2.f,2.f+2.f*float(i));
     const auto ryminymax = vec3f(1.f,1.f,2*float(i)+2.f);
     c = NEW(U, c, capped_cylinder(center, ryminymax));
   }
-  const auto b = NEW(box, vec3f(2.f, 5.f, 18.f));
+  const auto b = NEW(box, vec3f(3.5f, 4.f, 3.5f));
   return NEW(D, c, NEW(translation, vec3f(2.f,5.f,18.f), b));
 #else
   return c;
@@ -114,7 +114,7 @@ float dist(const vec3f &pos, node *n) {
       return length(pos) - s->r;
     }
     case BOX: {
-      const vec3f d = abs(pos)-static_cast<box*>(n)->extent;;
+      const vec3f d = abs(pos)-static_cast<box*>(n)->extent;
       return min(max(d.x,max(d.y,d.z)),0.0f) + length(max(d,vec3f(zero)));
     }
   }
