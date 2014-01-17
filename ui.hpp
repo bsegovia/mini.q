@@ -44,43 +44,6 @@ namespace ui {
   void drawline(float x0, float y0, float x1, float y1, float r, u32 color);
   void drawroundedrect(float x, float y, float w, float h, float r, u32 color);
   void drawrect(float x, float y, float w, float h, u32 color);
-
-  // Pull render interface.
-  enum GfxCmdType {
-    GFXCMD_RECT,
-    GFXCMD_TRIANGLE,
-    GFXCMD_LINE,
-    GFXCMD_TEXT,
-    GFXCMD_SCISSOR,
-  };
-
-  struct gfxrect {
-    s16 x,y,w,h,r;
-  };
-
-  struct gfxtext {
-    s16 x,y,align;
-    const char *text;
-  };
-
-  struct gfxline {
-    s16 x0,y0,x1,y1,r;
-  };
-
-  struct gfxcmd {
-    char type;
-    char flags;
-    char pad[2];
-    u32 col;
-    union {
-      gfxline line;
-      gfxrect rect;
-      gfxtext text;
-    };
-  };
-
-  const gfxcmd *getrenderqueue();
-  int getrenderqueuesize();
 } /* namespace ui */
 } /* namespace q */
 
