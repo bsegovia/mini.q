@@ -90,51 +90,12 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
  - render the complete frame
  -------------------------------------------------------------------------*/
 FVARP(fov, 30.f, 90.f, 160.f);
-#if 0
-INLINE float U(float d0, float d1) { return min(d0, d1); }
-INLINE float D(float d0, float d1) { return max(d0,-d1); }
-INLINE float sdsphere(const vec3f &v, float r) { return length(v) - r; }
-INLINE float sdbox(const vec3f &p, const vec3f &b) {
-  const vec3f d = abs(p) - b;
-  return min(max(d.x,max(d.y,d.z)),0.0f) + length(max(d,vec3f(zero)));
-}
-INLINE float sdcyl(const vec3f &p, const vec2f &cxz, float r) {
-  return length(p.xz()-cxz) - r;
-}
-INLINE float sdplane(const vec3f &p, const vec4f &n) {
-  return dot(p,n.xyz())+n.w;
-}
-INLINE float sdcyl(const vec3f &p, const vec2f &cxz, const vec3f &ryminymax) {
-  const auto cyl = sdcyl(p, cxz, ryminymax.x);
-  const auto plane0 = sdplane(p, vec4f(0.f,1.f,0.f,-ryminymax.y));
-  const auto plane1 = sdplane(p, vec4f(0.f,-1.f,0.f,ryminymax.z));
-  return D(D(cyl, plane0), plane1);
-}
 
+static csg::node *n = NULL;
 static float map(const vec3f &pos) {
-  const auto t = pos-vec3f(7.f,5.f,7.f);
-  const auto d0 = sdsphere(t, 4.2f);
-  const auto d1 = sdbox(t, vec3f(4.f));
-#if 1
-  return D(d1,d0);
-#else
-  auto c = D(d1, d0);
-  loopi(16) {
-    const auto center = vec2f(2.f,2.f+2.f*float(i));
-    const auto ryminymax = vec3f(1.f,1.f,2*float(i)+2.f);
-    c = U(c, sdcyl(pos, center, ryminymax));
-  }
-  return D(c, sdbox(pos-vec3f(2.f,5.f,18.f), vec3f(3.5f,4.f,3.5f)));
-#endif
-}
-
-#else
-static float map(const vec3f &pos) {
-  static csg::node *n = NULL;
   if (n == NULL) n = csg::makescene();
   return csg::dist(pos, n);
 }
-#endif
 typedef pair<vec3f,vec3f> vertex;
 static u32 vertnum = 0u, indexnum = 0u;
 static vector<vertex> vertices;
@@ -143,6 +104,7 @@ static bool initialized_m = false;
 
 void start() {}
 void finish() {
+  destroyscene(n);
   vector<vertex>().moveto(vertices);
   vector<u32>().moveto(indices);
 }

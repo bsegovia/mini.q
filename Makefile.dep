@@ -34,4 +34,5 @@ stl.o: stl.cpp math.hpp stl.hpp sys.hpp
 sys.o: sys.cpp $(HEADERS)
 task.o: task.cpp stl.hpp sys.hpp task.hpp
 text.o: text.cpp font.hxx $(HEADERS)
+ui.o: ui.cpp sys.hpp stl.hpp
 

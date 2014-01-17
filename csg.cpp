@@ -19,12 +19,14 @@ enum {
 };
 struct node {
   INLINE node(u32 type) : type(type) {}
+  virtual ~node() {}
   u32 type;
 };
 #define BINARY(NAME,TYPE) \
 struct NAME : node { \
   INLINE NAME(node *left = NULL, node *right = NULL) : \
     node(TYPE), left(left), right(right) {}\
+  virtual ~NAME() {SAFE_DEL(left); SAFE_DEL(right);}\
   node *left, *right; \
 };
 BINARY(U,UNION)
@@ -52,16 +54,25 @@ struct cylinder : node {
 struct translation : node {
   INLINE translation(const vec3f &p, node *n = NULL) :
     node(TRANSLATION), p(p), n(n) {}
+  virtual ~translation() { SAFE_DEL(n); }
   vec3f p;
   node *n;
 };
 
+#if 1
 node *capped_cylinder(const vec2f &cxz, const vec3f &ryminymax) {
   const auto cyl = NEW(cylinder, cxz, ryminymax.x);
   const auto plane0 = NEW(plane, vec4f(0.f,1.f,0.f,-ryminymax.y));
   const auto plane1 = NEW(plane, vec4f(0.f,-1.f,0.f,ryminymax.z));
   return NEW(D, NEW(D, cyl, plane0), plane1);
 }
+#else
+node *capped_cylinder(const vec2f &cxz, const vec3f &ryminymax) {
+  const auto cyl = NEW(cylinder, cxz, ryminymax.x);
+  const auto box = NEW(box, vec4f(0.f,1.f,0.f,-ryminymax.y));
+  return NEW(D, NEW(D, cyl, plane0), plane1);
+}
+#endif
 
 node *makescene() {
   const auto t = vec3f(7.f, 5.f, 7.f);
@@ -70,7 +81,6 @@ node *makescene() {
   const auto d0 = NEW(translation, t, s);
   const auto d1 = NEW(translation, t, b0);
   node *c = NEW(D, d1, d0);
-#if 1
   loopi(16) {
     const auto center = vec2f(2.f,2.f+2.f*float(i));
     const auto ryminymax = vec3f(1.f,1.f,2*float(i)+2.f);
@@ -78,10 +88,9 @@ node *makescene() {
   }
   const auto b = NEW(box, vec3f(3.5f, 4.f, 3.5f));
   return NEW(D, c, NEW(translation, vec3f(2.f,5.f,18.f), b));
-#else
-  return c;
-#endif
 }
+
+void destroyscene(node *n) { SAFE_DEL(n); }
 
 float dist(const vec3f &pos, node *n) {
   switch (n->type) {

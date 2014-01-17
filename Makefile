@@ -7,7 +7,7 @@ CXXDEBUGFLAGS=-Wall -O0 -DMEMORY_DEBUGGER -g
 
 CXXFLAGS=$(CXXOPTFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags`
 #CXXFLAGS=$(CXXDEBUGFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags` -fsanitize=address
-LIBS=`sdl-config --libs` -g -lSDL_image -lSDL_mixer
+LIBS=`sdl-config --libs` -g -lGL -lSDL_image -lSDL_mixer
 OBJS=\
   con.o\
   csg.o\
@@ -26,7 +26,8 @@ OBJS=\
   stl.o\
   sys.o\
   task.o\
-  text.o
+  text.o\
+  ui.o
 all: mini.q compress_chars
 
 include Makefile.dep

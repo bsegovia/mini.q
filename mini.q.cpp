@@ -4,6 +4,10 @@
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
 
+#include "ui.hpp"
+
+#include <GL/gl.h>
+
 namespace q {
 IVARF(grabmouse, 0, 0, 1, SDL_WM_GrabInput(grabmouse ? SDL_GRAB_ON : SDL_GRAB_OFF););
 
@@ -47,6 +51,110 @@ void start(int argc, const char *argv[]) {
   script::execfile("data/keymap.q");
 }
 
+#if 0
+static u32 leftbutton = 0, middlebutton = 0, rightbutton = 0;
+
+static void gui() {
+  // ui:: states
+  bool checked1 = false;
+  bool checked2 = false;
+  bool checked3 = true;
+  bool checked4 = false;
+  float value1 = 50.f;
+  float value2 = 30.f;
+  int scrollarea1 = 0;
+  int scrollarea2 = 0;
+
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  // Mouse states
+  unsigned char mousebutton = 0;
+  int mousex; int mousey;
+  SDL_GetMouseState(&mousex, &mousey);
+  mousey = sys::scrh - mousey;
+  int toggle = 0;
+  if( leftbutton) mousebutton |= ui::MBUT_LEFT;
+
+  // Draw UI
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  float projection[16] = {
+    2.f/sys::scrw, 0.f, 0.f,  0.f,
+    0.f, 2.f/sys::scrh,  0.f,  0.f,
+    0.f,  0.f, -2.f, 0.f,
+    -1.f, -1.f,  -1.f,  1.f
+  };
+  glLoadMatrixf(projection);
+  glMatrixMode(GL_MODELVIEW);
+  glLoadIdentity();
+
+  ui::beginframe(mousex, mousey, mousebutton, mscroll);
+
+  ui::beginscrollarea("scroll area", 10, 10, sys::scrw / 5, sys::scrh - 20, &scrollarea1);
+  ui::separatorline();
+  ui::separator();
+
+  ui::button("button");
+  ui::button("disabled button", false);
+  ui::item("item");
+  ui::item("disabled item", false);
+  toggle = ui::check("checkbox", checked1);
+  if (toggle)
+    checked1 = !checked1;
+  toggle = ui::check("disabled checkbox", checked2, false);
+  if (toggle)
+    checked2 = !checked2;
+  toggle = ui::collapse("collapse", "subtext", checked3);
+  if (checked3)
+  {
+    ui::indent();
+    ui::label("collapsible element");
+    ui::unindent();
+  }
+  if (toggle)
+    checked3 = !checked3;
+  toggle = ui::collapse("disabled collapse", "subtext", checked4, false);
+  if (toggle)
+    checked4 = !checked4;
+  ui::label("label");
+  ui::value("value");
+  ui::slider("slider", &value1, 0.f, 100.f, 1.f);
+  ui::slider("disabled slider", &value2, 0.f, 100.f, 1.f, false);
+  ui::indent();
+  ui::label("indented");
+  ui::unindent();
+  ui::label("unindented");
+
+  ui::endscrollarea();
+
+  ui::beginscrollarea("scroll area", 20 + sys::scrw / 5, 500, sys::scrw / 5, sys::scrh - 510, &scrollarea2);
+  ui::separatorline();
+  ui::separator();
+  for (int i = 0; i < 100; ++i) ui::label("a wall of text");
+
+  ui::endscrollarea();
+  ui::endframe();
+
+  ui::drawtext(30 + sys::scrw / 5 * 2, sys::scrh - 20, ui::ALIGN_LEFT, "free text",  ui::rgba(32,192, 32,192));
+  ui::drawtext(30 + sys::scrw / 5 * 2 + 100, sys::scrh - 40, ui::ALIGN_RIGHT, "free text",  ui::rgba(32, 32, 192, 192));
+  ui::drawtext(30 + sys::scrw / 5 * 2 + 50, sys::scrh - 60, ui::ALIGN_CENTER, "free text",  ui::rgba(192, 32, 32,192));
+
+  ui::drawline(30 + sys::scrw / 5 * 2, sys::scrh - 80, 30 + sys::scrw / 5 * 2 + 100, sys::scrh - 60, 1.f, ui::rgba(32,192, 32,192));
+  ui::drawline(30 + sys::scrw / 5 * 2, sys::scrh - 100, 30 + sys::scrw / 5 * 2 + 100, sys::scrh - 80, 2.f, ui::rgba(32, 32, 192, 192));
+  ui::drawline(30 + sys::scrw / 5 * 2, sys::scrh - 120, 30 + sys::scrw / 5 * 2 + 100, sys::scrh - 100, 3.f, ui::rgba(192, 32, 32,192));
+
+  ui::drawroundedrect(30 + sys::scrw / 5 * 2, sys::scrh - 240, 100, 100, 5.f, ui::rgba(32,192, 32,192));
+  ui::drawroundedrect(30 + sys::scrw / 5 * 2, sys::scrh - 350, 100, 100, 10.f, ui::rgba(32, 32, 192, 192));
+  ui::drawroundedrect(30 + sys::scrw / 5 * 2, sys::scrh - 470, 100, 100, 20.f, ui::rgba(192, 32, 32,192));
+
+  ui::drawrect(30 + sys::scrw / 5 * 2, sys::scrh - 590, 100, 100, ui::rgba(32, 192, 32, 192));
+  ui::drawrect(30 + sys::scrw / 5 * 2, sys::scrh - 710, 100, 100, ui::rgba(32, 32, 192, 192));
+  ui::drawrect(30 + sys::scrw / 5 * 2, sys::scrh - 830, 100, 100, ui::rgba(192, 32, 32,192));
+
+  ui::rendergldraw(sys::scrw, sys::scrh);
+}
+#endif
+
 INLINE void mainloop() {
   static int frame = 0;
   const auto millis = sys::millis()*game::speed/100.f;
@@ -71,7 +179,25 @@ INLINE void mainloop() {
       break;
       case SDL_MOUSEMOTION: game::mousemove(e.motion.xrel, e.motion.yrel); break;
       case SDL_MOUSEBUTTONDOWN:
+#if 0
+      {
+        if (e.button.button == SDL_BUTTON_LEFT)
+          leftbutton = 0;
+        else if (e.button.button == SDL_BUTTON_RIGHT)
+          rightbutton = 0;
+        else if (e.button.button == SDL_BUTTON_MIDDLE)
+          middlebutton = 0;
+      } break;
+#endif
       case SDL_MOUSEBUTTONUP:
+#if 0
+      if (e.button.button == SDL_BUTTON_LEFT)
+          leftbutton = 1;
+        else if (e.button.button == SDL_BUTTON_RIGHT)
+          rightbutton = 1;
+        else if (e.button.button == SDL_BUTTON_MIDDLE)
+          middlebutton = 1;
+#endif
         if (lasttype==e.type && lastbut==e.button.button) break;
         con::keypress(-e.button.button, e.button.state, 0);
         lasttype = e.type;
@@ -80,6 +206,7 @@ INLINE void mainloop() {
     }
   }
 }
+
 static int run() {
   game::lastmillis = sys::millis() * game::speed/100.f;
   for (;;) q::mainloop();
