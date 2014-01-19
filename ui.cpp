@@ -5,7 +5,7 @@
 #include "ui.hpp"
 #include "sys.hpp"
 #include "math.hpp"
-
+#if 0
 #include <GL/gl.h>
 
 namespace q {
@@ -1056,4 +1056,5 @@ void RenderGLDraw(int width, int height)
 }
 } /* namespace ui */
 } /* namespace q */
+#endif
 
