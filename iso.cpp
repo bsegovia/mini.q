@@ -112,6 +112,8 @@ static const vec3i icubev[8] = {
 static const int interptable[12][2] = {
   {0,1},{1,2},{2,3},{3,0},{4,5},{5,6},{6,7},{7,4},{0,4},{1,5},{2,6},{3,7}
 };
+static const u32 octreechildmap[8] = {0, 4, 3, 7, 1, 5, 2, 6};
+
 static const float SHARP_EDGE = 0.2f;
 static const u32 SUBGRID = 16;
 static const u32 MAX_NEW_VERT = 8;
@@ -250,7 +252,7 @@ struct edge_creaser {
       verts[0] = makepair(trinormal(m_sharp[i].second), u32(m_first_vert+i));
       u32 vertnum = 1;
 
-      // go over all triangles the find best vertex for each of them
+      // go over all triangles and find best vertex for each of them
       auto curr = m_sharp[m_sharp[i].first];
       while (curr.first != NOINDEX) {
         const auto nor = trinormal(curr.second);
@@ -315,30 +317,29 @@ struct octree {
     u32 m_isleaf:1, m_empty:1;
   };
 
-  INLINE octree(u32 dim) : m_dim(dim) {}
-  const node &findleaf(const node &node,
-                       const vec3i &bottomleft,
-                       const vec3i &xyz, u32 level)
-  {
-    if (node.m_isleaf) return node;
-    loopi(8) {
-      const auto cellnum = int(m_dim >> level) / 2;
-      const auto bl = bottomleft + cellnum * icubev[i];
-      const auto tr = bl + cellnum * vec3i(one);
-      if (all(xyz >= bl) && all(xyz < tr))
-        return findleaf(node, bl, xyz, level+1);
+  INLINE octree(u32 dim) : m_dim(dim), m_logdim(ilog2(dim)) {}
+  pair<const node*,u32> findleaf(vec3i xyz) {
+    assert(all(xyz>=vec3i(zero)) && all(xyz<vec3i(m_dim)));
+    int level = 0;
+    const node *node = &m_root;
+    for (;;) {
+      if (node->m_isleaf) return makepair(node, u32(level));
+      assert(m_logdim > u32(level));
+      const auto logsize = vec3i(m_logdim-level-1);
+      const auto bits = xyz >> logsize;
+      const auto child = octreechildmap[bits.x | (bits.y<<1) | (bits.z<<2)];
+      assert(all(xyz >= icubev[child] << logsize));
+      xyz -= icubev[child] << logsize;
+      node = node->m_children + child;
+      ++level;
     }
     assert("unreachable" && false);
-    return node;
-  }
-  INLINE const node &findleaf(const vec3i &bottomleft, const vec3i &xyz) {
-    assert(all(xyz>=vec3i(zero)) && all(xyz<vec3i(m_dim)));
-    return findleaf(m_root, vec3i(zero), xyz, 0);
+    return makepair((const struct node*)(NULL),0u);
   }
 
   static const u32 MAX_ITEM_NUM = (1<<15)-1;
   node m_root;
-  u32 m_dim;
+  u32 m_dim, m_logdim;
 };
 
 struct dc_gridbuilder {
@@ -553,6 +554,19 @@ struct dc_gridbuilder {
   vector<u32> m_qef_index;
 };
 
+// normalized location of cell neighbors we share at least on edge with
+static  const vec3i edgeneighbors[] = {
+  // we share a face with these ones
+  vec3i(+1,0,0), vec3i(-1,0,0), vec3i(0,+1,0),
+  vec3i(0,-1,0), vec3i(0,0,+1), vec3i(0,0,-1),
+
+  // we share one edge only with these ones
+  vec3i(+1,+1,0), vec3i(+1,-1,0), vec3i(-1,-1,0), vec3i(+1,-1,0),
+  vec3i(+1,0,+1), vec3i(+1,0,-1), vec3i(-1,0,-1), vec3i(+1,0,-1),
+  vec3i(0,+1,+1), vec3i(0,+1,-1), vec3i(0,-1,-1), vec3i(0,+1,-1)
+};
+static const u32 edgeneighborsnum = ARRAY_ELEM_NUM(edgeneighbors);
+
 struct recursive_builder {
   recursive_builder(distance_field df, const vec3f &org, float cellsize, u32 dim) :
     s(df, vec3i(SUBGRID)), m_df(df), m_org(org),
@@ -565,6 +579,12 @@ struct recursive_builder {
     m_maxlevel = ilog2(dim / SUBGRID);
   }
   INLINE vec3f pos(const vec3i &xyz) { return m_org+m_cellsize*vec3f(xyz); }
+  INLINE void setoctree(octree &o) {m_octree=&o;}
+
+  void build() {
+    build(m_octree->m_root);
+    recurse(m_octree->m_root);
+  }
 
   void build(octree::node &node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
     const auto scale = 1.f / float(1<<level);
@@ -574,8 +594,8 @@ struct recursive_builder {
       node.m_isleaf = node.m_empty = 1;
       return;
     }
-    // if (cellnum == SUBGRID || (level == 3 && xyz.y > 16))
-    if (cellnum == SUBGRID)
+    if (cellnum == SUBGRID || (level == 3 && xyz.y > 16))
+    // if (cellnum == SUBGRID)
       node.m_isleaf = 1;
     else {
       node.m_children = NEWAE(octree::node, 8);
@@ -591,6 +611,22 @@ struct recursive_builder {
     if (node.m_empty)
       return;
     else if (node.m_isleaf) {
+#if 0
+      // figure out all neighbors LODs
+      //printf("level %d xyz %d %d %d\n", level, xyz.x, xyz.y, xyz.z);
+      const u32 logcellnum = m_maxlevel-level;
+      loopi(int(edgeneighborsnum)) {
+        const auto org = xyz + (edgeneighbors[i] << int(logcellnum)) * int(SUBGRID);
+        //printf("  neighbor %d %d %d", org.x, org.y, org.z);
+        if (any(org < vec3i(zero)) || any(org >= vec3i(SUBGRID<<m_maxlevel))) {
+          //printf(" border\n");
+          continue;
+        }
+        const auto neighbor = m_octree->findleaf(org);
+        //printf(" level %d %s\n", neighbor.second, neighbor.first->m_empty ? "(empty)":"");
+      }
+      fflush(stdout);
+#endif
       const vec3f sz(float(1<<(m_maxlevel-level)) * m_cellsize);
       s.setsize(sz);
       s.setorg(pos(xyz));
@@ -604,6 +640,7 @@ struct recursive_builder {
     }
   }
 
+  octree *m_octree;
   dc_gridbuilder s;
   distance_field m_df;
   vec3f m_org;
@@ -614,8 +651,8 @@ struct recursive_builder {
 mesh dc_mesh(const vec3f &org, u32 cellnum, float cellsize, distance_field d) {
   octree o(cellnum);
   recursive_builder r(d, org, cellsize, cellnum);
-  r.build(o.m_root);
-  r.recurse(o.m_root);
+  r.setoctree(o);
+  r.build();
   const auto p = r.s.m_pos_buffer.move();
   const auto n = r.s.m_nor_buffer.move();
   const auto idx = r.s.m_idx_buffer.move();

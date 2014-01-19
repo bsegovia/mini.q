@@ -189,6 +189,7 @@
   for (int Y = int(org.y); Y < int(end.y); ++Y)\
   for (auto xyz = vec3i(org.x,Y,Z); xyz.x < int(end.x); ++xyz.x)
 
+#define ARRAY_ELEM_NUM(A) sizeof(A) / sizeof(A[0])
 #define ZERO(PTR, SIZE) memset(PTR, 0, sizeof(SIZE))
 #define MAKE_VARIADIC(NAME)\
 INLINE void NAME##v(void) {}\

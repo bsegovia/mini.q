@@ -7,6 +7,7 @@
 #include "math.hpp"
 
 namespace q {
+
 // get the power larger or equal than x
 INLINE u32 nextpowerof2(u32 x) {
   --x;
