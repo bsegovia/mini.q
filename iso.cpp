@@ -552,9 +552,9 @@ struct dc_gridbuilder {
   void build(octree::node &node) {
     const int first_idx = m_idx_buffer.length();
     const int first_vert = m_pos_buffer.length();
-    loopi(4) initfield(i);
-    initslice(0);
-    rangei(1,m_grid.m_dim.z+1) {
+    loopi(4) initfield(i-1);
+    initslice(-1);
+    rangei(0,m_grid.m_dim.z+2) {
       initfield(i+2);
       initslice(i);
       tesselate_slice(i);
