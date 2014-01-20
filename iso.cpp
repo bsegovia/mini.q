@@ -373,6 +373,12 @@ struct dc_gridbuilder {
     m_level(0)
   {}
 
+  struct qef_output {
+    INLINE qef_output(vec3f p, vec3f n, bool valid) : p(p), n(n), valid(valid) {}
+    vec3f p, n;
+    bool valid;
+  };
+
   INLINE void setoctree(const octree &o) { m_octree = &o; }
   INLINE void setorg(const vec3f &org) { m_grid.m_org = org; }
   INLINE void setsize(const vec3f &size) { m_grid.m_cellsize = size; }
@@ -420,40 +426,58 @@ struct dc_gridbuilder {
   }
 
   void tesselate() {
-    if (!((m_level == 4 && m_iorg == vec3i(0,16,64)) ||
-          (m_level == 3 && m_iorg == vec3i(0,32,64))))
-      return;
-    printf("level %d xyz %d %d %d\n", m_level, m_iorg.x, m_iorg.y, m_iorg.z);
 
     const vec3i org(zero), dim(m_grid.m_dim + vec3i(4));
     loopxyz(org, dim) {
       const int start_sign = m_df(m_grid.vertex(xyz)) < 0.f ? 1 : 0;
-      const auto currlod = lod(xyz);
-      if (currlod == 1 && any(ne(xyz&vec3i(one), vec3i(zero))))
-          continue;
-      if (currlod == 1) printf("xyz %d %d %d\n", xyz.x, xyz.y, xyz.z);
 
-      // look the three edges that start on xyz
+      // look at the three edges that start on xyz
       loopi(3) {
-        const auto delta = axis[i] << int(currlod);
+        // figure out the edge size
+        const auto qaxis0 = axis[(i+1)%3];
+        const auto qaxis1 = axis[(i+2)%3];
+        const vec3i q[] = {xyz, xyz-qaxis0, xyz-qaxis0-qaxis1, xyz-qaxis1};
+        u32 edgelod = 1;
+        loopj(4) edgelod = min(edgelod, lod(q[j]));
+
+        // process the edge only when we get the properly aligned origin.
+        // otherwise, we would generate the same face more than one
+        if (edgelod == 1 && any(ne(xyz&vec3i(one), vec3i(zero))))
+          continue;
+
+        // is it an actual edge?
+        const auto delta = axis[i] << int(edgelod);
         const int end_sign = m_df(m_grid.vertex(xyz+delta)) < 0.f ? 1 : 0;
         if (start_sign == end_sign) continue;
 
         // we found one edge. we output one quad for it
-        const auto axis0 = axis[(i+1)%3] << int(currlod);
-        const auto axis1 = axis[(i+2)%3] << int(currlod);
-        const vec3i p[] = {xyz, xyz-axis0, xyz-axis0-axis1, xyz-axis1};
+        const auto axis0 = axis[(i+1)%3] << int(edgelod);
+        const auto axis1 = axis[(i+2)%3] << int(edgelod);
+        vec3i p[] = {xyz, xyz-axis0, xyz-axis0-axis1, xyz-axis1};
         u32 quad[4];
+        bool validquad = true;
         loopj(4) {
-          // do we need to compute a new QEF minimizing vertex?
+          const u32 plod = lod(p[j]);
+          p[j] = p[j] & vec3i(~plod);
           const auto idx = index(p[j]);
+
           if (m_qef_index[idx] == NOINDEX) {
             mcell cell;
-            loopk(8) cell[k] = field(p[j] + (icubev[k]<<int(currlod)));
-            const float scale = float(1<<currlod);
+            loopk(8) cell[k] = field(p[j] + (icubev[k]<<int(plod)));
+            const float scale = float(1<<plod);
             const auto vert = qef_vertex(cell, p[j], scale);
-            const auto pos = m_grid.vertex(p[j]) + vert.first*scale*m_grid.m_cellsize;
-            const auto nor = normalize(vert.second);
+
+            // we have an edge but with a double change of sign. so the higher
+            // level voxel has no QEF at all
+            if (!vert.valid) {
+              assert(plod == 1 && edgelod == 0);
+              validquad = false;
+              break;
+            }
+
+            // point is still valid. we are good to go
+            const auto pos = m_grid.vertex(p[j]) + vert.p*scale*m_grid.m_cellsize;
+            const auto nor = normalize(vert.n);
             m_qef_index[idx] = m_pos_buffer.length();
             m_border_remap.add(OUTSIDE);
             m_pos_buffer.add(pos);
@@ -461,6 +485,10 @@ struct dc_gridbuilder {
           }
           quad[j] = m_qef_index[idx];
         }
+
+        // one vertex at least is missing. we cannot output a valid quad
+        if (!validquad)
+          continue;
         const auto orientation = start_sign==1 ? quadtotris : quadtotris_cc;
         const u32 msk = any(eq(xyz,vec3i(zero)))||any(xyz>m_grid.m_dim)?OUTSIDE:0u;
         loopj(6) m_idx_buffer.add(quad[orientation[j]]|msk);
@@ -468,10 +496,11 @@ struct dc_gridbuilder {
     }
   }
 
-  pair<vec3f,vec3f> qef_vertex(const mcell &cell, const vec3i &xyz, float scale) {
+  qef_output qef_vertex(const mcell &cell, const vec3i &xyz, float scale) {
     int cubeindex = 0, num = 0;
     loopi(8) if (cell[i] < 0.0f) cubeindex |= 1<<i;
-    assert(edgetable[cubeindex] != 0);
+    if (edgetable[cubeindex] == 0)
+      return qef_output(vec3f(zero), vec3f(zero), false);
 
     // find the vertices where the surface intersects the cube
     const auto org = m_grid.vertex(xyz);
@@ -498,7 +527,7 @@ struct dc_gridbuilder {
       const auto d = p[i] - mass;
       vector[i] = double(dot(n[i],d));
     }
-    return makepair(mass + qef::evaluate(matrix, vector, num), nor);
+    return qef_output(mass + qef::evaluate(matrix, vector, num), nor, true);
   }
 
   void removeborders(u32 first_idx, u32 first_vertex) {
@@ -561,7 +590,6 @@ struct dc_gridbuilder {
   void build(octree::node &node) {
     const int first_idx = m_idx_buffer.length();
     const int first_vert = m_pos_buffer.length();
-//    if (node.m_level == 3) return;
     initfield();
     initqef();
     initlod();
@@ -571,10 +599,10 @@ struct dc_gridbuilder {
     if (first_vert == m_pos_buffer.length())
       return;
 
-    //creaser.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, first_vert, first_idx);
-    //creaser.doit();
-    //m_border_remap.setsize(m_pos_buffer.length());
-    //removeborders(first_idx, first_vert);
+    creaser.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, first_vert, first_idx);
+    creaser.doit();
+    m_border_remap.setsize(m_pos_buffer.length());
+    removeborders(first_idx, first_vert);
     assert(node.m_vertnum <= octree::MAX_ITEM_NUM);
     assert(node.m_idxnum <= octree::MAX_ITEM_NUM);
     node.m_first_vert = first_vert;
