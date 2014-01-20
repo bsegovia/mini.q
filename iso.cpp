@@ -364,31 +364,15 @@ struct octree {
 struct dc_gridbuilder {
   dc_gridbuilder(distance_field df, const vec3i &dim) :
     m_df(df), m_grid(vec3f(one), vec3f(zero), dim),
-    m_field(4*(dim.x+4)*(dim.y+4)),
-    m_lod(4*(dim.x+4)*(dim.y+4)),
-    m_cube_per_slice((dim.x+3)*(dim.y+3)),
-    m_qef_index(2*m_cube_per_slice),
+    m_field((dim.x+4)*(dim.y+4)*(dim.z+4)),
+    m_lod((dim.x+4)*(dim.y+4)*(dim.z+4)),
+    m_qef_index((dim.x+3)*(dim.y+3)*(dim.z+3)),
     m_octree(NULL),
     m_iorg(zero),
     m_level(0)
   {}
 
-  void initlod(u32 z) {
-#if 0
-    const vec2i org(-1), dim(m_grid.m_dim.x+3, m_grid.m_dim.y+3);
-    u32 zlod = 0;
-    if (z <= 1) {
-      const auto neighbor = m_octree->findleaf(m_iorg - vec3i(0,0,1));
-      zlod = max(zlod, neighbor.second < m_level ? 1u : 0u);
-    }
-    if (z >= m_grid.m_dim.z - 2) {
-      const auto neighbor = m_octree->findleaf(m_iorg + vec3i(0,0,1));
-      zlod = max(zlod, neighbor.second < m_level ? 1u : 0u);
-    }
-
-    vec2i org(2), dim(m_grid.m_dim.x-2, m_grid.m_dim.y-2);
-    loopxy(org, dim, z) lod(xyz) = zlod;
-#endif
+  void initlod() {
   }
 
   INLINE void setoctree(const octree &o) { m_octree = &o; }
@@ -396,14 +380,11 @@ struct dc_gridbuilder {
   INLINE void setsize(const vec3f &size) { m_grid.m_cellsize = size; }
   INLINE u32 index(const vec3i &xyz) const {
     const vec3i p = xyz + vec3i(one);
-    const auto offset = (p.z%2) * m_cube_per_slice;
-    return offset+p.y*(m_grid.m_dim.x+3)+p.x;
+    return p.x + (p.y + p.z * (m_grid.m_dim.y+3)) * (m_grid.m_dim.x+3);
   }
   INLINE u32 field_index(const vec3i &xyz) {
     const vec3i p = xyz + vec3i(one);
-    const vec2i dim(m_grid.m_dim.x+4, m_grid.m_dim.y+4);
-    const auto offset = (p.z%4)*dim.x*dim.y;
-    return offset+dim.x*p.y+p.x;
+    return p.x + (p.y + p.z * (m_grid.m_dim.y+4)) * (m_grid.m_dim.x+4);
   }
   INLINE float &field(const vec3i &xyz) { return m_field[field_index(xyz)]; }
   INLINE u32 &lod(const vec3i &xyz) { return m_lod[field_index(xyz)]; }
@@ -413,18 +394,19 @@ struct dc_gridbuilder {
     m_border_remap.setsize(0);
   }
 
-  void initfield(u32 z) {
-    const vec2i org(-1), dim(m_grid.m_dim.x+3, m_grid.m_dim.y+3);
-    loopxy(org, dim, z) field(xyz) = m_df(m_grid.vertex(xyz));
+  void initfield() {
+    const vec3i org(-1), dim = m_grid.m_dim+vec3i(3);
+    loopxyz(org, dim) field(xyz) = m_df(m_grid.vertex(xyz));
   }
 
-  void initslice(u32 z) {
-    loopxy(vec2i(-1), vec2i(m_grid.m_dim.x+2,m_grid.m_dim.y+2), z)
-      m_qef_index[index(xyz)] = NOINDEX;
+  void initqef() {
+    const vec3i org(-1), dim = m_grid.m_dim+vec3i(2);
+    loopxyz(org, dim) m_qef_index[index(xyz)] = NOINDEX;
   }
 
-  void tesselate_slice(u32 z) {
-    loopxy(vec2i(zero), vec2i(m_grid.m_dim.x+2,m_grid.m_dim.y+2), z) {
+  void tesselate() {
+    const vec3i org(zero), dim(m_grid.m_dim + vec3i(2));
+    loopxyz(zero, dim) {
       const int start_sign = m_df(m_grid.vertex(xyz)) < 0.f ? 1 : 0;
 
       // look the three edges that start on xyz
@@ -552,13 +534,9 @@ struct dc_gridbuilder {
   void build(octree::node &node) {
     const int first_idx = m_idx_buffer.length();
     const int first_vert = m_pos_buffer.length();
-    loopi(4) initfield(i-1);
-    initslice(-1);
-    rangei(0,m_grid.m_dim.z+2) {
-      initfield(i+2);
-      initslice(i);
-      tesselate_slice(i);
-    }
+    initfield();
+    initqef();
+    tesselate();
 
     // stop here if we do not create anything
     if (first_vert == m_pos_buffer.length())
@@ -585,7 +563,6 @@ struct dc_gridbuilder {
   vector<vec3f> m_pos_buffer, m_nor_buffer;
   vector<u32> m_idx_buffer;
   vector<u32> m_border_remap;
-  u32 m_cube_per_slice;
   vector<u32> m_qef_index;
   const octree *m_octree;
   vec3i m_iorg;
