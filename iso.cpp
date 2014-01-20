@@ -671,22 +671,6 @@ struct recursive_builder {
     if (node.m_empty)
       return;
     else if (node.m_isleaf) {
-#if 0
-      // figure out all neighbors LODs
-      //printf("level %d xyz %d %d %d\n", level, xyz.x, xyz.y, xyz.z);
-      const u32 logcellnum = m_maxlevel-level;
-      loopi(int(edgeneighborsnum)) {
-        const auto org = xyz + (edgeneighbors[i] << int(logcellnum)) * int(SUBGRID);
-        //printf("  neighbor %d %d %d", org.x, org.y, org.z);
-        if (any(org < vec3i(zero)) || any(org >= vec3i(SUBGRID<<m_maxlevel))) {
-          //printf(" border\n");
-          continue;
-        }
-        const auto neighbor = m_octree->findleaf(org);
-        //printf(" level %d %s\n", neighbor.second, neighbor.first->m_empty ? "(empty)":"");
-      }
-      fflush(stdout);
-#endif
       const vec3f sz(float(1<<(m_maxlevel-level)) * m_cellsize);
       s.m_octree = m_octree;
       s.m_iorg = xyz;
