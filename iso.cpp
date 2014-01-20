@@ -30,7 +30,7 @@ static const float TOLERANCE_DENSITY = 1e-3f;
 static const float TOLERANCE_DIST2   = 1e-8f;
 static const int MAX_STEPS = 4;
 
-static vec3f falsepos(distance_field df, const grid &grid, vec3f org, vec3f p0, vec3f p1, float v0, float v1) {
+static vec3f falsepos(distance_field df, const grid &grid, vec3f org, vec3f p0, vec3f p1, float v0, float v1,float scale) {
   if (abs(v0) < 1e-3f) return p0;
   if (abs(v1) < 1e-3f) return p1;
   if (v1 < 0.f) {
@@ -41,7 +41,7 @@ static vec3f falsepos(distance_field df, const grid &grid, vec3f org, vec3f p0, 
   vec3f p;
   loopi(MAX_STEPS) {
     p = p1 - v1 * (p1 - p0) / (v1 - v0);
-    const auto density = df(org+grid.m_cellsize*p) + 1e-4f;
+    const auto density = df(org+grid.m_cellsize*scale*p) + 1e-4f;
     if (abs(density) < TOLERANCE_DENSITY) break;
     if (distance2(p0,p1) < TOLERANCE_DIST2) break;
     if (density < 0.f) {
@@ -338,7 +338,8 @@ struct octree {
 
   INLINE octree(u32 dim) : m_dim(dim), m_logdim(ilog2(dim)) {}
   pair<const node*,u32> findleaf(vec3i xyz) const {
-    assert(all(xyz>=vec3i(zero)) && all(xyz<vec3i(m_dim)));
+    if (any(xyz<vec3i(zero)) || any(xyz>=vec3i(m_dim)))
+      return makepair((const struct node*) NULL, 0u);
     int level = 0;
     const node *node = &m_root;
     for (;;) {
@@ -364,27 +365,24 @@ struct octree {
 struct dc_gridbuilder {
   dc_gridbuilder(distance_field df, const vec3i &dim) :
     m_df(df), m_grid(vec3f(one), vec3f(zero), dim),
-    m_field((dim.x+4)*(dim.y+4)*(dim.z+4)),
-    m_lod((dim.x+4)*(dim.y+4)*(dim.z+4)),
-    m_qef_index((dim.x+3)*(dim.y+3)*(dim.z+3)),
+    m_field((dim.x+7)*(dim.y+7)*(dim.z+7)),
+    m_lod((dim.x+7)*(dim.y+7)*(dim.z+7)),
+    m_qef_index((dim.x+6)*(dim.y+6)*(dim.z+6)),
     m_octree(NULL),
     m_iorg(zero),
     m_level(0)
   {}
 
-  void initlod() {
-  }
-
   INLINE void setoctree(const octree &o) { m_octree = &o; }
   INLINE void setorg(const vec3f &org) { m_grid.m_org = org; }
   INLINE void setsize(const vec3f &size) { m_grid.m_cellsize = size; }
   INLINE u32 index(const vec3i &xyz) const {
-    const vec3i p = xyz + vec3i(one);
-    return p.x + (p.y + p.z * (m_grid.m_dim.y+3)) * (m_grid.m_dim.x+3);
+    const vec3i p = xyz + vec3i(2);
+    return p.x + (p.y + p.z * (m_grid.m_dim.y+6)) * (m_grid.m_dim.x+6);
   }
   INLINE u32 field_index(const vec3i &xyz) {
-    const vec3i p = xyz + vec3i(one);
-    return p.x + (p.y + p.z * (m_grid.m_dim.y+4)) * (m_grid.m_dim.x+4);
+    const vec3i p = xyz + vec3i(2);
+    return p.x + (p.y + p.z * (m_grid.m_dim.y+7)) * (m_grid.m_dim.x+7);
   }
   INLINE float &field(const vec3i &xyz) { return m_field[field_index(xyz)]; }
   INLINE u32 &lod(const vec3i &xyz) { return m_lod[field_index(xyz)]; }
@@ -395,27 +393,55 @@ struct dc_gridbuilder {
   }
 
   void initfield() {
-    const vec3i org(-1), dim = m_grid.m_dim+vec3i(3);
+    const vec3i org(-2), dim = m_grid.m_dim+vec3i(5);
     loopxyz(org, dim) field(xyz) = m_df(m_grid.vertex(xyz));
   }
 
   void initqef() {
-    const vec3i org(-1), dim = m_grid.m_dim+vec3i(2);
+    const vec3i org(-2), dim = m_grid.m_dim+vec3i(4);
     loopxyz(org, dim) m_qef_index[index(xyz)] = NOINDEX;
   }
 
+  void initlod() {
+    const vec3i org(-2), dim = m_grid.m_dim+vec3i(5);
+    loopxyz(org, dim) {
+      auto &curr = lod(xyz);
+      curr = 0;
+      loopi(int(lodneighbornum)) {
+        const auto p = m_iorg + xyz + 2*neighbors[i];
+        const auto leaf = m_octree->findleaf(p);
+        if (leaf.first == NULL) continue;
+        if (leaf.second < m_level) {
+          curr = 1;
+          break;
+        }
+      }
+    }
+  }
+
   void tesselate() {
-    const vec3i org(zero), dim(m_grid.m_dim + vec3i(2));
-    loopxyz(zero, dim) {
+    if (!((m_level == 4 && m_iorg == vec3i(0,16,64)) ||
+          (m_level == 3 && m_iorg == vec3i(0,32,64))))
+      return;
+    printf("level %d xyz %d %d %d\n", m_level, m_iorg.x, m_iorg.y, m_iorg.z);
+
+    const vec3i org(zero), dim(m_grid.m_dim + vec3i(4));
+    loopxyz(org, dim) {
       const int start_sign = m_df(m_grid.vertex(xyz)) < 0.f ? 1 : 0;
+      const auto currlod = lod(xyz);
+      if (currlod == 1 && any(ne(xyz&vec3i(one), vec3i(zero))))
+          continue;
+      if (currlod == 1) printf("xyz %d %d %d\n", xyz.x, xyz.y, xyz.z);
 
       // look the three edges that start on xyz
       loopi(3) {
-        const int end_sign = m_df(m_grid.vertex(xyz+axis[i])) < 0.f ? 1 : 0;
+        const auto delta = axis[i] << int(currlod);
+        const int end_sign = m_df(m_grid.vertex(xyz+delta)) < 0.f ? 1 : 0;
         if (start_sign == end_sign) continue;
 
         // we found one edge. we output one quad for it
-        const auto axis0 = axis[(i+1)%3], axis1 = axis[(i+2)%3];
+        const auto axis0 = axis[(i+1)%3] << int(currlod);
+        const auto axis1 = axis[(i+2)%3] << int(currlod);
         const vec3i p[] = {xyz, xyz-axis0, xyz-axis0-axis1, xyz-axis1};
         u32 quad[4];
         loopj(4) {
@@ -423,9 +449,10 @@ struct dc_gridbuilder {
           const auto idx = index(p[j]);
           if (m_qef_index[idx] == NOINDEX) {
             mcell cell;
-            loopk(8) cell[k] = field(p[j]+icubev[k]);
-            const auto vert = qef_vertex(cell, p[j]);
-            const auto pos = m_grid.vertex(p[j]) + vert.first*m_grid.m_cellsize;
+            loopk(8) cell[k] = field(p[j] + (icubev[k]<<int(currlod)));
+            const float scale = float(1<<currlod);
+            const auto vert = qef_vertex(cell, p[j], scale);
+            const auto pos = m_grid.vertex(p[j]) + vert.first*scale*m_grid.m_cellsize;
             const auto nor = normalize(vert.second);
             m_qef_index[idx] = m_pos_buffer.length();
             m_border_remap.add(OUTSIDE);
@@ -441,7 +468,7 @@ struct dc_gridbuilder {
     }
   }
 
-  pair<vec3f,vec3f> qef_vertex(const mcell &cell, const vec3i &xyz) {
+  pair<vec3f,vec3f> qef_vertex(const mcell &cell, const vec3i &xyz, float scale) {
     int cubeindex = 0, num = 0;
     loopi(8) if (cell[i] < 0.0f) cubeindex |= 1<<i;
     assert(edgetable[cubeindex] != 0);
@@ -456,8 +483,8 @@ struct dc_gridbuilder {
       const auto idx0 = interptable[i][0], idx1 = interptable[i][1];
       const auto v0 = cell[idx0], v1 = cell[idx1];
       const auto p0 = fcubev[idx0], p1 = fcubev[idx1];
-      p[num] = falsepos(m_df, m_grid, org, p0, p1, v0, v1);
-      n[num] = gradient(m_df, org+p[num]*m_grid.m_cellsize);
+      p[num] = falsepos(m_df, m_grid, org, p0, p1, v0, v1, scale);
+      n[num] = gradient(m_df, org+p[num]*scale*m_grid.m_cellsize);
       nor += n[num];
       mass += p[num++];
     }
@@ -534,18 +561,20 @@ struct dc_gridbuilder {
   void build(octree::node &node) {
     const int first_idx = m_idx_buffer.length();
     const int first_vert = m_pos_buffer.length();
+//    if (node.m_level == 3) return;
     initfield();
     initqef();
+    initlod();
     tesselate();
 
     // stop here if we do not create anything
     if (first_vert == m_pos_buffer.length())
       return;
 
-    creaser.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, first_vert, first_idx);
-    creaser.doit();
-    m_border_remap.setsize(m_pos_buffer.length());
-    removeborders(first_idx, first_vert);
+    //creaser.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, first_vert, first_idx);
+    //creaser.doit();
+    //m_border_remap.setsize(m_pos_buffer.length());
+    //removeborders(first_idx, first_vert);
     assert(node.m_vertnum <= octree::MAX_ITEM_NUM);
     assert(node.m_idxnum <= octree::MAX_ITEM_NUM);
     node.m_first_vert = first_vert;
@@ -597,8 +626,8 @@ struct recursive_builder {
       node.m_isleaf = node.m_empty = 1;
       return;
     }
-    //if (cellnum == SUBGRID || (level == 3 && xyz.y > 16))
-    if (cellnum == SUBGRID)
+    if (cellnum == SUBGRID || (level == 3 && xyz.y > 16))
+    // if (cellnum == SUBGRID)
       node.m_isleaf = 1;
     else {
       node.m_children = NEWAE(octree::node, 8);

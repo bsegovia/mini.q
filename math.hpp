@@ -168,6 +168,12 @@ TINLINE v2 op/ (const T &a, v2arg b)  {return v2(a/b.x, a/b.y);}
 TINLINE v2 op<< (v2arg a, v2arg b) {return v2(a.x<<b.x, a.y<<b.y);}
 TINLINE v2 op<< (const T &a, v2arg b)  {return v2(a<<b.x, a<<b.y);}
 TINLINE v2 op<< (v2arg a, const T &b)  {return v2(a.x<<b, a.y<<b);}
+TINLINE v2 op>> (v2arg a, v2arg b) {return v2(a.x>>b.x, a.y>>b.y);}
+TINLINE v2 op>> (const T &a, v2arg b)  {return v2(a>>b.x, a>>b.y);}
+TINLINE v2 op>> (v2arg a, const T &b)  {return v2(a.x>>b, a.y>>b);}
+TINLINE v2 op& (v2arg a, v2arg b) {return v2(a.x&b.x, a.y&b.y);}
+TINLINE v2 op& (const T &a, v2arg b)  {return v2(a&b.x, a&b.y);}
+TINLINE v2 op& (v2arg a, const T &b)  {return v2(a.x&b, a.y&b);}
 TINLINE v2 min(v2arg a, v2arg b)  {return v2(min(a.x,b.x), min(a.y,b.y));}
 TINLINE v2 max(v2arg a, v2arg b)  {return v2(max(a.x,b.x), max(a.y,b.y));}
 TINLINE v2 clamp(v2arg v, v2arg m, v2arg M)  {return v2(clamp(v.x,m.x,M.x),clamp(v.y,m.y,M.y));}
@@ -242,6 +248,9 @@ TINLINE v3 op<< (v3arg a, const T &b)  {return v3(a.x<<b, a.y<<b, a.z<<b);}
 TINLINE v3 op>> (v3arg a, v3arg b) {return v3(a.x>>b.x, a.y>>b.y, a.z>>b.z);}
 TINLINE v3 op>> (const T &a, v3arg b)  {return v3(a>>b.x, a>>b.y, a>>b.z);}
 TINLINE v3 op>> (v3arg a, const T &b)  {return v3(a.x>>b, a.y>>b, a.z>>b);}
+TINLINE v3 op& (v3arg a, v3arg b) {return v3(a.x&b.x, a.y&b.y, a.z&b.z);}
+TINLINE v3 op& (const T &a, v3arg b)  {return v3(a&b.x, a&b.y, a&b.z);}
+TINLINE v3 op& (v3arg a, const T &b)  {return v3(a.x&b, a.y&b, a.z&b);}
 TINLINE v3 op* (v3arg a, v3arg b) {return v3(a.x*b.x, a.y*b.y, a.z*b.z);}
 TINLINE v3 op/ (v3arg a, v3arg b) {return v3(a.x/b.x, a.y/b.y, a.z/b.z);}
 TINLINE v3 op% (v3arg a, v3arg b) {return v3(a.x%b.x, a.y%b.y, a.z%b.z);}
@@ -328,6 +337,12 @@ TINLINE v4 op/ (const T &a, v4arg b) {return v4(a/b.x, a/b.y, a/b.z, a/b.w);}
 TINLINE v4 op<< (v4arg a, v4arg b) {return v4(a.x<<b.x, a.y<<b.y, a.z<<b.z, a.w<<b.w);}
 TINLINE v4 op<< (const T &a, v4arg b)  {return v4(a<<b.x, a<<b.y, a<<b.z, a<<b.w);}
 TINLINE v4 op<< (v4arg a, const T &b)  {return v4(a.x<<b, a.y<<b, a.z<<b, a.w<<b);}
+TINLINE v4 op>> (v4arg a, v4arg b) {return v4(a.x>>b.x, a.y>>b.y, a.z>>b.z, a.w>>b.w);}
+TINLINE v4 op>> (const T &a, v4arg b)  {return v4(a>>b.x, a>>b.y, a>>b.z, a>>b.w);}
+TINLINE v4 op>> (v4arg a, const T &b)  {return v4(a.x>>b, a.y>>b, a.z>>b, a.w>>b);}
+TINLINE v4 op& (v4arg a, v4arg b) {return v4(a.x&b.x, a.y&b.y, a.z&b.z, a.w&b.w);}
+TINLINE v4 op& (const T &a, v4arg b)  {return v4(a&b.x, a&b.y, a&b.z, a&b.w);}
+TINLINE v4 op& (v4arg a, const T &b)  {return v4(a.x&b, a.y&b, a.z&b, a.w&b);}
 TINLINE v4& op<<= (v4& a, v4arg b) {a.x<<=b.x; a.y<<=b.y; a.z<<=b.z; a.w<<=b.w; return a;}
 TINLINE v4& op+= (v4& a, v4arg b) {a.x+=b.x; a.y+=b.y; a.z+=b.z; a.w+=b.w; return a;}
 TINLINE v4& op-= (v4& a, v4arg b) {a.x-=b.x; a.y-=b.y; a.z-=b.z; a.w-=b.w; return a;}
