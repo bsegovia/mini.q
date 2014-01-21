@@ -35,8 +35,7 @@ include Makefile.dep
 
 SHADERS=data/shaders/fixed_vp.glsl\
         data/shaders/fixed_fp.glsl\
-        data/shaders/font_fp.glsl\
-        data/shaders/dfrm_fp.glsl
+        data/shaders/font_fp.glsl
 
 ## build embedded shader source
 shaders.cpp: $(SHADERS)
