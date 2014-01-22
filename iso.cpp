@@ -133,7 +133,7 @@ static const u32 edgeneighbornum = 12;
 static const u32 lodneighbornum = 18;
 
 static const float SHARP_EDGE = 0.2f;
-static const u32 SUBGRID = 16;
+static const u32 SUBGRID = 8;
 static const u32 MAX_NEW_VERT = 8;
 static const u32 NOINDEX = ~0x0u;
 static const u32 NOTRIANGLE = ~0x0u-1;
@@ -143,23 +143,49 @@ INLINE u32 isborder(u32 x) { return (x & BORDER) != 0; }
 INLINE u32 isoutside(u32 x) { return (x & OUTSIDE) != 0; }
 INLINE u32 unpackidx(u32 x) { return x & ~(OUTSIDE|OUTSIDE); }
 
-struct edge_creaser {
+struct mesh_processor {
   struct meshedge {
     u32 vertex[2];
     u32 face[2];
   };
 
-  void set(vector<vec3f> &p, vector<vec3f> &n, vector<u32> &t, int first_vert, int first_idx) {
+  void set(vector<vec3f> &p, vector<vec3f> &n, vector<u32> &t,
+           vector<pair<u32,u32>> &cracks,
+           int first_vert, int first_idx)
+  {
     m_pos_buffer = &p;
     m_nor_buffer = &n;
     m_idx_buffer = &t;
+    m_cracks = &cracks;
     m_first_vert = first_vert;
     m_first_idx = first_idx;
     m_vertnum = (p.length() - m_first_vert);
     m_trinum = (t.length() - m_first_idx) / 3;
     m_edges.setsize(3*m_trinum);
-    m_edgelists.setsize(m_vertnum + 3*m_trinum);
-    m_sharp.setsize(m_vertnum + 6*m_trinum);
+    m_edgelists.setsize(m_vertnum + 6*m_trinum);
+    m_list.setsize(m_vertnum + 6*m_trinum);
+  }
+
+  void append(int &edgenum, int i1, int i2, int face0, int face1) {
+    auto &e = m_edges[edgenum];
+    auto nextedge = &m_edgelists[0] + m_vertnum;
+    e.vertex[0] = i1;
+    e.vertex[1] = i2;
+    e.face[0] = face0;
+    e.face[1] = face1;
+
+    u32 idx = m_edgelists[i1];
+    if (idx == NOINDEX)
+      m_edgelists[i1] = edgenum;
+    else for (;;) {
+      const u32 index = nextedge[idx];
+      if (index == NOINDEX) {
+        nextedge[idx] = edgenum;
+        break;
+      }
+      idx = index;
+    }
+    nextedge[edgenum++] = NOINDEX;
   }
 
   int buildedges() {
@@ -175,25 +201,7 @@ struct edge_creaser {
       int i1 = unpackidx(tri[2]) - m_first_vert;
       loopj(3) {
         int i2 = unpackidx(tri[j]) - m_first_vert;
-        if (i1 < i2) {
-          auto e = &m_edges[edgenum];
-          e->vertex[0] = i1;
-          e->vertex[1] = i2;
-          e->face[0] = e->face[1] = i;
-
-          u32 idx = m_edgelists[i1];
-          if (idx == NOINDEX)
-            m_edgelists[i1] = edgenum;
-          else for (;;) {
-            const u32 index = nextedge[idx];
-            if (index == NOINDEX) {
-              nextedge[idx] = edgenum;
-              break;
-            }
-            idx = index;
-          }
-          nextedge[edgenum++] = NOINDEX;
-        }
+        if (i1 < i2) append(edgenum, i1, i2, i, i);
         i1 = i2;
       }
     }
@@ -210,6 +218,7 @@ struct edge_creaser {
             auto e = &m_edges[idx];
             if (e->vertex[1] == u32(i1) && e->face[0] == e->face[1]) {
               e->face[1] = i;
+              append(edgenum, i1, i2, e->face[0], e->face[1]);
               break;
             }
           }
@@ -230,15 +239,14 @@ struct edge_creaser {
   }
   INLINE vec3f trinormal(u32 idx) { return normalize(trinormalu(idx)); }
 
-  void doit() {
-    const auto edgenum = buildedges();
+  void crease(u32 edgenum) {
     auto &t = *m_idx_buffer;
     auto &p = *m_pos_buffer;
     auto &n = *m_nor_buffer;
     const u32 firsttri = m_first_idx / 3;
 
     // step 1 - find sharp vertices edges they belong to
-    loopi(m_vertnum) m_sharp[i].first = m_sharp[i].second = NOINDEX;
+    loopi(m_vertnum) m_list[i].first = m_list[i].second = NOINDEX;
     loopi(edgenum) {
       const auto idx0 = m_edges[i].face[0], idx1 = m_edges[i].face[1];
       if (idx0 == idx1) continue;
@@ -246,7 +254,7 @@ struct edge_creaser {
       if (dot(n0, n1) > SHARP_EDGE) continue;
       loopj(2) {
         const auto idx = m_edges[i].vertex[j];
-        m_sharp[idx].second = NOTRIANGLE;
+        m_list[idx].second = NOTRIANGLE;
       }
     }
 
@@ -254,35 +262,42 @@ struct edge_creaser {
     u32 listindex = m_vertnum;
     loopi(m_trinum) loopj(3) {
       const auto idx = unpackidx(t[3*(firsttri+i)+j]) - m_first_vert;
-      if (m_sharp[idx].second == NOINDEX) continue;
-      m_sharp[listindex].first = m_sharp[idx].first;
-      m_sharp[listindex].second = m_sharp[idx].second;
-      m_sharp[idx].first = listindex++;
-      m_sharp[idx].second = i+firsttri;
+      if (m_list[idx].second == NOINDEX) continue;
+      m_list[listindex].first = m_list[idx].first;
+      m_list[listindex].second = m_list[idx].second;
+      m_list[idx].first = listindex++;
+      m_list[idx].second = i+firsttri;
     }
 
     // step 3 - go over all "sharp" vertices and duplicate them as needed
     loopi(m_vertnum) {
-      if (m_sharp[i].first == NOINDEX) continue;
-      pair<vec3f, u32> verts[MAX_NEW_VERT];
+      if (m_list[i].first == NOINDEX) continue;
+
+      // compute the number of new vertices we may create at most
+      auto curr = m_list[m_list[i].first];
+      u32 maxvertnum = 1;
+      while (curr.first != NOINDEX) {
+        ++maxvertnum;
+        curr = m_list[curr.first];
+      }
+      m_new_verts.setsize(maxvertnum);
 
       // we already have a valid vertex that we can use
-      verts[0] = makepair(trinormal(m_sharp[i].second), u32(m_first_vert+i));
+      m_new_verts[0] = makepair(trinormal(m_list[i].second), u32(m_first_vert+i));
       u32 vertnum = 1;
 
       // go over all triangles and find best vertex for each of them
-      auto curr = m_sharp[m_sharp[i].first];
+      curr = m_list[m_list[i].first];
       while (curr.first != NOINDEX) {
         const auto nor = trinormal(curr.second);
         u32 matched = 0;
         for (; matched < vertnum; ++matched)
-          if (dot(nor, verts[matched].first) > SHARP_EDGE)
+          if (dot(nor, m_new_verts[matched].first) > SHARP_EDGE)
             break;
 
         // we need to create a new vertex for this triangle
         if (matched == vertnum) {
-          assert(vertnum < MAX_NEW_VERT);
-          verts[vertnum++] = makepair(nor, u32(p.length()));
+          m_new_verts[vertnum++] = makepair(nor, u32(p.length()));
           p.add(p[m_first_vert+i]);
           n.add(vec3f(zero));
         }
@@ -293,10 +308,10 @@ struct edge_creaser {
           if (unpackidx(idx) == u32(m_first_vert+i)) {
             u32 mask = isoutside(idx) ? OUTSIDE : 0;
             mask |= isborder(idx) ? BORDER : 0;
-            t[3*curr.second+j] = mask | verts[matched].second;
+            t[3*curr.second+j] = mask | m_new_verts[matched].second;
           }
         }
-        curr = m_sharp[curr.first];
+        curr = m_list[curr.first];
       }
     }
 
@@ -312,12 +327,50 @@ struct edge_creaser {
     loopi(m_vertnum) n[m_first_vert+i] = abs(normalize(n[m_first_vert+i]));
   }
 
+#if 0
+  void fillcracks(u32 edgenum) {
+    if (m_cracks->length() == 0) return;
+    auto &cracks = *m_cracks;
+    auto &t = *m_idx_buffer;
+    loopv(cracks) {
+      const v0 = cracks[i].first, v1 = cracks[i].second;
+      const auto l0 = m_edgelists[v0];
+      while (l0 != NOINDEX) {
+        // go over all triangles and try to find a vertex that is connected to
+        // both crack vertices
+        const auto &e0 = m_edges[l0];
+        loopj(2) {
+          const auto tri = &t[3*e0.face[j] + m_first_idx];
+          int candidate = v0;
+          loopk(3) {
+            const auto idx = unpackidx(tri[k]);
+            if (idx == v1) {candidate=v0; break;}
+            if (idx != v0) {candidate=idx;}
+          }
+          if (candidate == v0) continue;
+
+          // visit the complete edge list from v1 to see there is an edge
+          auto l1 = m_edgelists[v1];
+          while (l1 != NOINDEX) {
+
+            l1 = m_edgelists[l1];
+          }
+        }
+        l0 = m_edgelists[l0];
+      }
+    }
+  }
+#endif
+
+
   vector<meshedge> m_edges;
   vector<int> m_edgelists;
-  vector<pair<u32,u32>> m_sharp;
+  vector<pair<u32,u32>> m_list;
+  vector<pair<vec3f,u32>> m_new_verts;
   vector<vec3f> *m_pos_buffer;
   vector<vec3f> *m_nor_buffer;
   vector<u32> *m_idx_buffer;
+  vector<pair<u32,u32>> *m_cracks;
   int m_first_idx, m_first_vert;
   int m_vertnum, m_trinum;
 };
@@ -374,7 +427,7 @@ struct dc_gridbuilder {
   {}
 
   struct qef_output {
-    INLINE qef_output(vec3f p, vec3f n, bool valid) : p(p), n(n), valid(valid) {}
+    INLINE qef_output(vec3f p, vec3f n, bool valid) : p(p),n(n),valid(valid) {}
     vec3f p, n;
     bool valid;
   };
@@ -396,6 +449,7 @@ struct dc_gridbuilder {
     m_pos_buffer.setsize(0);
     m_nor_buffer.setsize(0);
     m_border_remap.setsize(0);
+    m_cracks.setsize(0);
   }
 
   void initfield() {
@@ -426,7 +480,6 @@ struct dc_gridbuilder {
   }
 
   void tesselate() {
-
     const vec3i org(zero), dim(m_grid.m_dim + vec3i(4));
     loopxyz(org, dim) {
       const int start_sign = m_df(m_grid.vertex(xyz)) < 0.f ? 1 : 0;
@@ -455,43 +508,40 @@ struct dc_gridbuilder {
         const auto axis1 = axis[(i+2)%3] << int(edgelod);
         vec3i p[] = {xyz, xyz-axis0, xyz-axis0-axis1, xyz-axis1};
         u32 quad[4];
-        bool validquad = true;
+
+        u32 vertnum = 0;
         loopj(4) {
-          const u32 plod = lod(p[j]);
-          p[j] = p[j] & vec3i(~plod);
-          const auto idx = index(p[j]);
+          u32 plod = lod(p[j]);
+          const auto np = p[j] & vec3i(~plod);
+          const auto idx = index(np);
 
           if (m_qef_index[idx] == NOINDEX) {
             mcell cell;
-            loopk(8) cell[k] = field(p[j] + (icubev[k]<<int(plod)));
+            loopk(8) cell[k] = field(np + (icubev[k]<<int(plod)));
             const float scale = float(1<<plod);
-            const auto vert = qef_vertex(cell, p[j], scale);
+            const auto vert = qef_vertex(cell, np, scale);
 
             // we have an edge but with a double change of sign. so the higher
             // level voxel has no QEF at all
-            if (!vert.valid) {
-              assert(plod == 1 && edgelod == 0);
-              validquad = false;
-              break;
-            }
+            if (!vert.valid) continue;
 
             // point is still valid. we are good to go
-            const auto pos = m_grid.vertex(p[j]) + vert.p*scale*m_grid.m_cellsize;
+            const auto pos = m_grid.vertex(np) + vert.p*scale*m_grid.m_cellsize;
             const auto nor = normalize(vert.n);
             m_qef_index[idx] = m_pos_buffer.length();
             m_border_remap.add(OUTSIDE);
             m_pos_buffer.add(pos);
             m_nor_buffer.add(abs(nor));
           }
-          quad[j] = m_qef_index[idx];
+          quad[vertnum++] = m_qef_index[idx];
         }
-
-        // one vertex at least is missing. we cannot output a valid quad
-        if (!validquad)
-          continue;
-        const auto orientation = start_sign==1 ? quadtotris : quadtotris_cc;
         const u32 msk = any(eq(xyz,vec3i(zero)))||any(xyz>m_grid.m_dim)?OUTSIDE:0u;
-        loopj(6) m_idx_buffer.add(quad[orientation[j]]|msk);
+        const auto orientation = start_sign==1 ? quadtotris : quadtotris_cc;
+        if (vertnum == 4)
+          loopj(6) m_idx_buffer.add(quad[orientation[j]]|msk);
+        else if (vertnum == 3)
+          loopj(3) m_idx_buffer.add(quad[orientation[j]]|msk);
+        if (vertnum == 2) { printf("BOUM\n"); fflush(stdout); }
       }
     }
   }
@@ -562,16 +612,16 @@ struct dc_gridbuilder {
     last = m_idx_buffer.length()-1, first = first_idx;
     for (;;) {
       // skip two triangles at once (since they will be both outside anyway)
-      while (first <= last && isoutside(m_idx_buffer[last])) last -= 6;
+      while (first <= last && isoutside(m_idx_buffer[last])) last -= 3;
       while (first <= last && !isoutside(m_idx_buffer[first])) {
         assert(m_border_remap[m_idx_buffer[first]] < vert_buf_len);
         m_idx_buffer[first] = m_border_remap[m_idx_buffer[first]];
         ++first;
       }
       if (first > last) break;
-      assert(last-first >= 6);
-      last -= 5;
-      loopi(6) {
+      assert(last-first >= 3);
+      last -= 2;
+      loopi(3) {
         assert(isoutside(m_idx_buffer[first]));
         assert(!isoutside(m_idx_buffer[last+i]));
         const u32 idx = unpackidx(m_idx_buffer[last+i]);
@@ -598,10 +648,12 @@ struct dc_gridbuilder {
     // stop here if we do not create anything
     if (first_vert == m_pos_buffer.length())
       return;
-
-    creaser.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, first_vert, first_idx);
-    creaser.doit();
+#if 1
+    m_mp.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, m_cracks, first_vert, first_idx);
+    const u32 edgenum = m_mp.buildedges();
+    m_mp.crease(edgenum);
     m_border_remap.setsize(m_pos_buffer.length());
+#endif
     removeborders(first_idx, first_vert);
     assert(node.m_vertnum <= octree::MAX_ITEM_NUM);
     assert(node.m_idxnum <= octree::MAX_ITEM_NUM);
@@ -614,10 +666,11 @@ struct dc_gridbuilder {
 
   distance_field m_df;
   grid m_grid;
-  edge_creaser creaser;
+  mesh_processor m_mp;
   vector<float> m_field;
   vector<u32> m_lod;
   vector<vec3f> m_pos_buffer, m_nor_buffer;
+  vector<pair<u32,u32>> m_cracks;
   vector<u32> m_idx_buffer;
   vector<u32> m_border_remap;
   vector<u32> m_qef_index;
@@ -654,10 +707,16 @@ struct recursive_builder {
       node.m_isleaf = node.m_empty = 1;
       return;
     }
-    if (cellnum == SUBGRID || (level == 3 && xyz.y > 16))
+    if (level == 6 || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
+  //  if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
+//     if (cellnum == SUBGRID || (level == 4 && xyz.y <= 16)) {
+    // if (cellnum == SUBGRID || (level == 3 && xyz.y > 16))
     // if (cellnum == SUBGRID)
+    // if (cellnum == SUBGRID) {
+      printf("level %d\n", level);
+      fflush(stdout);
       node.m_isleaf = 1;
-    else {
+    } else {
       node.m_children = NEWAE(octree::node, 8);
       loopi(8) {
         const auto childxyz = xyz+int(cellnum/2)*icubev[i];

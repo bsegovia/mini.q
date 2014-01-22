@@ -108,12 +108,12 @@ void finish() {
   vector<vertex>().moveto(vertices);
   vector<u32>().moveto(indices);
 }
-static const float CELLSIZE = 0.4f, GRIDJITTER = 0.05f;
+static const float CELLSIZE = 0.2f, GRIDJITTER = 0.05f;
 static void makescene() {
   if (initialized_m) return;
   const float start = sys::millis();
-  auto m = iso::dc_mesh(vec3f(GRIDJITTER), 256, CELLSIZE, map);
- loopi(m.m_vertnum) vertices.add(makepair(m.m_pos[i], m.m_nor[i]));
+  auto m = iso::dc_mesh(vec3f(GRIDJITTER), 512, CELLSIZE, map);
+  loopi(m.m_vertnum) vertices.add(makepair(m.m_pos[i], m.m_nor[i]));
   loopi(m.m_indexnum) indices.add(m.m_index[i]);
   vertnum = m.m_vertnum;
   indexnum = m.m_indexnum;

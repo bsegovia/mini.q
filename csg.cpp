@@ -74,7 +74,8 @@ node *capped_cylinder(const vec2f &cxz, const vec3f &ryminymax) {
 }
 #endif
 
-node *makescene() {
+static node *makescene0() {
+#if 1
   const auto t = vec3f(7.f, 5.f, 7.f);
   const auto s = NEW(sphere, 4.2f);
   const auto b0 = NEW(box, vec3f(4.f));
@@ -88,6 +89,32 @@ node *makescene() {
   }
   const auto b = NEW(box, vec3f(3.5f, 4.f, 3.5f));
   return NEW(D, c, NEW(translation, vec3f(2.f,5.f,18.f), b));
+#else
+  node *c = NULL;
+  loopi(3) {
+    const auto center = vec2f(2.f,2.f+2.f*float(i));
+    const auto ryminymax = vec3f(1.f,1.f,2.f*float(i)+2.f);
+    if (c == NULL)
+      c = capped_cylinder(center, ryminymax);
+    else
+      c = NEW(U, c, capped_cylinder(center, ryminymax));
+  }
+  const auto b = NEW(box, vec3f(3.5f, 4.f, 3.5f));
+  return NEW(D, c, NEW(translation, vec3f(2.f,5.f,18.f), b));
+
+#endif
+}
+
+node *makescene() {
+  node *s0 = makescene0();
+#if 0
+  node *s1 = NEW(translation, vec3f(8.f,0.f,0.f), makescene0());
+  node *s2 = NEW(translation, vec3f(16.f,0.f,0.f), makescene0());
+  node *s3 = NEW(translation, vec3f(24.f,0.f,0.f), makescene0());
+  return NEW(U, NEW(U, s2, s3), NEW(U, s0, s1));
+#else
+  return s0;
+#endif
 }
 
 void destroyscene(node *n) { SAFE_DEL(n); }
@@ -116,7 +143,7 @@ float dist(const vec3f &pos, node *n) {
     }
     case CYLINDER: {
       const auto c = static_cast<cylinder*>(n);
-      return length(pos.xz()-c->cxz) - c->r;
+      return /*0.2f*sin(4.f*pos.y+c->cxz.x) +*/ length(pos.xz()-c->cxz) - c->r;
     }
     case SPHERE: {
       const auto s = static_cast<sphere*>(n);
