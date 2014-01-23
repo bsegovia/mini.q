@@ -543,8 +543,8 @@ struct dc_gridbuilder {
   }
 
   void tesselate() {
+    if (m_iorg.y > 16) return;
 #if 0
-    if (m_iorg.x < 8) return;
     if (m_iorg.z <= 16) return;
     if (m_iorg.y > 16) return;
     if (m_iorg.y < 8) return;
@@ -577,10 +577,6 @@ struct dc_gridbuilder {
         const auto axis1 = axis[(i+2)%3] << int(edgelod);
         vec3i p[] = {xyz, xyz-axis0, xyz-axis0-axis1, xyz-axis1};
         u32 quad[4];
-        //static int xxx = 0; 
-        //if (xxx > 100) return;
-        //++xxx;
-        //if (xxx < 45) continue;
         u32 vertnum = 0;
         loopj(4) {
           u32 plod = lod(p[j]);
@@ -607,17 +603,14 @@ struct dc_gridbuilder {
           }
           quad[vertnum++] = m_qef_index[idx];
         }
-        //const u32 msk = any(eq(xyz,vec3i(zero)))||any(xyz>m_grid.m_dim)?OUTSIDE:0u;
-        const u32 msk = 0;
+        const u32 msk = any(eq(xyz,vec3i(zero)))||any(xyz>m_grid.m_dim)?OUTSIDE:0u;
         const auto orientation = start_sign==1 ? quadtotris : quadtotris_cc;
         if (vertnum == 4)
           loopj(6) m_idx_buffer.add(quad[orientation[j]]|msk);
         else if (vertnum == 3)
           loopj(3) m_idx_buffer.add(quad[orientation[j]]|msk);
-        else if (vertnum == 2 && !isoutside(msk)) {
+        else if (vertnum == 2 && !isoutside(msk))
           m_cracks.add(makepair(quad[0], quad[1]));
-          //printf("BOUM %d %d %d [%d %d]\n", xyz.x, xyz.y, xyz.z, quad[0], quad[1]); fflush(stdout);
-        }
       }
     }
   }
@@ -746,7 +739,7 @@ struct dc_gridbuilder {
     // if (m_iorg == vec3i(0,120,112)) DEBUGBREAK;
     m_mp.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, m_cracks, first_vert, first_idx);
     const u32 edgenum = m_mp.buildedges();
-    m_mp.fillcracks(edgenum);
+    // m_mp.fillcracks(edgenum);
     m_mp.crease(edgenum);
     m_border_remap.setsize(m_pos_buffer.length());
     removeborders(first_idx, first_vert);
