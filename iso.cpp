@@ -236,6 +236,8 @@ struct mesh_processor {
       // if (i == 36) DEBUGBREAK;
       for (; idx != NOINDEX; idx = nextedge[idx]) {
         auto &e = m_edges[idx];
+        if (e.vertex[0] > e.vertex[1]) break;
+        if (e.vertex[0] == e.vertex[1]) continue;
         append(edgenum, e.vertex[1], e.vertex[0], e.face[0], e.face[1]);
       }
     }
@@ -741,10 +743,11 @@ struct dc_gridbuilder {
     }
 #endif
 
+    if (m_iorg == vec3i(0,120,112)) DEBUGBREAK;
     m_mp.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, m_cracks, first_vert, first_idx);
     const u32 edgenum = m_mp.buildedges();
     m_mp.fillcracks(edgenum);
-    m_mp.crease(edgenum);
+   // m_mp.crease(edgenum);
     m_border_remap.setsize(m_pos_buffer.length());
     removeborders(first_idx, first_vert);
     assert(node.m_vertnum <= octree::MAX_ITEM_NUM);
@@ -799,12 +802,12 @@ struct recursive_builder {
       node.m_isleaf = node.m_empty = 1;
       return;
     }
-    if (level == 6 || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
+    //if (level == 6 || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
   //  if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
 //     if (cellnum == SUBGRID || (level == 4 && xyz.y <= 16)) {
     // if (cellnum == SUBGRID || (level == 3 && xyz.y > 16))
     // if (cellnum == SUBGRID)
-    // if (cellnum == SUBGRID) {
+     if (cellnum == SUBGRID) {
 //      printf("level %d\n", level);
 //      fflush(stdout);
       node.m_isleaf = 1;

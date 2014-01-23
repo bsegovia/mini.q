@@ -81,11 +81,15 @@ static node *makescene0() {
   const auto b0 = NEW(box, vec3f(4.f));
   const auto d0 = NEW(translation, t, s);
   const auto d1 = NEW(translation, t, b0);
-  node *c = NEW(D, d1, d0);
-  loopi(16) {
+  node *c = NULL; //NEW(D, d1, d0);
+//  loopi(8) {
+  for (int i = 11; i < 16; ++i) {
     const auto center = vec2f(2.f,2.f+2.f*float(i));
     const auto ryminymax = vec3f(1.f,1.f,2*float(i)+2.f);
-    c = NEW(U, c, capped_cylinder(center, ryminymax));
+    if (c == NULL)
+        c = capped_cylinder(center, ryminymax);
+      else
+        c = NEW(U, c, capped_cylinder(center, ryminymax));
   }
   const auto b = NEW(box, vec3f(3.5f, 4.f, 3.5f));
   return NEW(D, c, NEW(translation, vec3f(2.f,5.f,18.f), b));
@@ -143,7 +147,7 @@ float dist(const vec3f &pos, node *n) {
     }
     case CYLINDER: {
       const auto c = static_cast<cylinder*>(n);
-      return /*0.2f*sin(4.f*pos.y+c->cxz.x) +*/ length(pos.xz()-c->cxz) - c->r;
+      return 0.2f*sin(4.f*pos.y+c->cxz.x) + length(pos.xz()-c->cxz) - c->r;
     }
     case SPHERE: {
       const auto s = static_cast<sphere*>(n);
