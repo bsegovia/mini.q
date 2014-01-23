@@ -9,7 +9,7 @@
 #include <GL/gl.h>
 
 namespace q {
-IVARF(grabmouse, 0, 1, 1, SDL_WM_GrabInput(grabmouse ? SDL_GRAB_ON : SDL_GRAB_OFF););
+IVARF(grabmouse, 0, 0, 1, SDL_WM_GrabInput(grabmouse ? SDL_GRAB_ON : SDL_GRAB_OFF););
 
 void start(int argc, const char *argv[]) {
   con::out("init: memory debugger");

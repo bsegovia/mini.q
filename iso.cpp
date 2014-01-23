@@ -161,7 +161,7 @@ struct mesh_processor {
     m_first_idx = first_idx;
     m_vertnum = (p.length() - m_first_vert);
     m_trinum = (t.length() - m_first_idx) / 3;
-    m_edges.setsize(3*m_trinum);
+    m_edges.setsize(6*m_trinum);
     m_edgelists.setsize(m_vertnum + 6*m_trinum);
     m_list.setsize(m_vertnum + 6*m_trinum);
   }
@@ -201,6 +201,7 @@ struct mesh_processor {
       int i1 = unpackidx(tri[2]) - m_first_vert;
       loopj(3) {
         int i2 = unpackidx(tri[j]) - m_first_vert;
+        // if (i1 == 36 || i2 == 36) DEBUGBREAK;
         if (i1 < i2) append(edgenum, i1, i2, i, i);
         i1 = i2;
       }
@@ -218,12 +219,24 @@ struct mesh_processor {
             auto e = &m_edges[idx];
             if (e->vertex[1] == u32(i1) && e->face[0] == e->face[1]) {
               e->face[1] = i;
-              append(edgenum, i1, i2, e->face[0], e->face[1]);
               break;
             }
           }
+
+          // this is an edge with one triangle only. we append it now
+          if (idx == NOINDEX) append(edgenum, i2, i1, i, i);
         }
         i1 = i2;
+      }
+    }
+
+    // step 3 - append all edges with i2 > i1
+    loopi(m_vertnum) {
+      u32 idx = m_edgelists[i];
+      // if (i == 36) DEBUGBREAK;
+      for (; idx != NOINDEX; idx = nextedge[idx]) {
+        auto &e = m_edges[idx];
+        append(edgenum, e.vertex[1], e.vertex[0], e.face[0], e.face[1]);
       }
     }
     return edgenum;
@@ -327,41 +340,90 @@ struct mesh_processor {
     loopi(m_vertnum) n[m_first_vert+i] = abs(normalize(n[m_first_vert+i]));
   }
 
-#if 0
+  INLINE bool containsother(const int *tri, int other) {
+    loopk(3) if (tri[k] == other) return true;
+    return false;
+  }
+
+  u32 findthirdindex(u32 v0, u32 v1, bool &switchv0v1) {
+    auto nextedge = &m_edgelists[0] + m_vertnum;
+    auto l0 = m_edgelists[v0 - m_first_vert];
+    auto &t = *m_idx_buffer;
+    for (; l0 != NOINDEX; l0 = nextedge[l0]) {
+      const auto &e0 = m_edges[l0];
+      loopj(2) {
+        const auto tri = &t[3*e0.face[j] + m_first_idx];
+        bool foundit = false;
+        u32 v2 = v0;
+        u32 idx[3]={0,0,0};
+        loopk(3) {
+          const int unpacked = unpackidx(tri[k]);
+          if (unpacked == v0) idx[0] = k;
+          else if (unpacked == v1) {
+            idx[1] = k;
+            foundit = true;
+          } else {
+            idx[2] = k;
+            v2 = unpacked;
+          }
+        }
+
+        // see if we need to reorder v0 and v1 to get proper orientation
+        if (foundit) {
+          u32 v0pos = 2;
+          if (idx[0] == 0) v0pos = 0;
+          else if (idx[1] == 0) v0pos = 1;
+          switchv0v1 = idx[(v0pos+1)%3] == 1;
+          return v2;
+        }
+      }
+    }
+    return v0;
+  }
+
   void fillcracks(u32 edgenum) {
     if (m_cracks->length() == 0) return;
+
+    // Try to fix all cracks by creating a new triangle that fills it
     auto &cracks = *m_cracks;
     auto &t = *m_idx_buffer;
+    auto nextedge = &m_edgelists[0] + m_vertnum;
     loopv(cracks) {
-      const v0 = cracks[i].first, v1 = cracks[i].second;
-      const auto l0 = m_edgelists[v0];
-      while (l0 != NOINDEX) {
+      bool switchv0v1 = false;
+      auto v0 = cracks[i].first;
+      auto v1 = cracks[i].second;
+      auto v2 = findthirdindex(v0,v1,switchv0v1);
+      auto l0 = m_edgelists[v0 - m_first_vert];
+      for (; l0 != NOINDEX; l0 = nextedge[l0]) {
         // go over all triangles and try to find a vertex that is connected to
         // both crack vertices
         const auto &e0 = m_edges[l0];
-        loopj(2) {
-          const auto tri = &t[3*e0.face[j] + m_first_idx];
-          int candidate = v0;
-          loopk(3) {
-            const auto idx = unpackidx(tri[k]);
-            if (idx == v1) {candidate=v0; break;}
-            if (idx != v0) {candidate=idx;}
-          }
-          if (candidate == v0) continue;
+        auto candidate = e0.vertex[0] + m_first_vert;
+        if (candidate == v0) candidate = e0.vertex[1] + m_first_vert;
+        if (candidate == v1 || candidate == v2) continue;
 
-          // visit the complete edge list from v1 to see there is an edge
-          auto l1 = m_edgelists[v1];
-          while (l1 != NOINDEX) {
-
-            l1 = m_edgelists[l1];
-          }
+        // visit the complete edge list from v1 to see if it is connected to
+        // the candidate
+        auto l1 = m_edgelists[v1 - m_first_vert];
+        for (; l1 != NOINDEX; l1 = nextedge[l1]) {
+          const auto &e1 = m_edges[l1];
+          const auto ev0 = e1.vertex[0] + m_first_vert;
+          const auto ev1 = e1.vertex[1] + m_first_vert;
+          if (ev0 == candidate || ev1 == candidate)
+            break;
         }
-        l0 = m_edgelists[l0];
+
+        // if we find it, fill the crack with this new triangle
+        if (l1 != NOINDEX) {
+          t.add(switchv0v1?v1:v0);
+          t.add(switchv0v1?v0:v1);
+          t.add(candidate);
+          ++m_trinum;
+          break;
+        }
       }
     }
   }
-#endif
-
 
   vector<meshedge> m_edges;
   vector<int> m_edgelists;
@@ -449,7 +511,6 @@ struct dc_gridbuilder {
     m_pos_buffer.setsize(0);
     m_nor_buffer.setsize(0);
     m_border_remap.setsize(0);
-    m_cracks.setsize(0);
   }
 
   void initfield() {
@@ -480,6 +541,12 @@ struct dc_gridbuilder {
   }
 
   void tesselate() {
+#if 0
+    if (m_iorg.x < 8) return;
+    if (m_iorg.z <= 16) return;
+    if (m_iorg.y > 16) return;
+    if (m_iorg.y < 8) return;
+#endif
     const vec3i org(zero), dim(m_grid.m_dim + vec3i(4));
     loopxyz(org, dim) {
       const int start_sign = m_df(m_grid.vertex(xyz)) < 0.f ? 1 : 0;
@@ -508,7 +575,10 @@ struct dc_gridbuilder {
         const auto axis1 = axis[(i+2)%3] << int(edgelod);
         vec3i p[] = {xyz, xyz-axis0, xyz-axis0-axis1, xyz-axis1};
         u32 quad[4];
-
+        //static int xxx = 0; 
+        //if (xxx > 100) return;
+        //++xxx;
+        //if (xxx < 45) continue;
         u32 vertnum = 0;
         loopj(4) {
           u32 plod = lod(p[j]);
@@ -535,13 +605,17 @@ struct dc_gridbuilder {
           }
           quad[vertnum++] = m_qef_index[idx];
         }
-        const u32 msk = any(eq(xyz,vec3i(zero)))||any(xyz>m_grid.m_dim)?OUTSIDE:0u;
+        //const u32 msk = any(eq(xyz,vec3i(zero)))||any(xyz>m_grid.m_dim)?OUTSIDE:0u;
+        const u32 msk = 0;
         const auto orientation = start_sign==1 ? quadtotris : quadtotris_cc;
         if (vertnum == 4)
           loopj(6) m_idx_buffer.add(quad[orientation[j]]|msk);
         else if (vertnum == 3)
           loopj(3) m_idx_buffer.add(quad[orientation[j]]|msk);
-        if (vertnum == 2) { printf("BOUM\n"); fflush(stdout); }
+        else if (vertnum == 2 && !isoutside(msk)) {
+          m_cracks.add(makepair(quad[0], quad[1]));
+          //printf("BOUM %d %d %d [%d %d]\n", xyz.x, xyz.y, xyz.z, quad[0], quad[1]); fflush(stdout);
+        }
       }
     }
   }
@@ -640,6 +714,8 @@ struct dc_gridbuilder {
   void build(octree::node &node) {
     const int first_idx = m_idx_buffer.length();
     const int first_vert = m_pos_buffer.length();
+//    static int x = 0;
+    m_cracks.setsize(0);
     initfield();
     initqef();
     initlod();
@@ -648,12 +724,28 @@ struct dc_gridbuilder {
     // stop here if we do not create anything
     if (first_vert == m_pos_buffer.length())
       return;
-#if 1
+#if 0
+    if (x > 0) {
+      m_idx_buffer.setsize(first_idx);
+      return;
+    }
+    ++x;
+    //m_idx_buffer.add(63);
+    //m_idx_buffer.add(20);
+    //m_idx_buffer.add(21);
+    for (int i = 0; i < m_idx_buffer.length(); i += 3) {
+      printf("[");
+      loopj(3) printf("%d ", unpackidx(m_idx_buffer[i+j]));
+      printf("]\n");
+      fflush(stdout);
+    }
+#endif
+
     m_mp.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, m_cracks, first_vert, first_idx);
     const u32 edgenum = m_mp.buildedges();
+    m_mp.fillcracks(edgenum);
     m_mp.crease(edgenum);
     m_border_remap.setsize(m_pos_buffer.length());
-#endif
     removeborders(first_idx, first_vert);
     assert(node.m_vertnum <= octree::MAX_ITEM_NUM);
     assert(node.m_idxnum <= octree::MAX_ITEM_NUM);
@@ -713,8 +805,8 @@ struct recursive_builder {
     // if (cellnum == SUBGRID || (level == 3 && xyz.y > 16))
     // if (cellnum == SUBGRID)
     // if (cellnum == SUBGRID) {
-      printf("level %d\n", level);
-      fflush(stdout);
+//      printf("level %d\n", level);
+//      fflush(stdout);
       node.m_isleaf = 1;
     } else {
       node.m_children = NEWAE(octree::node, 8);
