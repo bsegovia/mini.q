@@ -81,9 +81,10 @@ static node *makescene0() {
   const auto b0 = NEW(box, vec3f(4.f));
   const auto d0 = NEW(translation, t, s);
   const auto d1 = NEW(translation, t, b0);
-  node *c = NULL; //NEW(D, d1, d0);
-//  loopi(8) {
-  for (int i = 11; i < 16; ++i) {
+  // node *c = NULL; //NEW(D, d1, d0);
+  node *c = NULL; NEW(D, d1, d0);
+  loopi(16) {
+  // for (int i = 11; i < 16; ++i) {
     const auto center = vec2f(2.f,2.f+2.f*float(i));
     const auto ryminymax = vec3f(1.f,1.f,2*float(i)+2.f);
     if (c == NULL)
