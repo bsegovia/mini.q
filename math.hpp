@@ -150,30 +150,22 @@ template<typename T> struct vec2 {
 #undef sw22
 };
 
+#define OP(S) \
+TINLINE v2 op S (v2arg a, v2arg b) {return v2(a.x S b.x, a.y S b.y);}\
+TINLINE v2 op S (const T &a, v2arg b)  {return v2(a S b.x, a S b.y);}\
+TINLINE v2 op S (v2arg a, const T &b)  {return v2(a.x S b, a.y S b);}\
+TINLINE v2& op S##= (v2& a, v2arg b) {a.x S##= b.x; a.y S##= b.y; return a;}\
+TINLINE v2& op S##= (v2& a, const T &b) {a.x S##= b; a.y S##= b; return a;}
+OP(+) OP(/) OP(*) OP(-) OP(<<) OP(>>) OP(&) OP(|) OP(^)
+#undef OP
+
+#define OP(S) TINLINE v2 S (v2arg a) {return v2(S(a.x),S(a.y),S(a.z));}
+OP(cos) OP(sin) OP(tan) OP(acos) OP(asin) OP(atan) OP(sinh) OP(cosh) OP(tanh)
+OP(abs) OP(rcp) OP(sqrt) OP(rsqrt) OP(floor) OP(ceil) OP(log2) OP(log10)
+#undef OP
+
 TINLINE v2 op+ (v2arg a)  {return v2(+a.x, +a.y);}
 TINLINE v2 op- (v2arg a)  {return v2(-a.x, -a.y);}
-TINLINE v2 abs (v2arg a)  {return v2(abs(a.x), abs(a.y));}
-TINLINE v2 rcp (v2arg a)  {return v2(rcp(a.x), rcp(a.y));}
-TINLINE v2 sqrt (v2arg a) {return v2(sqrt(a.x), sqrt(a.y));}
-TINLINE v2 rsqrt(v2arg a) {return v2(rsqrt(a.x), rsqrt(a.y));}
-TINLINE v2 floor (v2arg a) {return v2(floor(a.x), floor(a.y));}
-TINLINE v2 op+ (v2arg a, v2arg b) {return v2(a.x+b.x, a.y+b.y);}
-TINLINE v2 op- (v2arg a, v2arg b) {return v2(a.x-b.x, a.y-b.y);}
-TINLINE v2 op* (v2arg a, v2arg b) {return v2(a.x*b.x, a.y*b.y);}
-TINLINE v2 op* (const T &a, v2arg b)  {return v2(a*b.x, a*b.y);}
-TINLINE v2 op* (v2arg a, const T &b)  {return v2(a.x*b, a.y*b);}
-TINLINE v2 op/ (v2arg a, v2arg b) {return v2(a.x/b.x, a.y/b.y);}
-TINLINE v2 op/ (v2arg a, const T &b)  {return v2(a.x/b, a.y /b);}
-TINLINE v2 op/ (const T &a, v2arg b)  {return v2(a/b.x, a/b.y);}
-TINLINE v2 op<< (v2arg a, v2arg b) {return v2(a.x<<b.x, a.y<<b.y);}
-TINLINE v2 op<< (const T &a, v2arg b)  {return v2(a<<b.x, a<<b.y);}
-TINLINE v2 op<< (v2arg a, const T &b)  {return v2(a.x<<b, a.y<<b);}
-TINLINE v2 op>> (v2arg a, v2arg b) {return v2(a.x>>b.x, a.y>>b.y);}
-TINLINE v2 op>> (const T &a, v2arg b)  {return v2(a>>b.x, a>>b.y);}
-TINLINE v2 op>> (v2arg a, const T &b)  {return v2(a.x>>b, a.y>>b);}
-TINLINE v2 op& (v2arg a, v2arg b) {return v2(a.x&b.x, a.y&b.y);}
-TINLINE v2 op& (const T &a, v2arg b)  {return v2(a&b.x, a&b.y);}
-TINLINE v2 op& (v2arg a, const T &b)  {return v2(a.x&b, a.y&b);}
 TINLINE v2 min(v2arg a, v2arg b)  {return v2(min(a.x,b.x), min(a.y,b.y));}
 TINLINE v2 max(v2arg a, v2arg b)  {return v2(max(a.x,b.x), max(a.y,b.y));}
 TINLINE v2 clamp(v2arg v, v2arg m, v2arg M)  {return v2(clamp(v.x,m.x,M.x),clamp(v.y,m.y,M.y));}
@@ -181,10 +173,6 @@ TINLINE T dot(v2arg a, v2arg b)   {return a.x*b.x + a.y*b.y;}
 TINLINE T length(v2arg a)      {return sqrt(dot(a,a));}
 TINLINE v2 normalize(v2arg a)  {return a*rsqrt(dot(a,a));}
 TINLINE T distance (v2arg a, v2arg b) {return length(a-b);}
-TINLINE v2& op+= (v2& a, v2arg b) {a.x+=b.x; a.y+=b.y; return a;}
-TINLINE v2& op-= (v2& a, v2arg b) {a.x-=b.x; a.y-=b.y; return a;}
-TINLINE v2& op*= (v2& a, const T &b)  {a.x*=b; a.y*=b; return a;}
-TINLINE v2& op/= (v2& a, const T &b)  {a.x/=b; a.y/=b; return a;}
 TINLINE T reduceadd(v2arg a) {return a.x+a.y;}
 TINLINE T reducemul(v2arg a) {return a.x*a.y;}
 TINLINE T reducemin(v2arg a) {return min(a.x, a.y);}
@@ -233,40 +221,22 @@ template<typename T> struct vec3 {
 #undef sw32
 };
 
-TINLINE v3 abs(v3arg a) {return v3(abs(a.x), abs(a.y), abs(a.z));}
-TINLINE v3 rcp(v3arg a) {return v3(rcp(a.x), rcp(a.y), rcp(a.z));}
-TINLINE v3 sqrt(v3arg a) {return v3(sqrt (a.x), sqrt (a.y), sqrt(a.z));}
-TINLINE v3 rsqrt(v3arg a) {return v3(rsqrt(a.x), rsqrt(a.y), rsqrt(a.z));}
-TINLINE v3 floor(v3arg a) {return v3(floor(a.x), floor(a.y), floor(a.z));}
+#define OP(S) \
+TINLINE v3 op S (v3arg a, v3arg b) {return v3(a.x S b.x, a.y S b.y, a.z S b.z);}\
+TINLINE v3 op S (const T &a, v3arg b)  {return v3(a S b.x, a S b.y, a S b.z);}\
+TINLINE v3 op S (v3arg a, const T &b)  {return v3(a.x S b, a.y S b, a.z S b);}\
+TINLINE v3& op S##= (v3& a, v3arg b) {a.x S##= b.x; a.y S##= b.y; a.z S##= b.z; return a;}\
+TINLINE v3& op S##= (v3& a, const T &b) {a.x S##= b; a.y S##= b; a.z S##= b; return a;}
+OP(+) OP(/) OP(*) OP(-) OP(<<) OP(>>) OP(&) OP(|) OP(^)
+#undef OP
+
+#define OP(S) TINLINE v3 S (v3arg a) {return v3(S(a.x),S(a.y),S(a.z));}
+OP(cos) OP(sin) OP(tan) OP(acos) OP(asin) OP(atan) OP(sinh) OP(cosh) OP(tanh)
+OP(abs) OP(rcp) OP(sqrt) OP(rsqrt) OP(floor) OP(ceil) OP(log2) OP(log10)
+#undef OP
+
 TINLINE v3 op+ (v3arg a) {return v3(+a.x, +a.y, +a.z);}
 TINLINE v3 op- (v3arg a) {return v3(-a.x, -a.y, -a.z);}
-TINLINE v3 op+ (v3arg a, v3arg b) {return v3(a.x+b.x, a.y+b.y, a.z+b.z);}
-TINLINE v3 op- (v3arg a, v3arg b) {return v3(a.x-b.x, a.y-b.y, a.z-b.z);}
-TINLINE v3 op<< (v3arg a, v3arg b) {return v3(a.x<<b.x, a.y<<b.y, a.z<<b.z);}
-TINLINE v3 op<< (const T &a, v3arg b)  {return v3(a<<b.x, a<<b.y, a<<b.z);}
-TINLINE v3 op<< (v3arg a, const T &b)  {return v3(a.x<<b, a.y<<b, a.z<<b);}
-TINLINE v3 op>> (v3arg a, v3arg b) {return v3(a.x>>b.x, a.y>>b.y, a.z>>b.z);}
-TINLINE v3 op>> (const T &a, v3arg b)  {return v3(a>>b.x, a>>b.y, a>>b.z);}
-TINLINE v3 op>> (v3arg a, const T &b)  {return v3(a.x>>b, a.y>>b, a.z>>b);}
-TINLINE v3 op& (v3arg a, v3arg b) {return v3(a.x&b.x, a.y&b.y, a.z&b.z);}
-TINLINE v3 op& (const T &a, v3arg b)  {return v3(a&b.x, a&b.y, a&b.z);}
-TINLINE v3 op& (v3arg a, const T &b)  {return v3(a.x&b, a.y&b, a.z&b);}
-TINLINE v3 op* (v3arg a, v3arg b) {return v3(a.x*b.x, a.y*b.y, a.z*b.z);}
-TINLINE v3 op/ (v3arg a, v3arg b) {return v3(a.x/b.x, a.y/b.y, a.z/b.z);}
-TINLINE v3 op% (v3arg a, v3arg b) {return v3(a.x%b.x, a.y%b.y, a.z%b.z);}
-TINLINE v3 op* (v3arg a, const T &b) {return v3(a.x*b, a.y*b, a.z*b);}
-TINLINE v3 op/ (v3arg a, const T &b) {return v3(a.x/b, a.y/b, a.z/b);}
-TINLINE v3 op% (v3arg a, const T &b) {return v3(a.x%b, a.y%b, a.z%b);}
-TINLINE v3 op* (const T &a, v3arg b) {return v3(a*b.x, a*b.y, a*b.z);}
-TINLINE v3 op/ (const T &a, v3arg b) {return v3(a/b.x, a/b.y, a/b.z);}
-TINLINE v3 op% (const T &a, v3arg b) {return v3(a%b.x, a%b.y, a%b.z);}
-TINLINE v3& op<<= (v3& a, v3arg b) {a.x<<=b.x; a.y<<=b.y; a.z<<=b.z; return a;}
-TINLINE v3& op>>= (v3& a, v3arg b) {a.x>>=b.x; a.y>>=b.y; a.z>>=b.z; return a;}
-TINLINE v3 op+= (v3& a, v3arg b) {a.x+=b.x; a.y+=b.y; a.z+=b.z; return a;}
-TINLINE v3 op-= (v3& a, v3arg b) {a.x-=b.x; a.y-=b.y; a.z-=b.z; return a;}
-TINLINE v3 op*= (v3& a, const T &b) {a.x*=b; a.y*=b; a.z*=b; return a;}
-TINLINE v3 op/= (v3& a, const T &b) {a.x/=b; a.y/=b; a.z/=b; return a;}
-TINLINE v3 op%= (v3& a, const T &b) {a.x%=b; a.y%=b; a.z%=b; return a;}
 TINLINE vec3<bool> eq (v3arg a, v3arg b) {return vec3<bool>(a.x==b.x,a.y==b.y,a.z==b.z);}
 TINLINE vec3<bool> ne (v3arg a, v3arg b) {return vec3<bool>(a.x!=b.x,a.y!=b.y,a.z!=b.z);}
 TINLINE vec3<bool> op< (v3arg a, v3arg b) {return vec3<bool>(a.x<b.x,a.y<b.y,a.z<b.z);}
@@ -324,30 +294,22 @@ template<typename T> struct vec4 {
 #undef sw42
 };
 
+#define OP(S) \
+TINLINE v4 op S (v4arg a, v4arg b) {return v4(a.x S b.x, a.y S b.y, a.z S b.z, a.w S b.w);}\
+TINLINE v4 op S (const T &a, v4arg b)  {return v4(a S b.x, a S b.y, a S b.z, a S b.w);}\
+TINLINE v4 op S (v4arg a, const T &b)  {return v4(a.x S b, a.y S b, a.z S b, a.w S b);}\
+TINLINE v4& op S##= (v4& a, v4arg b) {a.x S##= b.x; a.y S##= b.y; a.z S##= b.z; a.w S##= b.w; return a;}\
+TINLINE v4& op S##= (v4& a, const T &b) {a.x S##= b; a.y S##= b; a.z S##= b; a.w S##= b; return a;}
+OP(+) OP(/) OP(*) OP(-) OP(<<) OP(>>) OP(&) OP(|) OP(^)
+#undef OP
+
+#define OP(S) TINLINE v4 S (v4arg a) {return v4(S(a.x),S(a.y),S(a.z),S(a.w));}
+OP(cos) OP(sin) OP(tan) OP(acos) OP(asin) OP(atan) OP(sinh) OP(cosh) OP(tanh)
+OP(abs) OP(rcp) OP(sqrt) OP(rsqrt) OP(floor) OP(ceil) OP(log2) OP(log10)
+#undef OP
+
 TINLINE v4 op+ (v4arg a) {return v4(+a.x, +a.y, +a.z, +a.w);}
 TINLINE v4 op- (v4arg a) {return v4(-a.x, -a.y, -a.z, -a.w);}
-TINLINE v4 op+ (v4arg a, v4arg b) {return v4(a.x+b.x, a.y+b.y, a.z+b.z, a.w+b.w);}
-TINLINE v4 op- (v4arg a, v4arg b) {return v4(a.x-b.x, a.y-b.y, a.z-b.z, a.w-b.w);}
-TINLINE v4 op* (v4arg a, v4arg b) {return v4(a.x*b.x, a.y*b.y, a.z*b.z, a.w*b.w);}
-TINLINE v4 op/ (v4arg a, v4arg b) {return v4(a.x/b.x, a.y/b.y, a.z/b.z, a.w/b.w);}
-TINLINE v4 op* (v4arg a, const T &b) {return v4(a.x*b, a.y*b, a.z*b, a.w*b);}
-TINLINE v4 op/ (v4arg a, const T &b) {return v4(a.x/b, a.y/b, a.z/b, a.w/b);}
-TINLINE v4 op* (const T &a, v4arg b) {return v4(a*b.x, a*b.y, a*b.z, a*b.w);}
-TINLINE v4 op/ (const T &a, v4arg b) {return v4(a/b.x, a/b.y, a/b.z, a/b.w);}
-TINLINE v4 op<< (v4arg a, v4arg b) {return v4(a.x<<b.x, a.y<<b.y, a.z<<b.z, a.w<<b.w);}
-TINLINE v4 op<< (const T &a, v4arg b)  {return v4(a<<b.x, a<<b.y, a<<b.z, a<<b.w);}
-TINLINE v4 op<< (v4arg a, const T &b)  {return v4(a.x<<b, a.y<<b, a.z<<b, a.w<<b);}
-TINLINE v4 op>> (v4arg a, v4arg b) {return v4(a.x>>b.x, a.y>>b.y, a.z>>b.z, a.w>>b.w);}
-TINLINE v4 op>> (const T &a, v4arg b)  {return v4(a>>b.x, a>>b.y, a>>b.z, a>>b.w);}
-TINLINE v4 op>> (v4arg a, const T &b)  {return v4(a.x>>b, a.y>>b, a.z>>b, a.w>>b);}
-TINLINE v4 op& (v4arg a, v4arg b) {return v4(a.x&b.x, a.y&b.y, a.z&b.z, a.w&b.w);}
-TINLINE v4 op& (const T &a, v4arg b)  {return v4(a&b.x, a&b.y, a&b.z, a&b.w);}
-TINLINE v4 op& (v4arg a, const T &b)  {return v4(a.x&b, a.y&b, a.z&b, a.w&b);}
-TINLINE v4& op<<= (v4& a, v4arg b) {a.x<<=b.x; a.y<<=b.y; a.z<<=b.z; a.w<<=b.w; return a;}
-TINLINE v4& op+= (v4& a, v4arg b) {a.x+=b.x; a.y+=b.y; a.z+=b.z; a.w+=b.w; return a;}
-TINLINE v4& op-= (v4& a, v4arg b) {a.x-=b.x; a.y-=b.y; a.z-=b.z; a.w-=b.w; return a;}
-TINLINE v4& op*= (v4& a, const T &b) {a.x*=b; a.y*=b; a.z*=b; a.w*=b; return a;}
-TINLINE v4& op/= (v4& a, const T &b) {a.x/=b; a.y/=b; a.z/=b; a.w/=b; return a;}
 TINLINE vec4<bool> eq (v4arg a, v4arg b) {return vec4<bool>(a.x==b.x,a.y==b.y,a.z==b.z,a.w==b.w);}
 TINLINE vec4<bool> ne (v4arg a, v4arg b) {return vec4<bool>(a.x!=b.x,a.y!=b.y,a.z!=b.z,a.w!=b.w);}
 TINLINE vec4<bool> op< (v4arg a, v4arg b) {return vec4<bool>(a.x<b.x,a.y<b.y,a.z<b.z,a.w<b.w);}
@@ -361,11 +323,6 @@ TINLINE T reducemax(v4arg a) {return max(a.x, a.y, a.z, a.w);}
 TINLINE v4 min(v4arg a, v4arg b) {return v4(min(a.x,b.x), min(a.y,b.y), min(a.z,b.z), min(a.w,b.w));}
 TINLINE v4 max(v4arg a, v4arg b) {return v4(max(a.x,b.x), max(a.y,b.y), max(a.z,b.z), max(a.w,b.w));}
 TINLINE v4 clamp(v4arg v, v4arg m, v4arg M)  {return v4(clamp(v.x,m.x,M.x),clamp(v.y,m.y,M.y),clamp(v.z,m.z,M.z),clamp(v.w,m.w,M.w));}
-TINLINE v4 abs (v4arg a) {return v4(abs(a.x), abs(a.y), abs(a.z), abs(a.w));}
-TINLINE v4 rcp (v4arg a) {return v4(rcp(a.x), rcp(a.y), rcp(a.z), rcp(a.w));}
-TINLINE v4 sqrt (v4arg a) {return v4(sqrt (a.x), sqrt (a.y), sqrt (a.z), sqrt (a.w));}
-TINLINE v4 rsqrt(v4arg a) {return v4(rsqrt(a.x), rsqrt(a.y), rsqrt(a.z), rsqrt(a.w));}
-TINLINE v4 floor (v4arg a) {return v4(floor(a.x), floor(a.y), floor(a.z), floor(a.w));}
 TINLINE T length(v4arg a) {return sqrt(dot(a,a));}
 TINLINE T dot (v4arg a, v4arg b) {return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w;}
 TINLINE v4 normalize(v4arg a) {return a*rsqrt(dot(a,a));}
