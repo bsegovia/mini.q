@@ -543,8 +543,8 @@ struct dc_gridbuilder {
   }
 
   void tesselate() {
-    if (m_iorg.y > 16) return;
 #if 0
+    if (m_iorg.y > 16) return;
     if (m_iorg.z <= 16) return;
     if (m_iorg.y > 16) return;
     if (m_iorg.y < 8) return;
@@ -709,7 +709,6 @@ struct dc_gridbuilder {
   void build(octree::node &node) {
     const int first_idx = m_idx_buffer.length();
     const int first_vert = m_pos_buffer.length();
-//    static int x = 0;
     m_cracks.setsize(0);
     initfield();
     initqef();
@@ -739,7 +738,7 @@ struct dc_gridbuilder {
     // if (m_iorg == vec3i(0,120,112)) DEBUGBREAK;
     m_mp.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, m_cracks, first_vert, first_idx);
     const u32 edgenum = m_mp.buildedges();
-    // m_mp.fillcracks(edgenum);
+    m_mp.fillcracks(edgenum);
     m_mp.crease(edgenum);
     m_border_remap.setsize(m_pos_buffer.length());
     removeborders(first_idx, first_vert);
