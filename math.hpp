@@ -594,16 +594,21 @@ struct aabb {
   INLINE aabb() {}
   INLINE aabb(float m, float M) : pmin(m), pmax(M) {}
   INLINE aabb(vec3f m, vec3f M) : pmin(m), pmax(M) {}
-  INLINE void compose(const aabb &other) {
-    pmin = min(pmin, other.pmin);
-    pmax = max(pmax, other.pmax);
-  }
   INLINE float halfarea(void) const {
     const vec3f e(pmax-pmin);
     return e.x*e.y + e.y*e.z + e.x*e.z;
   }
+  static INLINE aabb empty() { return aabb(FLT_MAX, -FLT_MAX); }
+  static INLINE aabb all() { return aabb(-FLT_MAX, FLT_MAX); }
   vec3f pmin, pmax;
 };
+INLINE aabb sum(const aabb &b0, const aabb &b1) {
+  return aabb(min(b0.pmin, b1.pmin), max(b0.pmax, b1.pmax));
+}
+INLINE aabb intersection(const aabb &b0, const aabb &b1) {
+  return aabb(max(b0.pmin, b1.pmin), min(b0.pmax, b1.pmax));
+}
+
 struct isecres {
   INLINE isecres(bool isec, float t = FLT_MAX) : t(t), isec(isec) {}
   float t;

@@ -3,6 +3,7 @@
  - iso.cpp -> implements routines for iso surface
  -------------------------------------------------------------------------*/
 #include "iso.hpp"
+#include "csg.hpp"
 #include "stl.hpp"
 #include "qef.hpp"
 
@@ -14,12 +15,16 @@ mesh::~mesh() {
   if (m_index) FREE(m_index);
 }
 
-vec3f gradient(distance_field d, const vec3f &pos, float grad_step) {
+static const float DEFAULT_GRAD_STEP = 1e-3f;
+vec3f gradient(const csg::node &node, const vec3f &pos, float grad_step = DEFAULT_GRAD_STEP) {
   const auto dx = vec3f(grad_step, 0.f, 0.f);
   const auto dy = vec3f(0.f, grad_step, 0.f);
   const auto dz = vec3f(0.f, 0.f, grad_step);
-  const auto c = d(pos);
-  const auto n = vec3f(c-d(pos-dx), c-d(pos-dy), c-d(pos-dz));
+  const auto c = csg::dist(pos, node);
+  const float dndx = csg::dist(pos-dx, node);
+  const float dndy = csg::dist(pos-dy, node);
+  const float dndz = csg::dist(pos-dz, node);
+  const auto n = vec3f(c-dndx, c-dndy, c-dndz);
   if (n==vec3f(zero))
     return vec3f(zero);
   else
@@ -30,7 +35,10 @@ static const float TOLERANCE_DENSITY = 1e-3f;
 static const float TOLERANCE_DIST2   = 1e-8f;
 static const int MAX_STEPS = 4;
 
-static vec3f falsepos(distance_field df, const grid &grid, vec3f org, vec3f p0, vec3f p1, float v0, float v1,float scale) {
+static vec3f falsepos(const csg::node &node, const grid &grid,
+                      const vec3f &org, vec3f p0, vec3f p1,
+                      float v0, float v1,float scale)
+{
   if (abs(v0) < 1e-3f) return p0;
   if (abs(v1) < 1e-3f) return p1;
   if (v1 < 0.f) {
@@ -41,7 +49,7 @@ static vec3f falsepos(distance_field df, const grid &grid, vec3f org, vec3f p0, 
   vec3f p;
   loopi(MAX_STEPS) {
     p = p1 - v1 * (p1 - p0) / (v1 - v0);
-    const auto density = df(org+grid.m_cellsize*scale*p) + 1e-4f;
+    const auto density = csg::dist(org+grid.m_cellsize*scale*p, node) + 1e-4f;
     if (abs(density) < TOLERANCE_DENSITY) break;
     if (distance2(p0,p1) < TOLERANCE_DIST2) break;
     if (density < 0.f) {
@@ -481,8 +489,8 @@ struct octree {
 };
 
 struct dc_gridbuilder {
-  dc_gridbuilder(distance_field df, const vec3i &dim) :
-    m_df(df), m_grid(vec3f(one), vec3f(zero), dim),
+  dc_gridbuilder(const csg::node &node, const vec3i &dim) :
+    m_node(node), m_grid(vec3f(one), vec3f(zero), dim),
     m_field((dim.x+7)*(dim.y+7)*(dim.z+7)),
     m_lod((dim.x+7)*(dim.y+7)*(dim.z+7)),
     m_qef_index((dim.x+6)*(dim.y+6)*(dim.z+6)),
@@ -518,7 +526,11 @@ struct dc_gridbuilder {
 
   void initfield() {
     const vec3i org(-2), dim = m_grid.m_dim+vec3i(5);
-    loopxyz(org, dim) field(xyz) = m_df(m_grid.vertex(xyz));
+    loopxyz(org, dim) {
+      const auto p = m_grid.vertex(xyz);
+      const aabb box(p-m_grid.m_cellsize, p+m_grid.m_cellsize);
+      field(xyz) = csg::dist(p, m_node, box);
+    }
   }
 
   void initqef() {
@@ -552,7 +564,7 @@ struct dc_gridbuilder {
 #endif
     const vec3i org(zero), dim(m_grid.m_dim + vec3i(4));
     loopxyz(org, dim) {
-      const int start_sign = m_df(m_grid.vertex(xyz)) < 0.f ? 1 : 0;
+      const int start_sign = csg::dist(m_grid.vertex(xyz), m_node)<0.f?1:0;
 
       // look at the three edges that start on xyz
       loopi(3) {
@@ -570,7 +582,7 @@ struct dc_gridbuilder {
 
         // is it an actual edge?
         const auto delta = axis[i] << int(edgelod);
-        const int end_sign = m_df(m_grid.vertex(xyz+delta)) < 0.f ? 1 : 0;
+        const int end_sign = csg::dist(m_grid.vertex(xyz+delta), m_node)<0.f?1:0;
         if (start_sign == end_sign) continue;
 
         // we found one edge. we output one quad for it
@@ -632,8 +644,8 @@ struct dc_gridbuilder {
       const auto idx0 = interptable[i][0], idx1 = interptable[i][1];
       const auto v0 = cell[idx0], v1 = cell[idx1];
       const auto p0 = fcubev[idx0], p1 = fcubev[idx1];
-      p[num] = falsepos(m_df, m_grid, org, p0, p1, v0, v1, scale);
-      n[num] = gradient(m_df, org+p[num]*scale*m_grid.m_cellsize);
+      p[num] = falsepos(m_node, m_grid, org, p0, p1, v0, v1, scale);
+      n[num] = gradient(m_node, org+p[num]*scale*m_grid.m_cellsize);
       nor += n[num];
       mass += p[num++];
     }
@@ -752,7 +764,7 @@ struct dc_gridbuilder {
     node.m_isleaf = 1;
   }
 
-  distance_field m_df;
+  const csg::node &m_node;
   grid m_grid;
   mesh_processor m_mp;
   vector<float> m_field;
@@ -768,8 +780,8 @@ struct dc_gridbuilder {
 };
 
 struct recursive_builder {
-  recursive_builder(distance_field df, const vec3f &org, float cellsize, u32 dim) :
-    s(df, vec3i(SUBGRID)), m_df(df), m_org(org),
+  recursive_builder(const csg::node &node, const vec3f &org, float cellsize, u32 dim) :
+    s(node, vec3i(SUBGRID)), m_node(node), m_org(org),
     m_cellsize(cellsize),
     m_half_side_len(float(dim) * m_cellsize * 0.5f),
     m_half_diag_len(sqrt(3.f) * m_half_side_len),
@@ -789,18 +801,18 @@ struct recursive_builder {
   void build(octree::node &node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
     const auto scale = 1.f / float(1<<level);
     const auto cellnum = m_dim >> level;
-    const auto dist = m_df(pos(xyz) + scale*vec3f(m_half_side_len));
+    const auto dist = csg::dist(pos(xyz) + scale*vec3f(m_half_side_len), m_node);
     node.m_level = level;
     if (abs(dist) > m_half_diag_len * scale) {
       node.m_isleaf = node.m_empty = 1;
       return;
     }
     //if (level == 6 || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
-  //  if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
+    if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
 //     if (cellnum == SUBGRID || (level == 4 && xyz.y <= 16)) {
     // if (cellnum == SUBGRID || (level == 3 && xyz.y > 16))
     // if (cellnum == SUBGRID)
-     if (cellnum == SUBGRID) {
+//     if (cellnum == SUBGRID) {
 //      printf("level %d\n", level);
 //      fflush(stdout);
       node.m_isleaf = 1;
@@ -836,13 +848,13 @@ struct recursive_builder {
 
   octree *m_octree;
   dc_gridbuilder s;
-  distance_field m_df;
+  const csg::node &m_node;
   vec3f m_org;
   float m_cellsize, m_half_side_len, m_half_diag_len;
   u32 m_dim, m_maxlevel;
 };
 
-mesh dc_mesh(const vec3f &org, u32 cellnum, float cellsize, distance_field d) {
+mesh dc_mesh(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d) {
   octree o(cellnum);
   recursive_builder r(d, org, cellsize, cellnum);
   r.setoctree(o);

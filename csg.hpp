@@ -9,7 +9,7 @@ namespace q {
 namespace csg {
 struct node *makescene();
 void destroyscene(struct node *n);
-float dist(const vec3f &pos, struct node *n);
+float dist(const vec3f &pos, const struct node &n, const aabb &box = aabb::all());
 } /* namespace csg */
 } /* namespace q */
 

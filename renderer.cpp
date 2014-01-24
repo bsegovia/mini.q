@@ -91,11 +91,6 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
  -------------------------------------------------------------------------*/
 FVARP(fov, 30.f, 90.f, 160.f);
 
-static csg::node *n = NULL;
-static float map(const vec3f &pos) {
-  if (n == NULL) n = csg::makescene();
-  return csg::dist(pos, n);
-}
 typedef pair<vec3f,vec3f> vertex;
 static u32 vertnum = 0u, indexnum = 0u;
 static vector<vertex> vertices;
@@ -104,7 +99,6 @@ static bool initialized_m = false;
 
 void start() {}
 void finish() {
-  destroyscene(n);
   vector<vertex>().moveto(vertices);
   vector<u32>().moveto(indices);
 }
@@ -112,7 +106,8 @@ static const float CELLSIZE = 0.2f, GRIDJITTER = 0.05f;
 static void makescene() {
   if (initialized_m) return;
   const float start = sys::millis();
-  auto m = iso::dc_mesh(vec3f(GRIDJITTER), 512, CELLSIZE, map);
+  const auto node = csg::makescene();
+  auto m = iso::dc_mesh(vec3f(GRIDJITTER), 512, CELLSIZE, *node);
   loopi(m.m_vertnum) vertices.add(makepair(m.m_pos[i], m.m_nor[i]));
   loopi(m.m_indexnum) indices.add(m.m_index[i]);
   vertnum = m.m_vertnum;
@@ -122,6 +117,7 @@ static void makescene() {
   con::out("elapsed %f ms ", duration);
   con::out("tris %i verts %i", indexnum/3, vertnum);
   initialized_m = true;
+  destroyscene(node);
 }
 
 static void transplayer(void) {

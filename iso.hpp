@@ -4,6 +4,7 @@
  -------------------------------------------------------------------------*/
 #pragma once
 #include "sys.hpp"
+#include "csg.hpp"
 #include "stl.hpp"
 #include "math.hpp"
 
@@ -34,21 +35,8 @@ struct grid {
   vec3i m_dim;
 };
 
-// get the distance to the field from 'pos'
-typedef float (*distance_field)(const vec3f &pos);
-
-// estimate the gradient (i.e. normal vector) at the given position
-static const float DEFAULT_GRAD_STEP = 1e-3f;
-vec3f gradient(distance_field d, const vec3f &pos, float grad_step = DEFAULT_GRAD_STEP);
-
 // tesselate along a grid the distance field with dual contouring algorithm
-mesh dc_mesh(const vec3f &org, u32 cellnum, float cellsize, distance_field f);
-
-// adaptively tesselate along a grid the distance field with dual contouring
-// algorithm. we provide camera position and screen resolution
-mesh dc_mesh(const vec3f &org, const vec3f &cam, const vec2i &res,
-             u32 cellnum, float cellsize, distance_field d);
-
+mesh dc_mesh(const vec3f &org, u32 cellnum, float cellsize, const csg::node &n);
 } /* namespace iso */
 } /* namespace q */
 
