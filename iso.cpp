@@ -20,7 +20,7 @@ vec3f gradient(const csg::node &node, const vec3f &pos, float grad_step = DEFAUL
   const auto dx = vec3f(grad_step, 0.f, 0.f);
   const auto dy = vec3f(0.f, grad_step, 0.f);
   const auto dz = vec3f(0.f, 0.f, grad_step);
-  const aabb box(pos-2.f*grad_step, pos+2.f*grad_step);
+  const aabb box = aabb::all(); //(pos-2.f*grad_step, pos+2.f*grad_step);
   const auto c = csg::dist(pos, node, box);
   const float dndx = csg::dist(pos-dx, node, box);
   const float dndy = csg::dist(pos-dy, node, box);
@@ -667,7 +667,7 @@ struct dc_gridbuilder {
     }
 
     // compact the vertex buffers and create the remap table at the same time
-    u32 last = m_border_remap.length()-1, first = first_vertex;
+    int last = m_border_remap.length()-1, first = first_vertex;
     for (;;) {
       while (first <= last && isoutside(m_border_remap[last])) --last;
       while (first <= last && !isoutside(m_border_remap[first])) {
@@ -726,22 +726,6 @@ struct dc_gridbuilder {
     // stop here if we do not create anything
     if (first_vert == m_pos_buffer.length())
       return;
-#if 0
-    if (x > 0) {
-      m_idx_buffer.setsize(first_idx);
-      return;
-    }
-    ++x;
-    //m_idx_buffer.add(63);
-    //m_idx_buffer.add(20);
-    //m_idx_buffer.add(21);
-    for (int i = 0; i < m_idx_buffer.length(); i += 3) {
-      printf("[");
-      loopj(3) printf("%d ", unpackidx(m_idx_buffer[i+j]));
-      printf("]\n");
-      fflush(stdout);
-    }
-#endif
 
     // if (m_iorg == vec3i(0,120,112)) DEBUGBREAK;
     m_mp.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, m_cracks, first_vert, first_idx);
@@ -806,7 +790,7 @@ struct recursive_builder {
 //     if (cellnum == SUBGRID || (level == 4 && xyz.y <= 16)) {
     // if (cellnum == SUBGRID || (level == 3 && xyz.y > 16))
      if (cellnum == SUBGRID) {
-//      printf("level %d\n", level);
+      printf("level %d\n", level);
 //      fflush(stdout);
       node.m_isleaf = 1;
     } else {

@@ -18,7 +18,8 @@ enum {
   TRANSLATION
 };
 struct node {
-  INLINE node(u32 type, const aabb &box = aabb::empty()) : type(type) {}
+  INLINE node(u32 type, const aabb &box = aabb::empty()) :
+    box(box), type(type) {}
   virtual ~node() {}
   aabb box;
   u32 type;
@@ -26,13 +27,13 @@ struct node {
 #define BINARY(NAME,TYPE,BOX) \
 struct NAME : node { \
   INLINE NAME(node &left, node &right) :\
-    node(TYPE, box), left(&left), right(&right) {}\
+    node(TYPE, BOX), left(&left), right(&right) {}\
   virtual ~NAME() {SAFE_DEL(left); SAFE_DEL(right);}\
   node *left, *right; \
 };
-BINARY(U,UNION, sum(left->box, right->box))
-BINARY(D,DIFFERENCE, left->box)
-BINARY(I,INTERSECTION, intersection(left->box, right->box))
+BINARY(U,UNION, sum(left.box, right.box))
+BINARY(D,DIFFERENCE, left.box)
+BINARY(I,INTERSECTION, intersection(left.box, right.box))
 #undef BINARY
 
 struct box : node {
@@ -46,12 +47,13 @@ struct plane : node {
 };
 struct sphere : node {
   INLINE sphere(float r) :
-    node(SPHERE, aabb(vec3f(-sqrt(3.f)*r), vec3f(sqrt(3.f)*r))), r(r) {}
+    node(SPHERE, aabb(-r, r)), r(r) {}
   float r;
 };
 struct cylinder : node {
   INLINE cylinder(const vec2f &cxz, float r) :
-    node(CYLINDER, aabb(vec3f(-r,-FLT_MAX,-r), vec3f(r,FLT_MAX,r))), cxz(cxz), r(r) {}
+    node(CYLINDER, aabb(vec3f(-r+cxz.x,-FLT_MAX,-r+cxz.y),
+                        vec3f(+r+cxz.x,+FLT_MAX,+r+cxz.y))), cxz(cxz), r(r) {}
   vec2f cxz;
   float r;
 };
@@ -87,6 +89,7 @@ static node *makescene0() {
   const auto d1 = NEW(translation, t, *b0);
   //node *c = NULL; //NEW(D, d1, d0);
   node *c = NEW(D, *d1, *d0);
+  return d0;
   loopi(16) {
   // for (int i = 11; i < 16; ++i) {
     const auto center = vec2f(2.f,2.f+2.f*float(i));
@@ -129,6 +132,8 @@ node *makescene() {
 void destroyscene(node *n) { SAFE_DEL(n); }
 
 float dist(const vec3f &pos, const node &n, const aabb &box) {
+  const auto isec = intersection(box, n.box);
+  //if (any(isec.pmin > isec.pmax)) return FLT_MAX;
   switch (n.type) {
     case UNION: {
       const auto &u = static_cast<const U&>(n);
