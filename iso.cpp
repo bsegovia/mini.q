@@ -20,10 +20,11 @@ vec3f gradient(const csg::node &node, const vec3f &pos, float grad_step = DEFAUL
   const auto dx = vec3f(grad_step, 0.f, 0.f);
   const auto dy = vec3f(0.f, grad_step, 0.f);
   const auto dz = vec3f(0.f, 0.f, grad_step);
-  const auto c = csg::dist(pos, node);
-  const float dndx = csg::dist(pos-dx, node);
-  const float dndy = csg::dist(pos-dy, node);
-  const float dndz = csg::dist(pos-dz, node);
+  const aabb box(pos-2.f*grad_step, pos+2.f*grad_step);
+  const auto c = csg::dist(pos, node, box);
+  const float dndx = csg::dist(pos-dx, node, box);
+  const float dndy = csg::dist(pos-dy, node, box);
+  const float dndz = csg::dist(pos-dz, node, box);
   const auto n = vec3f(c-dndx, c-dndy, c-dndz);
   if (n==vec3f(zero))
     return vec3f(zero);
@@ -360,7 +361,7 @@ struct mesh_processor {
     auto nextedge = &m_edgelists[0] + m_vertnum;
     auto l0 = m_edgelists[v0 - m_first_vert];
     auto &t = *m_idx_buffer;
-    for (; l0 != NOINDEX; l0 = nextedge[l0]) {
+    for (; l0 != int(NOINDEX); l0 = nextedge[l0]) {
       const auto &e0 = m_edges[l0];
       loopj(2) {
         const auto tri = &t[3*e0.face[j] + m_first_idx];
@@ -369,8 +370,8 @@ struct mesh_processor {
         u32 idx[3]={0,0,0};
         loopk(3) {
           const int unpacked = unpackidx(tri[k]);
-          if (unpacked == v0) idx[0] = k;
-          else if (unpacked == v1) {
+          if (unpacked == int(v0)) idx[0] = k;
+          else if (unpacked == int(v1)) {
             idx[1] = k;
             foundit = true;
           } else {
@@ -405,7 +406,7 @@ struct mesh_processor {
       auto v1 = cracks[i].second;
       auto v2 = findthirdindex(v0,v1,switchv0v1);
       auto l0 = m_edgelists[v0 - m_first_vert];
-      for (; l0 != NOINDEX; l0 = nextedge[l0]) {
+      for (; l0 != int(NOINDEX); l0 = nextedge[l0]) {
         // go over all triangles and try to find a vertex that is connected to
         // both crack vertices
         const auto &e0 = m_edges[l0];
@@ -416,7 +417,7 @@ struct mesh_processor {
         // visit the complete edge list from v1 to see if it is connected to
         // the candidate
         auto l1 = m_edgelists[v1 - m_first_vert];
-        for (; l1 != NOINDEX; l1 = nextedge[l1]) {
+        for (; l1 != int(NOINDEX); l1 = nextedge[l1]) {
           const auto &e1 = m_edges[l1];
           const auto ev0 = e1.vertex[0] + m_first_vert;
           const auto ev1 = e1.vertex[1] + m_first_vert;
@@ -425,7 +426,7 @@ struct mesh_processor {
         }
 
         // if we find it, fill the crack with this new triangle
-        if (l1 != NOINDEX) {
+        if (l1 != int(NOINDEX)) {
           t.add(switchv0v1?v1:v0);
           t.add(switchv0v1?v0:v1);
           t.add(candidate);
@@ -556,12 +557,6 @@ struct dc_gridbuilder {
   }
 
   void tesselate() {
-#if 0
-    if (m_iorg.y > 16) return;
-    if (m_iorg.z <= 16) return;
-    if (m_iorg.y > 16) return;
-    if (m_iorg.y < 8) return;
-#endif
     const vec3i org(zero), dim(m_grid.m_dim + vec3i(4));
     loopxyz(org, dim) {
       const int start_sign = field(xyz) < 0.f ? 1 : 0;
@@ -807,12 +802,10 @@ struct recursive_builder {
       node.m_isleaf = node.m_empty = 1;
       return;
     }
-    //if (level == 6 || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
-    if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
+   // if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
 //     if (cellnum == SUBGRID || (level == 4 && xyz.y <= 16)) {
     // if (cellnum == SUBGRID || (level == 3 && xyz.y > 16))
-    // if (cellnum == SUBGRID)
-//     if (cellnum == SUBGRID) {
+     if (cellnum == SUBGRID) {
 //      printf("level %d\n", level);
 //      fflush(stdout);
       node.m_isleaf = 1;
