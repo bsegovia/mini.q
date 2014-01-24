@@ -564,7 +564,7 @@ struct dc_gridbuilder {
 #endif
     const vec3i org(zero), dim(m_grid.m_dim + vec3i(4));
     loopxyz(org, dim) {
-      const int start_sign = csg::dist(m_grid.vertex(xyz), m_node)<0.f?1:0;
+      const int start_sign = field(xyz) < 0.f ? 1 : 0;
 
       // look at the three edges that start on xyz
       loopi(3) {
@@ -582,7 +582,7 @@ struct dc_gridbuilder {
 
         // is it an actual edge?
         const auto delta = axis[i] << int(edgelod);
-        const int end_sign = csg::dist(m_grid.vertex(xyz+delta), m_node)<0.f?1:0;
+        const int end_sign = field(xyz+delta) < 0.f ? 1 : 0;
         if (start_sign == end_sign) continue;
 
         // we found one edge. we output one quad for it
