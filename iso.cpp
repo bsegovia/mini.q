@@ -188,7 +188,7 @@ struct mesh_processor {
     nextedge[edgenum++] = NOINDEX;
   }
 
-  int buildedges() {
+  pair<int,int> buildedges() {
     const auto &t = *m_idx_buffer;
     auto nextedge = &m_edgelists[0] + m_vertnum;
 
@@ -229,6 +229,7 @@ struct mesh_processor {
         i1 = i2;
       }
     }
+    const int onedirnum = edgenum;
 
     // step 3 - append all edges with i2 > i1. Be careful to not push several
     // times the same edge. We stopped as soon as we see an newly pushed edge
@@ -241,7 +242,7 @@ struct mesh_processor {
         append(edgenum, e.vertex[1], e.vertex[0], e.face[0], e.face[1]);
       }
     }
-    return edgenum;
+    return makepair(edgenum, onedirnum);
   }
 
   INLINE vec3f trinormalu(u32 idx) {
@@ -737,9 +738,9 @@ struct dc_gridbuilder {
 
     // if (m_iorg == vec3i(0,120,112)) DEBUGBREAK;
     m_mp.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, m_cracks, first_vert, first_idx);
-    const u32 edgenum = m_mp.buildedges();
-    m_mp.fillcracks(edgenum);
-    m_mp.crease(edgenum);
+    const auto edgenum = m_mp.buildedges();
+    m_mp.fillcracks(edgenum.second);
+    m_mp.crease(edgenum.first);
     m_border_remap.setsize(m_pos_buffer.length());
     removeborders(first_idx, first_vert);
     assert(node.m_vertnum <= octree::MAX_ITEM_NUM);

@@ -148,7 +148,8 @@ float dist(const vec3f &pos, node *n) {
     }
     case CYLINDER: {
       const auto c = static_cast<cylinder*>(n);
-      return 0.2f*sin(4.f*pos.y+c->cxz.x) + length(pos.xz()-c->cxz) - c->r;
+      // return 0.2f*sin(4.f*pos.y+c->cxz.x) + length(pos.xz()-c->cxz) - c->r;
+      return length(pos.xz()-c->cxz) - c->r;
     }
     case SPHERE: {
       const auto s = static_cast<sphere*>(n);
