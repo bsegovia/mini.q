@@ -536,15 +536,14 @@ struct dc_gridbuilder {
     const vec3i p = xyz + vec3i(2);
     return p.x + (p.y + p.z * (m_grid.m_dim.y+7)) * (m_grid.m_dim.x+7);
   }
-#if 0
   INLINE u32 edge_index(const vec3i &start, const vec3i &end) {
-    const auto ps = start + vec3i(2), pe = end + vec3i(2);
-    const auto which = ps < pe;
-    const auto m = select(which, ps, pe);
-    const auto 
-    return p.x + (p.y + p.z * (m_grid.m_dim.y+7)) * (m_grid.m_dim.x+7);
+    const auto dim = m_grid.m_dim;
+    const auto e = getedge(start,end);
+    const auto p = e.first;
+    const auto offset = p.x + (p.y + p.z * (dim.y+7)) * (dim.x+7);
+    return offset + e.second*(dim.x+7)*(dim.y+7)*(dim.z+7);
   }
-#endif
+
   INLINE float &field(const vec3i &xyz) { return m_field[field_index(xyz)]; }
   INLINE u32 &lod(const vec3i &xyz) { return m_lod[field_index(xyz)]; }
   void resetbuffer() {
@@ -758,7 +757,6 @@ struct dc_gridbuilder {
     if (first_vert == m_pos_buffer.length())
       return;
 
-    // if (m_iorg == vec3i(0,120,112)) DEBUGBREAK;
     m_mp.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, m_cracks, first_vert, first_idx);
     const auto edgenum = m_mp.buildedges();
     m_mp.fillcracks(edgenum.second);
@@ -821,10 +819,10 @@ struct recursive_builder {
       node.m_isleaf = node.m_empty = 1;
       return;
     }
-   // if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
+    if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
 //     if (cellnum == SUBGRID || (level == 4 && xyz.y <= 16)) {
     // if (cellnum == SUBGRID || (level == 3 && xyz.y > 16))
-     if (cellnum == SUBGRID) {
+   //  if (cellnum == SUBGRID) {
       printf("level %d\n", level);
 //      fflush(stdout);
       node.m_isleaf = 1;
