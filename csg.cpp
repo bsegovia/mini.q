@@ -88,7 +88,7 @@ static node *makescene0() {
   const auto d1 = NEW(translation, t, *b0);
   //node *c = NULL; //NEW(D, d1, d0);
   node *c = NEW(D, *d1, *d0);
-  // return c;
+//  return c;
   loopi(16) {
   // for (int i = 11; i < 16; ++i) {
     const auto center = vec2f(2.f,2.f+2.f*float(i));
@@ -130,25 +130,96 @@ node *makescene() {
 
 void destroyscene(node *n) { SAFE_DEL(n); }
 
-float dist(const vec3f &pos, const node &n, const aabb &box) {
+void distr(const node &n, const vec3f *pos, float *dist, int num, const aabb &box) {
+  const auto isec = intersection(box, n.box);
+  if (any(gt(isec.pmin, isec.pmax))) return;
+  switch (n.type) {
+    case UNION: {
+      const auto &u = static_cast<const U&>(n);
+      float tempdist[64];
+      distr(*u.left, pos, dist, num, box);
+      loopi(num) tempdist[i] = FLT_MAX;
+      distr(*u.right, pos, tempdist, num, box);
+      loopi(num) dist[i] = min(dist[i], tempdist[i]);
+      return;
+    }
+    case INTERSECTION: {
+      const auto &i = static_cast<const I&>(n);
+      float tempdist[64];
+      distr(*i.left, pos, dist, num, box);
+      loopi(num) tempdist[i] = FLT_MAX;
+      distr(*i.right, pos, tempdist, num, box);
+      loopi(num) dist[i] = max(dist[i], tempdist[i]);
+      return;
+    }
+    case DIFFERENCE: {
+      const auto &d = static_cast<const D&>(n);
+      float tempdist[64];
+      distr(*d.left, pos, dist, num, box);
+      loopi(num) tempdist[i] = FLT_MAX;
+      distr(*d.right, pos, tempdist, num, box);
+      loopi(num) dist[i] = max(dist[i], -tempdist[i]);
+      return;
+    }
+    case TRANSLATION: {
+      const auto &t = static_cast<const translation&>(n);
+      vec3f tpos[64];
+      loopi(num) tpos[i] = pos[i] - t.p;
+      distr(*t.n, tpos, dist, num, aabb(box.pmin-t.p, box.pmax-t.p));
+      return;
+    }
+    case PLANE: {
+      const auto &p = static_cast<const plane&>(n);
+      loopi(num) dist[i] = dot(pos[i], p.p.xyz()) + p.p.w;
+      return;
+    }
+    case CYLINDER: {
+      const auto &c = static_cast<const cylinder&>(n);
+      loopi(num) dist[i] = length(pos[i].xz()-c.cxz) - c.r;
+      return;
+    }
+    case SPHERE: {
+      const auto &s = static_cast<const sphere&>(n);
+      loopi(num) dist[i] = length(pos[i]) - s.r;
+      return;
+    }
+    case BOX: {
+      const auto extent = static_cast<const struct box&>(n).extent;
+      loopi(num) {
+        const auto pd = abs(pos[i])-extent;
+        dist[i] = min(max(pd.x,max(pd.y,pd.z)),0.0f) + length(max(pd,vec3f(zero)));
+      }
+      return;
+    }
+  }
+  assert("unreachable" && false);
+}
+
+void dist(const node &n, const vec3f *pos, float *d, int num, const aabb &box) {
+  assert(num <= 64);
+  loopi(num) d[i] = FLT_MAX;
+  distr(n, pos, d, num, box);
+}
+
+float dist(const node &n, const vec3f &pos, const aabb &box) {
   const auto isec = intersection(box, n.box);
   if (any(gt(isec.pmin, isec.pmax))) return FLT_MAX;
   switch (n.type) {
     case UNION: {
       const auto &u = static_cast<const U&>(n);
-      return min(dist(pos, *u.left, box), dist(pos, *u.right, box));
+      return min(dist(*u.left, pos, box), dist(*u.right, pos, box));
     }
     case INTERSECTION: {
       const auto &i = static_cast<const I&>(n);
-      return max(dist(pos, *i.left, box), dist(pos, *i.right, box));
+      return max(dist(*i.left, pos, box), dist(*i.right, pos, box));
     }
     case DIFFERENCE: {
       const auto &d = static_cast<const D&>(n);
-      return max(dist(pos, *d.left, box), -dist(pos, *d.right, box));
+      return max(dist(*d.left, pos, box), -dist(*d.right, pos, box));
     }
     case TRANSLATION: {
       const auto &t = static_cast<const translation&>(n);
-      return dist(pos-t.p, *t.n, aabb(box.pmin-t.p, box.pmax-t.p));
+      return dist(*t.n, pos-t.p, aabb(box.pmin-t.p, box.pmax-t.p));
     }
     case PLANE: {
       const auto &p = static_cast<const plane&>(n);

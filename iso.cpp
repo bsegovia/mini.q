@@ -14,6 +14,9 @@ STATS(iso_grid_num);
 STATS(iso_octree_num);
 STATS(iso_qef_num);
 
+#define FAST_FIELD 1
+#define FAST_LOD 1
+
 namespace q {
 namespace iso {
 mesh::~mesh() {
@@ -28,10 +31,10 @@ vec3f gradient(const csg::node &node, const vec3f &pos, float grad_step = DEFAUL
   const auto dy = vec3f(0.f, grad_step, 0.f);
   const auto dz = vec3f(0.f, 0.f, grad_step);
   const auto box = aabb::all(); //(pos-2.f*grad_step, pos+2.f*grad_step);
-  const auto c = csg::dist(pos, node, box);
-  const auto dndx = csg::dist(pos-dx, node, box);
-  const auto dndy = csg::dist(pos-dy, node, box);
-  const auto dndz = csg::dist(pos-dz, node, box);
+  const auto c = csg::dist(node, pos, box);
+  const auto dndx = csg::dist(node, pos-dx, box);
+  const auto dndy = csg::dist(node, pos-dy, box);
+  const auto dndz = csg::dist(node, pos-dz, box);
   const auto n = vec3f(c-dndx, c-dndy, c-dndz);
   STATS_ADD(iso_num, 4);
   STATS_ADD(iso_gradient_num, 4);
@@ -123,7 +126,7 @@ static const u32 lodneighbornum = 18;
 
 static const float SHARP_EDGE = 0.2f;
 static const u32 SUBGRID = 16;
-static const u32 FIELDDIM = SUBGRID+7;
+static const u32 FIELDDIM = SUBGRID+8;
 static const u32 QEFDIM = SUBGRID+6;
 static const u32 FIELDNUM = FIELDDIM*FIELDDIM*FIELDDIM;
 static const u32 QEFNUM = QEFDIM*QEFDIM*QEFDIM;
@@ -136,6 +139,22 @@ INLINE u32 isborder(u32 x) { return (x & BORDER) != 0; }
 INLINE u32 isoutside(u32 x) { return (x & OUTSIDE) != 0; }
 INLINE u32 unpackidx(u32 x) { return x & ~(OUTSIDE|BORDER); }
 INLINE u32 unpackmsk(u32 x) { return x & (OUTSIDE|BORDER); }
+
+static const int gridp = SUBGRID;
+static const int gridm = -1;
+static const vec3i gridneighbors[] = {
+  // we share a face with these ones
+  vec3i(gridp,0,0), vec3i(gridm,0,0), vec3i(0,gridp,0),
+  vec3i(0,gridm,0), vec3i(0,0,gridp), vec3i(0,0,gridm),
+
+  // we share one edge only with these ones
+  vec3i(gridp,gridp,0), vec3i(gridp,gridm,0),
+  vec3i(gridm,gridm,0), vec3i(gridp,gridm,0),
+  vec3i(gridp,0,gridp), vec3i(gridp,0,gridm),
+  vec3i(gridm,0,gridm), vec3i(gridp,0,gridm),
+  vec3i(0,gridp,gridp), vec3i(0,gridp,gridm),
+  vec3i(0,gridm,gridm), vec3i(0,gridp,gridm),
+};
 
 struct mesh_processor {
   struct meshedge {
@@ -508,7 +527,7 @@ struct dc_gridbuilder {
     vec3f p;
     loopi(MAX_STEPS) {
       p = p1 - v1 * (p1 - p0) / (v1 - v0);
-      const auto density = csg::dist(org+m_cellsize*scale*p, node) + 1e-4f;
+      const auto density = csg::dist(node, org+m_cellsize*scale*p) + 1e-4f;
       STATS_INC(iso_num);
       STATS_INC(iso_falsepos_num);
       if (abs(density) < TOLERANCE_DENSITY) break;
@@ -543,42 +562,85 @@ struct dc_gridbuilder {
   }
 
   INLINE float &field(const vec3i &xyz) { return m_field[field_index(xyz)]; }
-  INLINE u32 &lod(const vec3i &xyz) { return m_lod[field_index(xyz)]; }
   void resetbuffer() {
     m_pos_buffer.setsize(0);
     m_nor_buffer.setsize(0);
     m_border_remap.setsize(0);
   }
 
-  void initfield() {
+  NOINLINE void initfield() {
     const vec3i org(-2), dim(FIELDDIM-2);
+#if FAST_FIELD
+    stepxyz(org, dim, vec3i(4)) {
+      vec3f pos[64];
+      float distance[64];
+      const auto p = vertex(sxyz);
+      const aabb box = aabb(p-2.f*m_cellsize, p+6.f*m_cellsize);
+      int index = 0;
+      loopxyz(sxyz, sxyz+4) pos[index++] = vertex(xyz);
+      assert(index == 64);
+      csg::dist(m_node, pos, distance, 64, box);
+      index = 0;
+      loopxyz(sxyz, sxyz+4) field(xyz) = distance[index++];
+      STATS_ADD(iso_num, 64);
+      STATS_ADD(iso_grid_num, 64);
+    }
+#else
     loopxyz(org, dim) {
       const auto p = vertex(xyz);
       const aabb box(p-2.f*m_cellsize, p+2.f*m_cellsize);
-      field(xyz) = csg::dist(p, m_node, box);
+      field(xyz) = csg::dist(m_node, p, box);
       STATS_INC(iso_num);
       STATS_INC(iso_grid_num);
     }
+#endif
   }
 
-  void initedge() {
+  NOINLINE void initedge() {
     const vec3i org(-2), dim(FIELDDIM-2);
     loopj(6) loopxyz(org, dim) m_edge_index[edge_index(xyz,j)] = NOINDEX;
     m_edges.setsize(0);
   }
 
-  void initqef() {
+  NOINLINE void initqef() {
     const vec3i org(-2), dim(QEFDIM-2);
     loopxyz(org, dim) m_qef_index[qef_index(xyz)] = NOINDEX;
   }
 
-  void initlod() {
+#if FAST_LOD
+  INLINE u8 &lod(const vec3i &xyz) { return m_lod[field_index(xyz)]; }
+  NOINLINE void initlod() {
+    vector<u8> tmplod(FIELDNUM);
+    const vec3i org(-2), dim(FIELDDIM-2);
+    memset(&tmplod[0], 0, sizeof(u8) * FIELDNUM);
+    loopxyz(org, dim) {
+      const auto neg = lt(xyz,vec3i(zero));
+      const auto pos = ge(xyz,vec3i(SUBGRID));
+      if (any(neg) || any(pos)) {
+        const auto leaf = m_octree->findleaf(m_iorg+xyz);
+        if (leaf.first != NULL && leaf.second < m_level)
+          tmplod[field_index(xyz)] = 1;
+      }
+    }
+    memset(&m_lod[0], 0, sizeof(u8) * FIELDNUM);
+    loopxyz(vec3i(zero), vec3i(FIELDDIM-4)) {
+      auto &curr = lod(xyz);
+      loopi(int(lodneighbornum)) {
+        const auto p = xyz + 2*neighbors[i];
+        curr = max(tmplod[field_index(p)], curr);
+      }
+    }
+  }
+#else
+  INLINE u32 &lod(const vec3i &xyz) { return m_lod[field_index(xyz)]; }
+  NOINLINE void initlod() {
     const vec3i org(-2), dim(FIELDDIM-2);
     loopxyz(org, dim) {
       auto &curr = lod(xyz);
       curr = 0;
       loopi(int(lodneighbornum)) {
         const auto p = m_iorg + xyz + 2*neighbors[i];
+
         const auto leaf = m_octree->findleaf(p);
         if (leaf.first == NULL) continue;
         if (leaf.second < m_level) {
@@ -588,11 +650,14 @@ struct dc_gridbuilder {
       }
     }
   }
+#endif
 
   void tesselate() {
     const vec3i org(zero), dim(SUBGRID+4);
     loopxyz(org, dim) {
       const int start_sign = field(xyz) < 0.f ? 1 : 0;
+      if (abs(field(xyz)) > 2.f * m_cellsize)
+        continue;
 
       // look at the three edges that start on xyz
       loopi(3) {
@@ -601,11 +666,11 @@ struct dc_gridbuilder {
         const auto qaxis1 = axis[(i+2)%3];
         const vec3i q[] = {xyz, xyz-qaxis0, xyz-qaxis0-qaxis1, xyz-qaxis1};
         u32 edgelod = 1;
-        loopj(4) edgelod = min(edgelod, lod(q[j]));
+        loopj(4) edgelod = min(edgelod, u32(lod(q[j])));
 
         // process the edge only when we get the properly aligned origin.
         // otherwise, we would generate the same face more than one
-        if (edgelod == 1 && any(ne(xyz&vec3i(one), vec3i(zero))))
+        if (any(ne(xyz&vec3i(edgelod), vec3i(zero))))
           continue;
 
         // is it an actual edge?
@@ -756,7 +821,7 @@ struct dc_gridbuilder {
     return;
   }
 
-  void build(octree::node &node) {
+  NOINLINE void build(octree::node &node) {
     const int first_idx = m_idx_buffer.length();
     const int first_vert = m_pos_buffer.length();
     m_cracks.setsize(0);
@@ -788,7 +853,7 @@ struct dc_gridbuilder {
   const csg::node &m_node;
   mesh_processor m_mp;
   vector<float> m_field;
-  vector<u32> m_lod;
+  vector<u8> m_lod;
   vector<vec3f> m_pos_buffer, m_nor_buffer;
   vector<pair<u32,u32>> m_cracks;
   vector<u32> m_idx_buffer;
@@ -825,7 +890,7 @@ struct recursive_builder {
   void build(octree::node &node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
     const auto scale = 1.f / float(1<<level);
     const auto cellnum = m_dim >> level;
-    const auto dist = csg::dist(pos(xyz) + scale*vec3f(m_half_side_len), m_node);
+    const auto dist = csg::dist(m_node, pos(xyz) + scale*vec3f(m_half_side_len));
     STATS_INC(iso_octree_num);
     STATS_INC(iso_num);
     node.m_level = level;
@@ -833,11 +898,11 @@ struct recursive_builder {
       node.m_isleaf = node.m_empty = 1;
       return;
     }
-    if (cellnum == SUBGRID || (level == 4 && xyz.x >= 32) || (level == 4 && xyz.y >= 16)) {
+//    if (cellnum == SUBGRID || (level == 4 && xyz.x >= 32) || (level == 4 && xyz.y >= 16)) {
 //     if (cellnum == SUBGRID || (level == 4 && xyz.y <= 16)) {
     // if (cellnum == SUBGRID || (level == 3 && xyz.y > 16))
-   //if (cellnum == SUBGRID) {
-      printf("level %d\n", level);
+   if (cellnum == SUBGRID) {
+  //    printf("level %d\n", level);
 //      fflush(stdout);
       node.m_isleaf = 1;
     } else {

@@ -182,12 +182,16 @@
 #define rangej(m,M) range(j,m,M)
 #define rangek(m,M) range(k,m,M)
 #define loopxy(org, end, Z)\
-  for (int Y = int(org.y); Y < int(end.y); ++Y)\
-  for (auto xyz = vec3i(org.x,Y,Z); xyz.x < int(end.x); ++xyz.x)
+  for (int Y = int((org).y); Y < int((end).y); ++Y)\
+  for (auto xyz = vec3i((org).x,Y,Z); xyz.x < int((end).x); ++xyz.x)
 #define loopxyz(org, end) \
-  for (int Z = int(org.z); Z < int(end.z); ++Z)\
-  for (int Y = int(org.y); Y < int(end.y); ++Y)\
-  for (auto xyz = vec3i(org.x,Y,Z); xyz.x < int(end.x); ++xyz.x)
+  for (int Z = int((org).z); Z < int((end).z); ++Z)\
+  for (int Y = int((org).y); Y < int((end).y); ++Y)\
+  for (auto xyz = vec3i((org).x,Y,Z); xyz.x < int((end).x); ++xyz.x)
+#define stepxyz(org, end, step) \
+  for (int Z = int((org).z); Z < int((end).z); Z += int((step).z))\
+  for (int Y = int((org).y); Y < int((end).y); Y += int((step).y))\
+  for (auto sxyz = vec3i((org).x,Y,Z); sxyz.x < int((end).x); sxyz.x += int((step).x))
 
 #define ARRAY_ELEM_NUM(A) sizeof(A) / sizeof(A[0])
 #define ZERO(PTR, SIZE) memset(PTR, 0, sizeof(SIZE))
