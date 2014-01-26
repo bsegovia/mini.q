@@ -46,8 +46,7 @@ struct plane : node {
   vec4f p;
 };
 struct sphere : node {
-  INLINE sphere(float r) :
-    node(SPHERE, aabb(-r, r)), r(r) {}
+  INLINE sphere(float r) : node(SPHERE, aabb(-r, r)), r(r) {}
   float r;
 };
 struct cylinder : node {
@@ -89,8 +88,8 @@ static node *makescene0() {
   const auto d1 = NEW(translation, t, *b0);
   //node *c = NULL; //NEW(D, d1, d0);
   node *c = NEW(D, *d1, *d0);
-  return d0;
-  loopi(16) {
+  // return c;
+  loopi(8) {
   // for (int i = 11; i < 16; ++i) {
     const auto center = vec2f(2.f,2.f+2.f*float(i));
     const auto ryminymax = vec3f(1.f,1.f,2*float(i)+2.f);
@@ -133,7 +132,7 @@ void destroyscene(node *n) { SAFE_DEL(n); }
 
 float dist(const vec3f &pos, const node &n, const aabb &box) {
   const auto isec = intersection(box, n.box);
-  //if (any(isec.pmin > isec.pmax)) return FLT_MAX;
+  if (any(gt(isec.pmin, isec.pmax))) return FLT_MAX;
   switch (n.type) {
     case UNION: {
       const auto &u = static_cast<const U&>(n);
@@ -149,7 +148,7 @@ float dist(const vec3f &pos, const node &n, const aabb &box) {
     }
     case TRANSLATION: {
       const auto &t = static_cast<const translation&>(n);
-      return dist(pos-t.p, *t.n, box);
+      return dist(pos-t.p, *t.n, aabb(box.pmin-t.p, box.pmax-t.p));
     }
     case PLANE: {
       const auto &p = static_cast<const plane&>(n);
