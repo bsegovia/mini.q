@@ -66,10 +66,16 @@ struct translation : node {
 
 #if 1
 node *capped_cylinder(const vec2f &cxz, const vec3f &ryminymax) {
-  const auto cyl = NEW(cylinder, cxz, ryminymax.x);
-  const auto plane0 = NEW(plane, vec4f(0.f,1.f,0.f,-ryminymax.y));
-  const auto plane1 = NEW(plane, vec4f(0.f,-1.f,0.f,ryminymax.z));
-  return NEW(D, *NEW(D, *cyl, *plane0), *plane1);
+  const auto r = ryminymax.x;
+  const auto ymin = ryminymax.y;
+  const auto ymax = ryminymax.z;
+  const auto cyl = NEW(cylinder, cxz, r);
+  const auto plane0 = NEW(plane, vec4f(0.f,1.f,0.f,-ymin));
+  const auto plane1 = NEW(plane, vec4f(0.f,-1.f,0.f,ymax));
+  const auto ccyl = NEW(D, *NEW(D, *cyl, *plane0), *plane1);
+  ccyl->box.pmin = vec3f(cxz.x-r,ymin,cxz.y-r);
+  ccyl->box.pmax = vec3f(cxz.x+r,ymax,cxz.y+r);
+  return ccyl;
 }
 #else
 node *capped_cylinder(const vec2f &cxz, const vec3f &ryminymax) {
