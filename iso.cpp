@@ -8,7 +8,7 @@
 #include "qef.hpp"
 
 STATS(iso_num);
-STATS(iso_false_pos_num);
+STATS(iso_falsepos_num);
 STATS(iso_gradient_num);
 STATS(iso_grid_num);
 STATS(iso_octree_num);
@@ -61,7 +61,7 @@ static vec3f falsepos(const csg::node &node, const grid &grid,
     p = p1 - v1 * (p1 - p0) / (v1 - v0);
     const auto density = csg::dist(org+grid.m_cellsize*scale*p, node) + 1e-4f;
     STATS_INC(iso_num);
-    STATS_INC(iso_false_pos_num);
+    STATS_INC(iso_falsepos_num);
     if (abs(density) < TOLERANCE_DENSITY) break;
     if (distance2(p0,p1) < TOLERANCE_DIST2) break;
     if (density < 0.f) {
@@ -500,11 +500,11 @@ struct octree {
   u32 m_dim, m_logdim;
 };
 
-INLINE pair<vec3i,int> getedge(const vec3i &start, const vec3i &end) {
-  const auto lower = select(lt(start,end), start, end);
-  const auto delta = select(eq(start,end), start, end);
+INLINE pair<vec3i,int> getedge(const vec3i &start, const vec3i &end, int scale) {
+  const auto lower = select(le(start,end), start, end);
+  const auto delta = select(eq(start,end), vec3i(zero), vec3i(one));
   assert(reduceadd(delta) == 1);
-  return makepair(lower, delta.y+2*delta.z);
+  return makepair(lower, (scale?3:0)+delta.y+2*delta.z);
 }
 
 struct dc_gridbuilder {
@@ -513,7 +513,7 @@ struct dc_gridbuilder {
     m_field((dim.x+7)*(dim.y+7)*(dim.z+7)),
     m_lod((dim.x+7)*(dim.y+7)*(dim.z+7)),
     m_qef_index((dim.x+6)*(dim.y+6)*(dim.z+6)),
-    m_edge_index(3*(dim.x+7)*(dim.y+7)*(dim.z+7)),
+    m_edge_index(6*(dim.x+7)*(dim.y+7)*(dim.z+7)),
     m_octree(NULL),
     m_iorg(zero),
     m_level(0)
@@ -536,12 +536,11 @@ struct dc_gridbuilder {
     const vec3i p = xyz + vec3i(2);
     return p.x + (p.y + p.z * (m_grid.m_dim.y+7)) * (m_grid.m_dim.x+7);
   }
-  INLINE u32 edge_index(const vec3i &start, const vec3i &end) {
+  INLINE u32 edge_index(const vec3i &start, int edge) {
+    const auto p = start + 2;
     const auto dim = m_grid.m_dim;
-    const auto e = getedge(start,end);
-    const auto p = e.first;
     const auto offset = p.x + (p.y + p.z * (dim.y+7)) * (dim.x+7);
-    return offset + e.second*(dim.x+7)*(dim.y+7)*(dim.z+7);
+    return offset + edge*(dim.x+7)*(dim.y+7)*(dim.z+7);
   }
 
   INLINE float &field(const vec3i &xyz) { return m_field[field_index(xyz)]; }
@@ -553,7 +552,7 @@ struct dc_gridbuilder {
   }
 
   void initfield() {
-    const vec3i org(-2), dim = m_grid.m_dim+vec3i(5);
+    const vec3i org(-2), dim = m_grid.m_dim+5;
     loopxyz(org, dim) {
       const auto p = m_grid.vertex(xyz);
       const aabb box(p-2.f*m_grid.m_cellsize, p+2.f*m_grid.m_cellsize);
@@ -563,13 +562,19 @@ struct dc_gridbuilder {
     }
   }
 
+  void initedge() {
+    const vec3i org(-2), dim = m_grid.m_dim+5;
+    loopj(6) loopxyz(org, dim) m_edge_index[edge_index(xyz,j)] = NOINDEX;
+    m_edges.setsize(0);
+  }
+
   void initqef() {
-    const vec3i org(-2), dim = m_grid.m_dim+vec3i(4);
+    const vec3i org(-2), dim = m_grid.m_dim+4;
     loopxyz(org, dim) m_qef_index[index(xyz)] = NOINDEX;
   }
 
   void initlod() {
-    const vec3i org(-2), dim = m_grid.m_dim+vec3i(5);
+    const vec3i org(-2), dim = m_grid.m_dim+5;
     loopxyz(org, dim) {
       auto &curr = lod(xyz);
       curr = 0;
@@ -624,7 +629,7 @@ struct dc_gridbuilder {
             mcell cell;
             loopk(8) cell[k] = field(np + (icubev[k]<<int(plod)));
             const float scale = float(1<<plod);
-            const auto vert = qef_vertex(cell, np, scale);
+            const auto vert = qef_vertex(cell, np, plod, scale);
 
             // we have an edge but with a double change of sign. so the higher
             // level voxel has no QEF at all
@@ -653,7 +658,7 @@ struct dc_gridbuilder {
     }
   }
 
-  qef_output qef_vertex(const mcell &cell, const vec3i &xyz, float scale) {
+  qef_output qef_vertex(const mcell &cell, const vec3i &xyz, int iscale, float fscale) {
     int cubeindex = 0, num = 0;
     loopi(8) if (cell[i] < 0.0f) cubeindex |= 1<<i;
     if (edgetable[cubeindex] == 0)
@@ -669,8 +674,21 @@ struct dc_gridbuilder {
       const auto idx0 = interptable[i][0], idx1 = interptable[i][1];
       const auto v0 = cell[idx0], v1 = cell[idx1];
       const auto p0 = fcubev[idx0], p1 = fcubev[idx1];
-      p[num] = falsepos(m_node, m_grid, org, p0, p1, v0, v1, scale);
-      n[num] = gradient(m_node, org+p[num]*scale*m_grid.m_cellsize);
+#if 1
+      const auto e = getedge(icubev[idx0], icubev[idx1], iscale);
+      auto &idx = m_edge_index[edge_index(xyz+e.first, e.second)];
+      if (idx == NOINDEX) {
+        const auto pos = falsepos(m_node, m_grid, org, p0, p1, v0, v1, fscale);
+        const auto nor = gradient(m_node, org+pos*fscale*m_grid.m_cellsize);
+        idx = m_edges.length();
+        m_edges.add(makepair(pos-vec3f(e.first),nor));
+      }
+      p[num] = m_edges[idx].first+vec3f(e.first);
+      n[num] = m_edges[idx].second;
+#else
+      p[num] = falsepos(m_node, m_grid, org, p0, p1, v0, v1, fscale);
+      n[num] = gradient(m_node, org+p[num]*fscale*m_grid.m_cellsize);
+#endif
       nor += n[num];
       mass += p[num++];
     }
@@ -749,6 +767,7 @@ struct dc_gridbuilder {
     const int first_vert = m_pos_buffer.length();
     m_cracks.setsize(0);
     initfield();
+    initedge();
     initqef();
     initlod();
     tesselate();
@@ -822,7 +841,7 @@ struct recursive_builder {
     if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
 //     if (cellnum == SUBGRID || (level == 4 && xyz.y <= 16)) {
     // if (cellnum == SUBGRID || (level == 3 && xyz.y > 16))
-   //  if (cellnum == SUBGRID) {
+   //if (cellnum == SUBGRID) {
       printf("level %d\n", level);
 //      fflush(stdout);
       node.m_isleaf = 1;
@@ -875,7 +894,7 @@ mesh dc_mesh(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d) 
   const auto m = mesh(p.first, n.first, idx.first, p.second, idx.second);
   STATS_OUT(iso_num);
   STATS_OUT(iso_qef_num);
-  STATS_RATIO(iso_false_pos_num, iso_num);
+  STATS_RATIO(iso_falsepos_num, iso_num);
   STATS_RATIO(iso_gradient_num, iso_num);
   STATS_RATIO(iso_grid_num, iso_num);
   STATS_RATIO(iso_octree_num, iso_num);
