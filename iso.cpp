@@ -45,36 +45,6 @@ static const auto TOLERANCE_DENSITY = 1e-3f;
 static const auto TOLERANCE_DIST2 = 1e-8f;
 static const int MAX_STEPS = 4;
 
-static vec3f falsepos(const csg::node &node, const grid &grid,
-                      const vec3f &org, vec3f p0, vec3f p1,
-                      float v0, float v1, float scale)
-{
-  if (abs(v0) < TOLERANCE_DENSITY) return p0;
-  if (abs(v1) < TOLERANCE_DENSITY) return p1;
-  if (v1 < 0.f) {
-    swap(p0,p1);
-    swap(v0,v1);
-  }
-
-  vec3f p;
-  loopi(MAX_STEPS) {
-    p = p1 - v1 * (p1 - p0) / (v1 - v0);
-    const auto density = csg::dist(org+grid.m_cellsize*scale*p, node) + 1e-4f;
-    STATS_INC(iso_num);
-    STATS_INC(iso_falsepos_num);
-    if (abs(density) < TOLERANCE_DENSITY) break;
-    if (distance2(p0,p1) < TOLERANCE_DIST2) break;
-    if (density < 0.f) {
-      p0 = p;
-      v0 = density;
-    } else {
-      p1 = p;
-      v1 = density;
-    }
-  }
-  return p;
-}
-
 INLINE pair<vec3i,u32> edge(vec3i start, vec3i end) {
   const auto lower = select(lt(start,end), start, end);
   const auto delta = select(eq(start,end), vec3i(zero), vec3i(one));
@@ -84,7 +54,6 @@ INLINE pair<vec3i,u32> edge(vec3i start, vec3i end) {
 
 typedef float mcell[8];
 static const vec3i axis[] = {vec3i(1,0,0), vec3i(0,1,0), vec3i(0,0,1)};
-static const vec3i faxis[] = {vec3f(1.f,0.f,0.f), vec3i(0.f,1.f,0.f), vec3i(0.f,0.f,1.f)};
 static const u32 quadtotris[] = {0,1,2,0,2,3};
 static const u32 quadtotris_cc[] = {0,2,1,0,3,2};
 static const u16 edgetable[256]= {
@@ -153,7 +122,7 @@ static const u32 edgeneighbornum = 12;
 static const u32 lodneighbornum = 18;
 
 static const float SHARP_EDGE = 0.2f;
-static const u32 SUBGRID = 16;
+#define SUBGRID 16
 static const u32 MAX_NEW_VERT = 8;
 static const u32 NOINDEX = ~0x0u;
 static const u32 NOTRIANGLE = ~0x0u-1;
@@ -508,7 +477,7 @@ INLINE pair<vec3i,int> getedge(const vec3i &start, const vec3i &end, int scale) 
 
 struct dc_gridbuilder {
   dc_gridbuilder(const csg::node &node, const vec3i &dim) :
-    m_node(node), m_grid(vec3f(one), vec3f(zero), dim),
+    m_node(node),
     m_field((dim.x+7)*(dim.y+7)*(dim.z+7)),
     m_lod((dim.x+7)*(dim.y+7)*(dim.z+7)),
     m_qef_index((dim.x+6)*(dim.y+6)*(dim.z+6)),
@@ -524,22 +493,51 @@ struct dc_gridbuilder {
     bool valid;
   };
 
+  INLINE vec3f falsepos(const csg::node &node, vec3f org, vec3f p0, vec3f p1,
+                        float v0, float v1, float scale)
+  {
+    if (abs(v0) < TOLERANCE_DENSITY) return p0;
+    if (abs(v1) < TOLERANCE_DENSITY) return p1;
+    if (v1 < 0.f) {
+      swap(p0,p1);
+      swap(v0,v1);
+    }
+
+    vec3f p;
+    loopi(MAX_STEPS) {
+      p = p1 - v1 * (p1 - p0) / (v1 - v0);
+      const auto density = csg::dist(org+m_cellsize*scale*p, node) + 1e-4f;
+      STATS_INC(iso_num);
+      STATS_INC(iso_falsepos_num);
+      if (abs(density) < TOLERANCE_DENSITY) break;
+      if (distance2(p0,p1) < TOLERANCE_DIST2) break;
+      if (density < 0.f) {
+        p0 = p;
+        v0 = density;
+      } else {
+        p1 = p;
+        v1 = density;
+      }
+    }
+    return p;
+  }
+
+  INLINE vec3f vertex(const vec3i &p) {return m_org+m_cellsize*vec3f(p);}
   INLINE void setoctree(const octree &o) { m_octree = &o; }
-  INLINE void setorg(const vec3f &org) { m_grid.m_org = org; }
-  INLINE void setsize(const vec3f &size) { m_grid.m_cellsize = size; }
+  INLINE void setorg(const vec3f &org) { m_org = org; }
+  INLINE void setsize(float size) { m_cellsize = size; }
   INLINE u32 index(const vec3i &xyz) const {
     const vec3i p = xyz + vec3i(2);
-    return p.x + (p.y + p.z * (m_grid.m_dim.y+6)) * (m_grid.m_dim.x+6);
+    return p.x + (p.y + p.z * (SUBGRID+6)) * (SUBGRID+6);
   }
   INLINE u32 field_index(const vec3i &xyz) {
     const vec3i p = xyz + vec3i(2);
-    return p.x + (p.y + p.z * (m_grid.m_dim.y+7)) * (m_grid.m_dim.x+7);
+    return p.x + (p.y + p.z * (SUBGRID+7)) * (SUBGRID+7);
   }
   INLINE u32 edge_index(const vec3i &start, int edge) {
     const auto p = start + 2;
-    const auto dim = m_grid.m_dim;
-    const auto offset = p.x + (p.y + p.z * (dim.y+7)) * (dim.x+7);
-    return offset + edge*(dim.x+7)*(dim.y+7)*(dim.z+7);
+    const auto offset = p.x + (p.y + p.z * (SUBGRID+7)) * (SUBGRID+7);
+    return offset + edge*(SUBGRID+7)*(SUBGRID+7)*(SUBGRID+7);
   }
 
   INLINE float &field(const vec3i &xyz) { return m_field[field_index(xyz)]; }
@@ -551,10 +549,10 @@ struct dc_gridbuilder {
   }
 
   void initfield() {
-    const vec3i org(-2), dim = m_grid.m_dim+5;
+    const vec3i org(-2), dim(SUBGRID+5);
     loopxyz(org, dim) {
-      const auto p = m_grid.vertex(xyz);
-      const aabb box(p-2.f*m_grid.m_cellsize, p+2.f*m_grid.m_cellsize);
+      const auto p = vertex(xyz);
+      const aabb box(p-2.f*m_cellsize, p+2.f*m_cellsize);
       field(xyz) = csg::dist(p, m_node, box);
       STATS_INC(iso_num);
       STATS_INC(iso_grid_num);
@@ -562,18 +560,18 @@ struct dc_gridbuilder {
   }
 
   void initedge() {
-    const vec3i org(-2), dim = m_grid.m_dim+5;
+    const vec3i org(-2), dim(SUBGRID+5);
     loopj(6) loopxyz(org, dim) m_edge_index[edge_index(xyz,j)] = NOINDEX;
     m_edges.setsize(0);
   }
 
   void initqef() {
-    const vec3i org(-2), dim = m_grid.m_dim+4;
+    const vec3i org(-2), dim(SUBGRID+4);
     loopxyz(org, dim) m_qef_index[index(xyz)] = NOINDEX;
   }
 
   void initlod() {
-    const vec3i org(-2), dim = m_grid.m_dim+5;
+    const vec3i org(-2), dim(SUBGRID+5);
     loopxyz(org, dim) {
       auto &curr = lod(xyz);
       curr = 0;
@@ -590,7 +588,7 @@ struct dc_gridbuilder {
   }
 
   void tesselate() {
-    const vec3i org(zero), dim(m_grid.m_dim + vec3i(4));
+    const vec3i org(zero), dim(SUBGRID+4);
     loopxyz(org, dim) {
       const int start_sign = field(xyz) < 0.f ? 1 : 0;
 
@@ -635,7 +633,7 @@ struct dc_gridbuilder {
             if (!vert.valid) continue;
 
             // point is still valid. we are good to go
-            const auto pos = m_grid.vertex(np) + vert.p*scale*m_grid.m_cellsize;
+            const auto pos = vertex(np) + vert.p*scale*m_cellsize;
             const auto nor = normalize(vert.n);
             m_qef_index[idx] = m_pos_buffer.length();
             m_border_remap.add(OUTSIDE);
@@ -645,7 +643,7 @@ struct dc_gridbuilder {
           }
           quad[vertnum++] = m_qef_index[idx];
         }
-        const u32 msk = any(eq(xyz,vec3i(zero)))||any(gt(xyz,m_grid.m_dim))?OUTSIDE:0u;
+        const u32 msk = any(eq(xyz,vec3i(zero)))||any(gt(xyz,vec3i(SUBGRID)))?OUTSIDE:0u;
         const auto orientation = start_sign==1 ? quadtotris : quadtotris_cc;
         if (vertnum == 4)
           loopj(6) m_idx_buffer.add(quad[orientation[j]]|msk);
@@ -664,7 +662,7 @@ struct dc_gridbuilder {
       return qef_output(vec3f(zero), vec3f(zero), false);
 
     // find the vertices where the surface intersects the cube
-    const auto org = m_grid.vertex(xyz);
+    const auto org = vertex(xyz);
     vec3f p[12], n[12], mass(zero);
     vec3f nor = zero;
     loopi(12) {
@@ -676,8 +674,8 @@ struct dc_gridbuilder {
       const auto e = getedge(icubev[idx0], icubev[idx1], iscale);
       auto &idx = m_edge_index[edge_index(xyz+e.first, e.second)];
       if (idx == NOINDEX) {
-        const auto pos = falsepos(m_node, m_grid, org, p0, p1, v0, v1, fscale);
-        const auto nor = gradient(m_node, org+pos*fscale*m_grid.m_cellsize);
+        const auto pos = falsepos(m_node, org, p0, p1, v0, v1, fscale);
+        const auto nor = gradient(m_node, org+pos*fscale*m_cellsize);
         idx = m_edges.length();
         m_edges.add(makepair(pos-vec3f(e.first),nor));
       }
@@ -786,7 +784,6 @@ struct dc_gridbuilder {
   }
 
   const csg::node &m_node;
-  grid m_grid;
   mesh_processor m_mp;
   vector<float> m_field;
   vector<u32> m_lod;
@@ -798,7 +795,9 @@ struct dc_gridbuilder {
   vector<u32> m_edge_index;
   vector<pair<vec3f,vec3f>> m_edges;
   const octree *m_octree;
+  vec3f m_org;
   vec3i m_iorg;
+  float m_cellsize;
   u32 m_level;
 };
 
@@ -853,7 +852,7 @@ struct recursive_builder {
     if (node.m_empty)
       return;
     else if (node.m_isleaf) {
-      const vec3f sz(float(1<<(m_maxlevel-level)) * m_cellsize);
+      const auto sz = float(1<<(m_maxlevel-level)) * m_cellsize;
       s.m_octree = m_octree;
       s.m_iorg = xyz;
       s.m_level = level;

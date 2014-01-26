@@ -208,7 +208,7 @@ INLINE void NAME##v(First first, Rest... rest) {\
 #define STATS_RATIO(X,Y) printf(#X": %.2lf%%\n", double(X)/double(Y)*100.0)
 #else
 #define STATS(X)
-#define STATS_EXT(X)
+#define STATS_ADD(X,Y)
 #define STATS_INC(X)
 #define STATS_OUT(X)
 #define STATS_RATIO(X,Y)
