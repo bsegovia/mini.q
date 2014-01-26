@@ -42,7 +42,7 @@ vec3f gradient(const csg::node &node, const vec3f &pos, float grad_step = DEFAUL
 }
 
 static const auto TOLERANCE_DENSITY = 1e-3f;
-static const auto TOLERANCE_DIST2   = 1e-8f;
+static const auto TOLERANCE_DIST2 = 1e-8f;
 static const int MAX_STEPS = 4;
 
 static vec3f falsepos(const csg::node &node, const grid &grid,
@@ -153,7 +153,7 @@ static const u32 edgeneighbornum = 12;
 static const u32 lodneighbornum = 18;
 
 static const float SHARP_EDGE = 0.2f;
-static const u32 SUBGRID = 8;
+static const u32 SUBGRID = 16;
 static const u32 MAX_NEW_VERT = 8;
 static const u32 NOINDEX = ~0x0u;
 static const u32 NOTRIANGLE = ~0x0u-1;
@@ -221,7 +221,6 @@ struct mesh_processor {
       int i1 = unpackidx(tri[2]) - m_first_vert;
       loopj(3) {
         int i2 = unpackidx(tri[j]) - m_first_vert;
-        // if (i1 == 36 || i2 == 36) DEBUGBREAK;
         if (i1 < i2) append(edgenum, i1, i2, i, i);
         i1 = i2;
       }
@@ -674,7 +673,6 @@ struct dc_gridbuilder {
       const auto idx0 = interptable[i][0], idx1 = interptable[i][1];
       const auto v0 = cell[idx0], v1 = cell[idx1];
       const auto p0 = fcubev[idx0], p1 = fcubev[idx1];
-#if 1
       const auto e = getedge(icubev[idx0], icubev[idx1], iscale);
       auto &idx = m_edge_index[edge_index(xyz+e.first, e.second)];
       if (idx == NOINDEX) {
@@ -685,10 +683,6 @@ struct dc_gridbuilder {
       }
       p[num] = m_edges[idx].first+vec3f(e.first);
       n[num] = m_edges[idx].second;
-#else
-      p[num] = falsepos(m_node, m_grid, org, p0, p1, v0, v1, fscale);
-      n[num] = gradient(m_node, org+p[num]*fscale*m_grid.m_cellsize);
-#endif
       nor += n[num];
       mass += p[num++];
     }
@@ -838,7 +832,7 @@ struct recursive_builder {
       node.m_isleaf = node.m_empty = 1;
       return;
     }
-    if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
+    if (cellnum == SUBGRID || (level == 4 && xyz.x >= 32) || (level == 4 && xyz.y >= 16)) {
 //     if (cellnum == SUBGRID || (level == 4 && xyz.y <= 16)) {
     // if (cellnum == SUBGRID || (level == 3 && xyz.y > 16))
    //if (cellnum == SUBGRID) {
