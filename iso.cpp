@@ -134,7 +134,8 @@ static const u32 BORDER = 0x80000000u;
 static const u32 OUTSIDE = 0x40000000u;
 INLINE u32 isborder(u32 x) { return (x & BORDER) != 0; }
 INLINE u32 isoutside(u32 x) { return (x & OUTSIDE) != 0; }
-INLINE u32 unpackidx(u32 x) { return x & ~(OUTSIDE|OUTSIDE); }
+INLINE u32 unpackidx(u32 x) { return x & ~(OUTSIDE|BORDER); }
+INLINE u32 unpackmsk(u32 x) { return x & (OUTSIDE|BORDER); }
 
 struct mesh_processor {
   struct meshedge {
@@ -313,11 +314,8 @@ struct mesh_processor {
         // update the index in the triangle
         loopj(3) {
           const auto idx = t[3*curr.second+j];
-          if (unpackidx(idx) == u32(m_first_vert+i)) {
-            u32 mask = isoutside(idx) ? OUTSIDE : 0;
-            mask |= isborder(idx) ? BORDER : 0;
-            t[3*curr.second+j] = mask | m_new_verts[matched].second;
-          }
+          if (unpackidx(idx) == u32(m_first_vert+i))
+            t[3*curr.second+j] = unpackmsk(idx) | m_new_verts[matched].second;
         }
         curr = m_list[curr.first];
       }
