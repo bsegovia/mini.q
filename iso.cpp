@@ -556,7 +556,7 @@ struct dc_gridbuilder {
     const vec3i org(-2), dim = m_grid.m_dim+vec3i(5);
     loopxyz(org, dim) {
       const auto p = m_grid.vertex(xyz);
-      const aabb box(p-m_grid.m_cellsize, p+m_grid.m_cellsize);
+      const aabb box(p-2.f*m_grid.m_cellsize, p+2.f*m_grid.m_cellsize);
       field(xyz) = csg::dist(p, m_node, box);
       STATS_INC(iso_num);
       STATS_INC(iso_grid_num);
