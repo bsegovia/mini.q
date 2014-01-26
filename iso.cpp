@@ -16,7 +16,7 @@ STATS(iso_qef_num);
 
 #define FAST_FIELD 1
 #define FAST_LOD 1
-#define DELAYED_TESSELATION 1
+#define DELAYED_TESSELATION 0
 
 namespace q {
 namespace iso {
@@ -665,6 +665,146 @@ struct dc_gridbuilder {
   }
 #endif
 
+#if DELAYED_TESSELATION
+  int delayed_qef_vertex(const mcell &cell, const vec3i &xyz, int plod) {
+    int cubeindex = 0;
+    loopi(8) if (cell[i] < 0.0f) cubeindex |= 1<<i;
+    if (edgetable[cubeindex] == 0)
+      return 0;
+    loopi(12) {
+      if ((edgetable[cubeindex] & (1<<i)) == 0)
+        continue;
+      const auto idx0 = interptable[i][0], idx1 = interptable[i][1];
+      const auto e = getedge(icubev[idx0], icubev[idx1], plod);
+      auto &idx = m_edge_index[edge_index(xyz+e.first, e.second)];
+      if (idx == NOINDEX) {
+        idx = m_delayed_edges.length();
+        m_delayed_edges.add(makepair(xyz, vec3i(idx0, idx1, plod)));
+      }
+    }
+    return edgetable[cubeindex];
+  }
+
+  void finishedges() {
+    loopv(m_delayed_edges) {
+      mcell cell;
+      const auto &item = m_delayed_edges[i];
+      const auto xyz = item.first;
+      const auto org = vertex(xyz);
+      const auto idx0 = item.second.x, idx1 = item.second.y;
+      const auto plod = item.second.z;
+      const auto fscale = float(1<<plod);
+      const auto p0 = fcubev[idx0], p1 = fcubev[idx1];
+      loopk(8) cell[k] = field(xyz + (icubev[k]<<plod));
+      const auto v0 = cell[idx0], v1 = cell[idx1];
+      const auto pos = falsepos(m_node, org, p0, p1, v0, v1, fscale);
+      const auto nor = gradient(m_node, org+pos*fscale*m_cellsize);
+      const auto e = getedge(icubev[idx0], icubev[idx1], plod);
+      m_edges.add(makepair(pos-vec3f(e.first),nor));
+    }
+  }
+
+  void finishvertices() {
+    loopv(m_delayed_qef) {
+      const auto &item = m_delayed_qef[i];
+      const auto xyz = item.first;
+      const auto plod = item.second.x;
+      const auto edgemap = item.second.y;
+
+      // get the intersection points between the surface and the cube edges
+      vec3f p[12], n[12], mass(zero);
+      vec3f nor = zero;
+      int num = 0;
+      loopi(12) {
+        if ((edgemap & (1<<i)) == 0) continue;
+        const auto idx0 = interptable[i][0], idx1 = interptable[i][1];
+        const auto e = getedge(icubev[idx0], icubev[idx1], plod);
+        auto &idx = m_edge_index[edge_index(xyz+e.first, e.second)];
+        assert(idx != NOINDEX);
+        p[num] = m_edges[idx].first+vec3f(e.first);
+        n[num] = m_edges[idx].second;
+        nor += n[num];
+        mass += p[num++];
+      }
+      mass /= float(num);
+
+      // compute the QEF minimizing point
+      double matrix[12][3];
+      double vector[12];
+      loopi(num) {
+        loopj(3) matrix[i][j] = double(n[i][j]);
+        const auto d = p[i] - mass;
+        vector[i] = double(dot(n[i],d));
+      }
+      const auto pos = mass + qef::evaluate(matrix, vector, num);
+      m_pos_buffer.add(vertex(xyz) + pos*float(1<<plod)*m_cellsize);
+      m_nor_buffer.add(abs(normalize(nor)));
+    }
+  }
+
+  void tesselate() {
+    const vec3i org(zero), dim(SUBGRID+4);
+    loopxyz(org, dim) {
+      const int start_sign = field(xyz) < 0.f ? 1 : 0;
+      if (abs(field(xyz)) > 2.f*m_cellsize)
+        continue;
+
+      // look at the three edges that start on xyz
+      loopi(3) {
+        // figure out the edge size
+        const auto qaxis0 = axis[(i+1)%3];
+        const auto qaxis1 = axis[(i+2)%3];
+        const vec3i q[] = {xyz, xyz-qaxis0, xyz-qaxis0-qaxis1, xyz-qaxis1};
+        u32 edgelod = 1;
+        loopj(4) edgelod = min(edgelod, u32(lod(q[j])));
+
+        // process the edge only when we get the properly aligned origin.
+        // otherwise, we would generate the same face more than one
+        if (any(ne(xyz&vec3i(edgelod), vec3i(zero))))
+          continue;
+
+        // is it an actual edge?
+        const auto delta = axis[i] << int(edgelod);
+        const int end_sign = field(xyz+delta) < 0.f ? 1 : 0;
+        if (start_sign == end_sign) continue;
+
+        // we found one edge. we output one quad for it
+        const auto axis0 = axis[(i+1)%3] << int(edgelod);
+        const auto axis1 = axis[(i+2)%3] << int(edgelod);
+        vec3i p[] = {xyz, xyz-axis0, xyz-axis0-axis1, xyz-axis1};
+        u32 quad[4];
+        u32 vertnum = 0;
+        loopj(4) {
+          u32 plod = lod(p[j]);
+          const auto np = p[j] & vec3i(~plod);
+          const auto idx = qef_index(np);
+
+          if (m_qef_index[idx] == NOINDEX) {
+            mcell cell;
+            loopk(8) cell[k] = field(np + (icubev[k]<<int(plod)));
+            const int edgemap = delayed_qef_vertex(cell, np, plod);
+            if (edgemap == 0) continue;
+
+            // point is still valid. we are good to go
+            m_qef_index[idx] = m_border_remap.length();
+            m_border_remap.add(OUTSIDE);
+            m_delayed_qef.add(makepair(np,vec2i(plod,edgemap)));
+            STATS_INC(iso_qef_num);
+          }
+          quad[vertnum++] = m_qef_index[idx];
+        }
+        const u32 msk = any(eq(xyz,vec3i(zero)))||any(gt(xyz,vec3i(SUBGRID)))?OUTSIDE:0u;
+        const auto orientation = start_sign==1 ? quadtotris : quadtotris_cc;
+        if (vertnum == 4)
+          loopj(6) m_idx_buffer.add(quad[orientation[j]]|msk);
+        else if (vertnum == 3)
+          loopj(3) m_idx_buffer.add(quad[orientation[j]]|msk);
+        else if (vertnum == 2 && !isoutside(msk))
+          m_cracks.add(makepair(quad[0], quad[1]));
+      }
+    }
+  }
+#else
   qef_output qef_vertex(const mcell &cell, const vec3i &xyz, int plod, float fscale) {
     int cubeindex = 0, num = 0;
     loopi(8) if (cell[i] < 0.0f) cubeindex |= 1<<i;
@@ -776,146 +916,6 @@ struct dc_gridbuilder {
       }
     }
   }
-
-#if DELAYED_TESSELATION
-  int delayed_qef_vertex(const mcell &cell, const vec3i &xyz, int plod) {
-    int cubeindex = 0;
-    loopi(8) if (cell[i] < 0.0f) cubeindex |= 1<<i;
-    if (edgetable[cubeindex] == 0)
-      return 0;
-    loopi(12) {
-      if ((edgetable[cubeindex] & (1<<i)) == 0)
-        continue;
-      const auto idx0 = interptable[i][0], idx1 = interptable[i][1];
-      const auto e = getedge(icubev[idx0], icubev[idx1], plod);
-      auto &idx = m_edge_index[edge_index(xyz+e.first, e.second)];
-      if (idx == NOINDEX) {
-        idx = m_delayed_edges.length();
-        m_delayed_edges.add(makepair(xyz, vec3i(idx0, idx1, plod)));
-      }
-    }
-    return edgetable[cubeindex];
-  }
-
-  void finish_edges() {
-    loopv(m_delayed_edges) {
-      mcell cell;
-      const auto &item = m_delayed_edges[i];
-      const auto xyz = item.first;
-      const auto org = vertex(xyz);
-      const auto idx0 = item.second.x, idx1 = item.second.y;
-      const auto plod = item.second.z;
-      const auto fscale = float(1<<plod);
-      const auto p0 = fcubev[idx0], p1 = fcubev[idx1];
-      loopk(8) cell[k] = field(xyz + (icubev[k]<<plod));
-      const auto v0 = cell[idx0], v1 = cell[idx1];
-      const auto pos = falsepos(m_node, org, p0, p1, v0, v1, fscale);
-      const auto nor = gradient(m_node, org+pos*fscale*m_cellsize);
-      const auto e = getedge(icubev[idx0], icubev[idx1], plod);
-      m_edges.add(makepair(pos-vec3f(e.first),nor));
-    }
-  }
-
-  void finish_vertices() {
-    loopv(m_delayed_qef) {
-      const auto &item = m_delayed_qef[i];
-      const auto xyz = item.first;
-      const auto plod = item.second.x;
-      const auto edgemap = item.second.y;
-
-      // get the intersection points between the surface and the cube edges
-      vec3f p[12], n[12], mass(zero);
-      vec3f nor = zero;
-      int num = 0;
-      loopi(12) {
-        if ((edgemap & (1<<i)) == 0) continue;
-        const auto idx0 = interptable[i][0], idx1 = interptable[i][1];
-        const auto e = getedge(icubev[idx0], icubev[idx1], plod);
-        auto &idx = m_edge_index[edge_index(xyz+e.first, e.second)];
-        assert(idx != NOINDEX);
-        p[num] = m_edges[idx].first+vec3f(e.first);
-        n[num] = m_edges[idx].second;
-        nor += n[num];
-        mass += p[num++];
-      }
-      mass /= float(num);
-
-      // compute the QEF minimizing point
-      double matrix[12][3];
-      double vector[12];
-      loopi(num) {
-        loopj(3) matrix[i][j] = double(n[i][j]);
-        const auto d = p[i] - mass;
-        vector[i] = double(dot(n[i],d));
-      }
-      const auto pos = mass + qef::evaluate(matrix, vector, num);
-      m_pos_buffer.add(vertex(xyz) + pos*float(1<<plod)*m_cellsize);
-      m_nor_buffer.add(abs(normalize(nor)));
-    }
-  }
-
-  void delayed_tesselate() {
-    const vec3i org(zero), dim(SUBGRID+4);
-    loopxyz(org, dim) {
-      const int start_sign = field(xyz) < 0.f ? 1 : 0;
-      if (abs(field(xyz)) > 2.f*m_cellsize)
-        continue;
-
-      // look at the three edges that start on xyz
-      loopi(3) {
-        // figure out the edge size
-        const auto qaxis0 = axis[(i+1)%3];
-        const auto qaxis1 = axis[(i+2)%3];
-        const vec3i q[] = {xyz, xyz-qaxis0, xyz-qaxis0-qaxis1, xyz-qaxis1};
-        u32 edgelod = 1;
-        loopj(4) edgelod = min(edgelod, u32(lod(q[j])));
-
-        // process the edge only when we get the properly aligned origin.
-        // otherwise, we would generate the same face more than one
-        if (any(ne(xyz&vec3i(edgelod), vec3i(zero))))
-          continue;
-
-        // is it an actual edge?
-        const auto delta = axis[i] << int(edgelod);
-        const int end_sign = field(xyz+delta) < 0.f ? 1 : 0;
-        if (start_sign == end_sign) continue;
-
-        // we found one edge. we output one quad for it
-        const auto axis0 = axis[(i+1)%3] << int(edgelod);
-        const auto axis1 = axis[(i+2)%3] << int(edgelod);
-        vec3i p[] = {xyz, xyz-axis0, xyz-axis0-axis1, xyz-axis1};
-        u32 quad[4];
-        u32 vertnum = 0;
-        loopj(4) {
-          u32 plod = lod(p[j]);
-          const auto np = p[j] & vec3i(~plod);
-          const auto idx = qef_index(np);
-
-          if (m_qef_index[idx] == NOINDEX) {
-            mcell cell;
-            loopk(8) cell[k] = field(np + (icubev[k]<<int(plod)));
-            const int edgemap = delayed_qef_vertex(cell, np, plod);
-            if (edgemap == 0) continue;
-
-            // point is still valid. we are good to go
-            m_qef_index[idx] = m_border_remap.length();
-            m_border_remap.add(OUTSIDE);
-            m_delayed_qef.add(makepair(np,vec2i(plod,edgemap)));
-            STATS_INC(iso_qef_num);
-          }
-          quad[vertnum++] = m_qef_index[idx];
-        }
-        const u32 msk = any(eq(xyz,vec3i(zero)))||any(gt(xyz,vec3i(SUBGRID)))?OUTSIDE:0u;
-        const auto orientation = start_sign==1 ? quadtotris : quadtotris_cc;
-        if (vertnum == 4)
-          loopj(6) m_idx_buffer.add(quad[orientation[j]]|msk);
-        else if (vertnum == 3)
-          loopj(3) m_idx_buffer.add(quad[orientation[j]]|msk);
-        else if (vertnum == 2 && !isoutside(msk))
-          m_cracks.add(makepair(quad[0], quad[1]));
-      }
-    }
-  }
 #endif
 
   void removeborders(u32 first_idx, u32 first_vertex) {
@@ -983,12 +983,10 @@ struct dc_gridbuilder {
     initedge();
     initqef();
     initlod();
-#if DELAYED_TESSELATION
-    delayed_tesselate();
-    finish_edges();
-    finish_vertices();
-#else
     tesselate();
+#if DELAYED_TESSELATION
+    finishedges();
+    finishvertices();
 #endif
 
     // stop here if we do not create anything

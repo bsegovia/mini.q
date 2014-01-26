@@ -1,5 +1,5 @@
-#CXX=clang++
-#CXXOPTFLAGS=-Wall -O2 -DMEMORY_DEBUGGER -g
+CXX=clang++
+CXXOPTFLAGS=-Wall -O2 -DMEMORY_DEBUGGER -g
 CXXRELFLAGS=-Wall -O2 -g -DNDEBUG
 CXXDEBUGFLAGS=-Wall -O0 -DMEMORY_DEBUGGER -g
 #CXX=~/src/emscripten/em++
@@ -8,10 +8,10 @@ CXXDEBUGFLAGS=-Wall -O0 -DMEMORY_DEBUGGER -g
 
 
 #CXXFLAGS=$(CXXDEBUGFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags`
-#CXXFLAGS=$(CXXOPTFLAGS) -pg -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags` #-fsanitize=address
-CXXFLAGS=$(CXXRELFLAGS) -pg -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags` #-fsanitize=address
+CXXFLAGS=$(CXXOPTFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags` -fsanitize=address
+#CXXFLAGS=$(CXXRELFLAGS) -pg -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags` #-fsanitize=address
 #CXXFLAGS=$(CXXOPTFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags`
-LIBS=`sdl-config --libs` -pg -g -lGL -lSDL_image -lSDL_mixer
+LIBS=`sdl-config --libs` -g -lGL -lSDL_image -lSDL_mixer
 OBJS=\
   con.o\
   csg.o\
