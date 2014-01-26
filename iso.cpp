@@ -122,7 +122,11 @@ static const u32 edgeneighbornum = 12;
 static const u32 lodneighbornum = 18;
 
 static const float SHARP_EDGE = 0.2f;
-#define SUBGRID 16
+static const u32 SUBGRID = 16;
+static const u32 FIELDDIM = SUBGRID+7;
+static const u32 QEFDIM = SUBGRID+6;
+static const u32 FIELDNUM = FIELDDIM*FIELDDIM*FIELDDIM;
+static const u32 QEFNUM = QEFDIM*QEFDIM*QEFDIM;
 static const u32 MAX_NEW_VERT = 8;
 static const u32 NOINDEX = ~0x0u;
 static const u32 NOTRIANGLE = ~0x0u-1;
@@ -476,12 +480,12 @@ INLINE pair<vec3i,int> getedge(const vec3i &start, const vec3i &end, int scale) 
 }
 
 struct dc_gridbuilder {
-  dc_gridbuilder(const csg::node &node, const vec3i &dim) :
+  dc_gridbuilder(const csg::node &node) :
     m_node(node),
-    m_field((dim.x+7)*(dim.y+7)*(dim.z+7)),
-    m_lod((dim.x+7)*(dim.y+7)*(dim.z+7)),
-    m_qef_index((dim.x+6)*(dim.y+6)*(dim.z+6)),
-    m_edge_index(6*(dim.x+7)*(dim.y+7)*(dim.z+7)),
+    m_field(FIELDNUM),
+    m_lod(FIELDNUM),
+    m_qef_index(QEFNUM),
+    m_edge_index(6*FIELDNUM),
     m_octree(NULL),
     m_iorg(zero),
     m_level(0)
@@ -526,18 +530,18 @@ struct dc_gridbuilder {
   INLINE void setoctree(const octree &o) { m_octree = &o; }
   INLINE void setorg(const vec3f &org) { m_org = org; }
   INLINE void setsize(float size) { m_cellsize = size; }
-  INLINE u32 index(const vec3i &xyz) const {
+  INLINE u32 qef_index(const vec3i &xyz) const {
     const vec3i p = xyz + vec3i(2);
-    return p.x + (p.y + p.z * (SUBGRID+6)) * (SUBGRID+6);
+    return p.x + (p.y + p.z * QEFDIM) * QEFDIM;
   }
   INLINE u32 field_index(const vec3i &xyz) {
     const vec3i p = xyz + vec3i(2);
-    return p.x + (p.y + p.z * (SUBGRID+7)) * (SUBGRID+7);
+    return p.x + (p.y + p.z * FIELDDIM) * FIELDDIM;
   }
   INLINE u32 edge_index(const vec3i &start, int edge) {
     const auto p = start + 2;
-    const auto offset = p.x + (p.y + p.z * (SUBGRID+7)) * (SUBGRID+7);
-    return offset + edge*(SUBGRID+7)*(SUBGRID+7)*(SUBGRID+7);
+    const auto offset = p.x + (p.y + p.z * FIELDDIM) * FIELDDIM;
+    return offset + edge * FIELDNUM;
   }
 
   INLINE float &field(const vec3i &xyz) { return m_field[field_index(xyz)]; }
@@ -549,7 +553,7 @@ struct dc_gridbuilder {
   }
 
   void initfield() {
-    const vec3i org(-2), dim(SUBGRID+5);
+    const vec3i org(-2), dim(FIELDDIM-2);
     loopxyz(org, dim) {
       const auto p = vertex(xyz);
       const aabb box(p-2.f*m_cellsize, p+2.f*m_cellsize);
@@ -560,18 +564,18 @@ struct dc_gridbuilder {
   }
 
   void initedge() {
-    const vec3i org(-2), dim(SUBGRID+5);
+    const vec3i org(-2), dim(FIELDDIM-2);
     loopj(6) loopxyz(org, dim) m_edge_index[edge_index(xyz,j)] = NOINDEX;
     m_edges.setsize(0);
   }
 
   void initqef() {
-    const vec3i org(-2), dim(SUBGRID+4);
-    loopxyz(org, dim) m_qef_index[index(xyz)] = NOINDEX;
+    const vec3i org(-2), dim(QEFDIM-2);
+    loopxyz(org, dim) m_qef_index[qef_index(xyz)] = NOINDEX;
   }
 
   void initlod() {
-    const vec3i org(-2), dim(SUBGRID+5);
+    const vec3i org(-2), dim(FIELDDIM-2);
     loopxyz(org, dim) {
       auto &curr = lod(xyz);
       curr = 0;
@@ -620,7 +624,7 @@ struct dc_gridbuilder {
         loopj(4) {
           u32 plod = lod(p[j]);
           const auto np = p[j] & vec3i(~plod);
-          const auto idx = index(np);
+          const auto idx = qef_index(np);
 
           if (m_qef_index[idx] == NOINDEX) {
             mcell cell;
@@ -803,7 +807,7 @@ struct dc_gridbuilder {
 
 struct recursive_builder {
   recursive_builder(const csg::node &node, const vec3f &org, float cellsize, u32 dim) :
-    s(node, vec3i(SUBGRID)), m_node(node), m_org(org),
+    s(node), m_node(node), m_org(org),
     m_cellsize(cellsize),
     m_half_side_len(float(dim) * m_cellsize * 0.5f),
     m_half_diag_len(sqrt(3.f) * m_half_side_len),
