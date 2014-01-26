@@ -164,6 +164,11 @@ OP(cos) OP(sin) OP(tan) OP(acos) OP(asin) OP(atan) OP(sinh) OP(cosh) OP(tanh)
 OP(abs) OP(rcp) OP(sqrt) OP(rsqrt) OP(floor) OP(ceil) OP(log2) OP(log10)
 #undef OP
 
+#define OP(NAME,S) TINLINE vec2<bool> NAME(v2arg a, v2arg b)\
+  {return vec2<bool>(a.x S b.x,a.y S b.y);}
+OP(eq,==) OP(ne,!=) OP(lt,<) OP(gt,>) OP(ge,>=) OP(le,<=)
+#undef OP
+
 TINLINE v2 op+ (v2arg a)  {return v2(+a.x, +a.y);}
 TINLINE v2 op- (v2arg a)  {return v2(-a.x, -a.y);}
 TINLINE v2 min(v2arg a, v2arg b)  {return v2(min(a.x,b.x), min(a.y,b.y));}
@@ -177,12 +182,6 @@ TINLINE T reduceadd(v2arg a) {return a.x+a.y;}
 TINLINE T reducemul(v2arg a) {return a.x*a.y;}
 TINLINE T reducemin(v2arg a) {return min(a.x, a.y);}
 TINLINE T reducemax(v2arg a) {return max(a.x, a.y);}
-TINLINE vec2<bool> eq(v2arg a, v2arg b) {return vec2<bool>(a.x==b.x,a.y==b.y);}
-TINLINE vec2<bool> ne(v2arg a, v2arg b) {return vec2<bool>(a.x!=b.x,a.y!=b.y);}
-TINLINE vec2<bool> lt(v2arg a, v2arg b) {return vec2<bool>(a.x<b.x,a.y<b.y);}
-TINLINE vec2<bool> gt(v2arg a, v2arg b) {return vec2<bool>(a.x>b.x,a.y>b.y);}
-TINLINE vec2<bool> le(v2arg a, v2arg b) {return vec2<bool>(a.x<=b.x,a.y<=b.y);}
-TINLINE vec2<bool> ge(v2arg a, v2arg b) {return vec2<bool>(a.x>=b.x,a.y>=b.y);}
 TINLINE v2 select (bool s, v2arg t, v2arg f) { return v2(select(s,t.x,f.x), select(s,t.y,f.y)); }
 TINLINE v2 select (vec2<bool> s, v2arg t, v2arg f) { return v2(select(s.x,t.x,f.x), select(s.y,t.y,f.y)); }
 INLINE bool any(const vec2<bool> &v) {return v.x||v.y;}
@@ -235,14 +234,13 @@ OP(cos) OP(sin) OP(tan) OP(acos) OP(asin) OP(atan) OP(sinh) OP(cosh) OP(tanh)
 OP(abs) OP(rcp) OP(sqrt) OP(rsqrt) OP(floor) OP(ceil) OP(log2) OP(log10)
 #undef OP
 
+#define OP(NAME,S) TINLINE vec3<bool> NAME(v3arg a, v3arg b)\
+  {return vec3<bool>(a.x S b.x,a.y S b.y,a.z S b.z);}
+OP(eq,==) OP(ne,!=) OP(lt,<) OP(gt,>) OP(ge,>=) OP(le,<=)
+#undef OP
+
 TINLINE v3 op+ (v3arg a) {return v3(+a.x, +a.y, +a.z);}
 TINLINE v3 op- (v3arg a) {return v3(-a.x, -a.y, -a.z);}
-TINLINE vec3<bool> eq(v3arg a, v3arg b) {return vec3<bool>(a.x==b.x,a.y==b.y,a.z==b.z);}
-TINLINE vec3<bool> ne(v3arg a, v3arg b) {return vec3<bool>(a.x!=b.x,a.y!=b.y,a.z!=b.z);}
-TINLINE vec3<bool> lt(v3arg a, v3arg b) {return vec3<bool>(a.x<b.x,a.y<b.y,a.z<b.z);}
-TINLINE vec3<bool> gt(v3arg a, v3arg b) {return vec3<bool>(a.x>b.x,a.y>b.y,a.z>b.z);}
-TINLINE vec3<bool> le(v3arg a, v3arg b) {return vec3<bool>(a.x<=b.x,a.y<=b.y,a.z<=b.z);}
-TINLINE vec3<bool> ge(v3arg a, v3arg b) {return vec3<bool>(a.x>=b.x,a.y>=b.y,a.z>=b.z);}
 TINLINE T reduceadd(v3arg a) {return a.x+a.y+a.z;}
 TINLINE T reducemul(v3arg a) {return a.x*a.y*a.z;}
 TINLINE T reducemin(v3arg a) {return min(a.x,a.y,a.z);}
@@ -308,14 +306,13 @@ OP(cos) OP(sin) OP(tan) OP(acos) OP(asin) OP(atan) OP(sinh) OP(cosh) OP(tanh)
 OP(abs) OP(rcp) OP(sqrt) OP(rsqrt) OP(floor) OP(ceil) OP(log2) OP(log10)
 #undef OP
 
+#define OP(NAME,S) TINLINE vec4<bool> NAME(v4arg a, v4arg b)\
+  {return vec4<bool>(a.x S b.x,a.y S b.y,a.z S b.z,a.w S b.w);}
+OP(eq,==) OP(ne,!=) OP(lt,<) OP(gt,>) OP(ge,>=) OP(le,<=)
+#undef OP
+
 TINLINE v4 op+ (v4arg a) {return v4(+a.x, +a.y, +a.z, +a.w);}
 TINLINE v4 op- (v4arg a) {return v4(-a.x, -a.y, -a.z, -a.w);}
-TINLINE vec4<bool> eq(v4arg a, v4arg b) {return vec4<bool>(a.x==b.x,a.y==b.y,a.z==b.z,a.w==b.w);}
-TINLINE vec4<bool> ne(v4arg a, v4arg b) {return vec4<bool>(a.x!=b.x,a.y!=b.y,a.z!=b.z,a.w!=b.w);}
-TINLINE vec4<bool> lt(v4arg a, v4arg b) {return vec4<bool>(a.x<b.x,a.y<b.y,a.z<b.z,a.w<b.w);}
-TINLINE vec4<bool> gt(v4arg a, v4arg b) {return vec4<bool>(a.x>b.x,a.y>b.y,a.z>b.z,a.w>b.w);}
-TINLINE vec4<bool> le(v4arg a, v4arg b) {return vec4<bool>(a.x<=b.x,a.y<=b.y,a.z<=b.z,a.w<=b.w);}
-TINLINE vec4<bool> ge(v4arg a, v4arg b) {return vec4<bool>(a.x>=b.x,a.y>=b.y,a.z>=b.z,a.w>=b.w);}
 TINLINE T reduceadd(v4arg a) {return a.x + a.y + a.z + a.w;}
 TINLINE T reducemul(v4arg a) {return a.x * a.y * a.z * a.w;}
 TINLINE T reducemin(v4arg a) {return min(a.x, a.y, a.z, a.w);}
