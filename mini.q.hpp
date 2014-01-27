@@ -5,6 +5,7 @@
 #pragma once
 #include "con.hpp"
 #include "game.hpp"
+#include "iso.hpp"
 #include "math.hpp"
 #include "md2.hpp"
 #include "ogl.hpp"

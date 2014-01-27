@@ -183,6 +183,7 @@ void quit(const char *msg) {
     printf("%s\n", msg);
 #endif // __WIN32__
   } else {
+    iso::finish();
     rr::finish();
     md2::finish();
     ogl::finish();

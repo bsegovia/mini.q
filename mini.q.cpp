@@ -15,7 +15,8 @@ void start(int argc, const char *argv[]) {
   con::out("init: memory debugger");
   sys::memstart();
   con::out("init: tasking system");
-  const u32 threadnum = sys::threadnumber();
+  const u32 threadnum = sys::threadnumber() - 1;
+  con::out("init: tasking system: %d threads created", threadnum);
   task::start(&threadnum, 1);
   int fs = 0;
   rangei(1, argc) if (argv[i][0]=='-') switch (argv[i][1]) {
@@ -48,6 +49,8 @@ void start(int argc, const char *argv[]) {
   md2::start();
   con::out("init: renderer");
   rr::start();
+  con::out("init: isosurface module");
+  iso::start();
   script::execfile("data/keymap.q");
 }
 

@@ -6,6 +6,7 @@
 #include "csg.hpp"
 #include "stl.hpp"
 #include "qef.hpp"
+#include "task.hpp"
 
 STATS(iso_num);
 STATS(iso_falsepos_num);
@@ -15,6 +16,19 @@ STATS(iso_grid_num);
 STATS(iso_octree_num);
 STATS(iso_qef_num);
 STATS(iso_falsepos);
+
+#if !defined(NDEBUG)
+static void stats() {
+  STATS_OUT(iso_num);
+  STATS_OUT(iso_qef_num);
+  STATS_OUT(iso_edge_num);
+  STATS_RATIO(iso_falsepos_num, iso_edge_num);
+  STATS_RATIO(iso_falsepos_num, iso_num);
+  STATS_RATIO(iso_gradient_num, iso_num);
+  STATS_RATIO(iso_grid_num, iso_num);
+  STATS_RATIO(iso_octree_num, iso_num);
+}
+#endif
 
 #define FAST_FIELD 1
 #define FAST_EDGE 1
@@ -157,6 +171,9 @@ struct edgestack {
   array<float,64> d;
 };
 
+/*-------------------------------------------------------------------------
+ - edge creaser, crack fixing and mesh decimation happen here
+ -------------------------------------------------------------------------*/
 struct mesh_processor {
   struct meshedge {
     u32 vertex[2];
@@ -450,6 +467,9 @@ struct mesh_processor {
   int m_vertnum, m_trinum;
 };
 
+/*-------------------------------------------------------------------------
+ - spatial segmentation used for iso surface extraction
+ -------------------------------------------------------------------------*/
 struct octree {
   struct node {
     INLINE node() :
@@ -497,9 +517,12 @@ INLINE pair<vec3i,int> getedge(const vec3i &start, const vec3i &end, int lod) {
   return makepair(lower, (lod?3:0)+delta.y+2*delta.z);
 }
 
+/*-------------------------------------------------------------------------
+ - iso surface extraction is done here
+ -------------------------------------------------------------------------*/
 struct dc_gridbuilder {
-  dc_gridbuilder(const csg::node &node) :
-    m_node(node),
+  dc_gridbuilder() :
+    m_node(NULL),
     m_field(FIELDNUM),
     m_lod(FIELDNUM),
     m_qef_index(QEFNUM),
@@ -556,6 +579,7 @@ struct dc_gridbuilder {
   INLINE void setoctree(const octree &o) { m_octree = &o; }
   INLINE void setorg(const vec3f &org) { m_org = org; }
   INLINE void setsize(float size) { m_cellsize = size; }
+  INLINE void setnode(const csg::node *node) { m_node = node; }
   INLINE u32 qef_index(const vec3i &xyz) const {
     const vec3i p = xyz + vec3i(2);
     return p.x + (p.y + p.z * QEFDIM) * QEFDIM;
@@ -588,7 +612,7 @@ struct dc_gridbuilder {
       int index = 0;
       loopxyz(sxyz, sxyz+4) pos[index++] = vertex(xyz);
       assert(index == 64);
-      csg::dist(m_node, pos, distance, 64, box);
+      csg::dist(*m_node, pos, distance, 64, box);
       index = 0;
       loopxyz(sxyz, sxyz+4) field(xyz) = distance[index++];
       STATS_ADD(iso_num, 64);
@@ -598,7 +622,7 @@ struct dc_gridbuilder {
     loopxyz(org, dim) {
       const auto p = vertex(xyz);
       const aabb box(p-2.f*m_cellsize, p+2.f*m_cellsize);
-      field(xyz) = csg::dist(m_node, p, box);
+      field(xyz) = csg::dist(*m_node, p, box);
       STATS_INC(iso_num);
       STATS_INC(iso_grid_num);
     }
@@ -698,7 +722,7 @@ struct dc_gridbuilder {
       }
       box.pmin -= 3.f * m_cellsize;
       box.pmax += 3.f * m_cellsize;
-      csg::dist(m_node, &pos[0], &d[0], num, box);
+      csg::dist(*m_node, &pos[0], &d[0], num, box);
       if (k != MAX_STEPS-1) {
         loopi(num) {
           if (d[i] < 0.f) {
@@ -743,7 +767,7 @@ struct dc_gridbuilder {
           swap(it[j].v0,it[j].v1);
         }
       }
-      falsepos(m_node, *m_stack, num);
+      falsepos(*m_node, *m_stack, num);
 
       // step 2 - compute normals for each point using packets of 16x4 points
       const auto dx = vec3f(DEFAULT_GRAD_STEP, 0.f, 0.f);
@@ -765,7 +789,7 @@ struct dc_gridbuilder {
         box.pmin -= 3.f * m_cellsize;
         box.pmax += 3.f * m_cellsize;
 
-        csg::dist(m_node, p, d, 4*subnum, box);
+        csg::dist(*m_node, p, d, 4*subnum, box);
         STATS_ADD(iso_num, 4*subnum);
         STATS_ADD(iso_gradient_num, 4*subnum);
 
@@ -792,8 +816,8 @@ struct dc_gridbuilder {
       const auto p0 = fcubev[idx0], p1 = fcubev[idx1];
       const auto v0 = field(xyz + (icubev[idx0]<<plod));
       const auto v1 = field(xyz + (icubev[idx1]<<plod));
-      const auto pos = falsepos(m_node, org, p0, p1, v0, v1, fscale);
-      const auto nor = gradient(m_node, org+pos*fscale*m_cellsize);
+      const auto pos = falsepos(*m_node, org, p0, p1, v0, v1, fscale);
+      const auto nor = gradient(*m_node, org+pos*fscale*m_cellsize);
       const auto e = getedge(icubev[idx0], icubev[idx1], plod);
       m_edges.add(makepair(pos-vec3f(e.first),nor));
     }
@@ -920,8 +944,8 @@ struct dc_gridbuilder {
       const auto e = getedge(icubev[idx0], icubev[idx1], plod);
       auto &idx = m_edge_index[edge_index(xyz+e.first, e.second)];
       if (idx == NOINDEX) {
-        const auto pos = falsepos(m_node, org, p0, p1, v0, v1, fscale);
-        const auto nor = gradient(m_node, org+pos*fscale*m_cellsize);
+        const auto pos = falsepos(*m_node, org, p0, p1, v0, v1, fscale);
+        const auto nor = gradient(*m_node, org+pos*fscale*m_cellsize);
         idx = m_edges.length();
         m_edges.add(makepair(pos-vec3f(e.first),nor));
       }
@@ -1104,7 +1128,7 @@ struct dc_gridbuilder {
     node.m_isleaf = 1;
   }
 
-  const csg::node &m_node;
+  const csg::node *m_node;
   mesh_processor m_mp;
   vector<float> m_field;
   vector<u8> m_lod;
@@ -1127,9 +1151,12 @@ struct dc_gridbuilder {
   u32 m_maxlevel, m_level;
 };
 
+/*-------------------------------------------------------------------------
+ - simple single threaded implementation for iso-surface extraction
+ -------------------------------------------------------------------------*/
 struct recursive_builder {
   recursive_builder(const csg::node &node, const vec3f &org, float cellsize, u32 dim) :
-    s(node), m_node(node), m_org(org),
+    m_node(node), m_org(org),
     m_cellsize(cellsize),
     m_half_side_len(float(dim) * m_cellsize * 0.5f),
     m_half_diag_len(sqrt(3.f) * m_half_side_len),
@@ -1184,6 +1211,7 @@ struct recursive_builder {
       s.m_level = level;
       s.m_maxlevel = m_maxlevel;
       s.setsize(sz);
+      s.setnode(&m_node);
       s.setorg(pos(xyz));
       s.build(node);
     } else {
@@ -1212,15 +1240,159 @@ mesh dc_mesh(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d) 
   const auto n = r.s.m_nor_buffer.move();
   const auto idx = r.s.m_idx_buffer.move();
   const auto m = mesh(p.first, n.first, idx.first, p.second, idx.second);
-  STATS_OUT(iso_num);
-  STATS_OUT(iso_qef_num);
-  STATS_OUT(iso_edge_num);
-  STATS_RATIO(iso_falsepos_num, iso_edge_num);
-  STATS_RATIO(iso_falsepos_num, iso_num);
-  STATS_RATIO(iso_gradient_num, iso_num);
-  STATS_RATIO(iso_grid_num, iso_num);
-  STATS_RATIO(iso_octree_num, iso_num);
+#if !defined(NDEBUG)
+  stats();
+#endif
   return m;
+}
+
+/*-------------------------------------------------------------------------
+ - multi-threaded implementation of the iso surface extraction
+ -------------------------------------------------------------------------*/
+static THREAD dc_gridbuilder *localbuilder = NULL;
+struct jobdata {
+  const csg::node *m_csg_node;
+  octree::node *m_octree_node;
+  octree *m_octree;
+  vec3i m_iorg;
+  vec3f m_org;
+  int m_level;
+  int m_maxlevel;
+  float m_size;
+};
+
+struct context {
+  INLINE context() : m_mutex(SDL_CreateMutex()) {}
+  SDL_mutex *m_mutex;
+  vector<jobdata> m_work;
+  vector<dc_gridbuilder*> m_builders; // one per thread
+};
+static context *ctx = NULL;
+
+struct mt_builder {
+  mt_builder(const csg::node &node, const vec3f &org, float cellsize, u32 dim) :
+    m_node(&node), m_org(org),
+    m_cellsize(cellsize),
+    m_half_side_len(float(dim) * m_cellsize * 0.5f),
+    m_half_diag_len(sqrt(3.f) * m_half_side_len),
+    m_dim(dim)
+  {
+    assert(ispoweroftwo(dim) && dim % SUBGRID == 0);
+    m_maxlevel = ilog2(dim / SUBGRID);
+  }
+  INLINE vec3f pos(const vec3i &xyz) { return m_org+m_cellsize*vec3f(xyz); }
+  INLINE void setoctree(octree &o) {m_octree=&o;}
+
+  void build(octree::node &node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
+    const auto scale = 1.f / float(1<<level);
+    const auto cellnum = m_dim >> level;
+    const auto dist = csg::dist(*m_node, pos(xyz) + scale*vec3f(m_half_side_len));
+    STATS_INC(iso_octree_num);
+    STATS_INC(iso_num);
+    node.m_level = level;
+    if (abs(dist) > m_half_diag_len * scale) {
+      node.m_isleaf = node.m_empty = 1;
+      return;
+    }
+    // if (cellnum == SUBGRID || (level == 4 && xyz.x >= 32) || (level == 4 && xyz.y >= 16)) {
+    if (cellnum == SUBGRID) {
+      jobdata job;
+      job.m_octree = m_octree;
+      job.m_octree_node = &node;
+      job.m_csg_node = m_node;
+      job.m_iorg = xyz;
+      job.m_level = level;
+      job.m_maxlevel = m_maxlevel;
+      job.m_size = float(1<<(m_maxlevel-level)) * m_cellsize;
+      job.m_org = pos(xyz);
+      ctx->m_work.add(job);
+      node.m_isleaf = 1;
+      return;
+    } else {
+      node.m_children = NEWAE(octree::node, 8);
+      loopi(8) {
+        const auto childxyz = xyz+int(cellnum/2)*icubev[i];
+        build(node.m_children[i], childxyz, level+1);
+      }
+      return;
+    }
+  }
+
+  octree *m_octree;
+  const csg::node *m_node;
+  vec3f m_org;
+  float m_cellsize, m_half_side_len, m_half_diag_len;
+  u32 m_dim, m_maxlevel;
+};
+
+struct isotask : public task {
+  INLINE isotask(u32 n) : task("isotask", n, 1) {}
+  virtual void run(u32 idx) {
+    if (localbuilder == NULL) {
+      localbuilder = NEWE(dc_gridbuilder);
+      SDL_LockMutex(ctx->m_mutex);
+      ctx->m_builders.add(localbuilder);
+      SDL_UnlockMutex(ctx->m_mutex);
+    }
+    const auto &job = ctx->m_work[idx];
+    localbuilder->m_octree = job.m_octree;
+    localbuilder->m_iorg = job.m_iorg;
+    localbuilder->m_level = job.m_level;
+    localbuilder->m_maxlevel = job.m_maxlevel;
+    localbuilder->setsize(job.m_size);
+    localbuilder->setnode(job.m_csg_node);
+    localbuilder->setorg(job.m_org);
+    localbuilder->build(*job.m_octree_node);
+  }
+};
+
+mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d) {
+  octree o(cellnum);
+  ctx->m_work.setsize(0);
+  loopv(ctx->m_builders) {
+    ctx->m_builders[i]->m_pos_buffer.setsize(0);
+    ctx->m_builders[i]->m_nor_buffer.setsize(0);
+    ctx->m_builders[i]->m_idx_buffer.setsize(0);
+  }
+  mt_builder r(d, org, cellsize, cellnum);
+  r.setoctree(o);
+  r.build(o.m_root);
+
+  // build the grids in parallel
+  ref<task> job = NEW(isotask, ctx->m_work.length());
+  job->scheduled();
+  job->wait();
+
+  // copy back all local buffers together
+  vector<vec3f> posbuf, norbuf;
+  vector<u32> idxbuf;
+  loopv(ctx->m_builders) {
+    const auto &b = *ctx->m_builders[i];
+    const auto old = posbuf.length();
+    const auto buflen = b.m_pos_buffer.length();
+    const auto idxlen = b.m_idx_buffer.length();
+    loopj(idxlen) idxbuf.add(old+b.m_idx_buffer[j]);
+    loopj(buflen) {
+      posbuf.add(b.m_pos_buffer[j]);
+      norbuf.add(b.m_nor_buffer[j]);
+    }
+  }
+
+  const auto p = posbuf.move();
+  const auto n = norbuf.move();
+  const auto idx = idxbuf.move();
+  const auto m = mesh(p.first, n.first, idx.first, p.second, idx.second);
+#if !defined(NDEBUG)
+  stats();
+#endif
+  return m;
+}
+
+void start() { ctx = NEWE(context); }
+void finish() {
+  if (ctx == NULL) return;
+  loopv(ctx->m_builders) SAFE_DEL(ctx->m_builders[i]);
+  DEL(ctx);
 }
 } /* namespace iso */
 } /* namespace q */

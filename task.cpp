@@ -97,7 +97,7 @@ void internal::wait(bool recursivewait) {
     if (elt <= 0) break;
   }
 
-  // execute all ending dependencies
+  // execute all ending dependencies. n.a.u.g.h.t.y -> busy waiting here
   while (toend)
     loopi(depnum)
       if (tasking::inner(deps[i]).toend)
@@ -211,7 +211,7 @@ queue::~queue(void) {
 
 
 void task::start(const u32 *queueinfo, u32 n) {
-  vector<tasking::queue*>(n).moveto(tasking::queues);
+  tasking::queues.setsize(n);
   loopi(s32(n)) tasking::queues[i] = NEW(tasking::queue, queueinfo[i]);
 }
 
