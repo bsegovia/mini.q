@@ -42,8 +42,11 @@ static void drawhud(int w, int h, int curfps) {
   con::render();
   if (showstats) {
     vec2f textpos(scr.x-400.f, scr.y-50.f);
-    const vec3f player = game::player.o;
-    text::drawf("x: %f y: %f z: %f", textpos, player.x, player.y, player.z);
+    const auto o = game::player.o;
+    const auto ypr = game::player.ypr;
+    text::drawf("x: %f y: %f z: %f", textpos, o.x, o.y, o.z);
+    textpos.y += fontdim.y;
+    text::drawf("x: %f y: %f z: %f", textpos, ypr.x, ypr.y, ypr.z);
     textpos.y += fontdim.y;
     text::drawf("%i f/s", textpos, curfps);
   }

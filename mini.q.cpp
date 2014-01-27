@@ -56,6 +56,33 @@ void start(int argc, const char *argv[]) {
   script::execfile("data/autoexec.q");
 }
 
+static void playerpos(const float &x, const float &y, const float &z) {
+  game::player.o = vec3f(x,y,z);
+}
+static void playerypr(const float &x, const float &y, const float &z) {
+  game::player.ypr = vec3f(x,y,z);
+}
+CMD(playerpos, "fff");
+CMD(playerypr, "fff");
+IVAR(savepos, 0, 0, 1);
+
+void finish() {
+  if (savepos) {
+    auto f = fopen("pos.q", "wb");
+    const auto &pos = game::player.o;
+    const auto &ypr = game::player.ypr;
+    fprintf(f, "playerpos %f %f %f\n", pos.x, pos.y, pos.z);
+    fprintf(f, "playerypr %f %f %f\n", ypr.x, ypr.y, ypr.z);
+    fclose(f);
+  }
+  iso::finish();
+  rr::finish();
+  md2::finish();
+  ogl::finish();
+  task::finish();
+  con::finish();
+}
+
 #if 0
 static u32 leftbutton = 0, middlebutton = 0, rightbutton = 0;
 
@@ -176,6 +203,7 @@ INLINE void mainloop() {
   SDL_Event e;
   int lasttype = 0, lastbut = 0;
   while (SDL_PollEvent(&e)) {
+    if (frame == 1) continue;
     switch (e.type) {
       case SDL_QUIT: sys::quit(); break;
       case SDL_KEYDOWN:

@@ -18,3 +18,8 @@
 #include "task.hpp"
 #include "text.hpp"
 
+namespace q {
+void start();
+void finish();
+}
+

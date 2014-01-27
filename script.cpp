@@ -120,7 +120,7 @@ static void execute(ctx &c, const char *pp, int isdown) {
         const auto arity = int(strlen(proto));
         loopi(min(arity, numargs-1)) {
           if (proto[i]=='d') memcpy(w[i+1],&isdown,sizeof(isdown));
-#define ARG(T,C,S) if(proto[i]==C){T x=ato##S(w[i]);memcpy(w[i],&x,sizeof(T));}
+#define ARG(T,C,S) if(proto[i]==C){T x=ato##S(w[i+1]);memcpy(w[i+1],&x,sizeof(T));}
           ARG(int, 'i', i)
           ARG(float, 'f', f)
 #undef ARG
@@ -177,6 +177,7 @@ bool execfile(const char *cfgfile) {
 void execcfg(const char *cfgfile) {
   if (!execfile(cfgfile)) con::out("could not read \"%s\"", cfgfile);
 }
+CMDN(execq, execcfg, "s");
 
 void writecfg(void) {
   auto f = fopen("config.q", "w");

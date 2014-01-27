@@ -182,14 +182,8 @@ void quit(const char *msg) {
 #else
     printf("%s\n", msg);
 #endif // __WIN32__
-  } else {
-    iso::finish();
-    rr::finish();
-    md2::finish();
-    ogl::finish();
-    task::finish();
-    con::finish();
-  }
+  } else
+    q::finish();
   SDL_Quit();
   exit(msg && strlen(msg) ? EXIT_FAILURE : EXIT_SUCCESS);
 }
