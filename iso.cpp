@@ -17,7 +17,6 @@ STATS(iso_qef_num);
 STATS(iso_falsepos);
 
 #define FAST_FIELD 1
-#define FAST_LOD 1
 #define FAST_EDGE 1
 #define DELAYED_TESSELATION 1
 
@@ -30,6 +29,8 @@ mesh::~mesh() {
 }
 
 static const auto DEFAULT_GRAD_STEP = 1e-3f;
+
+#if !FAST_EDGE
 vec3f gradient(const csg::node &node, const vec3f &pos, float grad_step = DEFAULT_GRAD_STEP) {
   const auto dx = vec3f(grad_step, 0.f, 0.f);
   const auto dy = vec3f(0.f, grad_step, 0.f);
@@ -47,6 +48,7 @@ vec3f gradient(const csg::node &node, const vec3f &pos, float grad_step = DEFAUL
   else
     return normalize(n);
 }
+#endif
 
 static const auto TOLERANCE_DENSITY = 1e-3f;
 static const auto TOLERANCE_DIST2 = 1e-8f;
@@ -620,41 +622,17 @@ struct dc_gridbuilder {
 #endif
   }
 
-#if FAST_LOD
   INLINE u8 &lod(const vec3i &xyz) { return m_lod[field_index(xyz)]; }
   NOINLINE void initlod() {
-#if 0
-    vector<u8> tmplod(FIELDNUM);
-    const vec3i org(-2), dim(FIELDDIM-2);
-    tmplod.memset(0);
-    m_lod.memset(0);
-
-    loopxyz(org, dim) {
-      const auto neg = lt(xyz,vec3i(zero));
-      const auto pos = ge(xyz,vec3i(SUBGRID));
-      if (any(neg) || any(pos)) {
-        const auto leaf = m_octree->findleaf(m_iorg+xyz);
-        if (leaf.first != NULL && leaf.second < m_level)
-          tmplod[field_index(xyz)] = 1;
-      }
-    }
-    loopxyz(vec3i(zero), vec3i(FIELDDIM-4)) {
-      auto &curr = lod(xyz);
-      loopi(int(lodneighbornum)) {
-        const auto p = xyz + 2*neighbors[i];
-        curr = max(tmplod[field_index(p)], curr);
-      }
-    }
-#else
     m_lod.memset(0);
     const int plod = m_maxlevel - m_level;
+
 #define LOD(NEIGHBOR, ORG, END) do {\
   const vec3i neighbor(m_iorg + NEIGHBOR);\
   const auto leaf = m_octree->findleaf(neighbor);\
   if (leaf.first != NULL && leaf.second < m_level)\
     loopxyz(ORG, END) lod(xyz) = 1;\
 } while (0)
-
     const int p = SUBGRID << plod;
     const int m = -(1<<plod);
     const int ps = SUBGRID-2, ms = -2;
@@ -682,39 +660,7 @@ struct dc_gridbuilder {
     LOD(vec3i(0,m,p), vec3i(ms,ms,ps), vec3i(pe,me,pe));
     LOD(vec3i(0,p,m), vec3i(ms,ps,ms), vec3i(pe,pe,me));
 #undef LOD
-#if 0
-    // we share a face with these ones
-  vec3i(+1,0,0), vec3i(-1,0,0), vec3i(0,+1,0),
-  vec3i(0,-1,0), vec3i(0,0,+1), vec3i(0,0,-1),
-
-  // we share one edge only with these ones
-  vec3i(+1,+1,0), vec3i(+1,-1,0), vec3i(-1,-1,0), vec3i(+1,-1,0),
-  vec3i(+1,0,+1), vec3i(+1,0,-1), vec3i(-1,0,-1), vec3i(+1,0,-1),
-  vec3i(0,+1,+1), vec3i(0,+1,-1), vec3i(0,-1,-1), vec3i(0,+1,-1),
-#endif
-
-#endif
   }
-#else
-  INLINE u32 &lod(const vec3i &xyz) { return m_lod[field_index(xyz)]; }
-  NOINLINE void initlod() {
-    const vec3i org(-2), dim(FIELDDIM-2);
-    loopxyz(org, dim) {
-      auto &curr = lod(xyz);
-      curr = 0;
-      loopi(int(lodneighbornum)) {
-        const auto p = m_iorg + xyz + 2*neighbors[i];
-
-        const auto leaf = m_octree->findleaf(p);
-        if (leaf.first == NULL) continue;
-        if (leaf.second < m_level) {
-          curr = 1;
-          break;
-        }
-      }
-    }
-  }
-#endif
 
 #if DELAYED_TESSELATION
   int delayed_qef_vertex(const mcell &cell, const vec3i &xyz, int plod) {
@@ -766,11 +712,14 @@ struct dc_gridbuilder {
       } else
         loopi(num) it[i].p0 = p[i];
     }
+    STATS_ADD(iso_falsepos_num, num*MAX_STEPS);
+    STATS_ADD(iso_num, num*MAX_STEPS);
   }
 
   void finishedges() {
 #if FAST_EDGE
     const auto len = m_delayed_edges.length();
+    STATS_ADD(iso_edge_num, len);
 
     for (int i = 0; i < len; i += 64) {
       auto &it = m_stack->it;
@@ -817,6 +766,9 @@ struct dc_gridbuilder {
         box.pmax += 3.f * m_cellsize;
 
         csg::dist(m_node, p, d, 4*subnum, box);
+        STATS_ADD(iso_num, 4*subnum);
+        STATS_ADD(iso_gradient_num, 4*subnum);
+
         loopk(subnum) {
           const auto c    = d[4*k+0];
           const auto dfdx = d[4*k+1];
