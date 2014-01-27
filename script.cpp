@@ -65,15 +65,15 @@ static char *parseword(ctx &c, const char *&p) {
 
 #define VAR(T,S) do {\
   const auto min = id->S##var.min, max = id->S##var.max;\
-  auto &s = *id->S##var.storage;\
-  if (!w[1][0]) con::out("%s = %" #S, c, s);\
+  T &s = *id->S##var.storage;\
+  if (!w[1][0]) con::out("%s = %" #S, ch, s);\
   else {\
     if (min>max) con::out("variable is read-only");\
     else {\
       T i1 = ato##S(w[1]);\
       if (i1<min || i1>max) {\
         i1 = i1<min ? min : max;\
-        con::out("range for %s is %"#S"..%"#S,c,min,max);\
+        con::out("range for %s is %"#S"..%"#S,ch,min,max);\
       }\
       s = i1;\
     }\

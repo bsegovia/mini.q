@@ -4,9 +4,10 @@
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
 
+#if 0
 #include "ui.hpp"
-
 #include <GL/gl.h>
+#endif
 
 namespace q {
 IVARF(grabmouse, 0, 0, 1, SDL_WM_GrabInput(grabmouse ? SDL_GRAB_ON : SDL_GRAB_OFF););
@@ -20,7 +21,7 @@ void start(int argc, const char *argv[]) {
   task::start(&threadnum, 1);
   int fs = 0;
   rangei(1, argc) if (argv[i][0]=='-') switch (argv[i][1]) {
-    case 't': fs     = 0; break;
+    case 't': fs = 0; break;
     case 'w': sys::scrw  = atoi(&argv[i][2]); break;
     case 'h': sys::scrh  = atoi(&argv[i][2]); break;
     default: con::out("unknown commandline option");
@@ -52,6 +53,7 @@ void start(int argc, const char *argv[]) {
   con::out("init: isosurface module");
   iso::start();
   script::execfile("data/keymap.q");
+  script::execfile("data/autoexec.q");
 }
 
 #if 0
