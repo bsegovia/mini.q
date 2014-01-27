@@ -1205,10 +1205,10 @@ struct recursive_builder {
       node.m_isleaf = node.m_empty = 1;
       return;
     }
-    //if (cellnum == SUBGRID || (level == 4 && xyz.x >= 32) || (level == 4 && xyz.y >= 16)) {
+    if (cellnum == SUBGRID || (level == 4 && xyz.x >= 32) || (level == 4 && xyz.y >= 16)) {
 ////     if (cellnum == SUBGRID || (level == 4 && xyz.y <= 16)) {
     // if (cellnum == SUBGRID || (level == 3 && xyz.y > 16))
-   if (cellnum == SUBGRID) {
+//   if (cellnum == SUBGRID) {
   //    printf("level %d\n", level);
 //      fflush(stdout);
       node.m_isleaf = 1;
@@ -1268,7 +1268,6 @@ mesh dc_mesh(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d) 
   STATS_RATIO(iso_gradient_num, iso_num);
   STATS_RATIO(iso_grid_num, iso_num);
   STATS_RATIO(iso_octree_num, iso_num);
-  exit(0);
   return m;
 }
 } /* namespace iso */
