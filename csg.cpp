@@ -14,7 +14,7 @@ namespace csg {
  -------------------------------------------------------------------------*/
 enum {
   UNION, DIFFERENCE, INTERSECTION,
-  SPHERE, BOX, PLANE, CYLINDER,
+  SPHERE, BOX, PLANE, CYLINDERXZ, CYLINDERYZ, CYLINDERXY,
   TRANSLATION
 };
 struct node {
@@ -49,11 +49,25 @@ struct sphere : node {
   INLINE sphere(float r) : node(SPHERE, aabb(-r, r)), r(r) {}
   float r;
 };
-struct cylinder : node {
-  INLINE cylinder(const vec2f &cxz, float r) :
-    node(CYLINDER, aabb(vec3f(-r+cxz.x,-FLT_MAX,-r+cxz.y),
-                        vec3f(+r+cxz.x,+FLT_MAX,+r+cxz.y))), cxz(cxz), r(r) {}
+struct cylinderxz : node {
+  INLINE cylinderxz(const vec2f &cxz, float r) :
+    node(CYLINDERXZ, aabb(vec3f(-r+cxz.x,-FLT_MAX,-r+cxz.y),
+                          vec3f(+r+cxz.x,+FLT_MAX,+r+cxz.y))), cxz(cxz), r(r) {}
   vec2f cxz;
+  float r;
+};
+struct cylinderxy : node {
+  INLINE cylinderxy(const vec2f &cxy, float r) :
+    node(CYLINDERXY, aabb(vec3f(-r+cxy.x,-r+cxy.y,-FLT_MAX),
+                          vec3f(+r+cxy.x,+r+cxy.y,+FLT_MAX))), cxy(cxy), r(r) {}
+  vec2f cxy;
+  float r;
+};
+struct cylinderyz : node {
+  INLINE cylinderyz(const vec2f &cyz, float r) :
+    node(CYLINDERYZ, aabb(vec3f(-FLT_MAX,-r+cyz.x,-r+cyz.y),
+                          vec3f(+FLT_MAX,+r+cyz.x,+r+cyz.y))), cyz(cyz), r(r) {}
+  vec2f cyz;
   float r;
 };
 struct translation : node {
@@ -69,7 +83,7 @@ node *capped_cylinder(const vec2f &cxz, const vec3f &ryminymax) {
   const auto r = ryminymax.x;
   const auto ymin = ryminymax.y;
   const auto ymax = ryminymax.z;
-  const auto cyl = NEW(cylinder, cxz, r);
+  const auto cyl = NEW(cylinderxz, cxz, r);
   const auto plane0 = NEW(plane, vec4f(0.f,1.f,0.f,-ymin));
   const auto plane1 = NEW(plane, vec4f(0.f,-1.f,0.f,ymax));
   const auto ccyl = NEW(D, *NEW(D, *cyl, *plane0), *plane1);
@@ -92,11 +106,8 @@ static node *makescene0() {
   const auto b0 = NEW(box, vec3f(4.f));
   const auto d0 = NEW(translation, t, *s);
   const auto d1 = NEW(translation, t, *b0);
-  //node *c = NULL; //NEW(D, d1, d0);
   node *c = NEW(D, *d1, *d0);
-//  return c;
   loopi(16) {
-  // for (int i = 11; i < 16; ++i) {
     const auto center = vec2f(2.f,2.f+2.f*float(i));
     const auto ryminymax = vec3f(1.f,1.f,2*float(i)+2.f);
     if (c == NULL)
@@ -105,7 +116,26 @@ static node *makescene0() {
         c = NEW(U, *c, *capped_cylinder(center, ryminymax));
   }
   const auto b = NEW(box, vec3f(3.5f, 4.f, 3.5f));
-  return NEW(D, *c, *NEW(translation, vec3f(2.f,5.f,18.f), *b));
+  const auto scene0 = NEW(D, *c, *NEW(translation, vec3f(2.f,5.f,18.f), *b));
+
+  // build an arcade here
+  node *big = NEW(box, vec3f(3.f, 4.0f, 20.f));
+  node *cut = NEW(translation, vec3f(0.f,-2.f,0.f), *NEW(box, vec3f(2.f, 2.f, 20.f)));
+  big = NEW(D, *big, *cut);
+  big = NEW(translation, vec3f(16.f,4.f,10.f), *big);
+  node *cxy = NEW(cylinderxy, vec2f(zero), 2.f);
+  cxy = NEW(translation, vec3f(16.f, 4.f, 10.f), *cxy);
+  node *arcade = NEW(D, *big, *cxy);
+  loopi(7) {
+    const auto pos = vec3f(16.f,3.5f,7.f+3.f*float(i));
+    const auto hole = NEW(box, vec3f(3.f,1.f,1.f));
+    arcade = NEW(D, *arcade, *NEW(translation, pos, *hole));
+  }
+
+  // just make a union of them
+  return NEW(U, *scene0, *arcade);
+}
+
 #else
   node *c = NULL;
   loopi(3) {
@@ -118,9 +148,8 @@ static node *makescene0() {
   }
   const auto b = NEW(box, vec3f(3.5f, 4.f, 3.5f));
   return NEW(D, c, NEW(translation, vec3f(2.f,5.f,18.f), b));
-
-#endif
 }
+#endif
 
 node *makescene() {
   node *s0 = makescene0();
@@ -179,9 +208,19 @@ void distr(const node &n, const vec3f *pos, float *dist, int num, const aabb &bo
       loopi(num) dist[i] = dot(pos[i], p.p.xyz()) + p.p.w;
       return;
     }
-    case CYLINDER: {
-      const auto &c = static_cast<const cylinder&>(n);
+    case CYLINDERXZ: {
+      const auto &c = static_cast<const cylinderxz&>(n);
       loopi(num) dist[i] = length(pos[i].xz()-c.cxz) - c.r;
+      return;
+    }
+    case CYLINDERXY: {
+      const auto &c = static_cast<const cylinderxy&>(n);
+      loopi(num) dist[i] = length(pos[i].xy()-c.cxy) - c.r;
+      return;
+    }
+    case CYLINDERYZ: {
+      const auto &c = static_cast<const cylinderyz&>(n);
+      loopi(num) dist[i] = length(pos[i].yz()-c.cyz) - c.r;
       return;
     }
     case SPHERE: {
@@ -231,10 +270,17 @@ float dist(const node &n, const vec3f &pos, const aabb &box) {
       const auto &p = static_cast<const plane&>(n);
       return dot(pos, p.p.xyz()) + p.p.w;
     }
-    case CYLINDER: {
-      const auto &c = static_cast<const cylinder&>(n);
-      // return 0.2f*sin(4.f*pos.y+c.cxz.x) + length(pos.xz()-c.cxz) - c.r;
+    case CYLINDERXZ: {
+      const auto &c = static_cast<const cylinderxz&>(n);
       return length(pos.xz()-c.cxz) - c.r;
+    }
+    case CYLINDERXY: {
+      const auto &c = static_cast<const cylinderxy&>(n);
+      return length(pos.xy()-c.cxy) - c.r;
+    }
+    case CYLINDERYZ: {
+      const auto &c = static_cast<const cylinderyz&>(n);
+      return length(pos.yz()-c.cyz) - c.r;
     }
     case SPHERE: {
       const auto &s = static_cast<const sphere&>(n);

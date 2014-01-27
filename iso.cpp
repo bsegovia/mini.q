@@ -1294,8 +1294,9 @@ struct mt_builder {
       node.m_isleaf = node.m_empty = 1;
       return;
     }
-    // if (cellnum == SUBGRID || (level == 4 && xyz.x >= 32) || (level == 4 && xyz.y >= 16)) {
-    if (cellnum == SUBGRID) {
+    //if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
+    if (cellnum == SUBGRID || (level == 5 && xyz.x >= 80) || (level == 5 && xyz.y >= 32)) {
+//    if (cellnum == SUBGRID) {
       jobdata job;
       job.m_octree = m_octree;
       job.m_octree_node = &node;

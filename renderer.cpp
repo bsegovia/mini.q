@@ -105,13 +105,12 @@ void finish() {
   vector<vertex>().moveto(vertices);
   vector<u32>().moveto(indices);
 }
-static const float CELLSIZE = 0.2f, GRIDJITTER = 0.05f;
+static const float CELLSIZE = 0.2f, GRIDJITTER = -0.05f;
 static void makescene() {
   if (initialized_m) return;
   const float start = sys::millis();
   const auto node = csg::makescene();
-  auto m = iso::dc_mesh_mt(vec3f(GRIDJITTER), 512, CELLSIZE, *node);
-  //auto m = iso::dc_mesh(vec3f(GRIDJITTER), 512, CELLSIZE, *node);
+  auto m = iso::dc_mesh_mt(vec3f(GRIDJITTER), 1024, CELLSIZE, *node);
   loopi(m.m_vertnum) vertices.add(makepair(m.m_pos[i], m.m_nor[i]));
   loopi(m.m_indexnum) indices.add(m.m_index[i]);
   vertnum = m.m_vertnum;
