@@ -9,14 +9,17 @@
 
 STATS(iso_num);
 STATS(iso_falsepos_num);
+STATS(iso_edge_num);
 STATS(iso_gradient_num);
 STATS(iso_grid_num);
 STATS(iso_octree_num);
 STATS(iso_qef_num);
+STATS(iso_falsepos);
 
 #define FAST_FIELD 1
 #define FAST_LOD 1
-#define DELAYED_TESSELATION 0
+#define FAST_EDGE 1
+#define DELAYED_TESSELATION 1
 
 namespace q {
 namespace iso {
@@ -155,6 +158,17 @@ static const vec3i gridneighbors[] = {
   vec3i(gridm,0,gridm), vec3i(gridp,0,gridm),
   vec3i(0,gridp,gridp), vec3i(0,gridp,gridm),
   vec3i(0,gridm,gridm), vec3i(0,gridp,gridm),
+};
+
+struct edgeitem {
+  vec3f org, corg, p0, p1;
+  float scale, v0, v1;
+};
+
+struct edgestack {
+  array<edgeitem,64> it;
+  array<vec3f,64> p, pos;
+  array<float,64> d;
 };
 
 struct mesh_processor {
@@ -497,12 +511,6 @@ INLINE pair<vec3i,int> getedge(const vec3i &start, const vec3i &end, int lod) {
   return makepair(lower, (lod?3:0)+delta.y+2*delta.z);
 }
 
-// a partial edge is a structure used when we compute the edge point iteratively
-struct partialedge {
-  pair<vec3i,int> m_edge;
-  float m_fields[2];
-};
-
 struct dc_gridbuilder {
   dc_gridbuilder(const csg::node &node) :
     m_node(node),
@@ -510,10 +518,16 @@ struct dc_gridbuilder {
     m_lod(FIELDNUM),
     m_qef_index(QEFNUM),
     m_edge_index(6*FIELDNUM),
+#if DELAYED_TESSELATION
+    m_stack(NEWE(edgestack)),
+#endif
     m_octree(NULL),
     m_iorg(zero),
     m_level(0)
   {}
+#if DELAYED_TESSELATION
+  ~dc_gridbuilder() { DEL(m_stack); }
+#endif
 
   struct qef_output {
     INLINE qef_output(vec3f p, vec3f n, bool valid):p(p),n(n),valid(valid){}
@@ -524,6 +538,7 @@ struct dc_gridbuilder {
   INLINE vec3f falsepos(const csg::node &node, vec3f org, vec3f p0, vec3f p1,
                         float v0, float v1, float scale)
   {
+    STATS_INC(iso_edge_num);
     if (abs(v0) < TOLERANCE_DENSITY) return p0;
     if (abs(v1) < TOLERANCE_DENSITY) return p1;
     if (v1 < 0.f) {
@@ -605,7 +620,7 @@ struct dc_gridbuilder {
 
   NOINLINE void initedge() {
     const vec3i org(-2), dim(FIELDDIM-2);
-    loopj(6) loopxyz(org, dim) m_edge_index[edge_index(xyz,j)] = NOINDEX;
+    m_edge_index.memset(0xff);
     m_edges.setsize(0);
 #if DELAYED_TESSELATION
     m_delayed_edges.setsize(0);
@@ -614,7 +629,7 @@ struct dc_gridbuilder {
 
   NOINLINE void initqef() {
     const vec3i org(-2), dim(QEFDIM-2);
-    loopxyz(org, dim) m_qef_index[qef_index(xyz)] = NOINDEX;
+    m_qef_index.memset(0xff);
 #if DELAYED_TESSELATION
     m_delayed_qef.setsize(0);
 #endif
@@ -625,7 +640,7 @@ struct dc_gridbuilder {
   NOINLINE void initlod() {
     vector<u8> tmplod(FIELDNUM);
     const vec3i org(-2), dim(FIELDDIM-2);
-    memset(&tmplod[0], 0, sizeof(u8) * FIELDNUM);
+    tmplod.memset(0);
     loopxyz(org, dim) {
       const auto neg = lt(xyz,vec3i(zero));
       const auto pos = ge(xyz,vec3i(SUBGRID));
@@ -635,7 +650,7 @@ struct dc_gridbuilder {
           tmplod[field_index(xyz)] = 1;
       }
     }
-    memset(&m_lod[0], 0, sizeof(u8) * FIELDNUM);
+    m_lod.memset(0);
     loopxyz(vec3i(zero), vec3i(FIELDDIM-4)) {
       auto &curr = lod(xyz);
       loopi(int(lodneighbornum)) {
@@ -685,9 +700,101 @@ struct dc_gridbuilder {
     return edgetable[cubeindex];
   }
 
+  INLINE void falsepos(const csg::node &node, edgestack &stack, int num) {
+    assert(num <= 64);
+    auto &it = stack.it;
+    auto &pos = stack.pos, &p = stack.p;
+    auto &d = stack.d;
+
+    loopk(MAX_STEPS) {
+      auto box = aabb::empty();
+      loopi(num) {
+        p[i] = it[i].p1 - it[i].v1 * (it[i].p1-it[i].p0)/(it[i].v1-it[i].v0);
+        pos[i] = it[i].org+m_cellsize*it[i].scale*p[i];
+        box.pmin = min(pos[i], box.pmin);
+        box.pmax = max(pos[i], box.pmax);
+      }
+      box.pmin -= 3.f * m_cellsize;
+      box.pmax += 3.f * m_cellsize;
+      csg::dist(m_node, &pos[0], &d[0], num, box);
+      if (k != MAX_STEPS-1) {
+        loopi(num) {
+          if (d[i] < 0.f) {
+            it[i].p0 = p[i];
+            it[i].v0 = d[i];
+          } else {
+            it[i].p1 = p[i];
+            it[i].v1 = d[i];
+          }
+        }
+      } else
+        loopi(num) it[i].p0 = p[i];
+    }
+  }
+
   void finishedges() {
+#if FAST_EDGE
+    const auto len = m_delayed_edges.length();
+
+    for (int i = 0; i < len; i += 64) {
+      auto &it = m_stack->it;
+
+      // step 1 - run false position with packets of (up-to) 64 points
+      const int num = min(64, len-i);
+      loopj(num) {
+        const auto &e = m_delayed_edges[i+j];
+        const auto idx0 = e.second.x, idx1 = e.second.y;
+        const auto plod = e.second.z;
+        const auto xyz = e.first;
+        it[j].org = vertex(xyz);
+        it[j].scale = float(1<<plod);
+        it[j].p0 = fcubev[idx0];
+        it[j].p1 = fcubev[idx1];
+        it[j].v0 = field(xyz + (icubev[idx0]<<plod));
+        it[j].v1 = field(xyz + (icubev[idx1]<<plod));
+        it[j].corg = vec3f(getedge(icubev[idx0], icubev[idx1], plod).first);
+        if (it[j].v1 < 0.f) {
+          swap(it[j].p0,it[j].p1);
+          swap(it[j].v0,it[j].v1);
+        }
+      }
+      falsepos(m_node, *m_stack, num);
+
+      // step 2 - compute normals for each point using packets of 16x4 points
+      const auto dx = vec3f(DEFAULT_GRAD_STEP, 0.f, 0.f);
+      const auto dy = vec3f(0.f, DEFAULT_GRAD_STEP, 0.f);
+      const auto dz = vec3f(0.f, 0.f, DEFAULT_GRAD_STEP);
+      for (int j = 0; j < num; j += 16) {
+        const int subnum = min(num-j, 16);
+        auto p = &m_stack->p[0];
+        auto d = &m_stack->d[0];
+        auto box = aabb::empty();
+        loopk(subnum) {
+          p[4*k]   = it[j+k].org + it[j+k].p0 * it[j+k].scale * m_cellsize;
+          p[4*k+1] = p[4*k]-dx;
+          p[4*k+2] = p[4*k]-dy;
+          p[4*k+3] = p[4*k]-dz;
+          box.pmin = min(p[4*k], box.pmin);
+          box.pmax = max(p[4*k], box.pmax);
+        }
+        box.pmin -= 3.f * m_cellsize;
+        box.pmax += 3.f * m_cellsize;
+
+        csg::dist(m_node, p, d, 4*subnum, box);
+        loopk(subnum) {
+          const auto c    = d[4*k+0];
+          const auto dfdx = d[4*k+1];
+          const auto dfdy = d[4*k+2];
+          const auto dfdz = d[4*k+3];
+          const auto grad = vec3f(c-dfdx, c-dfdy, c-dfdz);
+          const auto n = grad==vec3f(zero) ? vec3f(zero) : normalize(grad);
+          const auto p = it[j+k].p0 - it[j+k].corg;
+          m_edges.add(makepair(p,n));
+        }
+      }
+    }
+#else
     loopv(m_delayed_edges) {
-      mcell cell;
       const auto &item = m_delayed_edges[i];
       const auto xyz = item.first;
       const auto org = vertex(xyz);
@@ -695,13 +802,14 @@ struct dc_gridbuilder {
       const auto plod = item.second.z;
       const auto fscale = float(1<<plod);
       const auto p0 = fcubev[idx0], p1 = fcubev[idx1];
-      loopk(8) cell[k] = field(xyz + (icubev[k]<<plod));
-      const auto v0 = cell[idx0], v1 = cell[idx1];
+      const auto v0 = field(xyz + (icubev[idx0]<<plod));
+      const auto v1 = field(xyz + (icubev[idx1]<<plod));
       const auto pos = falsepos(m_node, org, p0, p1, v0, v1, fscale);
       const auto nor = gradient(m_node, org+pos*fscale*m_cellsize);
       const auto e = getedge(icubev[idx0], icubev[idx1], plod);
       m_edges.add(makepair(pos-vec3f(e.first),nor));
     }
+#endif
   }
 
   void finishvertices() {
@@ -824,6 +932,7 @@ struct dc_gridbuilder {
       const auto e = getedge(icubev[idx0], icubev[idx1], plod);
       auto &idx = m_edge_index[edge_index(xyz+e.first, e.second)];
       if (idx == NOINDEX) {
+        //const auto pos = falsepos(m_node, org, p0, p1, v0, v1, fscale);
         const auto pos = falsepos(m_node, org, p0, p1, v0, v1, fscale);
         const auto nor = gradient(m_node, org+pos*fscale*m_cellsize);
         idx = m_edges.length();
@@ -1022,6 +1131,7 @@ struct dc_gridbuilder {
 #if DELAYED_TESSELATION
   vector<pair<vec3i,vec3i>> m_delayed_edges;
   vector<pair<vec3i,vec2i>> m_delayed_qef;
+  edgestack *m_stack;
 #endif
   const octree *m_octree;
   vec3f m_org;
@@ -1116,6 +1226,8 @@ mesh dc_mesh(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d) 
   const auto m = mesh(p.first, n.first, idx.first, p.second, idx.second);
   STATS_OUT(iso_num);
   STATS_OUT(iso_qef_num);
+  STATS_OUT(iso_edge_num);
+  STATS_RATIO(iso_falsepos_num, iso_edge_num);
   STATS_RATIO(iso_falsepos_num, iso_num);
   STATS_RATIO(iso_gradient_num, iso_num);
   STATS_RATIO(iso_grid_num, iso_num);

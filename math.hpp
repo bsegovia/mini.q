@@ -479,36 +479,6 @@ TINLINE v3 unproject(v3arg win, m44arg model, m44arg proj, const vec4<int> &view
   return out.xyz() / out.w;
 }
 
-// convenient fixed size array
-template <typename U, int n> struct array {
-  typedef U scalar;
-  template <typename... T> INLINE array(T... args) {set(0,args...);}
-  INLINE array(zerotype) { loopi(n) v[i] = U(zero); }
-  INLINE array(onetype) { loopi(n) v[i] = U(one); }
-  template <typename First, typename... Rest>
-  INLINE void set(int i, First first, Rest... rest) {
-    assign(first, i);
-    set(i,rest...);
-  }
-  INLINE void assign(U x, int &i) {this->v[i++] = x;}
-  INLINE void assign(vec2<U> u, int &i) {v[i++]=u.x; v[i++]=u.y;}
-  INLINE void assign(vec3<U> u, int &i) {v[i++]=u.x; v[i++]=u.y; v[i++]=u.z;}
-  INLINE void assign(vec4<U> u, int &i) {v[i++]=u.x; v[i++]=u.y; v[i++]=u.z; v[i++]=u.w;}
-  INLINE void set(int i) {}
-  U &operator[] (int i) {return v[i];}
-  const U &operator[] (int i) const {return v[i];}
-  U v[n];
-};
-template <typename U, int n>
-INLINE bool operator!= (const array<U,n> &v0, const array<U,n> &v1) {
-  loopi(n) if (v0.v[i] != v1.v[i]) return true;
-  return false;
-}
-template <typename U, int n>
-INLINE bool operator== (const array<U,n> &v0, const array<U,n> &v1) {
-  return !(v0!=v1);
-}
-
 // define all swizzles for vec2
 #define sw22(A,B) TINLINE v2 v2::A##B(void) const {return v2(A,B);}
 sw20
