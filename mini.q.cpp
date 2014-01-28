@@ -4,7 +4,7 @@
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
 
-#define TEST_UI 0
+#define TEST_UI 1
 
 #if TEST_UI
 #include "ui.hpp"
@@ -197,7 +197,7 @@ static void gui() {
   ui::drawrect(30 + sys::scrw / 5 * 2, sys::scrh - 710, 100, 100, ui::rgba(32, 32, 192, 192));
   ui::drawrect(30 + sys::scrw / 5 * 2, sys::scrh - 830, 100, 100, ui::rgba(192, 32, 32,192));
 
-  ui::rendergldraw(sys::scrw, sys::scrh);
+  ui::draw(sys::scrw, sys::scrh);
 }
 #endif
 

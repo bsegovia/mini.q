@@ -17,12 +17,12 @@ namespace ui {
 /*-------------------------------------------------------------------------
  - render interface
  -------------------------------------------------------------------------*/
-enum GFXCMD {
-  GFXCMD_RECT,
-  GFXCMD_TRIANGLE,
-  GFXCMD_LINE,
-  GFXCMD_TEXT,
-  GFXCMD_SCISSOR,
+enum GFX {
+  GFX_RECT,
+  GFX_TRIANGLE,
+  GFX_LINE,
+  GFX_TEXT,
+  GFX_SCISSOR,
 };
 
 struct gfxrect { s16 x,y,w,h,r; };
@@ -46,18 +46,18 @@ struct gfxcmd {
 /*-------------------------------------------------------------------------
  - graphics commands
  -------------------------------------------------------------------------*/
-static const unsigned GFXCMD_QUEUE_SIZE = 5000;
-static gfxcmd g_gfxcmdqueue[GFXCMD_QUEUE_SIZE];
-static unsigned g_gfxcmdqueuesize = 0;
-static const unsigned TEXT_POOL_SIZE = 8000;
+static const u32 GFX_QUEUE_SIZE = 5000;
+static gfxcmd g_gfxcmdqueue[GFX_QUEUE_SIZE];
+static u32 g_gfxcmdqueuesize = 0;
+static const u32 TEXT_POOL_SIZE = 8000;
 static char g_textpool[TEXT_POOL_SIZE];
-static unsigned g_textpoolsize = 0;
+static u32 g_textpoolsize = 0;
 
 static const gfxcmd *getrenderqueue() { return g_gfxcmdqueue; }
 static int getrenderqueuesize() { return g_gfxcmdqueuesize; }
 
 static const char *allocText(const char *text) {
-  unsigned len = strlen(text)+1;
+  u32 len = strlen(text)+1;
   if (g_textpoolsize + len >= TEXT_POOL_SIZE) return 0;
   char *dst = &g_textpool[g_textpoolsize];
   memcpy(dst, text, len);
@@ -70,147 +70,141 @@ static void resetgfxcmdqueue() {
   g_textpoolsize = 0;
 }
 
-static void addgfxcmdscissor(int x, int y, int w, int h) {
-  if (g_gfxcmdqueuesize >= GFXCMD_QUEUE_SIZE) return;
+static void addgfxscissor(int x, int y, int w, int h) {
+  if (g_gfxcmdqueuesize >= GFX_QUEUE_SIZE) return;
   gfxcmd& cmd = g_gfxcmdqueue[g_gfxcmdqueuesize++];
-  cmd.type = GFXCMD_SCISSOR;
+  cmd.type = GFX_SCISSOR;
   cmd.flags = x < 0 ? 0 : 1;      // on/off flag.
   cmd.col = 0;
-  cmd.rect.x = (short)x;
-  cmd.rect.y = (short)y;
-  cmd.rect.w = (short)w;
-  cmd.rect.h = (short)h;
+  cmd.rect.x = s16(x);
+  cmd.rect.y = s16(y);
+  cmd.rect.w = s16(w);
+  cmd.rect.h = s16(h);
 }
 
-static void addgfxcmdrect(float x, float y, float w, float h, u32 color) {
-  if (g_gfxcmdqueuesize >= GFXCMD_QUEUE_SIZE) return;
+static void addgfxrect(float x, float y, float w, float h, u32 color) {
+  if (g_gfxcmdqueuesize >= GFX_QUEUE_SIZE) return;
   gfxcmd& cmd = g_gfxcmdqueue[g_gfxcmdqueuesize++];
-  cmd.type = GFXCMD_RECT;
+  cmd.type = GFX_RECT;
   cmd.flags = 0;
   cmd.col = color;
-  cmd.rect.x = (short)(x*8.0f);
-  cmd.rect.y = (short)(y*8.0f);
-  cmd.rect.w = (short)(w*8.0f);
-  cmd.rect.h = (short)(h*8.0f);
+  cmd.rect.x = s16(x*8.0f);
+  cmd.rect.y = s16(y*8.0f);
+  cmd.rect.w = s16(w*8.0f);
+  cmd.rect.h = s16(h*8.0f);
   cmd.rect.r = 0;
 }
 
-static void addgfxcmdline(float x0, float y0, float x1, float y1, float r, u32 color) {
-  if (g_gfxcmdqueuesize >= GFXCMD_QUEUE_SIZE) return;
+static void addgfxline(float x0, float y0, float x1, float y1, float r, u32 color) {
+  if (g_gfxcmdqueuesize >= GFX_QUEUE_SIZE) return;
   gfxcmd& cmd = g_gfxcmdqueue[g_gfxcmdqueuesize++];
-  cmd.type = GFXCMD_LINE;
+  cmd.type = GFX_LINE;
   cmd.flags = 0;
   cmd.col = color;
-  cmd.line.x0 = (short)(x0*8.0f);
-  cmd.line.y0 = (short)(y0*8.0f);
-  cmd.line.x1 = (short)(x1*8.0f);
-  cmd.line.y1 = (short)(y1*8.0f);
-  cmd.line.r = (short)(r*8.0f);
+  cmd.line.x0 = s16(x0*8.0f);
+  cmd.line.y0 = s16(y0*8.0f);
+  cmd.line.x1 = s16(x1*8.0f);
+  cmd.line.y1 = s16(y1*8.0f);
+  cmd.line.r  = s16(r*8.0f);
 }
 
-static void addgfxcmdroundedrect(float x, float y, float w, float h, float r, u32 color) {
-  if (g_gfxcmdqueuesize >= GFXCMD_QUEUE_SIZE) return;
+static void addgfxroundedrect(float x, float y, float w, float h, float r, u32 color) {
+  if (g_gfxcmdqueuesize >= GFX_QUEUE_SIZE) return;
   gfxcmd& cmd = g_gfxcmdqueue[g_gfxcmdqueuesize++];
-  cmd.type = GFXCMD_RECT;
+  cmd.type = GFX_RECT;
   cmd.flags = 0;
   cmd.col = color;
-  cmd.rect.x = (short)(x*8.0f);
-  cmd.rect.y = (short)(y*8.0f);
-  cmd.rect.w = (short)(w*8.0f);
-  cmd.rect.h = (short)(h*8.0f);
-  cmd.rect.r = (short)(r*8.0f);
+  cmd.rect.x = s16(x*8.0f);
+  cmd.rect.y = s16(y*8.0f);
+  cmd.rect.w = s16(w*8.0f);
+  cmd.rect.h = s16(h*8.0f);
+  cmd.rect.r = s16(r*8.0f);
 }
 
-static void addgfxcmdTriangle(int x, int y, int w, int h, int flags, u32 color) {
-  if (g_gfxcmdqueuesize >= GFXCMD_QUEUE_SIZE) return;
+static void addgfxtri(int x, int y, int w, int h, int flags, u32 color) {
+  if (g_gfxcmdqueuesize >= GFX_QUEUE_SIZE) return;
   gfxcmd& cmd = g_gfxcmdqueue[g_gfxcmdqueuesize++];
-  cmd.type = GFXCMD_TRIANGLE;
-  cmd.flags = (char)flags;
+  cmd.type = GFX_TRIANGLE;
+  cmd.flags = char(flags);
   cmd.col = color;
-  cmd.rect.x = (short)(x*8.0f);
-  cmd.rect.y = (short)(y*8.0f);
-  cmd.rect.w = (short)(w*8.0f);
-  cmd.rect.h = (short)(h*8.0f);
+  cmd.rect.x = s16(x*8.0f);
+  cmd.rect.y = s16(y*8.0f);
+  cmd.rect.w = s16(w*8.0f);
+  cmd.rect.h = s16(h*8.0f);
 }
 
-static void addgfxcmdtext(int x, int y, int align, const char *text, u32 color) {
-  if (g_gfxcmdqueuesize >= GFXCMD_QUEUE_SIZE) return;
+static void addgfxtext(int x, int y, int align, const char *text, u32 color) {
+  if (g_gfxcmdqueuesize >= GFX_QUEUE_SIZE) return;
   gfxcmd& cmd = g_gfxcmdqueue[g_gfxcmdqueuesize++];
-  cmd.type = GFXCMD_TEXT;
+  cmd.type = GFX_TEXT;
   cmd.flags = 0;
   cmd.col = color;
-  cmd.text.x = (short)x;
-  cmd.text.y = (short)y;
-  cmd.text.align = (short)align;
+  cmd.text.x = s16(x);
+  cmd.text.y = s16(y);
+  cmd.text.align = s16(align);
   cmd.text.text = allocText(text);
 }
 
 /*-------------------------------------------------------------------------
  - OGL code
  -------------------------------------------------------------------------*/
-static const unsigned TEMP_COORD_COUNT = 100;
-static float g_tempCoords[TEMP_COORD_COUNT*2];
-static float g_tempNormals[TEMP_COORD_COUNT*2];
-
+static const u32 TEMP_COORD_COUNT = 100;
 static const int CIRCLE_VERTS = 8*4;
-static float g_circleVerts[CIRCLE_VERTS*2];
+static float tempcoords[TEMP_COORD_COUNT*2];
+static float tempnormals[TEMP_COORD_COUNT*2];
+static float circleverts[CIRCLE_VERTS*2];
 
-static void drawPolygon(const float* coords, unsigned numCoords, float r, unsigned int col)
-{
+static void drawpoly(const float *coords, u32 numCoords, float r, u32 col) {
   if (numCoords > TEMP_COORD_COUNT) numCoords = TEMP_COORD_COUNT;
 
-  for (unsigned i = 0, j = numCoords-1; i < numCoords; j=i++)
-  {
+  for (u32 i = 0, j = numCoords-1; i < numCoords; j=i++) {
     const float* v0 = &coords[j*2];
     const float* v1 = &coords[i*2];
     float dx = v1[0] - v0[0];
     float dy = v1[1] - v0[1];
     float d = sqrtf(dx*dx+dy*dy);
-    if (d > 0)
-    {
+    if (d > 0) {
       d = 1.0f/d;
       dx *= d;
       dy *= d;
     }
-    g_tempNormals[j*2+0] = dy;
-    g_tempNormals[j*2+1] = -dx;
+    tempnormals[j*2+0] = dy;
+    tempnormals[j*2+1] = -dx;
   }
 
   for (u32 i = 0, j = numCoords-1; i < numCoords; j=i++) {
-    float dlx0 = g_tempNormals[j*2+0];
-    float dly0 = g_tempNormals[j*2+1];
-    float dlx1 = g_tempNormals[i*2+0];
-    float dly1 = g_tempNormals[i*2+1];
+    float dlx0 = tempnormals[j*2+0];
+    float dly0 = tempnormals[j*2+1];
+    float dlx1 = tempnormals[i*2+0];
+    float dly1 = tempnormals[i*2+1];
     float dmx = (dlx0 + dlx1) * 0.5f;
     float dmy = (dly0 + dly1) * 0.5f;
     float  dmr2 = dmx*dmx + dmy*dmy;
-    if (dmr2 > 0.000001f)
-    {
+    if (dmr2 > 0.000001f) {
       float  scale = 1.0f / dmr2;
       if (scale > 10.0f) scale = 10.0f;
       dmx *= scale;
       dmy *= scale;
     }
-    g_tempCoords[i*2+0] = coords[i*2+0]+dmx*r;
-    g_tempCoords[i*2+1] = coords[i*2+1]+dmy*r;
+    tempcoords[i*2+0] = coords[i*2+0]+dmx*r;
+    tempcoords[i*2+1] = coords[i*2+1]+dmy*r;
   }
 
-  // unsigned int colTrans = RGBA(col&0xff, (col>>8)&0xff, (col>>16)&0xff, 0);
   const auto colTrans = vec4f(float(col&0xff), float((col>>8)&0xff), float((col>>16)&0xff), 0.f) / 255.f;
   const auto colf = vec4f(float(col&0xff), float((col>>8)&0xff), float((col>>16)&0xff), float(col>>24)) / 255.f;
 
   typedef array<float,6> verttype;
   vector<verttype> verts;
-  for (unsigned i = 0, j = numCoords-1; i < numCoords; j=i++) {
+  for (u32 i = 0, j = numCoords-1; i < numCoords; j=i++) {
     verts.add(verttype(colf,coords[i*2+0],coords[i*2+1]));
     verts.add(verttype(colf,coords[j*2+0],coords[j*2+1]));
-    verts.add(verttype(colTrans,g_tempCoords[j*2+0],g_tempCoords[j*2+1]));
-    verts.add(verttype(colTrans,g_tempCoords[j*2+0],g_tempCoords[j*2+1]));
-    verts.add(verttype(colTrans,g_tempCoords[i*2+0],g_tempCoords[i*2+1]));
+    verts.add(verttype(colTrans,tempcoords[j*2+0],tempcoords[j*2+1]));
+    verts.add(verttype(colTrans,tempcoords[j*2+0],tempcoords[j*2+1]));
+    verts.add(verttype(colTrans,tempcoords[i*2+0],tempcoords[i*2+1]));
     verts.add(verttype(colf,coords[i*2+0],coords[i*2+1]));
   }
 
-  for (unsigned i = 2; i < numCoords; ++i) {
+  for (u32 i = 2; i < numCoords; ++i) {
     verts.add(verttype(colf, coords[0], coords[1]));
     verts.add(verttype(colf, coords[(i-1)*2], coords[(i-1)*2+1]));
     verts.add(verttype(colf, coords[i*2], coords[i*2+1]));
@@ -219,53 +213,49 @@ static void drawPolygon(const float* coords, unsigned numCoords, float r, unsign
   ogl::immdraw(GL_TRIANGLES, 2, 0, 4, verts.length(), &verts[0][0]);
 }
 
-static void drawRect(float x, float y, float w, float h, float fth, unsigned int col) {
+static void drawRect(float x, float y, float w, float h, float fth, u32 col) {
   const float verts[4*2] = {
     x+0.5f, y+0.5f,
     x+w-0.5f, y+0.5f,
     x+w-0.5f, y+h-0.5f,
     x+0.5f, y+h-0.5f,
   };
-  drawPolygon(verts, 4, fth, col);
+  drawpoly(verts, 4, fth, col);
 }
 
-static void drawRoundedRect(float x, float y, float w, float h, float r, float fth, unsigned int col) {
-  const unsigned n = CIRCLE_VERTS/4;
+static void drawroundedrect(float x, float y, float w, float h, float r, float fth, u32 col) {
+  const u32 n = CIRCLE_VERTS/4;
   float verts[(n+1)*4*2];
-  const float* cverts = g_circleVerts;
-  float* v = verts;
+  const float *cverts = circleverts;
+  float *v = verts;
 
-  for (unsigned i = 0; i <= n; ++i) {
+  for (u32 i = 0; i <= n; ++i) {
     *v++ = x+w-r + cverts[i*2]*r;
     *v++ = y+h-r + cverts[i*2+1]*r;
   }
-
-  for (unsigned i = n; i <= n*2; ++i) {
+  for (u32 i = n; i <= n*2; ++i) {
     *v++ = x+r + cverts[i*2]*r;
     *v++ = y+h-r + cverts[i*2+1]*r;
   }
-
-  for (unsigned i = n*2; i <= n*3; ++i) {
+  for (u32 i = n*2; i <= n*3; ++i) {
     *v++ = x+r + cverts[i*2]*r;
     *v++ = y+r + cverts[i*2+1]*r;
   }
-
-  for (unsigned i = n*3; i < n*4; ++i) {
+  for (u32 i = n*3; i < n*4; ++i) {
     *v++ = x+w-r + cverts[i*2]*r;
     *v++ = y+r + cverts[i*2+1]*r;
   }
   *v++ = x+w-r + cverts[0]*r;
   *v++ = y+r + cverts[1]*r;
 
-  drawPolygon(verts, (n+1)*4, fth, col);
+  drawpoly(verts, (n+1)*4, fth, col);
 }
 
-static void drawLine(float x0, float y0, float x1, float y1, float r, float fth, unsigned int col) {
+static void drawline(float x0, float y0, float x1, float y1, float r, float fth, u32 col) {
   float dx = x1-x0;
   float dy = y1-y0;
   float d = sqrtf(dx*dx+dy*dy);
-  if (d > 0.0001f)
-  {
+  if (d > 0.0001f) {
     d = 1.0f/d;
     dx *= d;
     dy *= d;
@@ -290,47 +280,45 @@ static void drawLine(float x0, float y0, float x1, float y1, float r, float fth,
   verts[6] = x1+dx-nx;
   verts[7] = y1+dy-ny;
 
-  drawPolygon(verts, 4, fth, col);
+  drawpoly(verts, 4, fth, col);
 }
 
-static void drawText(float x, float y, const char *text, int align, u32 c) {
+static void drawtext(float x, float y, const char *text, int align, u32 c) {
   if (align == ALIGN_CENTER)
     x -= int(text::width(text))/2;
   else if (align == ALIGN_RIGHT)
     x -= int(text::width(text));
-  text::drawf(text, vec2i(x,y-6));
+  text::drawf(text, vec2i(x,y));
 }
 
-void rendergldraw(int width, int height) {
-  const gfxcmd* q = getrenderqueue();
-  int nq = getrenderqueuesize();
+void draw(int width, int height) {
+  const auto q = getrenderqueue();
+  const auto nq = getrenderqueuesize();
+  const auto s = 1.0f/8.0f;
 
-  const float s = 1.0f/8.0f;
-
-  glDisable(GL_SCISSOR_TEST);
+  OGL(Disable, GL_SCISSOR_TEST);
   for (int i = 0; i < nq; ++i) {
     const gfxcmd& cmd = q[i];
-    if (cmd.type == GFXCMD_RECT) {
+    if (cmd.type == GFX_RECT) {
       if (cmd.rect.r == 0)
         drawRect((float)cmd.rect.x*s+0.5f, (float)cmd.rect.y*s+0.5f,
              (float)cmd.rect.w*s-1, (float)cmd.rect.h*s-1,
              1.0f, cmd.col);
       else
-        drawRoundedRect((float)cmd.rect.x*s+0.5f, (float)cmd.rect.y*s+0.5f,
+        drawroundedrect((float)cmd.rect.x*s+0.5f, (float)cmd.rect.y*s+0.5f,
                 (float)cmd.rect.w*s-1, (float)cmd.rect.h*s-1,
                 (float)cmd.rect.r*s, 1.0f, cmd.col);
     }
-    else if (cmd.type == GFXCMD_LINE)
-      drawLine(cmd.line.x0*s, cmd.line.y0*s, cmd.line.x1*s, cmd.line.y1*s, cmd.line.r*s, 1.0f, cmd.col);
-    else if (cmd.type == GFXCMD_TRIANGLE) {
+    else if (cmd.type == GFX_LINE)
+      drawline(cmd.line.x0*s, cmd.line.y0*s, cmd.line.x1*s, cmd.line.y1*s, cmd.line.r*s, 1.0f, cmd.col);
+    else if (cmd.type == GFX_TRIANGLE) {
       if (cmd.flags == 1) {
-        const float verts[3*2] =
-        {
+        const float verts[3*2] = {
           (float)cmd.rect.x*s+0.5f, (float)cmd.rect.y*s+0.5f,
           (float)cmd.rect.x*s+0.5f+(float)cmd.rect.w*s-1, (float)cmd.rect.y*s+0.5f+(float)cmd.rect.h*s/2-0.5f,
           (float)cmd.rect.x*s+0.5f, (float)cmd.rect.y*s+0.5f+(float)cmd.rect.h*s-1,
         };
-        drawPolygon(verts, 3, 1.0f, cmd.col);
+        drawpoly(verts, 3, 1.0f, cmd.col);
       }
       if (cmd.flags == 2) {
         const float verts[3*2] = {
@@ -338,26 +326,26 @@ void rendergldraw(int width, int height) {
           (float)cmd.rect.x*s+0.5f+(float)cmd.rect.w*s/2-0.5f, (float)cmd.rect.y*s+0.5f,
           (float)cmd.rect.x*s+0.5f+(float)cmd.rect.w*s-1, (float)cmd.rect.y*s+0.5f+(float)cmd.rect.h*s-1,
         };
-        drawPolygon(verts, 3, 1.0f, cmd.col);
+        drawpoly(verts, 3, 1.0f, cmd.col);
       }
-    } else if (cmd.type == GFXCMD_TEXT)
-      drawText(cmd.text.x, cmd.text.y, cmd.text.text, cmd.text.align, cmd.col);
-    else if (cmd.type == GFXCMD_SCISSOR) {
+    } else if (cmd.type == GFX_TEXT)
+      drawtext(cmd.text.x, cmd.text.y, cmd.text.text, cmd.text.align, cmd.col);
+    else if (cmd.type == GFX_SCISSOR) {
       if (cmd.flags) {
-        glEnable(GL_SCISSOR_TEST);
-        glScissor(cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h);
+        OGL(Enable, GL_SCISSOR_TEST);
+        OGL(Scissor, cmd.rect.x, cmd.rect.y, cmd.rect.w, cmd.rect.h);
       } else
-        glDisable(GL_SCISSOR_TEST);
+        OGL(Disable, GL_SCISSOR_TEST);
     }
   }
-  glDisable(GL_SCISSOR_TEST);
+  OGL(Disable, GL_SCISSOR_TEST);
 }
 
 /*-------------------------------------------------------------------------
  - user interface
  -------------------------------------------------------------------------*/
-struct GuiState {
-  GuiState() :
+struct guistate {
+  guistate() :
     left(false), leftPressed(false), leftReleased(false),
     mx(-1), my(-1), scroll(0),
     active(0), hot(0), hotToBe(0), isHot(false), isActive(false), wentActive(false),
@@ -384,7 +372,7 @@ struct GuiState {
   u32 widgetId;
 };
 
-static GuiState g_state;
+static guistate g_state;
 
 INLINE bool anyActive() { return g_state.active != 0; }
 INLINE bool isActive(u32 id) { return g_state.active == id; }
@@ -409,22 +397,18 @@ INLINE void setActive(u32 id) {
 }
 INLINE void setHot(u32 id) { g_state.hotToBe = id; }
 
-
 static bool buttonLogic(u32 id, bool over) {
   bool res = false;
   // process down
   if (!anyActive()) {
-    if (over)
-      setHot(id);
-    if (isHot(id) && g_state.leftPressed)
-      setActive(id);
+    if (over) setHot(id);
+    if (isHot(id) && g_state.leftPressed) setActive(id);
   }
 
   // if button is active, then react on left up
   if (isActive(id)) {
     g_state.isActive = true;
-    if (over)
-      setHot(id);
+    if (over) setHot(id);
     if (g_state.leftReleased) {
       if (isHot(id))
         res = true;
@@ -432,13 +416,11 @@ static bool buttonLogic(u32 id, bool over) {
     }
   }
 
-  if (isHot(id))
-    g_state.isHot = true;
-
+  if (isHot(id)) g_state.isHot = true;
   return res;
 }
 
-static void updateInput(int mx, int my, unsigned char mbut, int scroll) {
+static void updateInput(int mx, int my, u8 mbut, int scroll) {
   bool left = (mbut & MBUT_LEFT) != 0;
   g_state.mx = mx;
   g_state.my = my;
@@ -448,7 +430,7 @@ static void updateInput(int mx, int my, unsigned char mbut, int scroll) {
   g_state.scroll = scroll;
 }
 
-void beginframe(int mx, int my, unsigned char mbut, int scroll) {
+void beginframe(int mx, int my, u8 mbut, int scroll) {
   updateInput(mx,my,mbut,scroll);
   g_state.hot = g_state.hotToBe;
   g_state.hotToBe = 0;
@@ -470,7 +452,7 @@ static const int SLIDER_HEIGHT = 20;
 static const int SLIDER_MARKER_WIDTH = 10;
 static const int CHECK_SIZE = 8;
 static const int DEFAULT_SPACING = 4;
-static const int TEXT_HEIGHT = 8;
+static const int TEXT_HEIGHT = 16;
 static const int SCROLL_AREA_PADDING = 6;
 static const int INDENT_SIZE = 16;
 static const int AREA_HEADER = 28;
@@ -506,16 +488,16 @@ bool beginscrollarea(const char *name, int x, int y, int w, int h, int *scroll) 
   g_insideScrollArea = inrect(x, y, w, h, false);
   g_state.insideCurrentScroll = g_insideScrollArea;
 
-  addgfxcmdroundedrect((float)x, (float)y, (float)w, (float)h, 6, rgba(0,0,0,192));
-  addgfxcmdtext(x+AREA_HEADER/2, y+h-AREA_HEADER/2-TEXT_HEIGHT/2, ALIGN_LEFT, name, rgba(255,255,255,128));
-  addgfxcmdscissor(x+SCROLL_AREA_PADDING, y+SCROLL_AREA_PADDING, w-SCROLL_AREA_PADDING*4, h-AREA_HEADER-SCROLL_AREA_PADDING);
+  addgfxroundedrect((float)x, (float)y, (float)w, (float)h, 6, rgba(0,0,0,192));
+  addgfxtext(x+AREA_HEADER/2, y+h-AREA_HEADER/2-TEXT_HEIGHT/2, ALIGN_LEFT, name, rgba(255,255,255,128));
+  addgfxscissor(x+SCROLL_AREA_PADDING, y+SCROLL_AREA_PADDING, w-SCROLL_AREA_PADDING*4, h-AREA_HEADER-SCROLL_AREA_PADDING);
 
   return g_insideScrollArea;
 }
 
 void endscrollarea() {
   // Disable scissoring.
-  addgfxcmdscissor(-1,-1,-1,-1);
+  addgfxscissor(-1,-1,-1,-1);
 
   // Draw scroll bar
   int x = g_scrollRight+SCROLL_AREA_PADDING/2;
@@ -562,12 +544,12 @@ void endscrollarea() {
     }
 
     // BG
-    addgfxcmdroundedrect((float)x, (float)y, (float)w, (float)h, (float)w/2-1, rgba(0,0,0,196));
+    addgfxroundedrect((float)x, (float)y, (float)w, (float)h, (float)w/2-1, rgba(0,0,0,196));
     // Bar
     if (isActive(hid))
-      addgfxcmdroundedrect((float)hx, (float)hy, (float)hw, (float)hh, (float)w/2-1, rgba(255,196,0,196));
+      addgfxroundedrect((float)hx, (float)hy, (float)hw, (float)hh, (float)w/2-1, rgba(255,196,0,196));
     else
-      addgfxcmdroundedrect((float)hx, (float)hy, (float)hw, (float)hh, (float)w/2-1, isHot(hid) ? rgba(255,196,0,96) : rgba(255,255,255,64));
+      addgfxroundedrect((float)hx, (float)hy, (float)hw, (float)hh, (float)w/2-1, isHot(hid) ? rgba(255,196,0,96) : rgba(255,255,255,64));
 
     // Handle mouse scrolling.
     if (g_insideScrollArea) { // && !anyActive())
@@ -585,20 +567,20 @@ bool button(const char *text, bool enabled) {
   g_state.widgetId++;
   u32 id = (g_state.areaId<<16) | g_state.widgetId;
 
-  int x = g_state.widgetX;
-  int y = g_state.widgetY - BUTTON_HEIGHT;
-  int w = g_state.widgetW;
-  int h = BUTTON_HEIGHT;
+  const int x = g_state.widgetX;
+  const int y = g_state.widgetY - BUTTON_HEIGHT;
+  const int w = g_state.widgetW;
+  const int h = BUTTON_HEIGHT;
   g_state.widgetY -= BUTTON_HEIGHT + DEFAULT_SPACING;
 
-  bool over = enabled && inrect(x, y, w, h);
-  bool res = buttonLogic(id, over);
+  const bool over = enabled && inrect(x, y, w, h);
+  const bool res = buttonLogic(id, over);
 
-  addgfxcmdroundedrect((float)x, (float)y, (float)w, (float)h, (float)BUTTON_HEIGHT/2-1, rgba(128,128,128, isActive(id)?196:96));
+  addgfxroundedrect((float)x, (float)y, (float)w, (float)h, (float)BUTTON_HEIGHT/2-1, rgba(128,128,128, isActive(id)?196:96));
   if (enabled)
-    addgfxcmdtext(x+BUTTON_HEIGHT/2, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, isHot(id) ? rgba(255,196,0,255) : rgba(255,255,255,200));
+    addgfxtext(x+BUTTON_HEIGHT/2, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, isHot(id) ? rgba(255,196,0,255) : rgba(255,255,255,200));
   else
-    addgfxcmdtext(x+BUTTON_HEIGHT/2, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, rgba(128,128,128,200));
+    addgfxtext(x+BUTTON_HEIGHT/2, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, rgba(128,128,128,200));
 
   return res;
 }
@@ -617,12 +599,11 @@ bool item(const char *text, bool enabled) {
   bool res = buttonLogic(id, over);
 
   if (isHot(id))
-    addgfxcmdroundedrect((float)x, (float)y, (float)w, (float)h, 2.0f, rgba(255,196,0,isActive(id)?196:96));
-
+    addgfxroundedrect((float)x, (float)y, (float)w, (float)h, 2.0f, rgba(255,196,0,isActive(id)?196:96));
   if (enabled)
-    addgfxcmdtext(x+BUTTON_HEIGHT/2, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, rgba(255,255,255,200));
+    addgfxtext(x+BUTTON_HEIGHT/2, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, rgba(255,255,255,200));
   else
-    addgfxcmdtext(x+BUTTON_HEIGHT/2, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, rgba(128,128,128,200));
+    addgfxtext(x+BUTTON_HEIGHT/2, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, rgba(128,128,128,200));
 
   return res;
 }
@@ -642,18 +623,18 @@ bool check(const char *text, bool checked, bool enabled) {
 
   const int cx = x+BUTTON_HEIGHT/2-CHECK_SIZE/2;
   const int cy = y+BUTTON_HEIGHT/2-CHECK_SIZE/2;
-  addgfxcmdroundedrect((float)cx-3, (float)cy-3, (float)CHECK_SIZE+6, (float)CHECK_SIZE+6, 4, rgba(128,128,128, isActive(id)?196:96));
+  addgfxroundedrect((float)cx-3, (float)cy-3, (float)CHECK_SIZE+6, (float)CHECK_SIZE+6, 4, rgba(128,128,128, isActive(id)?196:96));
   if (checked) {
     if (enabled)
-      addgfxcmdroundedrect((float)cx, (float)cy, (float)CHECK_SIZE, (float)CHECK_SIZE, (float)CHECK_SIZE/2-1, rgba(255,255,255,isActive(id)?255:200));
+      addgfxroundedrect((float)cx, (float)cy, (float)CHECK_SIZE, (float)CHECK_SIZE, (float)CHECK_SIZE/2-1, rgba(255,255,255,isActive(id)?255:200));
     else
-      addgfxcmdroundedrect((float)cx, (float)cy, (float)CHECK_SIZE, (float)CHECK_SIZE, (float)CHECK_SIZE/2-1, rgba(128,128,128,200));
+      addgfxroundedrect((float)cx, (float)cy, (float)CHECK_SIZE, (float)CHECK_SIZE, (float)CHECK_SIZE/2-1, rgba(128,128,128,200));
   }
 
   if (enabled)
-    addgfxcmdtext(x+BUTTON_HEIGHT, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, isHot(id) ? rgba(255,196,0,255) : rgba(255,255,255,200));
+    addgfxtext(x+BUTTON_HEIGHT, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, isHot(id) ? rgba(255,196,0,255) : rgba(255,255,255,200));
   else
-    addgfxcmdtext(x+BUTTON_HEIGHT, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, rgba(128,128,128,200));
+    addgfxtext(x+BUTTON_HEIGHT, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, rgba(128,128,128,200));
 
   return res;
 }
@@ -675,17 +656,17 @@ bool collapse(const char *text, const char *subtext, bool checked, bool enabled)
   bool res = buttonLogic(id, over);
 
   if (checked)
-    addgfxcmdTriangle(cx, cy, CHECK_SIZE, CHECK_SIZE, 2, rgba(255,255,255,isActive(id)?255:200));
+    addgfxtri(cx, cy, CHECK_SIZE, CHECK_SIZE, 2, rgba(255,255,255,isActive(id)?255:200));
   else
-    addgfxcmdTriangle(cx, cy, CHECK_SIZE, CHECK_SIZE, 1, rgba(255,255,255,isActive(id)?255:200));
+    addgfxtri(cx, cy, CHECK_SIZE, CHECK_SIZE, 1, rgba(255,255,255,isActive(id)?255:200));
 
   if (enabled)
-    addgfxcmdtext(x+BUTTON_HEIGHT, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, isHot(id) ? rgba(255,196,0,255) : rgba(255,255,255,200));
+    addgfxtext(x+BUTTON_HEIGHT, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, isHot(id) ? rgba(255,196,0,255) : rgba(255,255,255,200));
   else
-    addgfxcmdtext(x+BUTTON_HEIGHT, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, rgba(128,128,128,200));
+    addgfxtext(x+BUTTON_HEIGHT, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, rgba(128,128,128,200));
 
   if (subtext)
-    addgfxcmdtext(x+w-BUTTON_HEIGHT/2, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_RIGHT, subtext, rgba(255,255,255,128));
+    addgfxtext(x+w-BUTTON_HEIGHT/2, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_RIGHT, subtext, rgba(255,255,255,128));
 
   return res;
 }
@@ -694,7 +675,7 @@ void label(const char *text) {
   int x = g_state.widgetX;
   int y = g_state.widgetY - BUTTON_HEIGHT;
   g_state.widgetY -= BUTTON_HEIGHT;
-  addgfxcmdtext(x, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, rgba(255,255,255,255));
+  addgfxtext(x, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, rgba(255,255,255,255));
 }
 
 void value(const char *text) {
@@ -703,7 +684,7 @@ void value(const char *text) {
   const int w = g_state.widgetW;
   g_state.widgetY -= BUTTON_HEIGHT;
 
-  addgfxcmdtext(x+w-BUTTON_HEIGHT/2, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_RIGHT, text, rgba(255,255,255,200));
+  addgfxtext(x+w-BUTTON_HEIGHT/2, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_RIGHT, text, rgba(255,255,255,200));
 }
 
 bool slider(const char *text, float *val, float vmin, float vmax, float vinc, bool enabled) {
@@ -716,7 +697,7 @@ bool slider(const char *text, float *val, float vmin, float vmax, float vinc, bo
   int h = SLIDER_HEIGHT;
   g_state.widgetY -= SLIDER_HEIGHT + DEFAULT_SPACING;
 
-  addgfxcmdroundedrect((float)x, (float)y, (float)w, (float)h, 4.0f, rgba(0,0,0,128));
+  addgfxroundedrect((float)x, (float)y, (float)w, (float)h, 4.0f, rgba(0,0,0,128));
 
   const int range = w - SLIDER_MARKER_WIDTH;
 
@@ -746,9 +727,9 @@ bool slider(const char *text, float *val, float vmin, float vmax, float vinc, bo
   }
 
   if (isActive(id))
-    addgfxcmdroundedrect((float)(x+m), (float)y, (float)SLIDER_MARKER_WIDTH, (float)SLIDER_HEIGHT, 4.0f, rgba(255,255,255,255));
+    addgfxroundedrect((float)(x+m), (float)y, (float)SLIDER_MARKER_WIDTH, (float)SLIDER_HEIGHT, 4.0f, rgba(255,255,255,255));
   else
-    addgfxcmdroundedrect((float)(x+m), (float)y, (float)SLIDER_MARKER_WIDTH, (float)SLIDER_HEIGHT, 4.0f, isHot(id) ? rgba(255,196,0,128) : rgba(255,255,255,64));
+    addgfxroundedrect((float)(x+m), (float)y, (float)SLIDER_MARKER_WIDTH, (float)SLIDER_HEIGHT, 4.0f, isHot(id) ? rgba(255,196,0,128) : rgba(255,255,255,64));
 
   // TODO: fix this, take a look at 'nicenum'.
   int digits = (int)(ceilf(log10f(vinc)));
@@ -758,11 +739,11 @@ bool slider(const char *text, float *val, float vmin, float vmax, float vinc, bo
   snprintf(msg, 128, fmt, *val);
 
   if (enabled) {
-    addgfxcmdtext(x+SLIDER_HEIGHT/2, y+SLIDER_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, isHot(id) ? rgba(255,196,0,255) : rgba(255,255,255,200));
-    addgfxcmdtext(x+w-SLIDER_HEIGHT/2, y+SLIDER_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_RIGHT, msg, isHot(id) ? rgba(255,196,0,255) : rgba(255,255,255,200));
+    addgfxtext(x+SLIDER_HEIGHT/2, y+SLIDER_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, isHot(id) ? rgba(255,196,0,255) : rgba(255,255,255,200));
+    addgfxtext(x+w-SLIDER_HEIGHT/2, y+SLIDER_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_RIGHT, msg, isHot(id) ? rgba(255,196,0,255) : rgba(255,255,255,200));
   } else {
-    addgfxcmdtext(x+SLIDER_HEIGHT/2, y+SLIDER_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, rgba(128,128,128,200));
-    addgfxcmdtext(x+w-SLIDER_HEIGHT/2, y+SLIDER_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_RIGHT, msg, rgba(128,128,128,200));
+    addgfxtext(x+SLIDER_HEIGHT/2, y+SLIDER_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, rgba(128,128,128,200));
+    addgfxtext(x+w-SLIDER_HEIGHT/2, y+SLIDER_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_RIGHT, msg, rgba(128,128,128,200));
   }
 
   return res || valChanged;
@@ -778,10 +759,7 @@ void unindent() {
   g_state.widgetW += INDENT_SIZE;
 }
 
-void separator() {
-  g_state.widgetY -= DEFAULT_SPACING*3;
-}
-
+void separator() { g_state.widgetY -= DEFAULT_SPACING*3; }
 void separatorline() {
   int x = g_state.widgetX;
   int y = g_state.widgetY - DEFAULT_SPACING*2;
@@ -789,19 +767,19 @@ void separatorline() {
   int h = 1;
   g_state.widgetY -= DEFAULT_SPACING*4;
 
-  addgfxcmdrect((float)x, (float)y, (float)w, (float)h, rgba(255,255,255,32));
+  addgfxrect((float)x, (float)y, (float)w, (float)h, rgba(255,255,255,32));
 }
 void drawtext(int x, int y, int align, const char *text, u32 color) {
-  addgfxcmdtext(x, y, align, text, color);
+  addgfxtext(x, y, align, text, color);
 }
 void drawline(float x0, float y0, float x1, float y1, float r, u32 color) {
-  addgfxcmdline(x0, y0, x1, y1, r, color);
+  addgfxline(x0, y0, x1, y1, r, color);
 }
 void drawrect(float x, float y, float w, float h, u32 color) {
-  addgfxcmdrect(x, y, w, h, color);
+  addgfxrect(x, y, w, h, color);
 }
 void drawroundedrect(float x, float y, float w, float h, float r, u32 color) {
-  addgfxcmdroundedrect(x, y, w, h, r, color);
+  addgfxroundedrect(x, y, w, h, r, color);
 }
 } /* namespace ui */
 } /* namespace q */
