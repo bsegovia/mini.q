@@ -150,6 +150,8 @@ static void addgfxtext(int x, int y, int align, const char *text, u32 col) {
  -------------------------------------------------------------------------*/
 static const u32 TEMP_COORD_COUNT = 100;
 static const int CIRCLE_VERTS = 8*4;
+
+// XXX use array struct instead
 static float tempcoords[TEMP_COORD_COUNT*2];
 static float tempnormals[TEMP_COORD_COUNT*2];
 static float circleverts[CIRCLE_VERTS*2];
@@ -194,6 +196,7 @@ static void drawpoly(const float *coords, u32 numCoords, float r, u32 col) {
   const auto colf = vec4f(float(col&0xff), float((col>>8)&0xff), float((col>>16)&0xff), float(col>>24)) / 255.f;
 
   typedef array<float,6> verttype;
+  // XXX remove this and use a static array as the rest
   vector<verttype> verts;
   for (u32 i = 0, j = numCoords-1; i < numCoords; j=i++) {
     verts.add(verttype(colf,coords[i*2+0],coords[i*2+1]));
