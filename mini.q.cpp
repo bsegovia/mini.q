@@ -4,7 +4,7 @@
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
 
-#define TEST_UI 0
+#define TEST_UI 1
 
 #if TEST_UI
 #include "ui.hpp"
@@ -155,9 +155,7 @@ static void gui() {
   ui::label("indented");
   ui::unindent();
   ui::label("unindented");
-
   ui::endscrollarea();
-
   ui::beginscrollarea("scroll area", 20 + sys::scrw / 5, 500, sys::scrw / 5, sys::scrh - 510, &scrollarea2);
   ui::separatorline();
   ui::separator();
@@ -181,7 +179,6 @@ static void gui() {
   ui::drawrect(30 + sys::scrw / 5 * 2, sys::scrh - 590, 100, 100, ui::rgba(32, 192, 32, 192));
   ui::drawrect(30 + sys::scrw / 5 * 2, sys::scrh - 710, 100, 100, ui::rgba(32, 32, 192, 192));
   ui::drawrect(30 + sys::scrw / 5 * 2, sys::scrh - 830, 100, 100, ui::rgba(192, 32, 32,192));
-
   ui::draw(sys::scrw, sys::scrh);
 }
 #endif

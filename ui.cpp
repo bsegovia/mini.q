@@ -153,6 +153,7 @@ static const int CIRCLE_VERTS = 8*4;
 static float tempcoords[TEMP_COORD_COUNT*2];
 static float tempnormals[TEMP_COORD_COUNT*2];
 static float circleverts[CIRCLE_VERTS*2];
+static bool initcircleverts = true;
 
 static void drawpoly(const float *coords, u32 numCoords, float r, u32 col) {
   if (numCoords > TEMP_COORD_COUNT) numCoords = TEMP_COORD_COUNT;
@@ -179,9 +180,9 @@ static void drawpoly(const float *coords, u32 numCoords, float r, u32 col) {
     float dly1 = tempnormals[i*2+1];
     float dmx = (dlx0 + dlx1) * 0.5f;
     float dmy = (dly0 + dly1) * 0.5f;
-    float  dmr2 = dmx*dmx + dmy*dmy;
+    float dmr2 = dmx*dmx + dmy*dmy;
     if (dmr2 > 0.000001f) {
-      float  scale = 1.0f / dmr2;
+      float scale = 1.0f / dmr2;
       if (scale > 10.0f) scale = 10.0f;
       dmx *= scale;
       dmy *= scale;
@@ -204,7 +205,6 @@ static void drawpoly(const float *coords, u32 numCoords, float r, u32 col) {
     verts.add(verttype(colTrans,tempcoords[i*2+0],tempcoords[i*2+1]));
     verts.add(verttype(colf,coords[i*2+0],coords[i*2+1]));
   }
-
   for (u32 i = 2; i < numCoords; ++i) {
     verts.add(verttype(colf, coords[0], coords[1]));
     verts.add(verttype(colf, coords[(i-1)*2], coords[(i-1)*2+1]));
@@ -225,10 +225,19 @@ static void drawrect(float x, float y, float w, float h, float fth, u32 col) {
 }
 
 static void drawroundedrect(float x, float y, float w, float h, float r, float fth, u32 col) {
+  printf("BOUM %f %f %f %f %f %f\n", x, y, w, h, r, fth);
   const u32 n = CIRCLE_VERTS/4;
   float verts[(n+1)*4*2];
   const float *cverts = circleverts;
   float *v = verts;
+  if (initcircleverts) {
+    loopi(CIRCLE_VERTS) {
+      float a = float(i)/float(CIRCLE_VERTS)*float(pi)*2.f;
+      circleverts[i*2+0] = cos(a);
+      circleverts[i*2+1] = sin(a);
+    }
+    initcircleverts = false;
+  }
 
   for (u32 i = 0; i <= n; ++i) {
     *v++ = x+w-r + cverts[i*2]*r;
