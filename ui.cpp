@@ -8,8 +8,6 @@
 #include "ogl.hpp"
 #include "text.hpp"
 #include "math.hpp"
-#if 1
-#include <GL/gl.h>
 
 namespace q {
 namespace ui {
@@ -785,5 +783,4 @@ void drawroundedrect(float x, float y, float w, float h, float r, u32 color) {
 }
 } /* namespace ui */
 } /* namespace q */
-#endif
 
