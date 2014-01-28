@@ -31,7 +31,7 @@ struct gfxtext {
   s16 x,y,align;
   const char *text;
 };
-struct gfxcmd {
+struct gfx {
   char type;
   char flags;
   char pad[2];
@@ -47,14 +47,14 @@ struct gfxcmd {
  - graphics commands
  -------------------------------------------------------------------------*/
 static const u32 GFX_QUEUE_SIZE = 5000;
-static gfxcmd g_gfxcmdqueue[GFX_QUEUE_SIZE];
-static u32 g_gfxcmdqueuesize = 0;
+static gfx g_gfxqueue[GFX_QUEUE_SIZE];
+static u32 g_gfxqueuesize = 0;
 static const u32 TEXT_POOL_SIZE = 8000;
 static char g_textpool[TEXT_POOL_SIZE];
 static u32 g_textpoolsize = 0;
 
-static const gfxcmd *getrenderqueue() { return g_gfxcmdqueue; }
-static int getrenderqueuesize() { return g_gfxcmdqueuesize; }
+static const gfx *getrenderqueue() { return g_gfxqueue; }
+static int getrenderqueuesize() { return g_gfxqueuesize; }
 
 static const char *allocText(const char *text) {
   u32 len = strlen(text)+1;
@@ -65,14 +65,14 @@ static const char *allocText(const char *text) {
   return dst;
 }
 
-static void resetgfxcmdqueue() {
-  g_gfxcmdqueuesize = 0;
+static void resetgfxqueue() {
+  g_gfxqueuesize = 0;
   g_textpoolsize = 0;
 }
 
 static void addgfxscissor(int x, int y, int w, int h) {
-  if (g_gfxcmdqueuesize >= GFX_QUEUE_SIZE) return;
-  gfxcmd& cmd = g_gfxcmdqueue[g_gfxcmdqueuesize++];
+  if (g_gfxqueuesize >= GFX_QUEUE_SIZE) return;
+  gfx& cmd = g_gfxqueue[g_gfxqueuesize++];
   cmd.type = GFX_SCISSOR;
   cmd.flags = x < 0 ? 0 : 1;      // on/off flag.
   cmd.col = 0;
@@ -82,12 +82,12 @@ static void addgfxscissor(int x, int y, int w, int h) {
   cmd.rect.h = s16(h);
 }
 
-static void addgfxrect(float x, float y, float w, float h, u32 color) {
-  if (g_gfxcmdqueuesize >= GFX_QUEUE_SIZE) return;
-  gfxcmd& cmd = g_gfxcmdqueue[g_gfxcmdqueuesize++];
+static void addgfxrect(float x, float y, float w, float h, u32 col) {
+  if (g_gfxqueuesize >= GFX_QUEUE_SIZE) return;
+  gfx& cmd = g_gfxqueue[g_gfxqueuesize++];
   cmd.type = GFX_RECT;
   cmd.flags = 0;
-  cmd.col = color;
+  cmd.col = col;
   cmd.rect.x = s16(x*8.0f);
   cmd.rect.y = s16(y*8.0f);
   cmd.rect.w = s16(w*8.0f);
@@ -95,12 +95,12 @@ static void addgfxrect(float x, float y, float w, float h, u32 color) {
   cmd.rect.r = 0;
 }
 
-static void addgfxline(float x0, float y0, float x1, float y1, float r, u32 color) {
-  if (g_gfxcmdqueuesize >= GFX_QUEUE_SIZE) return;
-  gfxcmd& cmd = g_gfxcmdqueue[g_gfxcmdqueuesize++];
+static void addgfxline(float x0, float y0, float x1, float y1, float r, u32 col) {
+  if (g_gfxqueuesize >= GFX_QUEUE_SIZE) return;
+  gfx& cmd = g_gfxqueue[g_gfxqueuesize++];
   cmd.type = GFX_LINE;
   cmd.flags = 0;
-  cmd.col = color;
+  cmd.col = col;
   cmd.line.x0 = s16(x0*8.0f);
   cmd.line.y0 = s16(y0*8.0f);
   cmd.line.x1 = s16(x1*8.0f);
@@ -108,12 +108,12 @@ static void addgfxline(float x0, float y0, float x1, float y1, float r, u32 colo
   cmd.line.r  = s16(r*8.0f);
 }
 
-static void addgfxroundedrect(float x, float y, float w, float h, float r, u32 color) {
-  if (g_gfxcmdqueuesize >= GFX_QUEUE_SIZE) return;
-  gfxcmd& cmd = g_gfxcmdqueue[g_gfxcmdqueuesize++];
+static void addgfxroundedrect(float x, float y, float w, float h, float r, u32 col) {
+  if (g_gfxqueuesize >= GFX_QUEUE_SIZE) return;
+  gfx& cmd = g_gfxqueue[g_gfxqueuesize++];
   cmd.type = GFX_RECT;
   cmd.flags = 0;
-  cmd.col = color;
+  cmd.col = col;
   cmd.rect.x = s16(x*8.0f);
   cmd.rect.y = s16(y*8.0f);
   cmd.rect.w = s16(w*8.0f);
@@ -121,24 +121,24 @@ static void addgfxroundedrect(float x, float y, float w, float h, float r, u32 c
   cmd.rect.r = s16(r*8.0f);
 }
 
-static void addgfxtri(int x, int y, int w, int h, int flags, u32 color) {
-  if (g_gfxcmdqueuesize >= GFX_QUEUE_SIZE) return;
-  gfxcmd& cmd = g_gfxcmdqueue[g_gfxcmdqueuesize++];
+static void addgfxtri(int x, int y, int w, int h, int flags, u32 col) {
+  if (g_gfxqueuesize >= GFX_QUEUE_SIZE) return;
+  gfx& cmd = g_gfxqueue[g_gfxqueuesize++];
   cmd.type = GFX_TRIANGLE;
   cmd.flags = char(flags);
-  cmd.col = color;
+  cmd.col = col;
   cmd.rect.x = s16(x*8.0f);
   cmd.rect.y = s16(y*8.0f);
   cmd.rect.w = s16(w*8.0f);
   cmd.rect.h = s16(h*8.0f);
 }
 
-static void addgfxtext(int x, int y, int align, const char *text, u32 color) {
-  if (g_gfxcmdqueuesize >= GFX_QUEUE_SIZE) return;
-  gfxcmd& cmd = g_gfxcmdqueue[g_gfxcmdqueuesize++];
+static void addgfxtext(int x, int y, int align, const char *text, u32 col) {
+  if (g_gfxqueuesize >= GFX_QUEUE_SIZE) return;
+  gfx& cmd = g_gfxqueue[g_gfxqueuesize++];
   cmd.type = GFX_TEXT;
   cmd.flags = 0;
-  cmd.col = color;
+  cmd.col = col;
   cmd.text.x = s16(x);
   cmd.text.y = s16(y);
   cmd.text.align = s16(align);
@@ -213,7 +213,7 @@ static void drawpoly(const float *coords, u32 numCoords, float r, u32 col) {
   ogl::immdraw(GL_TRIANGLES, 2, 0, 4, verts.length(), &verts[0][0]);
 }
 
-static void drawRect(float x, float y, float w, float h, float fth, u32 col) {
+static void drawrect(float x, float y, float w, float h, float fth, u32 col) {
   const float verts[4*2] = {
     x+0.5f, y+0.5f,
     x+w-0.5f, y+0.5f,
@@ -298,12 +298,12 @@ void draw(int width, int height) {
 
   OGL(Disable, GL_SCISSOR_TEST);
   for (int i = 0; i < nq; ++i) {
-    const gfxcmd& cmd = q[i];
+    const gfx& cmd = q[i];
     if (cmd.type == GFX_RECT) {
       if (cmd.rect.r == 0)
-        drawRect((float)cmd.rect.x*s+0.5f, (float)cmd.rect.y*s+0.5f,
-             (float)cmd.rect.w*s-1, (float)cmd.rect.h*s-1,
-             1.0f, cmd.col);
+        drawrect((float)cmd.rect.x*s+0.5f, (float)cmd.rect.y*s+0.5f,
+                 (float)cmd.rect.w*s-1.f, (float)cmd.rect.h*s-1.f,
+                 1.0f, cmd.col);
       else
         drawroundedrect((float)cmd.rect.x*s+0.5f, (float)cmd.rect.y*s+0.5f,
                 (float)cmd.rect.w*s-1, (float)cmd.rect.h*s-1,
@@ -372,77 +372,77 @@ struct guistate {
   u32 widgetId;
 };
 
-static guistate g_state;
+static guistate state;
 
-INLINE bool anyActive() { return g_state.active != 0; }
-INLINE bool isActive(u32 id) { return g_state.active == id; }
-INLINE bool isHot(u32 id) { return g_state.hot == id; }
+INLINE bool anyActive() { return state.active != 0; }
+INLINE bool isActive(u32 id) { return state.active == id; }
+INLINE bool isHot(u32 id) { return state.hot == id; }
 INLINE bool inrect(int x, int y, int w, int h, bool checkScroll = true) {
-  return (!checkScroll || g_state.insideCurrentScroll) &&
-         g_state.mx >= x && g_state.mx <= x+w &&
-         g_state.my >= y && g_state.my <= y+h;
+  return (!checkScroll || state.insideCurrentScroll) &&
+         state.mx >= x && state.mx <= x+w &&
+         state.my >= y && state.my <= y+h;
 }
 INLINE void clearInput() {
-  g_state.leftPressed = false;
-  g_state.leftReleased = false;
-  g_state.scroll = 0;
+  state.leftPressed = false;
+  state.leftReleased = false;
+  state.scroll = 0;
 }
 INLINE void clearActive() {
-  g_state.active = 0;
+  state.active = 0;
   clearInput();
 }
 INLINE void setActive(u32 id) {
-  g_state.active = id;
-  g_state.wentActive = true;
+  state.active = id;
+  state.wentActive = true;
 }
-INLINE void setHot(u32 id) { g_state.hotToBe = id; }
+INLINE void setHot(u32 id) { state.hotToBe = id; }
 
 static bool buttonLogic(u32 id, bool over) {
   bool res = false;
   // process down
   if (!anyActive()) {
     if (over) setHot(id);
-    if (isHot(id) && g_state.leftPressed) setActive(id);
+    if (isHot(id) && state.leftPressed) setActive(id);
   }
 
   // if button is active, then react on left up
   if (isActive(id)) {
-    g_state.isActive = true;
+    state.isActive = true;
     if (over) setHot(id);
-    if (g_state.leftReleased) {
+    if (state.leftReleased) {
       if (isHot(id))
         res = true;
       clearActive();
     }
   }
 
-  if (isHot(id)) g_state.isHot = true;
+  if (isHot(id)) state.isHot = true;
   return res;
 }
 
 static void updateInput(int mx, int my, u8 mbut, int scroll) {
   bool left = (mbut & MBUT_LEFT) != 0;
-  g_state.mx = mx;
-  g_state.my = my;
-  g_state.leftPressed = !g_state.left && left;
-  g_state.leftReleased = g_state.left && !left;
-  g_state.left = left;
-  g_state.scroll = scroll;
+  state.mx = mx;
+  state.my = my;
+  state.leftPressed = !state.left && left;
+  state.leftReleased = state.left && !left;
+  state.left = left;
+  state.scroll = scroll;
 }
 
 void beginframe(int mx, int my, u8 mbut, int scroll) {
   updateInput(mx,my,mbut,scroll);
-  g_state.hot = g_state.hotToBe;
-  g_state.hotToBe = 0;
-  g_state.wentActive = false;
-  g_state.isActive = false;
-  g_state.isHot = false;
-  g_state.widgetX = 0;
-  g_state.widgetY = 0;
-  g_state.widgetW = 0;
-  g_state.areaId = 1;
-  g_state.widgetId = 1;
-  resetgfxcmdqueue();
+  state.hot = state.hotToBe;
+  state.hotToBe = 0;
+  state.wentActive = false;
+  state.isActive = false;
+  state.isHot = false;
+  state.widgetX = 0;
+  state.widgetY = 0;
+  state.widgetW = 0;
+  state.areaId = 1;
+  state.widgetId = 1;
+  resetgfxqueue();
 }
 
 void endframe() { clearInput(); }
@@ -468,25 +468,25 @@ static u32 g_scrollId = 0;
 static bool g_insideScrollArea = false;
 
 bool beginscrollarea(const char *name, int x, int y, int w, int h, int *scroll) {
-  g_state.areaId++;
-  g_state.widgetId = 0;
-  g_scrollId = (g_state.areaId<<16) | g_state.widgetId;
+  state.areaId++;
+  state.widgetId = 0;
+  g_scrollId = (state.areaId<<16) | state.widgetId;
 
-  g_state.widgetX = x + SCROLL_AREA_PADDING;
-  g_state.widgetY = y+h-AREA_HEADER + (*scroll);
-  g_state.widgetW = w - SCROLL_AREA_PADDING*4;
+  state.widgetX = x + SCROLL_AREA_PADDING;
+  state.widgetY = y+h-AREA_HEADER + (*scroll);
+  state.widgetW = w - SCROLL_AREA_PADDING*4;
   g_scrollTop = y-AREA_HEADER+h;
   g_scrollBottom = y+SCROLL_AREA_PADDING;
   g_scrollRight = x+w - SCROLL_AREA_PADDING*3;
   g_scrollVal = scroll;
 
-  g_scrollAreaTop = g_state.widgetY;
+  g_scrollAreaTop = state.widgetY;
 
   g_focusTop = y-AREA_HEADER;
   g_focusBottom = y-AREA_HEADER+h;
 
   g_insideScrollArea = inrect(x, y, w, h, false);
-  g_state.insideCurrentScroll = g_insideScrollArea;
+  state.insideCurrentScroll = g_insideScrollArea;
 
   addgfxroundedrect((float)x, (float)y, (float)w, (float)h, 6, rgba(0,0,0,192));
   addgfxtext(x+AREA_HEADER/2, y+h-AREA_HEADER/2-TEXT_HEIGHT/2, ALIGN_LEFT, name, rgba(255,255,255,128));
@@ -506,7 +506,7 @@ void endscrollarea() {
   int h = g_scrollTop - g_scrollBottom;
 
   int stop = g_scrollAreaTop;
-  int sbot = g_state.widgetY;
+  int sbot = state.widgetY;
   int sh = stop - sbot; // The scrollable area height.
 
   float barHeight = (float)h/(float)sh;
@@ -529,14 +529,14 @@ void endscrollarea() {
     if (isActive(hid))
     {
       float u = (float)(hy-y) / (float)range;
-      if (g_state.wentActive)
+      if (state.wentActive)
       {
-        g_state.dragY = g_state.my;
-        g_state.dragOrig = u;
+        state.dragY = state.my;
+        state.dragOrig = u;
       }
-      if (g_state.dragY != g_state.my)
+      if (state.dragY != state.my)
       {
-        u = g_state.dragOrig + (g_state.my - g_state.dragY) / (float)range;
+        u = state.dragOrig + (state.my - state.dragY) / (float)range;
         if (u < 0) u = 0;
         if (u > 1) u = 1;
         *g_scrollVal = (int)((1-u)  *(sh - h));
@@ -553,25 +553,25 @@ void endscrollarea() {
 
     // Handle mouse scrolling.
     if (g_insideScrollArea) { // && !anyActive())
-      if (g_state.scroll) {
-        *g_scrollVal += 20*g_state.scroll;
+      if (state.scroll) {
+        *g_scrollVal += 20*state.scroll;
         if (*g_scrollVal < 0) *g_scrollVal = 0;
         if (*g_scrollVal > (sh - h)) *g_scrollVal = (sh - h);
       }
     }
   }
-  g_state.insideCurrentScroll = false;
+  state.insideCurrentScroll = false;
 }
 
 bool button(const char *text, bool enabled) {
-  g_state.widgetId++;
-  u32 id = (g_state.areaId<<16) | g_state.widgetId;
+  state.widgetId++;
+  u32 id = (state.areaId<<16) | state.widgetId;
 
-  const int x = g_state.widgetX;
-  const int y = g_state.widgetY - BUTTON_HEIGHT;
-  const int w = g_state.widgetW;
+  const int x = state.widgetX;
+  const int y = state.widgetY - BUTTON_HEIGHT;
+  const int w = state.widgetW;
   const int h = BUTTON_HEIGHT;
-  g_state.widgetY -= BUTTON_HEIGHT + DEFAULT_SPACING;
+  state.widgetY -= BUTTON_HEIGHT + DEFAULT_SPACING;
 
   const bool over = enabled && inrect(x, y, w, h);
   const bool res = buttonLogic(id, over);
@@ -586,14 +586,14 @@ bool button(const char *text, bool enabled) {
 }
 
 bool item(const char *text, bool enabled) {
-  g_state.widgetId++;
-  u32 id = (g_state.areaId<<16) | g_state.widgetId;
+  state.widgetId++;
+  u32 id = (state.areaId<<16) | state.widgetId;
 
-  int x = g_state.widgetX;
-  int y = g_state.widgetY - BUTTON_HEIGHT;
-  int w = g_state.widgetW;
+  int x = state.widgetX;
+  int y = state.widgetY - BUTTON_HEIGHT;
+  int w = state.widgetW;
   int h = BUTTON_HEIGHT;
-  g_state.widgetY -= BUTTON_HEIGHT + DEFAULT_SPACING;
+  state.widgetY -= BUTTON_HEIGHT + DEFAULT_SPACING;
 
   bool over = enabled && inrect(x, y, w, h);
   bool res = buttonLogic(id, over);
@@ -609,14 +609,14 @@ bool item(const char *text, bool enabled) {
 }
 
 bool check(const char *text, bool checked, bool enabled) {
-  g_state.widgetId++;
-  u32 id = (g_state.areaId<<16) | g_state.widgetId;
+  state.widgetId++;
+  u32 id = (state.areaId<<16) | state.widgetId;
 
-  int x = g_state.widgetX;
-  int y = g_state.widgetY - BUTTON_HEIGHT;
-  int w = g_state.widgetW;
+  int x = state.widgetX;
+  int y = state.widgetY - BUTTON_HEIGHT;
+  int w = state.widgetW;
   int h = BUTTON_HEIGHT;
-  g_state.widgetY -= BUTTON_HEIGHT + DEFAULT_SPACING;
+  state.widgetY -= BUTTON_HEIGHT + DEFAULT_SPACING;
 
   bool over = enabled && inrect(x, y, w, h);
   bool res = buttonLogic(id, over);
@@ -640,14 +640,14 @@ bool check(const char *text, bool checked, bool enabled) {
 }
 
 bool collapse(const char *text, const char *subtext, bool checked, bool enabled) {
-  g_state.widgetId++;
-  u32 id = (g_state.areaId<<16) | g_state.widgetId;
+  state.widgetId++;
+  u32 id = (state.areaId<<16) | state.widgetId;
 
-  int x = g_state.widgetX;
-  int y = g_state.widgetY - BUTTON_HEIGHT;
-  int w = g_state.widgetW;
+  int x = state.widgetX;
+  int y = state.widgetY - BUTTON_HEIGHT;
+  int w = state.widgetW;
   int h = BUTTON_HEIGHT;
-  g_state.widgetY -= BUTTON_HEIGHT; // + DEFAULT_SPACING;
+  state.widgetY -= BUTTON_HEIGHT; // + DEFAULT_SPACING;
 
   const int cx = x+BUTTON_HEIGHT/2-CHECK_SIZE/2;
   const int cy = y+BUTTON_HEIGHT/2-CHECK_SIZE/2;
@@ -672,30 +672,30 @@ bool collapse(const char *text, const char *subtext, bool checked, bool enabled)
 }
 
 void label(const char *text) {
-  int x = g_state.widgetX;
-  int y = g_state.widgetY - BUTTON_HEIGHT;
-  g_state.widgetY -= BUTTON_HEIGHT;
+  int x = state.widgetX;
+  int y = state.widgetY - BUTTON_HEIGHT;
+  state.widgetY -= BUTTON_HEIGHT;
   addgfxtext(x, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, rgba(255,255,255,255));
 }
 
 void value(const char *text) {
-  const int x = g_state.widgetX;
-  const int y = g_state.widgetY - BUTTON_HEIGHT;
-  const int w = g_state.widgetW;
-  g_state.widgetY -= BUTTON_HEIGHT;
+  const int x = state.widgetX;
+  const int y = state.widgetY - BUTTON_HEIGHT;
+  const int w = state.widgetW;
+  state.widgetY -= BUTTON_HEIGHT;
 
   addgfxtext(x+w-BUTTON_HEIGHT/2, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_RIGHT, text, rgba(255,255,255,200));
 }
 
 bool slider(const char *text, float *val, float vmin, float vmax, float vinc, bool enabled) {
-  g_state.widgetId++;
-  u32 id = (g_state.areaId<<16) | g_state.widgetId;
+  state.widgetId++;
+  u32 id = (state.areaId<<16) | state.widgetId;
 
-  int x = g_state.widgetX;
-  int y = g_state.widgetY - BUTTON_HEIGHT;
-  int w = g_state.widgetW;
+  int x = state.widgetX;
+  int y = state.widgetY - BUTTON_HEIGHT;
+  int w = state.widgetW;
   int h = SLIDER_HEIGHT;
-  g_state.widgetY -= SLIDER_HEIGHT + DEFAULT_SPACING;
+  state.widgetY -= SLIDER_HEIGHT + DEFAULT_SPACING;
 
   addgfxroundedrect((float)x, (float)y, (float)w, (float)h, 4.0f, rgba(0,0,0,128));
 
@@ -704,19 +704,19 @@ bool slider(const char *text, float *val, float vmin, float vmax, float vinc, bo
   float u = (*val - vmin) / (vmax-vmin);
   if (u < 0) u = 0;
   if (u > 1) u = 1;
-  int m = (int)(u  *range);
+  int m = int(u*range);
 
   bool over = enabled && inrect(x+m, y, SLIDER_MARKER_WIDTH, SLIDER_HEIGHT);
   bool res = buttonLogic(id, over);
   bool valChanged = false;
 
   if (isActive(id)) {
-    if (g_state.wentActive) {
-      g_state.dragX = g_state.mx;
-      g_state.dragOrig = u;
+    if (state.wentActive) {
+      state.dragX = state.mx;
+      state.dragOrig = u;
     }
-    if (g_state.dragX != g_state.mx) {
-      u = g_state.dragOrig + (float)(g_state.mx - g_state.dragX) / (float)range;
+    if (state.dragX != state.mx) {
+      u = state.dragOrig + (float)(state.mx - state.dragX) / (float)range;
       if (u < 0) u = 0;
       if (u > 1) u = 1;
       *val = vmin + u*(vmax-vmin);
@@ -732,10 +732,9 @@ bool slider(const char *text, float *val, float vmin, float vmax, float vinc, bo
     addgfxroundedrect((float)(x+m), (float)y, (float)SLIDER_MARKER_WIDTH, (float)SLIDER_HEIGHT, 4.0f, isHot(id) ? rgba(255,196,0,128) : rgba(255,255,255,64));
 
   // TODO: fix this, take a look at 'nicenum'.
-  int digits = (int)(ceilf(log10f(vinc)));
-  char fmt[16];
+  const int digits = (int)(ceilf(log10f(vinc)));
+  char fmt[16], msg[128];
   snprintf(fmt, 16, "%%.%df", digits >= 0 ? 0 : -digits);
-  char msg[128];
   snprintf(msg, 128, fmt, *val);
 
   if (enabled) {
@@ -750,22 +749,22 @@ bool slider(const char *text, float *val, float vmin, float vmax, float vinc, bo
 }
 
 void indent() {
-  g_state.widgetX += INDENT_SIZE;
-  g_state.widgetW -= INDENT_SIZE;
+  state.widgetX += INDENT_SIZE;
+  state.widgetW -= INDENT_SIZE;
 }
 
 void unindent() {
-  g_state.widgetX -= INDENT_SIZE;
-  g_state.widgetW += INDENT_SIZE;
+  state.widgetX -= INDENT_SIZE;
+  state.widgetW += INDENT_SIZE;
 }
 
-void separator() { g_state.widgetY -= DEFAULT_SPACING*3; }
+void separator() { state.widgetY -= DEFAULT_SPACING*3; }
 void separatorline() {
-  int x = g_state.widgetX;
-  int y = g_state.widgetY - DEFAULT_SPACING*2;
-  int w = g_state.widgetW;
+  int x = state.widgetX;
+  int y = state.widgetY - DEFAULT_SPACING*2;
+  int w = state.widgetW;
   int h = 1;
-  g_state.widgetY -= DEFAULT_SPACING*4;
+  state.widgetY -= DEFAULT_SPACING*4;
 
   addgfxrect((float)x, (float)y, (float)w, (float)h, rgba(255,255,255,32));
 }
