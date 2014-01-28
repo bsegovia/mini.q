@@ -4,7 +4,9 @@
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
 
-#if 0
+#define TEST_UI 0
+
+#if TEST_UI
 #include "ui.hpp"
 #include <GL/gl.h>
 #endif
@@ -83,7 +85,7 @@ void finish() {
   con::finish();
 }
 
-#if 0
+#if TEST_UI
 static u32 leftbutton = 0, middlebutton = 0, rightbutton = 0;
 
 static void gui() {
@@ -97,7 +99,12 @@ static void gui() {
   int scrollarea1 = 0;
   int scrollarea2 = 0;
 
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  OGL(ClearColor, 0.8f, 0.8f, 0.8f, 1.f);
+  OGL(Enable, GL_BLEND);
+  OGL(BlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  OGL(Disable, GL_DEPTH_TEST);
+  OGL(Disable, GL_CULL_FACE);
+  OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   // Mouse states
   unsigned char mousebutton = 0;
@@ -110,17 +117,23 @@ static void gui() {
   // Draw UI
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
-  float projection[16] = {
-    2.f/sys::scrw, 0.f, 0.f,  0.f,
-    0.f, 2.f/sys::scrh,  0.f,  0.f,
-    0.f,  0.f, -2.f, 0.f,
-    -1.f, -1.f,  -1.f,  1.f
-  };
-  glLoadMatrixf(projection);
+  const mat4x4f projection(
+    vec4f(2.f/sys::scrw, 0.f, 0.f,  0.f),
+    vec4f(0.f, 2.f/sys::scrh,  0.f,  0.f),
+    vec4f(0.f,  0.f, -2.f, 0.f),
+    vec4f(-1.f, -1.f,  -1.f,  1.f));
+  glLoadMatrixf(&projection.vx.x);
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
 
-  ui::beginframe(mousex, mousey, mousebutton, mscroll);
+#if 1
+  ogl::matrixmode(ogl::PROJECTION);
+  ogl::loadmatrix(projection);
+  ogl::matrixmode(ogl::MODELVIEW);
+  ogl::identity();
+#endif
+
+  ui::beginframe(mousex, mousey, mousebutton, 0);
 
   ui::beginscrollarea("scroll area", 10, 10, sys::scrw / 5, sys::scrh - 20, &scrollarea1);
   ui::separatorline();
@@ -193,6 +206,9 @@ INLINE void mainloop() {
   static float fps = 30.0f;
   fps = (1000.0f/game::curtime+fps*50.f)/51.f;
   SDL_GL_SwapBuffers();
+#if TEST_UI
+  gui();
+#else
   OGL(ClearColor, 0.f, 0.f, 0.f, 1.f);
   OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   if (frame++) {
@@ -200,6 +216,7 @@ INLINE void mainloop() {
     game::updateworld(millis);
   }
   rr::frame(sys::scrw, sys::scrh, int(fps));
+#endif
   SDL_Event e;
   int lasttype = 0, lastbut = 0;
   while (SDL_PollEvent(&e)) {
@@ -249,6 +266,12 @@ static int run() {
 
 int main(int argc, const char *argv[]) {
   q::start(argc, argv);
+#if TEST_UI
+  if (!q::ui::renderglinit("DroidSans.ttf")) {
+    fprintf(stderr, "Could not init GUI renderer.\n");
+    exit(EXIT_FAILURE);
+  }
+#endif
   return q::run();
 }
 

@@ -44,6 +44,10 @@ namespace ui {
   void drawline(float x0, float y0, float x1, float y1, float r, u32 color);
   void drawroundedrect(float x, float y, float w, float h, float r, u32 color);
   void drawrect(float x, float y, float w, float h, u32 color);
+
+  bool renderglinit(const char* fontpath);
+  void rendergldraw(int w, int h);
+  void rendergldestroy();
 } /* namespace ui */
 } /* namespace q */
 

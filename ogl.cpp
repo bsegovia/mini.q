@@ -213,12 +213,14 @@ u32 maketex(const char *fmt, ...) {
         case '3': datafmt = GL_RGB; break;
         case '4': datafmt = GL_RGBA; break;
         case 'r': datafmt = GL_RED; break;
+        case 'a': datafmt = GL_ALPHA; break;
       }
       break;
       case 'I': PEEK { // internal data format
         case '3': internalfmt = GL_RGB; break;
         case '4': internalfmt = GL_RGBA; break;
         case 'r': internalfmt = GL_RED; break;
+        case 'a': internalfmt = GL_ALPHA; break;
       }
       break;
       case 'm': // minfilter
@@ -741,7 +743,6 @@ void finish() {
   rangei(TEX_CROSSHAIR, TEX_PREALLOCATED_NUM)
     if (coretexarray[i]) OGL(DeleteTextures, 1, coretexarray+i);
 }
-
 } /* namespace ogl */
 } /* namespace q */
 

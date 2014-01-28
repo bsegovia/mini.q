@@ -51,7 +51,6 @@ void deletetextures(s32 n, u32 *id);
 void deletebuffers(s32 n, u32 *id);
 
 // draw helper functions
-void draw(int mode, int pos, int tex, size_t n, const float *data);
 void drawarrays(int mode, int first, int count);
 void drawelements(int mode, int count, int type, const void *indices);
 void rendermd2(const float *pos0, const float *pos1, float lerp, int n);
