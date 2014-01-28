@@ -4,7 +4,7 @@
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
 
-#define TEST_UI 1
+#define TEST_UI 0
 
 #if TEST_UI
 #include "ui.hpp"
