@@ -98,7 +98,6 @@ void drawf(const char *fstr, const vec2f &pos, ...) {
 }
 
 void draw(const char *str, const vec2f &pos) {
-  OGL(BlendFunc, GL_ONE, GL_ONE);
   ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_CHARACTERS));
   OGL(VertexAttrib3f,ogl::COL,1.f,1.f,1.f);
 
@@ -123,10 +122,10 @@ void draw(const char *str, const vec2f &pos) {
     const float in_bottom = in_top + (float(charh)-0.05f)/float(fonth);
 
     loopj(6) indices[index+j] = vert+twotriangles[j];
-    verts[vert+0] = vec4f(in_left, in_top,   x,         y);
-    verts[vert+1] = vec4f(in_right,in_top,   x+displayw,y);
-    verts[vert+2] = vec4f(in_right,in_bottom,x+displayw,y+displayh);
-    verts[vert+3] = vec4f(in_left, in_bottom,x,         y+displayh);
+    verts[vert+0] = vec4f(in_left, in_bottom,   x,         y);
+    verts[vert+1] = vec4f(in_right,in_bottom,   x+displayw,y);
+    verts[vert+2] = vec4f(in_right,in_top,x+displayw,y+displayh);
+    verts[vert+3] = vec4f(in_left, in_top,x,         y+displayh);
 
     x += displayw;
     index += 6;

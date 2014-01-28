@@ -128,7 +128,8 @@ static void gui() {
 
 #if 1
   ogl::matrixmode(ogl::PROJECTION);
-  ogl::loadmatrix(projection);
+  // ogl::loadmatrix(projection);
+  ogl::setortho(0.f, sys::scrw, 0.f, sys::scrh, -1.f, 1.f);
   ogl::matrixmode(ogl::MODELVIEW);
   ogl::identity();
 #endif
@@ -266,12 +267,6 @@ static int run() {
 
 int main(int argc, const char *argv[]) {
   q::start(argc, argv);
-#if TEST_UI
-  if (!q::ui::renderglinit("DroidSans.ttf")) {
-    fprintf(stderr, "Could not init GUI renderer.\n");
-    exit(EXIT_FAILURE);
-  }
-#endif
   return q::run();
 }
 

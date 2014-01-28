@@ -19,7 +19,7 @@ static void setphysicalhud() {
   ogl::pushmode(ogl::MODELVIEW);
   ogl::identity();
   ogl::pushmode(ogl::PROJECTION);
-  ogl::setortho(0.f, scr.x, scr.y, 0.f, -1.f, 1.f);
+  ogl::setortho(0.f, scr.x, 0.f, scr.y, -1.f, 1.f);
 }
 static void popmatrices() {
   ogl::popmode(ogl::PROJECTION);
@@ -36,6 +36,7 @@ static void drawhud(int w, int h, int curfps) {
   const auto fontdim = text::fontdim();
   ogl::enablev(GL_BLEND);
   ogl::disable(GL_DEPTH_TEST);
+  OGL(BlendFunc, GL_ONE, GL_ONE);
   setphysicalhud();
   text::displaywidth(text::fontdim().x);
   if (cmd) text::drawf("> %s_", vec2f(8.f, scr.y-50.f), cmd);
