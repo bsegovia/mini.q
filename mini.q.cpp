@@ -46,7 +46,7 @@ void start(int argc, const char *argv[]) {
   con::out("init: video: misc");
   SDL_WM_SetCaption("mini.q", NULL);
   sys::keyrepeat(true);
-  SDL_ShowCursor(0);
+  SDL_ShowCursor(1);
 
   con::out("init: md2 models");
   md2::start();
@@ -87,17 +87,17 @@ void finish() {
 
 #if TEST_UI
 static u32 leftbutton = 0, middlebutton = 0, rightbutton = 0;
+static bool checked1 = false;
+static bool checked2 = false;
+static bool checked3 = true;
+static bool checked4 = false;
+static float value1 = 50.f;
+static float value2 = 30.f;
+static int scrollarea1 = 0;
+static int scrollarea2 = 0;
 
 static void gui() {
   // ui:: states
-  bool checked1 = false;
-  bool checked2 = false;
-  bool checked3 = true;
-  bool checked4 = false;
-  float value1 = 50.f;
-  float value2 = 30.f;
-  int scrollarea1 = 0;
-  int scrollarea2 = 0;
 
   OGL(ClearColor, 0.8f, 0.8f, 0.8f, 1.f);
   OGL(Enable, GL_BLEND);
@@ -112,30 +112,15 @@ static void gui() {
   SDL_GetMouseState(&mousex, &mousey);
   mousey = sys::scrh - mousey;
   int toggle = 0;
-  if( leftbutton) mousebutton |= ui::MBUT_LEFT;
+  if (leftbutton) mousebutton |= ui::MBUT_LEFT;
 
   // Draw UI
-  glMatrixMode(GL_PROJECTION);
-  glLoadIdentity();
-  const mat4x4f projection(
-    vec4f(2.f/sys::scrw, 0.f, 0.f,  0.f),
-    vec4f(0.f, 2.f/sys::scrh,  0.f,  0.f),
-    vec4f(0.f,  0.f, -2.f, 0.f),
-    vec4f(-1.f, -1.f,  -1.f,  1.f));
-  glLoadMatrixf(&projection.vx.x);
-  glMatrixMode(GL_MODELVIEW);
-  glLoadIdentity();
-
-#if 1
   ogl::matrixmode(ogl::PROJECTION);
-  // ogl::loadmatrix(projection);
   ogl::setortho(0.f, sys::scrw, 0.f, sys::scrh, -1.f, 1.f);
   ogl::matrixmode(ogl::MODELVIEW);
   ogl::identity();
-#endif
 
   ui::beginframe(mousex, mousey, mousebutton, 0);
-
   ui::beginscrollarea("scroll area", 10, 10, sys::scrw / 5, sys::scrh - 20, &scrollarea1);
   ui::separatorline();
   ui::separator();
@@ -230,24 +215,24 @@ INLINE void mainloop() {
       break;
       case SDL_MOUSEMOTION: game::mousemove(e.motion.xrel, e.motion.yrel); break;
       case SDL_MOUSEBUTTONDOWN:
-#if 0
+#if TEST_UI
       {
         if (e.button.button == SDL_BUTTON_LEFT)
-          leftbutton = 0;
-        else if (e.button.button == SDL_BUTTON_RIGHT)
-          rightbutton = 0;
-        else if (e.button.button == SDL_BUTTON_MIDDLE)
-          middlebutton = 0;
-      } break;
-#endif
-      case SDL_MOUSEBUTTONUP:
-#if 0
-      if (e.button.button == SDL_BUTTON_LEFT)
           leftbutton = 1;
         else if (e.button.button == SDL_BUTTON_RIGHT)
           rightbutton = 1;
         else if (e.button.button == SDL_BUTTON_MIDDLE)
           middlebutton = 1;
+      } break;
+#endif
+      case SDL_MOUSEBUTTONUP:
+#if TEST_UI
+      if (e.button.button == SDL_BUTTON_LEFT)
+          leftbutton = 0;
+        else if (e.button.button == SDL_BUTTON_RIGHT)
+          rightbutton = 0;
+        else if (e.button.button == SDL_BUTTON_MIDDLE)
+          middlebutton = 0;
 #endif
         if (lasttype==e.type && lastbut==e.button.button) break;
         con::keypress(-e.button.button, e.button.state, 0);

@@ -491,7 +491,7 @@ bool beginscrollarea(const char *name, int x, int y, int w, int h, int *scroll) 
   g_insideScrollArea = inrect(x, y, w, h, false);
   state.insideCurrentScroll = g_insideScrollArea;
 
-  addgfxroundedrect((float)x, (float)y, (float)w, (float)h, 6, rgba(0,0,0,192));
+  addgfxroundedrect(float(x), float(y), float(w), float(h), 6, rgba(0,0,0,192));
   addgfxtext(x+AREA_HEADER/2, y+h-AREA_HEADER/2-TEXT_HEIGHT/2, ALIGN_LEFT, name, rgba(255,255,255,128));
   addgfxscissor(x+SCROLL_AREA_PADDING, y+SCROLL_AREA_PADDING, w-SCROLL_AREA_PADDING*4, h-AREA_HEADER-SCROLL_AREA_PADDING);
 
@@ -547,7 +547,7 @@ void endscrollarea() {
     }
 
     // BG
-    addgfxroundedrect((float)x, (float)y, (float)w, (float)h, (float)w/2-1, rgba(0,0,0,196));
+    addgfxroundedrect(float(x), float(y), float(w), float(h), float(w)/2-1, rgba(0,0,0,196));
     // Bar
     if (isActive(hid))
       addgfxroundedrect((float)hx, (float)hy, (float)hw, (float)hh, (float)w/2-1, rgba(255,196,0,196));
@@ -579,7 +579,7 @@ bool button(const char *text, bool enabled) {
   const bool over = enabled && inrect(x, y, w, h);
   const bool res = buttonLogic(id, over);
 
-  addgfxroundedrect((float)x, (float)y, (float)w, (float)h, (float)BUTTON_HEIGHT/2-1, rgba(128,128,128, isActive(id)?196:96));
+  addgfxroundedrect(float(x), float(y), float(w), float(h), (float)BUTTON_HEIGHT/2-1, rgba(128,128,128, isActive(id)?196:96));
   if (enabled)
     addgfxtext(x+BUTTON_HEIGHT/2, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, isHot(id) ? rgba(255,196,0,255) : rgba(255,255,255,200));
   else
@@ -602,7 +602,7 @@ bool item(const char *text, bool enabled) {
   bool res = buttonLogic(id, over);
 
   if (isHot(id))
-    addgfxroundedrect((float)x, (float)y, (float)w, (float)h, 2.0f, rgba(255,196,0,isActive(id)?196:96));
+    addgfxroundedrect(float(x), float(y), float(w), float(h), 2.0f, rgba(255,196,0,isActive(id)?196:96));
   if (enabled)
     addgfxtext(x+BUTTON_HEIGHT/2, y+BUTTON_HEIGHT/2-TEXT_HEIGHT/2, ALIGN_LEFT, text, rgba(255,255,255,200));
   else
@@ -700,7 +700,7 @@ bool slider(const char *text, float *val, float vmin, float vmax, float vinc, bo
   int h = SLIDER_HEIGHT;
   state.widgetY -= SLIDER_HEIGHT + DEFAULT_SPACING;
 
-  addgfxroundedrect((float)x, (float)y, (float)w, (float)h, 4.0f, rgba(0,0,0,128));
+  addgfxroundedrect(float(x), float(y), float(w), float(h), 4.0f, rgba(0,0,0,128));
 
   const int range = w - SLIDER_MARKER_WIDTH;
 
@@ -719,7 +719,7 @@ bool slider(const char *text, float *val, float vmin, float vmax, float vinc, bo
       state.dragOrig = u;
     }
     if (state.dragX != state.mx) {
-      u = state.dragOrig + (float)(state.mx - state.dragX) / (float)range;
+      u = state.dragOrig + float(state.mx - state.dragX) / float(range);
       if (u < 0) u = 0;
       if (u > 1) u = 1;
       *val = vmin + u*(vmax-vmin);
@@ -769,7 +769,7 @@ void separatorline() {
   int h = 1;
   state.widgetY -= DEFAULT_SPACING*4;
 
-  addgfxrect((float)x, (float)y, (float)w, (float)h, rgba(255,255,255,32));
+  addgfxrect(float(x), float(y), float(w), float(h), rgba(255,255,255,32));
 }
 void drawtext(int x, int y, int align, const char *text, u32 color) {
   addgfxtext(x, y, align, text, color);
