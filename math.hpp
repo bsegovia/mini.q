@@ -18,16 +18,16 @@ namespace q {
 #define CONSTANT_TYPE(TYPE,VALUE,NUM)\
 static const struct TYPE {\
   INLINE TYPE(void) {}\
-  INLINE operator double(void) const {return double(NUM);}\
-  INLINE operator float (void) const {return float(NUM);}\
-  INLINE operator s64(void) const {return s64(NUM);}\
-  INLINE operator u64(void) const {return u64(NUM);}\
-  INLINE operator s32(void) const {return s32(NUM);}\
-  INLINE operator u32(void) const {return u32(NUM);}\
-  INLINE operator s16(void) const {return s16(NUM);}\
-  INLINE operator u16(void) const {return u16(NUM);}\
-  INLINE operator s8 (void) const {return s8 (NUM);}\
-  INLINE operator u8 (void) const {return u8 (NUM);}\
+  INLINE op double(void) const {return double(NUM);}\
+  INLINE op float (void) const {return float(NUM);}\
+  INLINE op s64(void) const {return s64(NUM);}\
+  INLINE op u64(void) const {return u64(NUM);}\
+  INLINE op s32(void) const {return s32(NUM);}\
+  INLINE op u32(void) const {return u32(NUM);}\
+  INLINE op s16(void) const {return s16(NUM);}\
+  INLINE op u16(void) const {return u16(NUM);}\
+  INLINE op s8 (void) const {return s8 (NUM);}\
+  INLINE op u8 (void) const {return u8 (NUM);}\
 } VALUE MAYBE_UNUSED;
 CONSTANT_TYPE(zerotype,zero,0);
 CONSTANT_TYPE(onetype,one,1);
@@ -118,6 +118,7 @@ template<typename T> struct vec4;
 #define v3arg const vec3<T>&
 #define v4arg const vec4<T>&
 #define m44arg const mat4x4<T>&
+#define quatarg const quat<T>&
 
 template<typename T> struct vec2 {
   typedef T scalar;
@@ -479,6 +480,114 @@ TINLINE v3 unproject(v3arg win, m44arg model, m44arg proj, const vec4<int> &view
   return out.xyz() / out.w;
 }
 
+
+template<typename T> struct quat {
+  typedef vec3<T> Vector;
+  T r, i, j, k;
+
+  INLINE quat(void) {}
+  INLINE quat(const quat &other) {r=other.r; i=other.i; j=other.j; k=other.k;}
+  INLINE quat &op= (const quat &other) {r=other.r; i=other.i; j=other.j; k=other.k; return *this;}
+  INLINE quat(const T &r) : r(r), i(zero), j(zero), k(zero) {}
+  INLINE explicit quat(v3arg v) : r(zero), i(v.x), j(v.y), k(v.z) {}
+  INLINE quat(const T &r, const T &i, const T &j , const T &k) : r(r), i(i), j(j), k(k) {}
+  INLINE quat(const T &r, v3arg v) : r(r), i(v.x), j(v.y), k(v.z) {}
+  INLINE quat(v3arg vx, v3arg vy, v3arg vz);
+  INLINE quat(const T &yaw, const T &pitch, const T &roll);
+  INLINE quat(zerotype) : r(zero), i(zero), j(zero), k(zero) {}
+  INLINE quat(onetype) : r(one), i(zero), j(zero), k(zero) {}
+  static INLINE quat rotate(v3arg u, const T &r) {
+    return quat<T>(cos(T(0.5)*r),sin(T(0.5)*r)*normalize(u));
+  }
+  INLINE const vec3<T> v() const { return vec3<T>(i, j, k); }
+};
+
+TINLINE quat<T> op* (const T &a, quatarg b) {return quat<T>(a*b.r, a*b.i, a*b.j, a*b.k);}
+TINLINE quat<T> op* (quatarg a, const T &b) {return quat<T>(a.r*b, a.i*b, a.j*b, a.k*b);}
+
+TINLINE quat<T> op+ (quatarg a) { return quat<T>(+a.r, +a.i, +a.j, +a.k); }
+TINLINE quat<T> op- (quatarg a) { return quat<T>(-a.r, -a.i, -a.j, -a.k); }
+TINLINE quat<T> conj(quatarg a) { return quat<T>(a.r, -a.i, -a.j, -a.k); }
+TINLINE T abs(quatarg a) { return sqrt(a.r*a.r + a.i*a.i + a.j*a.j + a.k*a.k); }
+TINLINE quat<T> rcp(quatarg a) { return conj(a)*rcp(a.r*a.r + a.i*a.i + a.j*a.j + a.k*a.k); }
+TINLINE quat<T> normalize (quatarg a) { return a*rsqrt(a.r*a.r + a.i*a.i + a.j*a.j + a.k*a.k); }
+
+#define OP(S)\
+TINLINE quat<T> op S(const T &a, quatarg b) {return quat<T>(a S b.r, S b.i, S b.j, S b.k);}\
+TINLINE quat<T> op S(quatarg a, const T &b) {return quat<T>(a.r S b, a.i, a.j, a.k);}\
+TINLINE quat<T> op S(quatarg a, quatarg b)  {return quat<T>(a.r S b.r, a.i S b.i, a.j S b.j, a.k S b.k);}
+OP(+) OP(-)
+#undef OP
+
+#define OP(S)\
+TINLINE quat<T> &op S##= (quat<T> &a, const T &b) { return a = a S b; }\
+TINLINE quat<T> &op S##= (quat<T> &a, quatarg b) { return a = a S b; }
+OP(+) OP(-) OP(*) OP(/)
+#undef OP
+
+TINLINE quat<T> op/ (const T &a, quatarg b) { return a*rcp(b); }
+TINLINE quat<T> op/ (quatarg a, const T &b) { return a*rcp(b); }
+TINLINE quat<T> op/ (quatarg a, quatarg b) { return a*rcp(b); }
+TINLINE vec3<T> op* (quatarg a, v3arg b) { return (a*quat<T>(b)*conj(a)).v(); }
+TINLINE quat<T> op* (quatarg a, quatarg b) {
+  return quat<T>(a.r*b.r - a.i*b.i - a.j*b.j - a.k*b.k,
+                 a.r*b.i + a.i*b.r + a.j*b.k - a.k*b.j,
+                 a.r*b.j - a.i*b.k + a.j*b.r + a.k*b.i,
+                 a.r*b.k + a.i*b.j - a.j*b.i + a.k*b.r);
+}
+
+TINLINE vec3<T> xfmpoint (quatarg a, v3arg b) {return (a*quat<T>(b)*conj(a)).v();}
+TINLINE vec3<T> xfmvector(quatarg a, v3arg b) {return (a*quat<T>(b)*conj(a)).v();}
+TINLINE vec3<T> xfmnormal(quatarg a, v3arg b) {return (a*quat<T>(b)*conj(a)).v();}
+
+TINLINE bool op== (quatarg a, quatarg b) {return a.r==b.r && a.i==b.i && a.j==b.j && a.k==b.k;}
+TINLINE bool op!= (quatarg a, quatarg b) {return a.r!=b.r || a.i!=b.i || a.j!=b.j || a.k!=b.k;}
+
+template<typename T> quat<T>::quat(v3arg vx, v3arg vy, v3arg vz) {
+  if (vx.x + vy.y + vz.z >= T(zero)) {
+    const T t = T(one) + (vx.x + vy.y + vz.z);
+    const T s = rsqrt(t)*T(0.5f);
+    r = t*s;
+    i = (vy.z - vz.y)*s;
+    j = (vz.x - vx.z)*s;
+    k = (vx.y - vy.x)*s;
+  } else if (vx.x >= max(vy.y, vz.z)) {
+    const T t = (T(one) + vx.x) - (vy.y + vz.z);
+    const T s = rsqrt(t)*T(0.5f);
+    r = (vy.z - vz.y)*s;
+    i = t*s;
+    j = (vx.y + vy.x)*s;
+    k = (vz.x + vx.z)*s;
+  } else if (vy.y >= vz.z) { // if (vy.y >= max(vz.z, vx.x))
+    const T t = (T(one) + vy.y) - (vz.z + vx.x);
+    const T s = rsqrt(t)*T(0.5f);
+    r = (vz.x - vx.z)*s;
+    i = (vx.y + vy.x)*s;
+    j = t*s;
+    k = (vy.z + vz.y)*s;
+  } else { //if (vz.z >= max(vy.y, vx.x))
+    const T t = (T(one) + vz.z) - (vx.x + vy.y);
+    const T s = rsqrt(t)*T(0.5f);
+    r = (vx.y - vy.x)*s;
+    i = (vz.x + vx.z)*s;
+    j = (vy.z + vz.y)*s;
+    k = t*s;
+  }
+}
+
+template<typename T> quat<T>::quat(const T &yaw, const T &pitch, const T &roll) {
+  const T cya = cos(yaw  *T(0.5f));
+  const T cpi = cos(pitch*T(0.5f));
+  const T cro = cos(roll *T(0.5f));
+  const T sya = sin(yaw  *T(0.5f));
+  const T spi = sin(pitch*T(0.5f));
+  const T sro = sin(roll *T(0.5f));
+  r = cro*cya*cpi + sro*sya*spi;
+  i = cro*cya*spi + sro*sya*cpi;
+  j = cro*sya*cpi - sro*cya*spi;
+  k = sro*cya*cpi - cro*sya*spi;
+}
+
 // define all swizzles for vec2
 #define sw22(A,B) TINLINE v2 v2::A##B(void) const {return v2(A,B);}
 sw20
@@ -525,8 +634,6 @@ sw40
 #undef sw42
 
 // commonly used types
-typedef mat4x4<float> mat4x4f;
-typedef mat4x4<double> mat4x4d;
 typedef vec2<bool> vec2b;
 typedef vec2<int> vec2i;
 typedef vec2<float> vec2f;
@@ -539,6 +646,10 @@ typedef vec4<bool> vec4b;
 typedef vec4<int> vec4i;
 typedef vec4<float> vec4f;
 typedef vec4<double> vec4d;
+typedef mat4x4<float> mat4x4f;
+typedef mat4x4<double> mat4x4d;
+typedef quat<float>  quat3f;
+typedef quat<double> quat3d;
 
 #undef TINLINE
 #undef UINLINE
@@ -556,6 +667,9 @@ typedef vec4<double> vec4d;
 #undef sw41
 #undef sw40
 
+/*-------------------------------------------------------------------------
+ - graphics related
+ -------------------------------------------------------------------------*/
 // axis aligned bounding box
 struct aabb {
   INLINE aabb() {}
