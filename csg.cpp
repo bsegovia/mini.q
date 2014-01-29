@@ -12,67 +12,68 @@ namespace csg {
 /*--------------------------------------------------------------------------
  - expose all basic CSG nodes
  -------------------------------------------------------------------------*/
-enum {
-  UNION, DIFFERENCE, INTERSECTION,
-  SPHERE, BOX, PLANE, CYLINDERXZ, CYLINDERYZ, CYLINDERXY,
-  TRANSLATION
+enum CSGOP {
+  C_UNION, C_DIFFERENCE, C_INTERSECTION,
+  C_SPHERE, C_BOX, C_PLANE, C_CYLINDERXZ, C_CYLINDERYZ, C_CYLINDERXY,
+  C_TRANSLATION, C_ROTATION,
+  C_INVALID = 0xffffffff
 };
 struct node {
-  INLINE node(u32 type, const aabb &box = aabb::empty()) :
+  INLINE node(CSGOP type, const aabb &box = aabb::empty()) :
     box(box), type(type) {}
   virtual ~node() {}
   aabb box;
-  u32 type;
+  CSGOP type;
 };
-#define BINARY(NAME,TYPE,BOX) \
+#define BINARY(NAME,TYPE,C_BOX) \
 struct NAME : node { \
   INLINE NAME(node &left, node &right) :\
-    node(TYPE, BOX), left(&left), right(&right) {}\
+    node(TYPE, C_BOX), left(&left), right(&right) {}\
   virtual ~NAME() {SAFE_DEL(left); SAFE_DEL(right);}\
   node *left, *right; \
 };
-BINARY(U,UNION, sum(left.box, right.box))
-BINARY(D,DIFFERENCE, left.box)
-BINARY(I,INTERSECTION, intersection(left.box, right.box))
+BINARY(U,C_UNION, sum(left.box, right.box))
+BINARY(D,C_DIFFERENCE, left.box)
+BINARY(I,C_INTERSECTION, intersection(left.box, right.box))
 #undef BINARY
 
 struct box : node {
   INLINE box(const vec3f &extent) :
-    node(BOX, aabb(-extent,+extent)), extent(extent) {}
+    node(C_BOX, aabb(-extent,+extent)), extent(extent) {}
   vec3f extent;
 };
 struct plane : node {
-  INLINE plane(const vec4f &p) : node(PLANE, aabb::all()), p(p) {}
+  INLINE plane(const vec4f &p) : node(C_PLANE, aabb::all()), p(p) {}
   vec4f p;
 };
 struct sphere : node {
-  INLINE sphere(float r) : node(SPHERE, aabb(-r, r)), r(r) {}
+  INLINE sphere(float r) : node(C_SPHERE, aabb(-r, r)), r(r) {}
   float r;
 };
 struct cylinderxz : node {
   INLINE cylinderxz(const vec2f &cxz, float r) :
-    node(CYLINDERXZ, aabb(vec3f(-r+cxz.x,-FLT_MAX,-r+cxz.y),
+    node(C_CYLINDERXZ, aabb(vec3f(-r+cxz.x,-FLT_MAX,-r+cxz.y),
                           vec3f(+r+cxz.x,+FLT_MAX,+r+cxz.y))), cxz(cxz), r(r) {}
   vec2f cxz;
   float r;
 };
 struct cylinderxy : node {
   INLINE cylinderxy(const vec2f &cxy, float r) :
-    node(CYLINDERXY, aabb(vec3f(-r+cxy.x,-r+cxy.y,-FLT_MAX),
+    node(C_CYLINDERXY, aabb(vec3f(-r+cxy.x,-r+cxy.y,-FLT_MAX),
                           vec3f(+r+cxy.x,+r+cxy.y,+FLT_MAX))), cxy(cxy), r(r) {}
   vec2f cxy;
   float r;
 };
 struct cylinderyz : node {
   INLINE cylinderyz(const vec2f &cyz, float r) :
-    node(CYLINDERYZ, aabb(vec3f(-FLT_MAX,-r+cyz.x,-r+cyz.y),
+    node(C_CYLINDERYZ, aabb(vec3f(-FLT_MAX,-r+cyz.x,-r+cyz.y),
                           vec3f(+FLT_MAX,+r+cyz.x,+r+cyz.y))), cyz(cyz), r(r) {}
   vec2f cyz;
   float r;
 };
 struct translation : node {
   INLINE translation(const vec3f &p, node &n) :
-    node(TRANSLATION, aabb(p+n.box.pmin, p+n.box.pmax)), p(p), n(&n) {}
+    node(C_TRANSLATION, aabb(p+n.box.pmin, p+n.box.pmax)), p(p), n(&n) {}
   virtual ~translation() { SAFE_DEL(n); }
   vec3f p;
   node *n;
@@ -169,7 +170,7 @@ void distr(const node &n, const vec3f *pos, float *dist, int num, const aabb &bo
   const auto isec = intersection(box, n.box);
   if (any(gt(isec.pmin, isec.pmax))) return;
   switch (n.type) {
-    case UNION: {
+    case C_UNION: {
       const auto &u = static_cast<const U&>(n);
       float tempdist[64];
       distr(*u.left, pos, dist, num, box);
@@ -178,7 +179,7 @@ void distr(const node &n, const vec3f *pos, float *dist, int num, const aabb &bo
       loopi(num) dist[i] = min(dist[i], tempdist[i]);
       return;
     }
-    case INTERSECTION: {
+    case C_INTERSECTION: {
       const auto &i = static_cast<const I&>(n);
       float tempdist[64];
       distr(*i.left, pos, dist, num, box);
@@ -187,7 +188,7 @@ void distr(const node &n, const vec3f *pos, float *dist, int num, const aabb &bo
       loopi(num) dist[i] = max(dist[i], tempdist[i]);
       return;
     }
-    case DIFFERENCE: {
+    case C_DIFFERENCE: {
       const auto &d = static_cast<const D&>(n);
       float tempdist[64];
       distr(*d.left, pos, dist, num, box);
@@ -196,39 +197,39 @@ void distr(const node &n, const vec3f *pos, float *dist, int num, const aabb &bo
       loopi(num) dist[i] = max(dist[i], -tempdist[i]);
       return;
     }
-    case TRANSLATION: {
+    case C_TRANSLATION: {
       const auto &t = static_cast<const translation&>(n);
       vec3f tpos[64];
       loopi(num) tpos[i] = pos[i] - t.p;
       distr(*t.n, tpos, dist, num, aabb(box.pmin-t.p, box.pmax-t.p));
       return;
     }
-    case PLANE: {
+    case C_PLANE: {
       const auto &p = static_cast<const plane&>(n);
       loopi(num) dist[i] = dot(pos[i], p.p.xyz()) + p.p.w;
       return;
     }
-    case CYLINDERXZ: {
+    case C_CYLINDERXZ: {
       const auto &c = static_cast<const cylinderxz&>(n);
       loopi(num) dist[i] = length(pos[i].xz()-c.cxz) - c.r;
       return;
     }
-    case CYLINDERXY: {
+    case C_CYLINDERXY: {
       const auto &c = static_cast<const cylinderxy&>(n);
       loopi(num) dist[i] = length(pos[i].xy()-c.cxy) - c.r;
       return;
     }
-    case CYLINDERYZ: {
+    case C_CYLINDERYZ: {
       const auto &c = static_cast<const cylinderyz&>(n);
       loopi(num) dist[i] = length(pos[i].yz()-c.cyz) - c.r;
       return;
     }
-    case SPHERE: {
+    case C_SPHERE: {
       const auto &s = static_cast<const sphere&>(n);
       loopi(num) dist[i] = length(pos[i]) - s.r;
       return;
     }
-    case BOX: {
+    case C_BOX: {
       const auto extent = static_cast<const struct box&>(n).extent;
       loopi(num) {
         const auto pd = abs(pos[i])-extent;
@@ -236,8 +237,8 @@ void distr(const node &n, const vec3f *pos, float *dist, int num, const aabb &bo
       }
       return;
     }
+    default: assert("unreachable" && false);
   }
-  assert("unreachable" && false);
 }
 
 void dist(const node &n, const vec3f *pos, float *d, int num, const aabb &box) {
@@ -250,49 +251,48 @@ float dist(const node &n, const vec3f &pos, const aabb &box) {
   const auto isec = intersection(box, n.box);
   if (any(gt(isec.pmin, isec.pmax))) return FLT_MAX;
   switch (n.type) {
-    case UNION: {
+    case C_UNION: {
       const auto &u = static_cast<const U&>(n);
       return min(dist(*u.left, pos, box), dist(*u.right, pos, box));
     }
-    case INTERSECTION: {
+    case C_INTERSECTION: {
       const auto &i = static_cast<const I&>(n);
       return max(dist(*i.left, pos, box), dist(*i.right, pos, box));
     }
-    case DIFFERENCE: {
+    case C_DIFFERENCE: {
       const auto &d = static_cast<const D&>(n);
       return max(dist(*d.left, pos, box), -dist(*d.right, pos, box));
     }
-    case TRANSLATION: {
+    case C_TRANSLATION: {
       const auto &t = static_cast<const translation&>(n);
       return dist(*t.n, pos-t.p, aabb(box.pmin-t.p, box.pmax-t.p));
     }
-    case PLANE: {
+    case C_PLANE: {
       const auto &p = static_cast<const plane&>(n);
       return dot(pos, p.p.xyz()) + p.p.w;
     }
-    case CYLINDERXZ: {
+    case C_CYLINDERXZ: {
       const auto &c = static_cast<const cylinderxz&>(n);
       return length(pos.xz()-c.cxz) - c.r;
     }
-    case CYLINDERXY: {
+    case C_CYLINDERXY: {
       const auto &c = static_cast<const cylinderxy&>(n);
       return length(pos.xy()-c.cxy) - c.r;
     }
-    case CYLINDERYZ: {
+    case C_CYLINDERYZ: {
       const auto &c = static_cast<const cylinderyz&>(n);
       return length(pos.yz()-c.cyz) - c.r;
     }
-    case SPHERE: {
+    case C_SPHERE: {
       const auto &s = static_cast<const sphere&>(n);
       return length(pos) - s.r;
     }
-    case BOX: {
+    case C_BOX: {
       const auto &d = abs(pos)-static_cast<const struct box&>(n).extent;
       return min(max(d.x,max(d.y,d.z)),0.0f) + length(max(d,vec3f(zero)));
     }
+    default: assert("unreachable" && false); return FLT_MAX;
   }
-  assert("unreachable" && false);
-  return FLT_MAX;
 }
 } /* namespace csg */
 } /* namespace q */
