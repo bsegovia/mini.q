@@ -575,12 +575,14 @@ struct dc_gridbuilder {
     return p;
   }
 
-  // very unprecise. we should something like below
-  INLINE vec3f vertex(const vec3i &p) {return m_org+m_cellsize*vec3f(p);}
-  //INLINE vec3f vertex(const vec3i &p) {return vec3f(m_iorg+p)*m_cellsize;}
+  INLINE vec3f vertex(const vec3i &p) {
+    const vec3i ipos = m_iorg+(p<<(int(m_maxlevel-m_level)));
+    return vec3f(ipos)*m_mincellsize;
+  }
   INLINE void setoctree(const octree &o) { m_octree = &o; }
   INLINE void setorg(const vec3f &org) { m_org = org; }
-  INLINE void setsize(float size) { m_cellsize = size; }
+  INLINE void setcellsize(float size) { m_cellsize = size; }
+  INLINE void setmincellsize(float size) { m_mincellsize = size; }
   INLINE void setnode(const csg::node *node) { m_node = node; }
   INLINE u32 qef_index(const vec3i &xyz) const {
     const vec3i p = xyz + vec3i(2);
@@ -1149,7 +1151,7 @@ struct dc_gridbuilder {
   const octree *m_octree;
   vec3f m_org;
   vec3i m_iorg;
-  float m_cellsize;
+  float m_cellsize, m_mincellsize;
   u32 m_maxlevel, m_level;
 };
 
@@ -1212,7 +1214,8 @@ struct recursive_builder {
       s.m_iorg = xyz;
       s.m_level = level;
       s.m_maxlevel = m_maxlevel;
-      s.setsize(sz);
+      s.setcellsize(sz);
+      s.setmincellsize(m_cellsize);
       s.setnode(&m_node);
       s.setorg(pos(xyz));
       s.build(node);
@@ -1260,7 +1263,8 @@ struct jobdata {
   vec3f m_org;
   int m_level;
   int m_maxlevel;
-  float m_size;
+  float m_cellsize;
+  float m_mincellsize;
 };
 
 struct context {
@@ -1297,8 +1301,9 @@ struct mt_builder {
       return;
     }
     //if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
-//    if (cellnum == SUBGRID || (level == 5 && xyz.x >= 80) || (level == 5 && xyz.y >= 32)) {
-    if (cellnum == SUBGRID) {
+    if (cellnum == SUBGRID || (level == 5 && xyz.x >= 80) || (level == 5 && xyz.y >= 16)) {
+ //   if (cellnum == SUBGRID) {
+//      printf("%d\n", level);
       jobdata job;
       job.m_octree = m_octree;
       job.m_octree_node = &node;
@@ -1306,7 +1311,8 @@ struct mt_builder {
       job.m_iorg = xyz;
       job.m_level = level;
       job.m_maxlevel = m_maxlevel;
-      job.m_size = float(1<<(m_maxlevel-level)) * m_cellsize;
+      job.m_cellsize = float(1<<(m_maxlevel-level)) * m_cellsize;
+      job.m_mincellsize = m_cellsize;
       job.m_org = pos(xyz);
       ctx->m_work.add(job);
       node.m_isleaf = 1;
@@ -1342,7 +1348,8 @@ struct isotask : public task {
     localbuilder->m_iorg = job.m_iorg;
     localbuilder->m_level = job.m_level;
     localbuilder->m_maxlevel = job.m_maxlevel;
-    localbuilder->setsize(job.m_size);
+    localbuilder->setcellsize(job.m_cellsize);
+    localbuilder->setmincellsize(job.m_mincellsize);
     localbuilder->setnode(job.m_csg_node);
     localbuilder->setorg(job.m_org);
     localbuilder->build(*job.m_octree_node);
