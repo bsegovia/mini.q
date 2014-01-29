@@ -118,7 +118,8 @@ template<typename T> struct vec4;
 #define v3arg const vec3<T>&
 #define v4arg const vec4<T>&
 #define m44arg const mat4x4<T>&
-#define quatarg const quat<T>&
+#define q3arg const quat<T>&
+#define q3 quat<T>
 
 template<typename T> struct vec2 {
   typedef T scalar;
@@ -497,53 +498,53 @@ template<typename T> struct quat {
   INLINE quat(zerotype) : r(zero), i(zero), j(zero), k(zero) {}
   INLINE quat(onetype) : r(one), i(zero), j(zero), k(zero) {}
   static INLINE quat rotate(v3arg u, const T &r) {
-    return quat<T>(cos(T(0.5)*r),sin(T(0.5)*r)*normalize(u));
+    return q3(cos(T(0.5)*r),sin(T(0.5)*r)*normalize(u));
   }
   INLINE const vec3<T> v() const { return vec3<T>(i, j, k); }
 };
 
-TINLINE quat<T> op* (const T &a, quatarg b) {return quat<T>(a*b.r, a*b.i, a*b.j, a*b.k);}
-TINLINE quat<T> op* (quatarg a, const T &b) {return quat<T>(a.r*b, a.i*b, a.j*b, a.k*b);}
+TINLINE q3 op* (const T &a, q3arg b) {return q3(a*b.r, a*b.i, a*b.j, a*b.k);}
+TINLINE q3 op* (q3arg a, const T &b) {return q3(a.r*b, a.i*b, a.j*b, a.k*b);}
 
-TINLINE quat<T> op+ (quatarg a) { return quat<T>(+a.r, +a.i, +a.j, +a.k); }
-TINLINE quat<T> op- (quatarg a) { return quat<T>(-a.r, -a.i, -a.j, -a.k); }
-TINLINE quat<T> conj(quatarg a) { return quat<T>(a.r, -a.i, -a.j, -a.k); }
-TINLINE T abs(quatarg a) { return sqrt(a.r*a.r + a.i*a.i + a.j*a.j + a.k*a.k); }
-TINLINE quat<T> rcp(quatarg a) { return conj(a)*rcp(a.r*a.r + a.i*a.i + a.j*a.j + a.k*a.k); }
-TINLINE quat<T> normalize (quatarg a) { return a*rsqrt(a.r*a.r + a.i*a.i + a.j*a.j + a.k*a.k); }
+TINLINE q3 op+ (q3arg a) { return q3(+a.r, +a.i, +a.j, +a.k); }
+TINLINE q3 op- (q3arg a) { return q3(-a.r, -a.i, -a.j, -a.k); }
+TINLINE q3 conj(q3arg a) { return q3(a.r, -a.i, -a.j, -a.k); }
+TINLINE T abs(q3arg a) { return sqrt(a.r*a.r + a.i*a.i + a.j*a.j + a.k*a.k); }
+TINLINE q3 rcp(q3arg a) { return conj(a)*rcp(a.r*a.r + a.i*a.i + a.j*a.j + a.k*a.k); }
+TINLINE q3 normalize (q3arg a) { return a*rsqrt(a.r*a.r + a.i*a.i + a.j*a.j + a.k*a.k); }
 
 #define OP(S)\
-TINLINE quat<T> op S(const T &a, quatarg b) {return quat<T>(a S b.r, S b.i, S b.j, S b.k);}\
-TINLINE quat<T> op S(quatarg a, const T &b) {return quat<T>(a.r S b, a.i, a.j, a.k);}\
-TINLINE quat<T> op S(quatarg a, quatarg b)  {return quat<T>(a.r S b.r, a.i S b.i, a.j S b.j, a.k S b.k);}
+TINLINE q3 op S(const T &a, q3arg b) {return q3(a S b.r, S b.i, S b.j, S b.k);}\
+TINLINE q3 op S(q3arg a, const T &b) {return q3(a.r S b, a.i, a.j, a.k);}\
+TINLINE q3 op S(q3arg a, q3arg b)  {return q3(a.r S b.r, a.i S b.i, a.j S b.j, a.k S b.k);}
 OP(+) OP(-)
 #undef OP
 
 #define OP(S)\
-TINLINE quat<T> &op S##= (quat<T> &a, const T &b) { return a = a S b; }\
-TINLINE quat<T> &op S##= (quat<T> &a, quatarg b) { return a = a S b; }
+TINLINE q3 &op S##= (q3 &a, const T &b) { return a = a S b; }\
+TINLINE q3 &op S##= (q3 &a, q3arg b) { return a = a S b; }
 OP(+) OP(-) OP(*) OP(/)
 #undef OP
 
-TINLINE quat<T> op/ (const T &a, quatarg b) { return a*rcp(b); }
-TINLINE quat<T> op/ (quatarg a, const T &b) { return a*rcp(b); }
-TINLINE quat<T> op/ (quatarg a, quatarg b) { return a*rcp(b); }
-TINLINE vec3<T> op* (quatarg a, v3arg b) { return (a*quat<T>(b)*conj(a)).v(); }
-TINLINE quat<T> op* (quatarg a, quatarg b) {
-  return quat<T>(a.r*b.r - a.i*b.i - a.j*b.j - a.k*b.k,
-                 a.r*b.i + a.i*b.r + a.j*b.k - a.k*b.j,
-                 a.r*b.j - a.i*b.k + a.j*b.r + a.k*b.i,
-                 a.r*b.k + a.i*b.j - a.j*b.i + a.k*b.r);
+TINLINE q3 op/ (const T &a, q3arg b) { return a*rcp(b); }
+TINLINE q3 op/ (q3arg a, const T &b) { return a*rcp(b); }
+TINLINE q3 op/ (q3arg a, q3arg b) { return a*rcp(b); }
+TINLINE vec3<T> op* (q3arg a, v3arg b) { return (a*q3(b)*conj(a)).v(); }
+TINLINE q3 op* (q3arg a, q3arg b) {
+  return q3(a.r*b.r - a.i*b.i - a.j*b.j - a.k*b.k,
+            a.r*b.i + a.i*b.r + a.j*b.k - a.k*b.j,
+            a.r*b.j - a.i*b.k + a.j*b.r + a.k*b.i,
+            a.r*b.k + a.i*b.j - a.j*b.i + a.k*b.r);
 }
 
-TINLINE vec3<T> xfmpoint (quatarg a, v3arg b) {return (a*quat<T>(b)*conj(a)).v();}
-TINLINE vec3<T> xfmvector(quatarg a, v3arg b) {return (a*quat<T>(b)*conj(a)).v();}
-TINLINE vec3<T> xfmnormal(quatarg a, v3arg b) {return (a*quat<T>(b)*conj(a)).v();}
+TINLINE vec3<T> xfmpoint (q3arg a, v3arg b) {return (a*q3(b)*conj(a)).v();}
+TINLINE vec3<T> xfmvector(q3arg a, v3arg b) {return (a*q3(b)*conj(a)).v();}
+TINLINE vec3<T> xfmnormal(q3arg a, v3arg b) {return (a*q3(b)*conj(a)).v();}
 
-TINLINE bool op== (quatarg a, quatarg b) {return a.r==b.r && a.i==b.i && a.j==b.j && a.k==b.k;}
-TINLINE bool op!= (quatarg a, quatarg b) {return a.r!=b.r || a.i!=b.i || a.j!=b.j || a.k!=b.k;}
+TINLINE bool op== (q3arg a, q3arg b) {return a.r==b.r && a.i==b.i && a.j==b.j && a.k==b.k;}
+TINLINE bool op!= (q3arg a, q3arg b) {return a.r!=b.r || a.i!=b.i || a.j!=b.j || a.k!=b.k;}
 
-template<typename T> quat<T>::quat(v3arg vx, v3arg vy, v3arg vz) {
+template<typename T> q3::quat(v3arg vx, v3arg vy, v3arg vz) {
   if (vx.x + vy.y + vz.z >= T(zero)) {
     const T t = T(one) + (vx.x + vy.y + vz.z);
     const T s = rsqrt(t)*T(0.5f);
@@ -575,7 +576,7 @@ template<typename T> quat<T>::quat(v3arg vx, v3arg vy, v3arg vz) {
   }
 }
 
-template<typename T> quat<T>::quat(const T &yaw, const T &pitch, const T &roll) {
+template<typename T> q3::quat(const T &yaw, const T &pitch, const T &roll) {
   const T cya = cos(yaw  *T(0.5f));
   const T cpi = cos(pitch*T(0.5f));
   const T cro = cos(roll *T(0.5f));
@@ -657,9 +658,13 @@ typedef quat<double> quat3d;
 #undef v2
 #undef v3
 #undef v4
+#undef q3
+#undef m44
 #undef v2arg
 #undef v3arg
 #undef v4arg
+#undef q3arg
+#undef m44arg
 #undef sw21
 #undef sw20
 #undef sw31

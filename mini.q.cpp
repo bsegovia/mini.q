@@ -46,7 +46,7 @@ void start(int argc, const char *argv[]) {
   con::out("init: video: misc");
   SDL_WM_SetCaption("mini.q", NULL);
   sys::keyrepeat(true);
-  SDL_ShowCursor(1);
+  SDL_ShowCursor(0);
 
   con::out("init: md2 models");
   md2::start();

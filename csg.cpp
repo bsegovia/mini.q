@@ -53,21 +53,24 @@ struct sphere : node {
 struct cylinderxz : node {
   INLINE cylinderxz(const vec2f &cxz, float r) :
     node(C_CYLINDERXZ, aabb(vec3f(-r+cxz.x,-FLT_MAX,-r+cxz.y),
-                          vec3f(+r+cxz.x,+FLT_MAX,+r+cxz.y))), cxz(cxz), r(r) {}
+                            vec3f(+r+cxz.x,+FLT_MAX,+r+cxz.y))), cxz(cxz), r(r)
+  {}
   vec2f cxz;
   float r;
 };
 struct cylinderxy : node {
   INLINE cylinderxy(const vec2f &cxy, float r) :
     node(C_CYLINDERXY, aabb(vec3f(-r+cxy.x,-r+cxy.y,-FLT_MAX),
-                          vec3f(+r+cxy.x,+r+cxy.y,+FLT_MAX))), cxy(cxy), r(r) {}
+                            vec3f(+r+cxy.x,+r+cxy.y,+FLT_MAX))), cxy(cxy), r(r)
+  {}
   vec2f cxy;
   float r;
 };
 struct cylinderyz : node {
   INLINE cylinderyz(const vec2f &cyz, float r) :
     node(C_CYLINDERYZ, aabb(vec3f(-FLT_MAX,-r+cyz.x,-r+cyz.y),
-                          vec3f(+FLT_MAX,+r+cyz.x,+r+cyz.y))), cyz(cyz), r(r) {}
+                            vec3f(+FLT_MAX,+r+cyz.x,+r+cyz.y))), cyz(cyz), r(r)
+  {}
   vec2f cyz;
   float r;
 };
@@ -78,7 +81,13 @@ struct translation : node {
   vec3f p;
   node *n;
 };
-
+struct rotation : node {
+  INLINE rotation(const quat3f &q, node &n) :
+    node(C_ROTATION, aabb::all()), q(q), n(&n) {}
+  virtual ~rotation() { SAFE_DEL(n); }
+  quat3f q;
+  node *n;
+};
 #if 1
 node *capped_cylinder(const vec2f &cxz, const vec3f &ryminymax) {
   const auto r = ryminymax.x;
@@ -104,10 +113,13 @@ static node *makescene0() {
 #if 1
   const auto t = vec3f(7.f, 5.f, 7.f);
   const auto s = NEW(sphere, 4.2f);
-  const auto b0 = NEW(box, vec3f(4.f));
+  const auto q = quat3f(deg2rad(20.0f),deg2rad(25.f),0.f);
+  const auto b0 = NEW(rotation, q, *NEW(box, vec3f(4.f)));
+//  const auto b0 = NEW(box, vec3f(4.f));
   const auto d0 = NEW(translation, t, *s);
   const auto d1 = NEW(translation, t, *b0);
   node *c = NEW(D, *d1, *d0);
+//  return d1;
   loopi(16) {
     const auto center = vec2f(2.f,2.f+2.f*float(i));
     const auto ryminymax = vec3f(1.f,1.f,2*float(i)+2.f);
@@ -123,10 +135,11 @@ static node *makescene0() {
   node *big = NEW(box, vec3f(3.f, 4.0f, 20.f));
   node *cut = NEW(translation, vec3f(0.f,-2.f,0.f), *NEW(box, vec3f(2.f, 2.f, 20.f)));
   big = NEW(D, *big, *cut);
-  big = NEW(translation, vec3f(16.f,4.f,10.f), *big);
   node *cxy = NEW(cylinderxy, vec2f(zero), 2.f);
-  cxy = NEW(translation, vec3f(16.f, 4.f, 10.f), *cxy);
+ // cxy = NEW(translation, vec3f(16.f, 4.f, 10.f), *cxy);
   node *arcade = NEW(D, *big, *cxy);
+  arcade = NEW(rotation, quat3f(20.f,0.f,0.f), *arcade);
+  arcade = NEW(translation, vec3f(16.f,4.f,10.f), *arcade);
   loopi(7) {
     const auto pos = vec3f(16.f,3.5f,7.f+3.f*float(i));
     const auto hole = NEW(box, vec3f(3.f,1.f,1.f));
@@ -204,26 +217,28 @@ void distr(const node &n, const vec3f *pos, float *dist, int num, const aabb &bo
       distr(*t.n, tpos, dist, num, aabb(box.pmin-t.p, box.pmax-t.p));
       return;
     }
+    case C_ROTATION: {
+      const auto &r = static_cast<const rotation&>(n);
+      vec3f tpos[64];
+      loopi(num) tpos[i] = xfmpoint(conj(r.q), pos[i]);
+      distr(*r.n, tpos, dist, num, aabb::all());
+      return;
+    }
     case C_PLANE: {
       const auto &p = static_cast<const plane&>(n);
       loopi(num) dist[i] = dot(pos[i], p.p.xyz()) + p.p.w;
       return;
     }
-    case C_CYLINDERXZ: {
-      const auto &c = static_cast<const cylinderxz&>(n);
-      loopi(num) dist[i] = length(pos[i].xz()-c.cxz) - c.r;
-      return;
-    }
-    case C_CYLINDERXY: {
-      const auto &c = static_cast<const cylinderxy&>(n);
-      loopi(num) dist[i] = length(pos[i].xy()-c.cxy) - c.r;
-      return;
-    }
-    case C_CYLINDERYZ: {
-      const auto &c = static_cast<const cylinderyz&>(n);
-      loopi(num) dist[i] = length(pos[i].yz()-c.cyz) - c.r;
-      return;
-    }
+
+#define CYL(NAME, COORD)\
+  case C_CYLINDER##NAME: {\
+    const auto &c = static_cast<const cylinder##COORD&>(n);\
+    loopi(num) dist[i] = length(pos[i].COORD()-c.c##COORD) - c.r;\
+    return;\
+  }
+  CYL(XY,xy); CYL(XZ,xz); CYL(YZ,yz);
+#undef CYL
+
     case C_SPHERE: {
       const auto &s = static_cast<const sphere&>(n);
       loopi(num) dist[i] = length(pos[i]) - s.r;
@@ -266,6 +281,10 @@ float dist(const node &n, const vec3f &pos, const aabb &box) {
     case C_TRANSLATION: {
       const auto &t = static_cast<const translation&>(n);
       return dist(*t.n, pos-t.p, aabb(box.pmin-t.p, box.pmax-t.p));
+    }
+    case C_ROTATION: {
+      const auto &r = static_cast<const rotation&>(n);
+      return dist(*r.n, xfmpoint(conj(r.q), pos), aabb::all());
     }
     case C_PLANE: {
       const auto &p = static_cast<const plane&>(n);

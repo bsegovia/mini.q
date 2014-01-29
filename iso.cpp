@@ -575,7 +575,9 @@ struct dc_gridbuilder {
     return p;
   }
 
+  // very unprecise. we should something like below
   INLINE vec3f vertex(const vec3i &p) {return m_org+m_cellsize*vec3f(p);}
+  //INLINE vec3f vertex(const vec3i &p) {return vec3f(m_iorg+p)*m_cellsize;}
   INLINE void setoctree(const octree &o) { m_octree = &o; }
   INLINE void setorg(const vec3f &org) { m_org = org; }
   INLINE void setsize(float size) { m_cellsize = size; }
@@ -1184,10 +1186,10 @@ struct recursive_builder {
       node.m_isleaf = node.m_empty = 1;
       return;
     }
-    if (cellnum == SUBGRID || (level == 4 && xyz.x >= 32) || (level == 4 && xyz.y >= 16)) {
+//    if (cellnum == SUBGRID || (level == 4 && xyz.x >= 32) || (level == 4 && xyz.y >= 16)) {
 ////     if (cellnum == SUBGRID || (level == 4 && xyz.y <= 16)) {
     // if (cellnum == SUBGRID || (level == 3 && xyz.y > 16))
-//   if (cellnum == SUBGRID) {
+   if (cellnum == SUBGRID) {
   //    printf("level %d\n", level);
 //      fflush(stdout);
       node.m_isleaf = 1;
@@ -1295,8 +1297,8 @@ struct mt_builder {
       return;
     }
     //if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
-    if (cellnum == SUBGRID || (level == 5 && xyz.x >= 80) || (level == 5 && xyz.y >= 32)) {
-//    if (cellnum == SUBGRID) {
+//    if (cellnum == SUBGRID || (level == 5 && xyz.x >= 80) || (level == 5 && xyz.y >= 32)) {
+    if (cellnum == SUBGRID) {
       jobdata job;
       job.m_octree = m_octree;
       job.m_octree_node = &node;

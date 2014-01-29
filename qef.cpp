@@ -37,14 +37,16 @@ static double factorize_hh(double *ptrs[], int n) {
     if (xnorm != 0.0) {
       double alpha = *ptrs[0];
       double beta = sqrt(alpha * alpha + xnorm * xnorm);
-      if (alpha >= 0.0)
-        beta = -beta;
-      tau = (beta - alpha) / beta;
+      if (beta != 0.0) {
+        if (alpha >= 0.0)
+          beta = -beta;
+        tau = (beta - alpha) / beta;
 
-      double scl = 1.0 / (alpha - beta);
-      *ptrs[0] = beta;
-      for (int i = 1; i < n; ++i)
-        *ptrs[i] *= scl;
+        double scl = 1.0 / (alpha - beta);
+        *ptrs[0] = beta;
+        for (int i = 1; i < n; ++i)
+          *ptrs[i] *= scl;
+      }
     }
   }
 
