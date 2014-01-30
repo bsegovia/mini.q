@@ -47,7 +47,7 @@ static void drawhud(int w, int h, int curfps) {
     const auto ypr = game::player.ypr;
     text::drawf("x: %f y: %f z: %f", textpos, o.x, o.y, o.z);
     textpos.y += fontdim.y;
-    text::drawf("x: %f y: %f z: %f", textpos, ypr.x, ypr.y, ypr.z);
+    text::drawf("yaw: %f pitch: %f roll: %f", textpos, ypr.x, ypr.y, ypr.z);
     textpos.y += fontdim.y;
     text::drawf("%i f/s", textpos, curfps);
   }
@@ -106,7 +106,7 @@ void finish() {
   vector<vertex>().moveto(vertices);
   vector<u32>().moveto(indices);
 }
-static const float CELLSIZE = 0.4f;
+static const float CELLSIZE = 0.2f;
 static void makescene() {
   if (initialized_m) return;
   const float start = sys::millis();

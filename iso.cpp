@@ -44,7 +44,7 @@ mesh::~mesh() {
 
 static const auto DEFAULT_GRAD_STEP = 1e-3f;
 
-#if !FAST_EDGE
+#if !FAST_EDGE || !DELAYED_TESSELATION
 vec3f gradient(const csg::node &node, const vec3f &pos, float grad_step = DEFAULT_GRAD_STEP) {
   const auto dx = vec3f(grad_step, 0.f, 0.f);
   const auto dy = vec3f(0.f, grad_step, 0.f);
@@ -559,7 +559,8 @@ struct dc_gridbuilder {
     vec3f p;
     loopi(MAX_STEPS) {
       p = p1 - v1 * (p1 - p0) / (v1 - v0);
-      const auto density = csg::dist(node, org+m_cellsize*scale*p) + 1e-4f;
+      const auto pt = csg::dist(node, org+m_cellsize*scale*p);
+      const auto density = pt.dist+1e-4f;
       STATS_INC(iso_num);
       STATS_INC(iso_falsepos_num);
       if (abs(density) < TOLERANCE_DENSITY) break;
@@ -1180,7 +1181,8 @@ struct recursive_builder {
   void build(octree::node &node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
     const auto scale = 1.f / float(1<<level);
     const auto cellnum = m_dim >> level;
-    const auto dist = csg::dist(m_node, pos(xyz) + scale*vec3f(m_half_side_len));
+    const auto pt = csg::dist(m_node, pos(xyz) + scale*vec3f(m_half_side_len));
+    const auto dist = pt.dist;
     STATS_INC(iso_octree_num);
     STATS_INC(iso_num);
     node.m_level = level;
@@ -1292,7 +1294,16 @@ struct mt_builder {
   void build(octree::node &node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
     const auto scale = 1.f / float(1<<level);
     const auto cellnum = m_dim >> level;
-    const auto dist = csg::dist(*m_node, pos(xyz) + scale*vec3f(m_half_side_len));
+    const auto org = pos(xyz);
+
+    // XXX fix this horrible code
+    const auto center = org + scale*vec3f(m_half_side_len);
+    const vec3f pmin(org-4.f*float(1<<level)*m_cellsize);
+    const vec3f pmax(org+2.f*scale*m_half_side_len+4.f*float(1<<level)*m_cellsize);
+    // const auto pt = csg::dist(*m_node, center, aabb(pmin,pmax));
+    const auto pt = csg::dist(*m_node, center);
+    printf("sz %f\n", pt.size);
+    const auto dist = pt.dist;
     STATS_INC(iso_octree_num);
     STATS_INC(iso_num);
     node.m_level = level;
@@ -1300,8 +1311,8 @@ struct mt_builder {
       node.m_isleaf = node.m_empty = 1;
       return;
     }
-    //if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
-    if (cellnum == SUBGRID || (level == 5 && xyz.x >= 80) || (level == 5 && xyz.y >= 16)) {
+    if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
+ //   if (cellnum == SUBGRID || (level == 5 && xyz.x >= 80) || (level == 5 && xyz.y >= 16)) {
  //   if (cellnum == SUBGRID) {
 //      printf("%d\n", level);
       jobdata job;
