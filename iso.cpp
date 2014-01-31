@@ -1315,7 +1315,7 @@ struct mt_builder {
     const vec3f pmax(org+2.f*scale*m_half_side_len+4.f*float(1<<level)*m_cellsize);
     // const auto pt = csg::dist(*m_node, center, aabb(pmin,pmax));
     const auto pt = csg::dist(*m_node, center);
-    printf("sz %f\n", pt.size);
+    //printf("sz %f\n", pt.size);
     const auto dist = pt.dist;
     STATS_INC(iso_octree_num);
     STATS_INC(iso_num);
