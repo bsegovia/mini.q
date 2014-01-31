@@ -836,6 +836,15 @@ struct dc_gridbuilder {
       const auto plod = item.second.x;
       const auto edgemap = item.second.y;
 
+      // special case where there is no edge, we just put the center for now
+      if (edgemap == 0) {
+        const vec3i topright = xyz + (1<<plod);
+        const vec3f pos = (vertex(xyz)+vertex(topright))*0.5f;
+        m_pos_buffer.add(pos);
+        m_nor_buffer.add(vec3f(1.f,0.f,0.f));
+        continue;
+      }
+
       // get the intersection points between the surface and the cube edges
       vec3f p[12], n[12], mass(zero);
       vec3f nor = zero;
@@ -844,7 +853,7 @@ struct dc_gridbuilder {
         if ((edgemap & (1<<i)) == 0) continue;
         const auto idx0 = interptable[i][0], idx1 = interptable[i][1];
         const auto e = getedge(icubev[idx0], icubev[idx1], plod);
-        auto &idx = m_edge_index[edge_index(xyz+e.first, e.second)];
+        const auto idx = m_edge_index[edge_index(xyz+e.first, e.second)];
         assert(idx != NOINDEX);
         p[num] = m_edges[idx].first+vec3f(e.first);
         n[num] = m_edges[idx].second;
@@ -908,8 +917,12 @@ struct dc_gridbuilder {
             mcell cell;
             loopk(8) cell[k] = field(np + (icubev[k]<<int(plod)));
             const int edgemap = delayed_qef_vertex(cell, np, plod);
-            if (edgemap == 0) continue;
-
+#if 0
+            if (edgemap == 0) {
+              assert(plod == 1);
+              continue;
+            }
+#endif
             // point is still valid. we are good to go
             m_qef_index[idx] = m_border_remap.length();
             m_border_remap.add(OUTSIDE);
