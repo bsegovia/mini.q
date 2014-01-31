@@ -172,7 +172,7 @@ struct edgestack {
 };
 
 /*-------------------------------------------------------------------------
- - edge creaser, crack fixing and mesh decimation happen here
+ - edge creaser and mesh decimation happen here
  -------------------------------------------------------------------------*/
 struct mesh_processor {
   struct meshedge {
@@ -219,7 +219,7 @@ struct mesh_processor {
     nextedge[edgenum++] = NOINDEX;
   }
 
-  pair<int,int> buildedges() {
+  int buildedges() {
     const auto &t = *m_idx_buffer;
     auto nextedge = &m_edgelists[0] + m_vertnum;
 
@@ -259,20 +259,7 @@ struct mesh_processor {
         i1 = i2;
       }
     }
-    const int onedirnum = edgenum;
-
-    // step 3 - append all edges with i2 > i1. Be careful to not push several
-    // times the same edge. We stopped as soon as we see an newly pushed edge
-    loopi(m_vertnum) {
-      u32 idx = m_edgelists[i];
-      for (; idx != NOINDEX; idx = nextedge[idx]) {
-        auto &e = m_edges[idx];
-        if (e.vertex[0] > e.vertex[1]) break;
-        if (e.vertex[0] == e.vertex[1]) continue;
-        append(edgenum, e.vertex[1], e.vertex[0], e.face[0], e.face[1]);
-      }
-    }
-    return makepair(edgenum, onedirnum);
+    return edgenum;
   }
 
   INLINE vec3f trinormalu(u32 idx) {
@@ -368,91 +355,6 @@ struct mesh_processor {
       loopj(3) n[unpackidx(tri[j])] += nor;
     }
     loopi(m_vertnum) n[m_first_vert+i] = abs(normalize(n[m_first_vert+i]));
-  }
-
-  INLINE bool containsother(const int *tri, int other) {
-    loopk(3) if (tri[k] == other) return true;
-    return false;
-  }
-
-  u32 findthirdindex(u32 v0, u32 v1, bool &switchv0v1) {
-    auto nextedge = &m_edgelists[0] + m_vertnum;
-    auto l0 = m_edgelists[v0 - m_first_vert];
-    auto &t = *m_idx_buffer;
-    for (; l0 != int(NOINDEX); l0 = nextedge[l0]) {
-      const auto &e0 = m_edges[l0];
-      loopj(2) {
-        const auto tri = &t[3*e0.face[j] + m_first_idx];
-        bool foundit = false;
-        u32 v2 = v0;
-        u32 idx[3]={0,0,0};
-        loopk(3) {
-          const int unpacked = unpackidx(tri[k]);
-          if (unpacked == int(v0)) idx[0] = k;
-          else if (unpacked == int(v1)) {
-            idx[1] = k;
-            foundit = true;
-          } else {
-            idx[2] = k;
-            v2 = unpacked;
-          }
-        }
-
-        // see if we need to reorder v0 and v1 to get proper orientation
-        if (foundit) {
-          u32 v0pos = 2;
-          if (idx[0] == 0) v0pos = 0;
-          else if (idx[1] == 0) v0pos = 1;
-          switchv0v1 = idx[(v0pos+1)%3] == 1;
-          return v2;
-        }
-      }
-    }
-    return v0;
-  }
-
-  void fillcracks(u32 edgenum) {
-    if (m_cracks->length() == 0) return;
-
-    // Try to fix all cracks by creating a new triangle that fills it
-    auto &cracks = *m_cracks;
-    auto &t = *m_idx_buffer;
-    auto nextedge = &m_edgelists[0] + m_vertnum;
-    loopv(cracks) {
-      bool switchv0v1 = false;
-      auto v0 = cracks[i].first;
-      auto v1 = cracks[i].second;
-      auto v2 = findthirdindex(v0,v1,switchv0v1);
-      auto l0 = m_edgelists[v0 - m_first_vert];
-      for (; l0 != int(NOINDEX); l0 = nextedge[l0]) {
-        // go over all triangles and try to find a vertex that is connected to
-        // both crack vertices
-        const auto &e0 = m_edges[l0];
-        auto candidate = e0.vertex[0] + m_first_vert;
-        if (candidate == v0) candidate = e0.vertex[1] + m_first_vert;
-        if (candidate == v1 || candidate == v2) continue;
-
-        // visit the complete edge list from v1 to see if it is connected to
-        // the candidate
-        auto l1 = m_edgelists[v1 - m_first_vert];
-        for (; l1 != int(NOINDEX); l1 = nextedge[l1]) {
-          const auto &e1 = m_edges[l1];
-          const auto ev0 = e1.vertex[0] + m_first_vert;
-          const auto ev1 = e1.vertex[1] + m_first_vert;
-          if (ev0 == candidate || ev1 == candidate)
-            break;
-        }
-
-        // if we find it, fill the crack with this new triangle
-        if (l1 != int(NOINDEX)) {
-          t.add(switchv0v1?v1:v0);
-          t.add(switchv0v1?v0:v1);
-          t.add(candidate);
-          ++m_trinum;
-          break;
-        }
-      }
-    }
   }
 
   vector<meshedge> m_edges;
@@ -1133,8 +1035,7 @@ struct dc_gridbuilder {
 
     m_mp.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, m_cracks, first_vert, first_idx);
     const auto edgenum = m_mp.buildedges();
-    m_mp.fillcracks(edgenum.second);
-    m_mp.crease(edgenum.first);
+    m_mp.crease(edgenum);
     m_border_remap.setsize(m_pos_buffer.length());
     removeborders(first_idx, first_vert);
     assert(node.m_vertnum <= octree::MAX_ITEM_NUM);
