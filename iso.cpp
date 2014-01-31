@@ -101,24 +101,6 @@ static const int interptable[12][2] = {
 };
 static const u32 octreechildmap[8] = {0, 4, 3, 7, 1, 5, 2, 6};
 
-static const vec3i neighbors[] = {
-  // we share a face with these ones
-  vec3i(+1,0,0), vec3i(-1,0,0), vec3i(0,+1,0),
-  vec3i(0,-1,0), vec3i(0,0,+1), vec3i(0,0,-1),
-
-  // we share one edge only with these ones
-  vec3i(+1,+1,0), vec3i(+1,-1,0), vec3i(-1,-1,0), vec3i(+1,-1,0),
-  vec3i(+1,0,+1), vec3i(+1,0,-1), vec3i(-1,0,-1), vec3i(+1,0,-1),
-  vec3i(0,+1,+1), vec3i(0,+1,-1), vec3i(0,-1,-1), vec3i(0,+1,-1),
-
-  // we share one corner only with these ones
-  vec3i(+1,+1,+1), vec3i(+1,+1,-1), vec3i(+1,-1,-1), vec3i(+1,-1,+1),
-  vec3i(-1,+1,+1), vec3i(-1,+1,-1), vec3i(-1,-1,-1), vec3i(-1,-1,+1)
-};
-static const u32 faceneighbornum = 6;
-static const u32 edgeneighbornum = 12;
-static const u32 lodneighbornum = 18;
-
 static const float SHARP_EDGE = 0.2f;
 static const u32 SUBGRID = 16;
 static const u32 FIELDDIM = SUBGRID+8;
@@ -329,7 +311,8 @@ struct mesh_processor {
       const auto nor = trinormalu(idx);
       loopj(3) n[unpackidx(tri[j])] += nor;
     }
-    loopi(m_vertnum) n[m_first_vert+i] = abs(normalize(n[m_first_vert+i]));
+    // loopi(m_vertnum) n[m_first_vert+i] = abs(normalize(n[m_first_vert+i]));
+    loopi(m_vertnum) n[m_first_vert+i] = vec3f(1.f,0.f,0.f);
   }
 
   vector<meshedge> m_edges;
@@ -677,6 +660,7 @@ struct dc_gridbuilder {
       const auto edgemap = item.second.y;
 
       // special case where there is no edge, we just put the center for now
+      // TODO use proper qef vertex
       if (edgemap == 0) {
         const vec3i topright = xyz + (1<<plod);
         const vec3f pos = (vertex(xyz)+vertex(topright))*0.5f;
@@ -1007,6 +991,21 @@ struct context {
 };
 static context *ctx = NULL;
 
+static const int splus = SUBGRID;
+static const int sminus = -1;
+static const vec3i nodeneighbors[] = {
+  // we share a face with these neighbors
+  vec3i(splus,0,0), vec3i(0,splus,0), vec3i(0,0,splus),
+  vec3i(sminus,0,0),vec3i(0,sminus,0),vec3i(0,0,sminus),
+
+  // we share an edge with these neighbors
+  vec3i(splus,splus,0),  vec3i(splus,0,splus),  vec3i(0,splus,splus),
+  vec3i(sminus,sminus,0),vec3i(sminus,0,sminus),vec3i(0,sminus,sminus),
+  vec3i(splus,sminus,0), vec3i(sminus,splus,0), vec3i(splus,0,sminus),
+  vec3i(sminus,0,splus), vec3i(0,sminus,splus), vec3i(0,splus,sminus)
+};
+static const int nodeneighbornum = ARRAY_ELEM_NUM(nodeneighbors);
+
 struct mt_builder {
   mt_builder(const csg::node &node, const vec3f &org, float cellsize, u32 dim) :
     m_node(&node), m_org(org),
@@ -1027,12 +1026,12 @@ struct mt_builder {
     const auto org = pos(xyz);
 
     // XXX fix this horrible code
+    const auto len = float(1<<(m_maxlevel-level))*m_cellsize;
     const auto center = org + scale*vec3f(m_half_side_len);
-    const vec3f pmin(org-4.f*float(1<<level)*m_cellsize);
-    const vec3f pmax(org+2.f*scale*m_half_side_len+4.f*float(1<<level)*m_cellsize);
-    // const auto pt = csg::dist(*m_node, center, aabb(pmin,pmax));
-    const auto pt = csg::dist(*m_node, center);
-    //printf("sz %f\n", pt.size);
+    const vec3f pmin(org-4.f*len);
+    const vec3f pmax(org+2.f*scale*m_half_side_len+4.f*len);
+    const auto pt = csg::dist(*m_node, center, aabb(pmin,pmax));
+    // const auto pt = csg::dist(*m_node, center);
     const auto dist = pt.dist;
     STATS_INC(iso_octree_num);
     STATS_INC(iso_num);
@@ -1041,10 +1040,13 @@ struct mt_builder {
       node.m_isleaf = node.m_empty = 1;
       return;
     }
-    if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
+    //if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16) || pt.size > len) {
  //   if (cellnum == SUBGRID || (level == 5 && xyz.x >= 80) || (level == 5 && xyz.y >= 16)) {
- //   if (cellnum == SUBGRID) {
+    if (cellnum == SUBGRID || pt.size > len) {
 //      printf("%d\n", level);
+      printf("level %d sz %f\n", level, pt.size);
+      fflush(stdout);
+#if 1
       jobdata job;
       job.m_octree = m_octree;
       job.m_octree_node = &node;
@@ -1057,6 +1059,7 @@ struct mt_builder {
       job.m_org = pos(xyz);
       ctx->m_work.add(job);
       node.m_isleaf = 1;
+#endif
       return;
     } else {
       node.m_children = NEWAE(octree::node, 8);
@@ -1066,6 +1069,42 @@ struct mt_builder {
       }
       return;
     }
+  }
+
+  bool addconstraints(octree::node &node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
+    const auto lod = m_maxlevel - level;
+
+    // figure out if we need to subdivide more
+    if (node.m_isleaf && !node.m_empty) {
+      u32 neighborlevel = level;
+      loopi(nodeneighbornum) {
+        const auto neighborpos = xyz+(nodeneighbors[i]<<int(lod));
+        const auto neighbor = m_octree->findleaf(neighborpos);
+        if (neighbor.first != NULL)
+          neighborlevel = min(neighbor.second, neighborlevel);
+      }
+
+      // we do not match the LOD constraints. we need to subdivide more and
+      // recurse
+      if (level - neighborlevel > 1) {
+        node.m_isleaf = 0;
+        node.m_children = NEWAE(octree::node, 8);
+        loopi(8) {
+          const auto childxyz = xyz + int(SUBGRID<<(lod-1)) * icubev[i];
+          node.m_children[i].m_isleaf = 1;
+          addconstraints(node.m_children[i], childxyz, level+1);
+        }
+        return true;
+      }
+    } else {
+      bool anychange = false;
+      loopi(8) {
+        const auto childxyz = xyz + int(SUBGRID<<(lod-1)) * icubev[i];
+        anychange = addconstraints(node.m_children[i], childxyz, level+1) || anychange;
+      }
+      return anychange;
+    }
+    return false;
   }
 
   octree *m_octree;

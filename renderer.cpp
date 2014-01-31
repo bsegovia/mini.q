@@ -111,7 +111,7 @@ static void makescene() {
   if (initialized_m) return;
   const float start = sys::millis();
   const auto node = csg::makescene();
-  auto m = iso::dc_mesh_mt(vec3f(zero), 1024, CELLSIZE, *node);
+  auto m = iso::dc_mesh_mt(vec3f(zero), 2048, CELLSIZE, *node);
   loopi(m.m_vertnum) vertices.add(makepair(m.m_pos[i], m.m_nor[i]));
   loopi(m.m_indexnum) indices.add(m.m_index[i]);
   vertnum = m.m_vertnum;
@@ -153,7 +153,7 @@ void frame(int w, int h, int curfps) {
   };
   ogl::bindfixedshader(ogl::DIFFUSETEX);
   ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_CHECKBOARD));
-  ogl::immdraw(GL_TRIANGLE_STRIP, 3, 2, 0, 4, verts);
+//  ogl::immdraw(GL_TRIANGLE_STRIP, 3, 2, 0, 4, verts);
 
   makescene();
   if (vertnum != 0) {
