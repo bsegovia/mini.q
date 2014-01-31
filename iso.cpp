@@ -30,10 +30,6 @@ static void stats() {
 }
 #endif
 
-#define FAST_FIELD 1
-#define FAST_EDGE 1
-#define DELAYED_TESSELATION 1
-
 namespace q {
 namespace iso {
 mesh::~mesh() {
@@ -43,27 +39,6 @@ mesh::~mesh() {
 }
 
 static const auto DEFAULT_GRAD_STEP = 1e-3f;
-
-#if !FAST_EDGE || !DELAYED_TESSELATION
-vec3f gradient(const csg::node &node, const vec3f &pos, float grad_step = DEFAULT_GRAD_STEP) {
-  const auto dx = vec3f(grad_step, 0.f, 0.f);
-  const auto dy = vec3f(0.f, grad_step, 0.f);
-  const auto dz = vec3f(0.f, 0.f, grad_step);
-  const auto box = aabb::all(); //(pos-2.f*grad_step, pos+2.f*grad_step);
-  const auto c = csg::dist(node, pos, box);
-  const auto dndx = csg::dist(node, pos-dx, box);
-  const auto dndy = csg::dist(node, pos-dy, box);
-  const auto dndz = csg::dist(node, pos-dz, box);
-  const auto n = vec3f(c-dndx, c-dndy, c-dndz);
-  STATS_ADD(iso_num, 4);
-  STATS_ADD(iso_gradient_num, 4);
-  if (n==vec3f(zero))
-    return vec3f(zero);
-  else
-    return normalize(n);
-}
-#endif
-
 static const auto TOLERANCE_DENSITY = 1e-3f;
 static const auto TOLERANCE_DIST2 = 1e-8f;
 static const int MAX_STEPS = 4;
@@ -429,17 +404,13 @@ struct dc_gridbuilder {
     m_lod(FIELDNUM),
     m_qef_index(QEFNUM),
     m_edge_index(6*FIELDNUM),
-#if DELAYED_TESSELATION
     m_stack(NEWE(edgestack)),
-#endif
     m_octree(NULL),
     m_iorg(zero),
     m_maxlevel(0),
     m_level(0)
   {}
-#if DELAYED_TESSELATION
   ~dc_gridbuilder() { DEL(m_stack); }
-#endif
 
   struct qef_output {
     INLINE qef_output(vec3f p, vec3f n, bool valid):p(p),n(n),valid(valid){}
@@ -510,7 +481,6 @@ struct dc_gridbuilder {
 
   void initfield() {
     const vec3i org(-2), dim(FIELDDIM-2);
-#if FAST_FIELD
     stepxyz(org, dim, vec3i(4)) {
       vec3f pos[64];
       float distance[64];
@@ -525,32 +495,19 @@ struct dc_gridbuilder {
       STATS_ADD(iso_num, 64);
       STATS_ADD(iso_grid_num, 64);
     }
-#else
-    loopxyz(org, dim) {
-      const auto p = vertex(xyz);
-      const aabb box(p-2.f*m_cellsize, p+2.f*m_cellsize);
-      field(xyz) = csg::dist(*m_node, p, box);
-      STATS_INC(iso_num);
-      STATS_INC(iso_grid_num);
-    }
-#endif
   }
 
   NOINLINE void initedge() {
     const vec3i org(-2), dim(FIELDDIM-2);
     m_edge_index.memset(0xff);
     m_edges.setsize(0);
-#if DELAYED_TESSELATION
     m_delayed_edges.setsize(0);
-#endif
   }
 
   NOINLINE void initqef() {
     const vec3i org(-2), dim(QEFDIM-2);
     m_qef_index.memset(0xff);
-#if DELAYED_TESSELATION
     m_delayed_qef.setsize(0);
-#endif
   }
 
   INLINE u8 &lod(const vec3i &xyz) { return m_lod[field_index(xyz)]; }
@@ -593,7 +550,6 @@ struct dc_gridbuilder {
 #undef LOD
   }
 
-#if DELAYED_TESSELATION
   int delayed_qef_vertex(const mcell &cell, const vec3i &xyz, int plod) {
     int cubeindex = 0;
     loopi(8) if (cell[i] < 0.0f) cubeindex |= 1<<i;
@@ -648,7 +604,6 @@ struct dc_gridbuilder {
   }
 
   void finishedges() {
-#if FAST_EDGE
     const auto len = m_delayed_edges.length();
     STATS_ADD(iso_edge_num, len);
 
@@ -712,23 +667,6 @@ struct dc_gridbuilder {
         }
       }
     }
-#else
-    loopv(m_delayed_edges) {
-      const auto &item = m_delayed_edges[i];
-      const auto xyz = item.first;
-      const auto org = vertex(xyz);
-      const auto idx0 = item.second.x, idx1 = item.second.y;
-      const auto plod = item.second.z;
-      const auto fscale = float(1<<plod);
-      const auto p0 = fcubev[idx0], p1 = fcubev[idx1];
-      const auto v0 = field(xyz + (icubev[idx0]<<plod));
-      const auto v1 = field(xyz + (icubev[idx1]<<plod));
-      const auto pos = falsepos(*m_node, org, p0, p1, v0, v1, fscale);
-      const auto nor = gradient(*m_node, org+pos*fscale*m_cellsize);
-      const auto e = getedge(icubev[idx0], icubev[idx1], plod);
-      m_edges.add(makepair(pos-vec3f(e.first),nor));
-    }
-#endif
   }
 
   void finishvertices() {
@@ -819,12 +757,7 @@ struct dc_gridbuilder {
             mcell cell;
             loopk(8) cell[k] = field(np + (icubev[k]<<int(plod)));
             const int edgemap = delayed_qef_vertex(cell, np, plod);
-#if 0
-            if (edgemap == 0) {
-              assert(plod == 1);
-              continue;
-            }
-#endif
+
             // point is still valid. we are good to go
             m_qef_index[idx] = m_border_remap.length();
             m_border_remap.add(OUTSIDE);
@@ -844,119 +777,6 @@ struct dc_gridbuilder {
       }
     }
   }
-#else
-  qef_output qef_vertex(const mcell &cell, const vec3i &xyz, int plod, float fscale) {
-    int cubeindex = 0, num = 0;
-    loopi(8) if (cell[i] < 0.0f) cubeindex |= 1<<i;
-    if (edgetable[cubeindex] == 0)
-      return qef_output(vec3f(zero), vec3f(zero), false);
-
-    // find the vertices where the surface intersects the cube
-    const auto org = vertex(xyz);
-    vec3f p[12], n[12], mass(zero);
-    vec3f nor = zero;
-    loopi(12) {
-      if ((edgetable[cubeindex] & (1<<i)) == 0)
-        continue;
-      const auto idx0 = interptable[i][0], idx1 = interptable[i][1];
-      const auto v0 = cell[idx0], v1 = cell[idx1];
-      const auto p0 = fcubev[idx0], p1 = fcubev[idx1];
-      const auto e = getedge(icubev[idx0], icubev[idx1], plod);
-      auto &idx = m_edge_index[edge_index(xyz+e.first, e.second)];
-      if (idx == NOINDEX) {
-        const auto pos = falsepos(*m_node, org, p0, p1, v0, v1, fscale);
-        const auto nor = gradient(*m_node, org+pos*fscale*m_cellsize);
-        idx = m_edges.length();
-        m_edges.add(makepair(pos-vec3f(e.first),nor));
-      }
-      p[num] = m_edges[idx].first+vec3f(e.first);
-      n[num] = m_edges[idx].second;
-      nor += n[num];
-      mass += p[num++];
-    }
-    mass /= float(num);
-
-    // compute the QEF minimizing point
-    double matrix[12][3];
-    double vector[12];
-    loopi(num) {
-      loopj(3) matrix[i][j] = double(n[i][j]);
-      const auto d = p[i] - mass;
-      vector[i] = double(dot(n[i],d));
-    }
-    return qef_output(mass + qef::evaluate(matrix, vector, num), nor, true);
-  }
-
-  void tesselate() {
-    const vec3i org(zero), dim(SUBGRID+4);
-    loopxyz(org, dim) {
-      const int start_sign = field(xyz) < 0.f ? 1 : 0;
-      if (abs(field(xyz)) > 2.f*m_cellsize)
-        continue;
-
-      // look at the three edges that start on xyz
-      loopi(3) {
-        // figure out the edge size
-        const auto qaxis0 = axis[(i+1)%3];
-        const auto qaxis1 = axis[(i+2)%3];
-        const vec3i q[] = {xyz, xyz-qaxis0, xyz-qaxis0-qaxis1, xyz-qaxis1};
-        u32 edgelod = 1;
-        loopj(4) edgelod = min(edgelod, u32(lod(q[j])));
-
-        // process the edge only when we get the properly aligned origin.
-        // otherwise, we would generate the same face more than one
-        if (any(ne(xyz&vec3i(edgelod), vec3i(zero))))
-          continue;
-
-        // is it an actual edge?
-        const auto delta = axis[i] << int(edgelod);
-        const int end_sign = field(xyz+delta) < 0.f ? 1 : 0;
-        if (start_sign == end_sign) continue;
-
-        // we found one edge. we output one quad for it
-        const auto axis0 = axis[(i+1)%3] << int(edgelod);
-        const auto axis1 = axis[(i+2)%3] << int(edgelod);
-        vec3i p[] = {xyz, xyz-axis0, xyz-axis0-axis1, xyz-axis1};
-        u32 quad[4];
-        u32 vertnum = 0;
-        loopj(4) {
-          u32 plod = lod(p[j]);
-          const auto np = p[j] & vec3i(~plod);
-          const auto idx = qef_index(np);
-
-          if (m_qef_index[idx] == NOINDEX) {
-            mcell cell;
-            loopk(8) cell[k] = field(np + (icubev[k]<<int(plod)));
-            const float scale = float(1<<plod);
-            const auto vert = qef_vertex(cell, np, plod, scale);
-
-            // we have an edge but with a double change of sign. so the higher
-            // level voxel has no QEF at all
-            if (!vert.valid) continue;
-
-            // point is still valid. we are good to go
-            const auto pos = vertex(np) + vert.p*scale*m_cellsize;
-            const auto nor = normalize(vert.n);
-            m_qef_index[idx] = m_pos_buffer.length();
-            m_border_remap.add(OUTSIDE);
-            m_pos_buffer.add(pos);
-            m_nor_buffer.add(abs(nor));
-            STATS_INC(iso_qef_num);
-          }
-          quad[vertnum++] = m_qef_index[idx];
-        }
-        const u32 msk = any(eq(xyz,vec3i(zero)))||any(gt(xyz,vec3i(SUBGRID)))?OUTSIDE:0u;
-        const auto orientation = start_sign==1 ? quadtotris : quadtotris_cc;
-        if (vertnum == 4)
-          loopj(6) m_idx_buffer.add(quad[orientation[j]]|msk);
-        else if (vertnum == 3)
-          loopj(3) m_idx_buffer.add(quad[orientation[j]]|msk);
-        else if (vertnum == 2 && !isoutside(msk))
-          m_cracks.add(makepair(quad[0], quad[1]));
-      }
-    }
-  }
-#endif
 
   void removeborders(u32 first_idx, u32 first_vertex) {
     // find the list of vertex which is actually used. initially, they are all
@@ -1024,10 +844,8 @@ struct dc_gridbuilder {
     initqef();
     initlod();
     tesselate();
-#if DELAYED_TESSELATION
     finishedges();
     finishvertices();
-#endif
 
     // stop here if we do not create anything
     if (first_vert == m_pos_buffer.length())
@@ -1058,11 +876,9 @@ struct dc_gridbuilder {
   vector<u32> m_qef_index;
   vector<u32> m_edge_index;
   vector<pair<vec3f,vec3f>> m_edges;
-#if DELAYED_TESSELATION
   vector<pair<vec3i,vec3i>> m_delayed_edges;
   vector<pair<vec3i,vec2i>> m_delayed_qef;
   edgestack *m_stack;
-#endif
   const octree *m_octree;
   vec3f m_org;
   vec3i m_iorg;
