@@ -347,13 +347,12 @@ struct octree {
   };
 
   INLINE octree(u32 dim) : m_dim(dim), m_logdim(ilog2(dim)) {}
-  pair<const node*,u32> findleaf(vec3i xyz) const {
-    if (any(lt(xyz,vec3i(zero))) || any(ge(xyz,vec3i(m_dim))))
-      return makepair((const struct node*) NULL, 0u);
+  const node *findleaf(vec3i xyz) const {
+    if (any(lt(xyz,vec3i(zero))) || any(ge(xyz,vec3i(m_dim)))) return NULL;
     int level = 0;
     const node *node = &m_root;
     for (;;) {
-      if (node->m_isleaf) return makepair(node, u32(level));
+      if (node->m_isleaf) return node;
       assert(m_logdim > u32(level));
       const auto logsize = vec3i(m_logdim-level-1);
       const auto bits = xyz >> logsize;
@@ -364,7 +363,7 @@ struct octree {
       ++level;
     }
     assert("unreachable" && false);
-    return makepair((const struct node*)(NULL),0u);
+    return NULL;
   }
 
   static const u32 MAX_ITEM_NUM = (1<<15)-1;
@@ -503,7 +502,7 @@ struct dc_gridbuilder {
 #define LOD(NEIGHBOR, ORG, END) do {\
   const vec3i neighbor(m_iorg + NEIGHBOR);\
   const auto leaf = m_octree->findleaf(neighbor);\
-  if (leaf.first != NULL && leaf.second < m_level)\
+  if (leaf != NULL && leaf->m_level < m_level)\
     loopxyz(ORG, END) lod(xyz) = 1;\
 } while (0)
     const int p = SUBGRID << plod;
@@ -915,8 +914,6 @@ struct mt_builder {
   mt_builder(const csg::node &node, const vec3f &org, float cellsize, u32 dim) :
     m_node(&node), m_org(org),
     m_cellsize(cellsize),
-    m_half_side_len(float(dim) * m_cellsize * 0.5f),
-    m_half_diag_len(sqrt(3.f) * m_half_side_len),
     m_dim(dim)
   {
     assert(ispoweroftwo(dim) && dim % SUBGRID == 0);
@@ -926,38 +923,36 @@ struct mt_builder {
   INLINE void setoctree(octree &o) {m_octree=&o;}
 
   void build(octree::node &node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
-    const auto scale = 1.f / float(1<<level);
-    const auto cellnum = m_dim >> level;
-    const auto org = pos(xyz);
+    node.m_level = level;
 
-    // XXX fix this horrible code
-    const auto len = float(1<<(m_maxlevel-level))*m_cellsize;
-    const auto center = org + scale*vec3f(m_half_side_len);
-    const vec3f pmin(org-4.f*len);
-    const vec3f pmax(org+2.f*scale*m_half_side_len+4.f*len);
+    // bounding box of this octree cell
+    const auto lod = m_maxlevel - level;
+    const vec3f pmin = pos(xyz - int(4<<lod));
+    const vec3f pmax = pos(xyz + int((SUBGRID+4)<<lod));
+
+    // center of the box where to evaluate the distance field
+    const auto cellnum = int(m_dim >> level);
+    const auto icenter = xyz + cellnum/2;
+    const auto center = pos(icenter);
     const auto pt = csg::dist(*m_node, center, aabb(pmin,pmax));
-    // const auto pt = csg::dist(*m_node, center);
-    const auto dist = pt.dist;
     STATS_INC(iso_octree_num);
     STATS_INC(iso_num);
-    node.m_level = level;
-    if (abs(dist) > m_half_diag_len * scale) {
+    if (abs(pt.dist) > sqrt(3.f) * m_cellsize * float(cellnum/2)) {
       node.m_isleaf = node.m_empty = 1;
       return;
     }
-    //if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16) || pt.size > len) {
-    //if (cellnum == SUBGRID || (level == 5 && xyz.x >= 80) || (level == 5 && xyz.y >= 16)) {
 #if USE_NODE_SIZE
-    if (cellnum == SUBGRID || pt.size > len) {
+    //if (cellnum == SUBGRID || pt.size > len) {
 #else
-    if (cellnum == SUBGRID) {
+    if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
+    //if (cellnum == SUBGRID) {
 #endif
       node.m_isleaf = 1;
       return;
     } else {
       node.m_children = NEWAE(octree::node, 8);
       loopi(8) {
-        const auto childxyz = xyz+int(cellnum/2)*icubev[i];
+        const auto childxyz = xyz+cellnum*icubev[i]/2;
         build(node.m_children[i], childxyz, level+1);
       }
       return;
@@ -973,8 +968,8 @@ struct mt_builder {
       loopi(nodeneighbornum) {
         const auto neighborpos = xyz+(nodeneighbors[i]<<int(lod));
         const auto neighbor = m_octree->findleaf(neighborpos);
-        if (neighbor.first != NULL && !neighbor.first->m_empty)
-          neighborlevel = max(neighbor.second, neighborlevel);
+        if (neighbor != NULL && !neighbor->m_empty)
+          neighborlevel = max(neighbor->m_level, neighborlevel);
       }
 
       // we do not match the LOD constraints. we need to subdivide more and
@@ -1036,7 +1031,7 @@ struct mt_builder {
   octree *m_octree;
   const csg::node *m_node;
   vec3f m_org;
-  float m_cellsize, m_half_side_len, m_half_diag_len;
+  float m_cellsize;
   u32 m_dim, m_maxlevel;
 };
 
