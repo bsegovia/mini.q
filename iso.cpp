@@ -120,7 +120,7 @@ INLINE u32 unpackidx(u32 x) { return x & ~(OUTSIDE|BORDER); }
 INLINE u32 unpackmsk(u32 x) { return x & (OUTSIDE|BORDER); }
 
 struct edgeitem {
-  vec3f org, corg, p0, p1;
+  vec3f org, p0, p1;
   float scale, v0, v1;
 };
 
