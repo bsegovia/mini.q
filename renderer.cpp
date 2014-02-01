@@ -153,7 +153,7 @@ void frame(int w, int h, int curfps) {
   };
   ogl::bindfixedshader(ogl::DIFFUSETEX);
   ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_CHECKBOARD));
-//  ogl::immdraw(GL_TRIANGLE_STRIP, 3, 2, 0, 4, verts);
+  ogl::immdraw(GL_TRIANGLE_STRIP, 3, 2, 0, 4, verts);
 
   makescene();
   if (vertnum != 0) {

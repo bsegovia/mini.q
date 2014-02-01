@@ -107,7 +107,7 @@ node *capped_cylinder(const vec2f &cxz, const vec3f &ryminymax) {
   ccyl->box.pmax = vec3f(cxz.x+r,ymax,cxz.y+r);
   return ccyl;
 }
-#if 0
+#if 1
 static node *makescene0() {
   const auto t = vec3f(7.f, 5.f, 7.f);
   const auto s = NEW(sphere, 4.2f);

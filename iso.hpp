@@ -24,9 +24,6 @@ struct mesh {
 };
 
 // tesselate along a grid the distance field with dual contouring algorithm
-mesh dc_mesh(const vec3f &org, u32 cellnum, float cellsize, const csg::node &n);
-
-// same but in multi-thread
 mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d);
 void start();
 void finish();

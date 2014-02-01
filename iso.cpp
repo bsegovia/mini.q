@@ -17,6 +17,8 @@ STATS(iso_octree_num);
 STATS(iso_qef_num);
 STATS(iso_falsepos);
 
+#define USE_NODE_SIZE 0
+
 #if !defined(NDEBUG)
 static void stats() {
   STATS_OUT(iso_num);
@@ -871,103 +873,6 @@ struct dc_gridbuilder {
 };
 
 /*-------------------------------------------------------------------------
- - simple single threaded implementation for iso-surface extraction
- -------------------------------------------------------------------------*/
-struct recursive_builder {
-  recursive_builder(const csg::node &node, const vec3f &org, float cellsize, u32 dim) :
-    m_node(node), m_org(org),
-    m_cellsize(cellsize),
-    m_half_side_len(float(dim) * m_cellsize * 0.5f),
-    m_half_diag_len(sqrt(3.f) * m_half_side_len),
-    m_dim(dim)
-  {
-    assert(ispoweroftwo(dim) && dim % SUBGRID == 0);
-    m_maxlevel = ilog2(dim / SUBGRID);
-  }
-  INLINE vec3f pos(const vec3i &xyz) { return m_org+m_cellsize*vec3f(xyz); }
-  INLINE void setoctree(octree &o) {m_octree=&o;}
-
-  void build() {
-    build(m_octree->m_root);
-    recurse(m_octree->m_root);
-  }
-
-  void build(octree::node &node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
-    const auto scale = 1.f / float(1<<level);
-    const auto cellnum = m_dim >> level;
-    const auto pt = csg::dist(m_node, pos(xyz) + scale*vec3f(m_half_side_len));
-    const auto dist = pt.dist;
-    STATS_INC(iso_octree_num);
-    STATS_INC(iso_num);
-    node.m_level = level;
-    if (abs(dist) > m_half_diag_len * scale) {
-      node.m_isleaf = node.m_empty = 1;
-      return;
-    }
-//    if (cellnum == SUBGRID || (level == 4 && xyz.x >= 32) || (level == 4 && xyz.y >= 16)) {
-////     if (cellnum == SUBGRID || (level == 4 && xyz.y <= 16)) {
-    // if (cellnum == SUBGRID || (level == 3 && xyz.y > 16))
-   if (cellnum == SUBGRID) {
-  //    printf("level %d\n", level);
-//      fflush(stdout);
-      node.m_isleaf = 1;
-    } else {
-      node.m_children = NEWAE(octree::node, 8);
-      loopi(8) {
-        const auto childxyz = xyz+int(cellnum/2)*icubev[i];
-        build(node.m_children[i], childxyz, level+1);
-      }
-      return;
-    }
-  }
-
-  void recurse(octree::node &node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
-    if (node.m_empty)
-      return;
-    else if (node.m_isleaf) {
-      const auto sz = float(1<<(m_maxlevel-level)) * m_cellsize;
-      s.m_octree = m_octree;
-      s.m_iorg = xyz;
-      s.m_level = level;
-      s.m_maxlevel = m_maxlevel;
-      s.setcellsize(sz);
-      s.setmincellsize(m_cellsize);
-      s.setnode(&m_node);
-      s.setorg(pos(xyz));
-      s.build(node);
-    } else {
-      loopi(8) {
-        const auto cellnum = m_dim >> level;
-        const auto childxyz = xyz+int(cellnum/2)*icubev[i];
-        recurse(node.m_children[i], childxyz, level+1);
-      }
-    }
-  }
-
-  octree *m_octree;
-  dc_gridbuilder s;
-  const csg::node &m_node;
-  vec3f m_org;
-  float m_cellsize, m_half_side_len, m_half_diag_len;
-  u32 m_dim, m_maxlevel;
-};
-
-mesh dc_mesh(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d) {
-  octree o(cellnum);
-  recursive_builder r(d, org, cellsize, cellnum);
-  r.setoctree(o);
-  r.build();
-  const auto p = r.s.m_pos_buffer.move();
-  const auto n = r.s.m_nor_buffer.move();
-  const auto idx = r.s.m_idx_buffer.move();
-  const auto m = mesh(p.first, n.first, idx.first, p.second, idx.second);
-#if !defined(NDEBUG)
-  stats();
-#endif
-  return m;
-}
-
-/*-------------------------------------------------------------------------
  - multi-threaded implementation of the iso surface extraction
  -------------------------------------------------------------------------*/
 static THREAD dc_gridbuilder *localbuilder = NULL;
@@ -1041,24 +946,11 @@ struct mt_builder {
       return;
     }
     //if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16) || pt.size > len) {
- //   if (cellnum == SUBGRID || (level == 5 && xyz.x >= 80) || (level == 5 && xyz.y >= 16)) {
+    //if (cellnum == SUBGRID || (level == 5 && xyz.x >= 80) || (level == 5 && xyz.y >= 16)) {
+#if USE_NODE_SIZE
     if (cellnum == SUBGRID || pt.size > len) {
-    //if (cellnum == SUBGRID) {
-//      printf("%d\n", level);
-      printf("level %d sz %f\n", level, pt.size);
-      fflush(stdout);
-#if 0
-      jobdata job;
-      job.m_octree = m_octree;
-      job.m_octree_node = &node;
-      job.m_csg_node = m_node;
-      job.m_iorg = xyz;
-      job.m_level = level;
-      job.m_maxlevel = m_maxlevel;
-      job.m_cellsize = float(1<<(m_maxlevel-level)) * m_cellsize;
-      job.m_mincellsize = m_cellsize;
-      job.m_org = pos(xyz);
-      ctx->m_work.add(job);
+#else
+    if (cellnum == SUBGRID) {
 #endif
       node.m_isleaf = 1;
       return;
@@ -1114,9 +1006,6 @@ struct mt_builder {
 
   void preparejobs(octree::node &node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
     if (node.m_isleaf && !node.m_empty) {
-      printf("level %d\n", level);
-      fflush(stdout);
-#if 1
       jobdata job;
       job.m_octree = m_octree;
       job.m_octree_node = &node;
@@ -1128,7 +1017,6 @@ struct mt_builder {
       job.m_mincellsize = m_cellsize;
       job.m_org = pos(xyz);
       ctx->m_work.add(job);
-#endif
       return;
     } else if (!node.m_isleaf) {
       loopi(8) {
