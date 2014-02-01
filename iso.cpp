@@ -944,8 +944,8 @@ struct mt_builder {
 #if USE_NODE_SIZE
     //if (cellnum == SUBGRID || pt.size > len) {
 #else
-    if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
-    //if (cellnum == SUBGRID) {
+    //if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
+    if (cellnum == SUBGRID) {
 #endif
       node.m_isleaf = 1;
       return;
@@ -1006,8 +1006,8 @@ struct mt_builder {
       job.m_octree_node = &node;
       job.m_csg_node = m_node;
       job.m_iorg = xyz;
-      job.m_level = node.m_level;
       job.m_maxlevel = m_maxlevel;
+      job.m_level = node.m_level;
       job.m_cellsize = float(1<<(m_maxlevel-node.m_level)) * m_cellsize;
       job.m_mincellsize = m_cellsize;
       job.m_org = pos(xyz);
@@ -1047,7 +1047,7 @@ struct isotask : public task {
     const auto &job = ctx->m_work[idx];
     localbuilder->m_octree = job.m_octree;
     localbuilder->m_iorg = job.m_iorg;
-    localbuilder->m_level = job.m_level;
+    localbuilder->m_level = job.m_octree_node->m_level;
     localbuilder->m_maxlevel = job.m_maxlevel;
     localbuilder->setcellsize(job.m_cellsize);
     localbuilder->setmincellsize(job.m_mincellsize);
