@@ -959,12 +959,12 @@ struct mt_builder {
     }
   }
 
-  bool addconstraints(octree::node &node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
-    const auto lod = m_maxlevel - level;
+  bool addconstraints(octree::node &node, const vec3i &xyz = vec3i(zero)) {
+    const auto lod = m_maxlevel - node.m_level;
 
     // figure out if we need to subdivide more
     if (node.m_isleaf && !node.m_empty) {
-      u32 neighborlevel = level;
+      u32 neighborlevel = node.m_level;
       loopi(nodeneighbornum) {
         const auto neighborpos = xyz+(nodeneighbors[i]<<int(lod));
         const auto neighbor = m_octree->findleaf(neighborpos);
@@ -974,17 +974,17 @@ struct mt_builder {
 
       // we do not match the LOD constraints. we need to subdivide more and
       // recurse
-      if (neighborlevel - level > 1) {
+      if (neighborlevel - node.m_level > 1) {
         node.m_isleaf = 0;
         node.m_children = NEWAE(octree::node, 8);
         loopi(8) {
-          node.m_children[i].m_level = level+1;
+          node.m_children[i].m_level = node.m_level+1;
           node.m_children[i].m_isleaf = 1;
           node.m_children[i].m_empty = 0;
         }
         loopi(8) {
           const auto childxyz = xyz + int(SUBGRID<<(lod-1)) * icubev[i];
-          addconstraints(node.m_children[i], childxyz, level+1);
+          addconstraints(node.m_children[i], childxyz);
         }
         return true;
       }
@@ -992,32 +992,32 @@ struct mt_builder {
       bool anychange = false;
       loopi(8) {
         const auto childxyz = xyz + int(SUBGRID<<(lod-1)) * icubev[i];
-        anychange = addconstraints(node.m_children[i], childxyz, level+1) || anychange;
+        anychange = addconstraints(node.m_children[i], childxyz) || anychange;
       }
       return anychange;
     }
     return false;
   }
 
-  void preparejobs(octree::node &node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
+  void preparejobs(octree::node &node, const vec3i &xyz = vec3i(zero)) {
     if (node.m_isleaf && !node.m_empty) {
       jobdata job;
       job.m_octree = m_octree;
       job.m_octree_node = &node;
       job.m_csg_node = m_node;
       job.m_iorg = xyz;
-      job.m_level = level;
+      job.m_level = node.m_level;
       job.m_maxlevel = m_maxlevel;
-      job.m_cellsize = float(1<<(m_maxlevel-level)) * m_cellsize;
+      job.m_cellsize = float(1<<(m_maxlevel-node.m_level)) * m_cellsize;
       job.m_mincellsize = m_cellsize;
       job.m_org = pos(xyz);
       ctx->m_work.add(job);
       return;
     } else if (!node.m_isleaf) {
       loopi(8) {
-        const auto cellnum = m_dim >> level;
+        const auto cellnum = m_dim >> node.m_level;
         const auto childxyz = xyz+int(cellnum/2)*icubev[i];
-        preparejobs(node.m_children[i], childxyz, level+1);
+        preparejobs(node.m_children[i], childxyz);
       }
       return;
     }
