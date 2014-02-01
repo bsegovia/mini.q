@@ -311,8 +311,8 @@ struct mesh_processor {
       const auto nor = trinormalu(idx);
       loopj(3) n[unpackidx(tri[j])] += nor;
     }
-    // loopi(m_vertnum) n[m_first_vert+i] = abs(normalize(n[m_first_vert+i]));
-    loopi(m_vertnum) n[m_first_vert+i] = vec3f(1.f,0.f,0.f);
+    loopi(m_vertnum) n[m_first_vert+i] = abs(normalize(n[m_first_vert+i]));
+    //loopi(m_vertnum) n[m_first_vert+i] = vec3f(1.f,0.f,0.f);
   }
 
   vector<meshedge> m_edges;
@@ -1043,10 +1043,11 @@ struct mt_builder {
     //if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16) || pt.size > len) {
  //   if (cellnum == SUBGRID || (level == 5 && xyz.x >= 80) || (level == 5 && xyz.y >= 16)) {
     if (cellnum == SUBGRID || pt.size > len) {
+    //if (cellnum == SUBGRID) {
 //      printf("%d\n", level);
       printf("level %d sz %f\n", level, pt.size);
       fflush(stdout);
-#if 1
+#if 0
       jobdata job;
       job.m_octree = m_octree;
       job.m_octree_node = &node;
@@ -1058,8 +1059,8 @@ struct mt_builder {
       job.m_mincellsize = m_cellsize;
       job.m_org = pos(xyz);
       ctx->m_work.add(job);
-      node.m_isleaf = 1;
 #endif
+      node.m_isleaf = 1;
       return;
     } else {
       node.m_children = NEWAE(octree::node, 8);
@@ -1080,23 +1081,27 @@ struct mt_builder {
       loopi(nodeneighbornum) {
         const auto neighborpos = xyz+(nodeneighbors[i]<<int(lod));
         const auto neighbor = m_octree->findleaf(neighborpos);
-        if (neighbor.first != NULL)
-          neighborlevel = min(neighbor.second, neighborlevel);
+        if (neighbor.first != NULL && !neighbor.first->m_empty)
+          neighborlevel = max(neighbor.second, neighborlevel);
       }
 
       // we do not match the LOD constraints. we need to subdivide more and
       // recurse
-      if (level - neighborlevel > 1) {
+      if (neighborlevel - level > 1) {
         node.m_isleaf = 0;
         node.m_children = NEWAE(octree::node, 8);
         loopi(8) {
-          const auto childxyz = xyz + int(SUBGRID<<(lod-1)) * icubev[i];
+          node.m_children[i].m_level = level+1;
           node.m_children[i].m_isleaf = 1;
+          node.m_children[i].m_empty = 0;
+        }
+        loopi(8) {
+          const auto childxyz = xyz + int(SUBGRID<<(lod-1)) * icubev[i];
           addconstraints(node.m_children[i], childxyz, level+1);
         }
         return true;
       }
-    } else {
+    } else if (!node.m_isleaf) {
       bool anychange = false;
       loopi(8) {
         const auto childxyz = xyz + int(SUBGRID<<(lod-1)) * icubev[i];
@@ -1105,6 +1110,39 @@ struct mt_builder {
       return anychange;
     }
     return false;
+  }
+
+  void preparejobs(octree::node &node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
+    if (node.m_isleaf && !node.m_empty) {
+      printf("level %d\n", level);
+      fflush(stdout);
+#if 1
+      jobdata job;
+      job.m_octree = m_octree;
+      job.m_octree_node = &node;
+      job.m_csg_node = m_node;
+      job.m_iorg = xyz;
+      job.m_level = level;
+      job.m_maxlevel = m_maxlevel;
+      job.m_cellsize = float(1<<(m_maxlevel-level)) * m_cellsize;
+      job.m_mincellsize = m_cellsize;
+      job.m_org = pos(xyz);
+      ctx->m_work.add(job);
+#endif
+      return;
+    } else if (!node.m_isleaf) {
+      loopi(8) {
+        const auto cellnum = m_dim >> level;
+        const auto childxyz = xyz+int(cellnum/2)*icubev[i];
+        preparejobs(node.m_children[i], childxyz, level+1);
+      }
+      return;
+    }
+  }
+
+  void addconstraints() {
+    bool anychange = true;
+    while (anychange) anychange = addconstraints(m_octree->m_root);
   }
 
   octree *m_octree;
@@ -1147,6 +1185,8 @@ mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &
   mt_builder r(d, org, cellsize, cellnum);
   r.setoctree(o);
   r.build(o.m_root);
+  r.addconstraints();
+  r.preparejobs(o.m_root);
 
   // build the grids in parallel
   ref<task> job = NEW(isotask, ctx->m_work.length());
