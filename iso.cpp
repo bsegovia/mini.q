@@ -594,20 +594,23 @@ struct dc_gridbuilder {
     for (int i = 0; i < len; i += 64) {
       auto &it = m_stack->it;
 
-      // step 1 - run false position with packets of (up-to) 64 points
+      // step 1 - run false position with packets of (up-to) 64 points. we need
+      // to be careful FP wise. We ensure here that the position computation is
+      // invariant from grids to grids such that neighbor grids will output the
+      // exact same result
       const int num = min(64, len-i);
       loopj(num) {
         const auto &e = m_delayed_edges[i+j];
         const auto idx0 = e.second.x, idx1 = e.second.y;
         const auto plod = e.second.z;
         const auto xyz = e.first;
-        it[j].org = vertex(xyz);
-        it[j].scale = float(1<<plod);
-        it[j].p0 = fcubev[idx0];
-        it[j].p1 = fcubev[idx1];
+        const auto edge = getedge(icubev[idx0], icubev[idx1], plod);
+        it[j].org = vertex(xyz+edge.first);
+        it[j].p0 = vec3f(icubev[idx0]-edge.first);
+        it[j].p1 = vec3f(icubev[idx1]-edge.first);
         it[j].v0 = field(xyz + (icubev[idx0]<<plod));
         it[j].v1 = field(xyz + (icubev[idx1]<<plod));
-        it[j].corg = vec3f(getedge(icubev[idx0], icubev[idx1], plod).first);
+        it[j].scale = float(1<<plod);
         if (it[j].v1 < 0.f) {
           swap(it[j].p0,it[j].p1);
           swap(it[j].v0,it[j].v1);
@@ -646,7 +649,7 @@ struct dc_gridbuilder {
           const auto dfdz = d[4*k+3];
           const auto grad = vec3f(c-dfdx, c-dfdy, c-dfdz);
           const auto n = grad==vec3f(zero) ? vec3f(zero) : normalize(grad);
-          const auto p = it[j+k].p0 - it[j+k].corg;
+          const auto p = it[j+k].p0;
           m_edges.add(makepair(p,n));
         }
       }
