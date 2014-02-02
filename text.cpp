@@ -45,7 +45,7 @@ static const ogl::shaderresource font_rsc = {
   shaders::font_fp,
   fontuniform
 };
-void loadfontshader(bool fatalerr, bool fromfile) {
+static void loadfontshader(bool fatalerr, bool fromfile) {
   using namespace ogl;
   if (!buildshader(fontshader, font_rsc, DIFFUSETEX, fromfile))
     shadererror(fatalerr, "font shader");

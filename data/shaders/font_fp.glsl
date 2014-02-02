@@ -1,5 +1,4 @@
-//## const char font_fp[] = {
-
+//##const char font_fp[] = {
 uniform sampler2D u_diffuse;
 uniform vec2 u_fontwh;
 uniform float u_font_thickness;
@@ -52,5 +51,5 @@ void main() {
   col += u_outline_color * (1.0-smoothstep(o-0.1, o, dist));
   SWITCH_WEBGL(gl_FragColor = col, rt_c = col);
 }
-//## };
+//##};
 

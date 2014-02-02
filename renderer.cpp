@@ -5,6 +5,7 @@
 #include "mini.q.hpp"
 #include "iso.hpp"
 #include "csg.hpp"
+#include "shaders.hpp"
 
 namespace q {
 namespace rr {
@@ -96,6 +97,29 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
 static u32 depthtex, nortex;
 static u32 gbuffer;
 
+static struct deferredshadertype : ogl::shadertype {
+  u32 u_mvp;
+  u32 u_nortex;
+  u32 fs_tex;
+} deferredshader;
+static void deferreduniform(ogl::shadertype &s) {
+#if 0
+  auto &df = static_cast<fontshadertype&>(s);
+  OGLR(df.u_fontwh, GetUniformLocation, df.program, "u_fontwh");
+  OGLR(df.u_font_thickness, GetUniformLocation, df.program, "u_font_thickness");
+  OGLR(df.u_outline_width, GetUniformLocation, df.program, "u_outline_width");
+  OGLR(df.u_outline_color, GetUniformLocation, df.program, "u_outline_color");
+#endif
+}
+
+static const ogl::shaderresource deferred_rsc = {
+  "data/shaders/deferred_vp.glsl",
+  "data/shaders/deferred_fp.glsl",
+  shaders::deferred_vp,
+  shaders::deferred_fp,
+  deferreduniform
+};
+
 static void initdeferred() {
   nortex = ogl::maketex("TB I3 D3 B2 Wsr Wtr mn Mn", NULL, sys::scrw, sys::scrh);
   depthtex = ogl::maketex("Tf Id Dd B2 Wsr Wtr mn Mn", NULL, sys::scrw, sys::scrh);
@@ -106,11 +130,15 @@ static void initdeferred() {
   if (GL_FRAMEBUFFER_COMPLETE != ogl::CheckFramebufferStatus(GL_FRAMEBUFFER))
     sys::fatal("renderer: unable to init gbuffer framebuffer");
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
+  if (!ogl::buildshader(deferredshader, deferred_rsc, 0, false))
+    ogl::shadererror(true, "deferred shader");
 }
 
 static void cleandeferred() {
   OGL(DeleteTextures, 1, &nortex);
   OGL(DeleteTextures, 1, &depthtex);
+  OGL(DeleteFramebuffers, 1, &gbuffer);
+  ogl::destroyshader(deferredshader);
 }
 
 /*--------------------------------------------------------------------------
@@ -128,8 +156,8 @@ void start() {
   initdeferred();
 }
 void finish() {
-  vector<vertex>().moveto(vertices);
-  vector<u32>().moveto(indices);
+  vertices.destroy();
+  indices.destroy();
   cleandeferred();
 }
 static const float CELLSIZE = 0.2f;

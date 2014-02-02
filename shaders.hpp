@@ -5,6 +5,7 @@
 namespace q {
 namespace shaders {
 
+extern const char deferred_vp[], deferred_fp[];
 extern const char fixed_vp[], fixed_fp[];
 extern const char font_fp[];
 extern const char dfrm_fp[];

@@ -1,4 +1,4 @@
-//## const char fixed_vp[] = {
+//##const char fixed_vp[] = {
 uniform mat4 u_mvp;
 #if USE_FOG
 uniform vec4 u_zaxis;
@@ -33,5 +33,5 @@ void main() {
 #endif
   gl_Position = u_mvp*vec4(vs_pos,1.0);
 }
-//## };
+//##};
 

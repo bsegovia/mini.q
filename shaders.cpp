@@ -5,7 +5,30 @@
 #include "shaders.hpp"
 namespace q {
 namespace shaders {
- const char fixed_fp[] = {
+const char deferred_fp[] = {
+"uniform sampler2D u_nortex;\n"
+"PS_IN vec2 fs_tex;\n"
+"IF_NOT_WEBGL(out vec4 rt_c);\n"
+
+"void main() {\n"
+"  vec4 nor = texture2D(u_nortex, fs_tex);\n"
+"  SWITCH_WEBGL(gl_FragColor = abs(nor), rt_c = abs(nor));\n"
+"}\n"
+};
+
+const char deferred_vp[] = {
+"uniform mat4 u_mvp;\n"
+"VS_IN vec3 vs_pos;\n"
+"VS_IN vec2 vs_tex;\n"
+"VS_OUT vec2 fs_tex;\n"
+
+"void main() {\n"
+"  fs_tex = vs_tex;\n"
+"  gl_Position = u_mvp*vec4(vs_pos,1.0);\n"
+"}\n"
+};
+
+const char fixed_fp[] = {
 "#if USE_DIFFUSETEX\n"
 "uniform sampler2D u_diffuse;\n"
 "PS_IN vec2 fs_tex;\n"
@@ -40,9 +63,9 @@ namespace shaders {
 "  SWITCH_WEBGL(gl_FragColor = col, rt_c = col);\n"
 "  // SWITCH_WEBGL(gl_FragColor = col, rt_c = vec4(1.0,0.0,0.0,0.0));\n"
 "}\n"
- };
+};
 
- const char fixed_vp[] = {
+const char fixed_vp[] = {
 "uniform mat4 u_mvp;\n"
 "#if USE_FOG\n"
 "uniform vec4 u_zaxis;\n"
@@ -77,10 +100,9 @@ namespace shaders {
 "#endif\n"
 "  gl_Position = u_mvp*vec4(vs_pos,1.0);\n"
 "}\n"
- };
+};
 
- const char font_fp[] = {
-
+const char font_fp[] = {
 "uniform sampler2D u_diffuse;\n"
 "uniform vec2 u_fontwh;\n"
 "uniform float u_font_thickness;\n"
@@ -133,7 +155,7 @@ namespace shaders {
 "  col += u_outline_color * (1.0-smoothstep(o-0.1, o, dist));\n"
 "  SWITCH_WEBGL(gl_FragColor = col, rt_c = col);\n"
 "}\n"
- };
+};
 
 } /* namespace q */
 } /* namespace shaders */

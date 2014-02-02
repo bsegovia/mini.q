@@ -520,14 +520,14 @@ void immdrawelememts(const char *fmt, int count, const void *indices, const void
       case 's': type = GL_UNSIGNED_SHORT; break;
       case 'b': type = GL_UNSIGNED_BYTE; break;
 #define ATTRIB(CHAR, GL)\
-      case CHAR: ++fmt;\
-        enableattribarray(GL);\
-        immattrib(GL, int(*fmt-'0'), GL_FLOAT, offset);\
-        offset += int(*fmt-'0')*int(sizeof(float));\
-      break;
-      ATTRIB('p', POS0);
-      ATTRIB('t', TEX0);
-      ATTRIB('c', COL);
+  case CHAR: ++fmt;\
+    enableattribarray(GL);\
+    immattrib(GL, int(*fmt-'0'), GL_FLOAT, offset);\
+    offset += int(*fmt-'0')*int(sizeof(float));\
+  break;
+  ATTRIB('p', POS0);
+  ATTRIB('t', TEX0);
+  ATTRIB('c', COL);
 #undef ATTRIB
     }
     ++fmt;
@@ -683,7 +683,8 @@ static bool compileshader(shadertype &shader, const char *vert, const char *frag
     OGL(BindAttribLocation, shader.program, POS0, "vs_pos");
   if (shader.rules&DIFFUSETEX)
     OGL(BindAttribLocation, shader.program, TEX0, "vs_tex");
-  OGL(BindAttribLocation, shader.program, COL, "vs_col");
+  if (shader.rules&COLOR)
+    OGL(BindAttribLocation, shader.program, COL, "vs_col");
 #if !defined(__WEBGL__)
   OGL(BindFragDataLocation, shader.program, 0, "rt_col");
 #endif // __WEBGL__

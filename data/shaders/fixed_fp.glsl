@@ -1,4 +1,4 @@
-//## const char fixed_fp[] = {
+//##const char fixed_fp[] = {
 #if USE_DIFFUSETEX
 uniform sampler2D u_diffuse;
 PS_IN vec2 fs_tex;
@@ -33,5 +33,5 @@ void main() {
   SWITCH_WEBGL(gl_FragColor = col, rt_c = col);
   // SWITCH_WEBGL(gl_FragColor = col, rt_c = vec4(1.0,0.0,0.0,0.0));
 }
-//## };
+//##};
 
