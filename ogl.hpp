@@ -138,7 +138,7 @@ struct shaderresource {
   const char *vp, *fp;
   uniformcb cb;
 };
-bool buildshader(shadertype &s, const shaderresource &rsc, u32 rules, int fromfile);
+bool buildshader(shadertype &s, const shaderresource &rsc, u32 rules, int fromfile, bool save = true);
 void shadererror(bool fatalerr, const char *msg);
 bool loadfromfile();
 

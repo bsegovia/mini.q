@@ -710,6 +710,17 @@ static char *loadshaderfile(const char *path) {
   return s;
 }
 
+// use to rebuild shaders easily
+struct shaderrebuild {
+  INLINE shaderrebuild() {}
+  INLINE shaderrebuild(shadertype *s, const shaderresource &rsc, u32 rules) :
+    s(s), rsc(rsc), rules(rules) {}
+  shadertype *s;
+  shaderresource rsc;
+  u32 rules;
+};
+static vector<shaderrebuild> allshaders;
+
 static const struct shaderresource fixed_rsc = {
   "data/shaders/fixed_vp.glsl",
   "data/shaders/fixed_fp.glsl",
@@ -727,7 +738,8 @@ static bool buildprogramfromfile(shadertype &s, const shaderresource &rsc, u32 r
   FREE(fixed_vp);
   return ret;
 }
-bool buildshader(shadertype &s, const shaderresource &rsc, u32 rules, int fromfile) {
+bool buildshader(shadertype &s, const shaderresource &rsc, u32 rules, int fromfile, bool save) {
+  if (save) allshaders.add(shaderrebuild(&s, rsc, rules));
   if (fromfile)
     return buildprogramfromfile(s, rsc, rules);
   else
@@ -752,11 +764,14 @@ static void buildshaders(bool fatalerr) {
 }
 
 static void destroyshaders() {
+  allshaders.destroy();
   loopi(shadernum) destroyshader(shaders[i]);
 }
 static void reloadshaders() {
-  buildshaders(false);
-  text::loadfontshader(false, shaderfromfile);
+  loopv(allshaders) {
+    auto &s = allshaders[i];
+    buildshader(*s.s, s.rsc, s.rules, shaderfromfile, false);
+  }
 }
 CMD(reloadshaders, "");
 

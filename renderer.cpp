@@ -211,9 +211,8 @@ void frame(int w, int h, int curfps) {
     ogl::immdraw(GL_TRIANGLE_STRIP, 2, 2, 0, 4, quad);
     ogl::enable(GL_CULL_FACE);
     popmatrices();
-  }
-
-  drawhudgun(fovy, aspect, farplane);
+  } else
+    drawhudgun(fovy, aspect, farplane);
   ogl::disable(GL_CULL_FACE);
   drawhud(w,h,curfps);
   ogl::enable(GL_CULL_FACE);
