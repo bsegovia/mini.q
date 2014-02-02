@@ -37,22 +37,25 @@ static u32 glversion = 100, glslversion = 100;
 static bool mesa = false, intel = false, nvidia = false, amd = false;
 static bool hasTQ = false;
 static u32 hwtexunits = 0, hwvtexunits = 0, hwtexsize = 0, hwcubetexsize = 0;
-static hashtable<const char*> glexts;
 
-static void parseglexts() {
-  const char *exts = (const char *) ogl::GetString(GL_EXTENSIONS);
-  for(;;) {
-    while(*exts == ' ') exts++;
-    if(!*exts) break;
-    const char *ext = exts;
-    while(*exts && *exts != ' ') exts++;
-    if(exts > ext) {
-      const auto str = NEWSTRING(ext, size_t(exts-ext));
-      glexts.access(str,&str);
+struct glext {
+  ~glext() { for (auto item : glexts) FREE(item.second); }
+  void parse() {
+    const char *exts = (const char *) ogl::GetString(GL_EXTENSIONS);
+    for(;;) {
+      while(*exts == ' ') exts++;
+      if(!*exts) break;
+      const char *ext = exts;
+      while(*exts && *exts != ' ') exts++;
+      if(exts > ext) {
+        const auto str = NEWSTRING(ext, size_t(exts-ext));
+        glexts.access(str,&str);
+      }
     }
   }
-}
-static bool hasext(const char *ext) {return glexts.access(ext)!=NULL;}
+  bool has(const char *ext) {return glexts.access(ext)!=NULL;}
+  hashtable<char*> glexts;
+};
 
 static void startgl() {
 // load OGL 1.1 first
@@ -68,7 +71,8 @@ static void startgl() {
 #undef OGLPROC
 #endif /* __WEBGL__ */
 
-  parseglexts();
+  glext ext;
+  ext.parse();
   const auto vendor = (const char *) ogl::GetString(GL_VENDOR);
   const auto renderer = (const char *) ogl::GetString(GL_RENDERER);
   const auto version = (const char *) ogl::GetString(GL_VERSION);
@@ -129,7 +133,7 @@ static void startgl() {
   ogl::GetIntegerv(GL_MAX_DRAW_BUFFERS, &drawbufs);
   if(drawbufs < 4) sys::fatal("OpenGL: hardware does not support at least 4 draw buffers.");
 
-  if(hasext("GL_EXT_timer_query") || hasext("GL_ARB_timer_query")) {
+  if(ext.has("GL_EXT_timer_query") || ext.has("GL_ARB_timer_query")) {
     con::out("ogl: using timer query extension");
     hasTQ = true;
   }
@@ -320,6 +324,7 @@ u32 maketex(const char *fmt, ...) {
         case '4': datafmt = GL_RGBA; break;
         case 'r': datafmt = GL_RED; break;
         case 'a': datafmt = GL_ALPHA; break;
+        case 'd': datafmt = GL_DEPTH_COMPONENT; break;
       }
       break;
       case 'I': PEEK { // internal data format
@@ -327,6 +332,7 @@ u32 maketex(const char *fmt, ...) {
         case '4': internalfmt = GL_RGBA; break;
         case 'r': internalfmt = GL_RED; break;
         case 'a': internalfmt = GL_ALPHA; break;
+        case 'd': internalfmt = GL_DEPTH_COMPONENT32; break;
       }
       break;
       case 'm': // minfilter

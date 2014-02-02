@@ -91,6 +91,29 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
 }
 
 /*--------------------------------------------------------------------------
+ - deferred shading stuff
+ -------------------------------------------------------------------------*/
+static u32 depthtex, nortex;
+static u32 gbuffer;
+
+static void initdeferred() {
+  nortex = ogl::maketex("TB I3 D3 B2 Wsr Wtr mn Mn", NULL, sys::scrw, sys::scrh);
+  depthtex = ogl::maketex("Tf Id Dd B2 Wsr Wtr mn Mn", NULL, sys::scrw, sys::scrh);
+  OGL(GenFramebuffers, 1, &gbuffer);
+  OGL(BindFramebuffer, GL_FRAMEBUFFER, gbuffer);
+  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, nortex, 0);
+  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthtex, 0);
+  if (GL_FRAMEBUFFER_COMPLETE != ogl::CheckFramebufferStatus(GL_FRAMEBUFFER))
+    sys::fatal("renderer: unable to init gbuffer framebuffer");
+  OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
+}
+
+static void cleandeferred() {
+  OGL(DeleteTextures, 1, &nortex);
+  OGL(DeleteTextures, 1, &depthtex);
+}
+
+/*--------------------------------------------------------------------------
  - render the complete frame
  -------------------------------------------------------------------------*/
 FVARP(fov, 30.f, 90.f, 160.f);
@@ -101,10 +124,13 @@ static vector<vertex> vertices;
 static vector<u32> indices;
 static bool initialized_m = false;
 
-void start() {}
+void start() {
+  initdeferred();
+}
 void finish() {
   vector<vertex>().moveto(vertices);
   vector<u32>().moveto(indices);
+  cleandeferred();
 }
 static const float CELLSIZE = 0.2f;
 static void makescene() {
@@ -134,33 +160,57 @@ static void transplayer(void) {
 }
 
 IVAR(linemode, 0, 0, 1);
+IVAR(useframebuffer, 0, 0, 1);
 
 void frame(int w, int h, int curfps) {
   const float farplane = 100.f;
   const float aspect = float(sys::scrw) / float(sys::scrh);
   const float fovy = fov / aspect;
-  OGL(ClearColor, 0.f, 0.f, 0.f, 1.f);
-  OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   ogl::matrixmode(ogl::PROJECTION);
   ogl::setperspective(fovy, aspect, 0.15f, farplane);
   ogl::matrixmode(ogl::MODELVIEW);
   transplayer();
-  const float verts[] = {
+  const float ground[] = {
     -100.f, -100.f, -100.f, 0.f, -100.f,
     -100.f, +100.f, -100.f, 0.f, +100.f,
     +100.f, -100.f, +100.f, 0.f, -100.f,
     +100.f, +100.f, +100.f, 0.f, +100.f
   };
-  ogl::bindfixedshader(ogl::DIFFUSETEX);
-  ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_CHECKBOARD));
-  ogl::immdraw(GL_TRIANGLE_STRIP, 3, 2, 0, 4, verts);
 
   makescene();
+
+  // render the scene into the frame buffer
+  if (useframebuffer)
+    OGL(BindFramebuffer, GL_FRAMEBUFFER, gbuffer);
+  OGL(ClearColor, 0.f, 0.f, 0.f, 1.f);
+  OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  ogl::bindfixedshader(ogl::DIFFUSETEX);
+  ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_CHECKBOARD));
+  ogl::immdraw(GL_TRIANGLE_STRIP, 3, 2, 0, 4, ground);
   if (vertnum != 0) {
     if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_LINE);
     ogl::bindfixedshader(ogl::COLOR);
     ogl::immdrawelememts("Tip3c3", indexnum, &indices[0], &vertices[0].first[0]);
     if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_FILL);
+  }
+  if (useframebuffer)
+    OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
+
+  // blit the norbuffer into screen
+  if (useframebuffer) {
+    setphysicalhud();
+    ogl::bindfixedshader(ogl::DIFFUSETEX);
+    ogl::bindtexture(GL_TEXTURE_2D, nortex);
+    ogl::disable(GL_CULL_FACE);
+    const float quad[] = {
+      1.f, 1.f, float(sys::scrw), float(sys::scrh),
+      1.f, 0.f, float(sys::scrw), 0.f,
+      0.f, 1.f, 0.f, float(sys::scrh),
+      0.f, 0.f, 0.f, 0.f
+    };
+    ogl::immdraw(GL_TRIANGLE_STRIP, 2, 2, 0, 4, quad);
+    ogl::enable(GL_CULL_FACE);
+    popmatrices();
   }
 
   drawhudgun(fovy, aspect, farplane);
