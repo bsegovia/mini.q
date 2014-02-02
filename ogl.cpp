@@ -11,11 +11,15 @@
 #include "text.hpp"
 #include "ogl.hpp"
 
+#include "GL/glext.h"
 #include <SDL/SDL_image.h>
 
 namespace q {
 namespace ogl {
 
+/*-------------------------------------------------------------------------
+ - OGL extensions / versions ...
+ -------------------------------------------------------------------------*/
 #if !defined(__WEBGL__)
 #define OGLPROC110(FIELD,NAME,PROTOTYPE) PROTOTYPE FIELD = NULL;
 #define OGLPROC(FIELD,NAME,PROTOTYPE) PROTOTYPE FIELD = NULL;
@@ -25,8 +29,110 @@ namespace ogl {
 #endif /* __WEBGL__ */
 static void *getfunction(const char *name) {
   void *ptr = SDL_GL_GetProcAddress(name);
-  if (ptr == NULL) sys::fatal("opengl 2 is required");
+  if (ptr == NULL) sys::fatal("OpenGL 3.0 is required");
   return ptr;
+}
+
+static u32 glversion = 100, glslversion = 100;
+static bool mesa = false, intel = false, nvidia = false, amd = false;
+static bool hasTQ = false;
+static u32 hwtexunits = 0, hwvtexunits = 0, hwtexsize = 0, hwcubetexsize = 0;
+static hashtable<const char*> glexts;
+
+static void parseglexts() {
+  const char *exts = (const char *) ogl::GetString(GL_EXTENSIONS);
+  for(;;) {
+    while(*exts == ' ') exts++;
+    if(!*exts) break;
+    const char *ext = exts;
+    while(*exts && *exts != ' ') exts++;
+    if(exts > ext) {
+      const auto str = NEWSTRING(ext, size_t(exts-ext));
+      glexts.access(str,&str);
+    }
+  }
+}
+static bool hasext(const char *ext) {return glexts.access(ext)!=NULL;}
+
+static void startgl() {
+// load OGL 1.1 first
+#if !defined(__WEBGL__)
+#define OGLPROC(FIELD,NAME,PROTOTYPE)
+#if defined(__WIN32__)
+  #define OGLPROC110(FIELD,NAME,PROTOTYPE) FIELD = (PROTOTYPE) NAME;
+#else
+  #define OGLPROC110(FIELD,NAME,PROTO) FIELD = (PROTO) getfunction(#NAME);
+#endif /* __WIN32__ */
+#include "ogl.hxx"
+#undef OGLPROC110
+#undef OGLPROC
+#endif /* __WEBGL__ */
+
+  parseglexts();
+  const auto vendor = (const char *) ogl::GetString(GL_VENDOR);
+  const auto renderer = (const char *) ogl::GetString(GL_RENDERER);
+  const auto version = (const char *) ogl::GetString(GL_VERSION);
+  con::out("ogl: renderer: %s (%s)", renderer, vendor);
+  con::out("ogl: driver: %s", version);
+
+  if (strstr(renderer, "Mesa") || strstr(version, "Mesa")) {
+    mesa = true;
+    if(strstr(renderer, "Intel")) intel = true;
+  } else if (strstr(vendor, "NVIDIA"))
+    nvidia = true;
+  else if (strstr(vendor, "ATI") || strstr(vendor, "Advanced Micro Devices"))
+    amd = true;
+  else if (strstr(vendor, "Intel"))
+    intel = true;
+
+  u32 glmajorversion, glminorversion;
+  if (sscanf(version, " %u.%u", &glmajorversion, &glminorversion) != 2)
+    glversion = 100;
+  else
+    glversion = glmajorversion*100 + glminorversion*10;
+
+  if (glversion < 300) sys::fatal("OpenGL 2.1 or greater is required");
+
+  const auto glslstr = (const char*) ogl::GetString(GL_SHADING_LANGUAGE_VERSION);
+  con::out("ogl: glsl: %s", glslstr ? glslstr : "unknown");
+
+  u32 glslmajorversion, glslminorversion;
+  if(glslstr && sscanf(glslstr, " %u.%u", &glslmajorversion, &glslminorversion) == 2)
+    glslversion = glslmajorversion*100 + glslminorversion;
+  if(glslversion < 130)
+    sys::fatal("OpenGL: GLSL 1.30 or greater is required!");
+
+// load OGL 3.0 now
+#if !defined(__WEBGL__)
+#define OGLPROC110(FIELD,NAME,PROTOTYPE)
+#define OGLPROC(FIELD,NAME,PROTO) FIELD = (PROTO) getfunction(#NAME);
+#include "ogl.hxx"
+#undef OGLPROC110
+#undef OGLPROC
+#endif /* __WEBGL__ */
+
+  GLint texsize = 0, texunits = 0, vtexunits = 0, cubetexsize = 0, drawbufs = 0;
+  ogl::GetIntegerv(GL_MAX_TEXTURE_SIZE, &texsize);
+  hwtexsize = texsize;
+  if(hwtexsize < 4096)
+    sys::fatal("OpenGL: large texture support is required!");
+  ogl::GetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &texunits);
+  hwtexunits = texunits;
+  if(hwtexunits < 16)
+    sys::fatal("OpenGL: hardware does not support at least 16 texture units.");
+  ogl::GetIntegerv(GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS, &vtexunits);
+  hwvtexunits = vtexunits;
+  if(hwvtexunits < 4)
+    sys::fatal("OpenGL: hardware does not support at least 4 vertex texture units.");
+  ogl::GetIntegerv(GL_MAX_CUBE_MAP_TEXTURE_SIZE, &cubetexsize);
+  hwcubetexsize = cubetexsize;
+  ogl::GetIntegerv(GL_MAX_DRAW_BUFFERS, &drawbufs);
+  if(drawbufs < 4) sys::fatal("OpenGL: hardware does not support at least 4 draw buffers.");
+
+  if(hasext("GL_EXT_timer_query") || hasext("GL_ARB_timer_query")) {
+    con::out("ogl: using timer query extension");
+    hasTQ = true;
+  }
 }
 
 /*-------------------------------------------------------------------------
@@ -693,18 +799,7 @@ static u32 buildcheckboard() {
 }
 
 void start(int w, int h) {
-#if !defined(__WEBGL__)
-// on windows, we directly load OpenGL 1.1 functions
-#if defined(__WIN32__)
-  #define OGLPROC110(FIELD,NAME,PROTOTYPE) FIELD = (PROTOTYPE) NAME;
-#else
-  #define OGLPROC110 OGLPROC
-#endif /* __WIN32__ */
-#define OGLPROC(FIELD,NAME,PROTO) FIELD = (PROTO) getfunction(#NAME);
-#include "ogl.hxx"
-#undef OGLPROC110
-#undef OGLPROC
-#endif /* __WEBGL__ */
+  startgl();
   OGL(Viewport, 0, 0, w, h);
 
 #if defined (__WEBGL__)
