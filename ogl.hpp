@@ -121,15 +121,6 @@ struct shadertype {
 void destroyshader(shadertype&);
 void bindshader(shadertype&);
 
-// quick, dirty and super simple shader system to replace fixed pipeline
-static const u32 KEYFRAME = 1<<0;
-static const u32 DIFFUSETEX = 1<<1;
-static const u32 COLOR = 1<<2;
-static const int subtypenum = 3;
-static const int shadernum = 1<<subtypenum;
-void bindfixedshader(u32 flags);
-void bindfixedshader(u32 flags, float delta);
-
 // to be overloaded  when creating shaders
 struct shaderbuilder {
   shaderbuilder(const char *vppath, const char *fppath,
@@ -148,6 +139,15 @@ private:
 };
 void shadererror(bool fatalerr, const char *msg);
 bool loadfromfile();
+
+// quick, dirty and super simple shader system to replace fixed pipeline
+static const u32 FIXED_KEYFRAME = 1<<0;
+static const u32 FIXED_DIFFUSETEX = 1<<1;
+static const u32 FIXED_COLOR = 1<<2;
+static const int fixedsubtypenum = 3;
+static const int fixedshadernum = 1<<fixedsubtypenum;
+void bindfixedshader(u32 flags);
+void bindfixedshader(u32 flags, float delta);
 
 // can be reused by other simple shaders reusing the same skeleton as fixed
 // shaders

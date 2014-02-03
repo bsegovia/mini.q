@@ -193,12 +193,12 @@ void frame(int w, int h, int curfps) {
     OGL(BindFramebuffer, GL_FRAMEBUFFER, gbuffer);
   OGL(ClearColor, 0.f, 0.f, 0.f, 1.f);
   OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  ogl::bindfixedshader(ogl::DIFFUSETEX);
+  ogl::bindfixedshader(ogl::FIXED_DIFFUSETEX);
   ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_CHECKBOARD));
   ogl::immdraw(GL_TRIANGLE_STRIP, 3, 2, 0, 4, ground);
   if (vertnum != 0) {
     if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_LINE);
-    ogl::bindfixedshader(ogl::COLOR);
+    ogl::bindfixedshader(ogl::FIXED_COLOR);
     ogl::immdrawelememts("Tip3c3", indexnum, &indices[0], &vertices[0].first[0]);
     if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_FILL);
   }
@@ -208,7 +208,7 @@ void frame(int w, int h, int curfps) {
   // blit the normal buffer into screen
   if (useframebuffer) {
     setphysicalhud();
-    ogl::bindfixedshader(ogl::DIFFUSETEX);
+    ogl::bindfixedshader(ogl::FIXED_DIFFUSETEX);
     ogl::bindtexture(GL_TEXTURE_2D, nortex);
     ogl::disable(GL_CULL_FACE);
     const float quad[] = {

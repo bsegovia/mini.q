@@ -38,7 +38,7 @@ struct fontshaderbuilder : ogl::fixedshaderbuilder {
                        "data/shaders/font_fp.glsl",
                        shaders::fixed_vp,
                        shaders::font_fp,
-                       ogl::DIFFUSETEX) {}
+                       ogl::FIXED_DIFFUSETEX) {}
 
   void setuniform(ogl::shadertype &s) {
     auto &df = static_cast<fontshadertype&>(s);

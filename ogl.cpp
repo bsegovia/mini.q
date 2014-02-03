@@ -610,6 +610,11 @@ static u32 loadshader(GLenum type, const char *source, const char *rulestr) {
   return name;
 }
 
+static void linkshader(shadertype &shader) {
+  OGL(LinkProgram, shader.program);
+  OGL(ValidateProgram, shader.program);
+}
+
 static u32 loadprogram(const char *vertstr, const char *fragstr, const char *rules) {
   u32 program = 0;
   const u32 vert = loadshader(GL_VERTEX_SHADER, vertstr, rules);
@@ -623,38 +628,6 @@ static u32 loadprogram(const char *vertstr, const char *fragstr, const char *rul
   return program;
 }
 #undef OGL_PROGRAM_HEADER
-
-struct fixedshadertype : shadertype {
-  fixedshadertype() : rules(0) {}
-  u32 rules; // flags to enable / disable features
-  u32 u_diffuse, u_delta; // uniforms
-};
-
-static fixedshadertype shaders[shadernum];
-
-void bindshader(shadertype &shader) {
-  if (bindedshader != &shader) {
-    bindedshader = &shader;
-    dirty.any = ~0x0;
-    OGL(UseProgram, bindedshader->program);
-  }
-}
-
-void destroyshader(shadertype &s) {
-  deleteprogram(s.program);
-  s.program = 0;
-}
-
-static void linkshader(shadertype &shader) {
-  OGL(LinkProgram, shader.program);
-  OGL(ValidateProgram, shader.program);
-}
-
-void bindfixedshader(u32 flags) { bindshader(shaders[flags]); }
-void bindfixedshader(u32 flags, float delta) {
-  bindfixedshader(flags);
-  OGL(Uniform1f, static_cast<fixedshadertype*>(bindedshader)->u_delta, delta);
-}
 
 u32 shaderbuilder::compile(const char *vert, const char *frag) {
   u32 program;
@@ -703,48 +676,17 @@ bool shaderbuilder::build(shadertype &s, int fromfile, bool save) {
     return buildprogram(s, vppath, fppath);
 }
 
-fixedshaderbuilder::fixedshaderbuilder(const char *vppath, const char *fppath,
-                                       const char *vp, const char *fp,
-                                       u32 rules) :
-  shaderbuilder(vppath, fppath, vp, fp), rules(rules) {}
-
-void fixedshaderbuilder::setrules(string &str) {
-  sprintf_s(str)("#define USE_COL %d\n"
-                 "#define USE_KEYFRAME %d\n"
-                 "#define USE_DIFFUSETEX %d\n",
-                 rules&COLOR, rules&KEYFRAME, rules&DIFFUSETEX);
-}
-
-void fixedshaderbuilder::setuniform(shadertype &s) {
-  auto &shader = static_cast<fixedshadertype&>(s);
-  shader.usemvp = 1;
-  OGL(UseProgram, shader.program);
-  OGLR(shader.u_mvp, GetUniformLocation, shader.program, "u_mvp");
-  if (rules&KEYFRAME)
-    OGLR(shader.u_delta, GetUniformLocation, shader.program, "u_delta");
-  else
-    shader.u_delta = 0;
-  if (rules&DIFFUSETEX) {
-    OGLR(shader.u_diffuse, GetUniformLocation, shader.program, "u_diffuse");
-    OGL(Uniform1i, shader.u_diffuse, 0);
+void bindshader(shadertype &shader) {
+  if (bindedshader != &shader) {
+    bindedshader = &shader;
+    dirty.any = ~0x0;
+    OGL(UseProgram, bindedshader->program);
   }
-  OGL(UseProgram, 0);
 }
 
-void fixedshaderbuilder::setvarying(shadertype &s) {
-  auto &shader = static_cast<fixedshadertype&>(s);
-  if (rules&KEYFRAME) {
-    OGL(BindAttribLocation, shader.program, POS0, "vs_pos0");
-    OGL(BindAttribLocation, shader.program, POS1, "vs_pos1");
-  } else
-    OGL(BindAttribLocation, shader.program, POS0, "vs_pos");
-  if (rules&DIFFUSETEX)
-    OGL(BindAttribLocation, shader.program, TEX0, "vs_tex");
-  if (rules&COLOR)
-    OGL(BindAttribLocation, shader.program, COL, "vs_col");
-#if !defined(__WEBGL__)
-  OGL(BindFragDataLocation, shader.program, 0, "rt_col");
-#endif // __WEBGL__
+void destroyshader(shadertype &s) {
+  deleteprogram(s.program);
+  s.program = 0;
 }
 
 IVAR(shaderfromfile, 0, 1, 1);
@@ -757,8 +699,79 @@ void shadererror(bool fatalerr, const char *msg) {
     con::out("unable to build fixed shaders %s", msg);
 }
 
+static void reloadshaders() {
+  loopv(allshaders) {
+    auto &s = allshaders[i];
+    s.first->build(*s.second, shaderfromfile, false);
+  }
+}
+CMD(reloadshaders, "");
+
+/*--------------------------------------------------------------------------
+ - fixed pipeline
+ -------------------------------------------------------------------------*/
+struct fixedshadertype : shadertype {
+  fixedshadertype() : rules(0) {}
+  u32 rules; // flags to enable / disable features
+  u32 u_diffuse, u_delta; // uniforms
+};
+
+static fixedshadertype shaders[fixedshadernum];
+
+void bindfixedshader(u32 flags) { bindshader(shaders[flags]); }
+void bindfixedshader(u32 flags, float delta) {
+  bindfixedshader(flags);
+  OGL(Uniform1f, static_cast<fixedshadertype*>(bindedshader)->u_delta, delta);
+}
+
+fixedshaderbuilder::fixedshaderbuilder(const char *vppath, const char *fppath,
+                                       const char *vp, const char *fp,
+                                       u32 rules) :
+  shaderbuilder(vppath, fppath, vp, fp), rules(rules) {}
+
+void fixedshaderbuilder::setrules(string &str) {
+  sprintf_s(str)("#define USE_COL %d\n"
+                 "#define USE_KEYFRAME %d\n"
+                 "#define USE_DIFFUSETEX %d\n",
+                 rules&FIXED_COLOR,
+                 rules&FIXED_KEYFRAME,
+                 rules&FIXED_DIFFUSETEX);
+}
+
+void fixedshaderbuilder::setuniform(shadertype &s) {
+  auto &shader = static_cast<fixedshadertype&>(s);
+  shader.usemvp = 1;
+  OGL(UseProgram, shader.program);
+  OGLR(shader.u_mvp, GetUniformLocation, shader.program, "u_mvp");
+  if (rules&FIXED_KEYFRAME)
+    OGLR(shader.u_delta, GetUniformLocation, shader.program, "u_delta");
+  else
+    shader.u_delta = 0;
+  if (rules&FIXED_DIFFUSETEX) {
+    OGLR(shader.u_diffuse, GetUniformLocation, shader.program, "u_diffuse");
+    OGL(Uniform1i, shader.u_diffuse, 0);
+  }
+  OGL(UseProgram, 0);
+}
+
+void fixedshaderbuilder::setvarying(shadertype &s) {
+  auto &shader = static_cast<fixedshadertype&>(s);
+  if (rules&FIXED_KEYFRAME) {
+    OGL(BindAttribLocation, shader.program, POS0, "vs_pos0");
+    OGL(BindAttribLocation, shader.program, POS1, "vs_pos1");
+  } else
+    OGL(BindAttribLocation, shader.program, POS0, "vs_pos");
+  if (rules&FIXED_DIFFUSETEX)
+    OGL(BindAttribLocation, shader.program, TEX0, "vs_tex");
+  if (rules&FIXED_COLOR)
+    OGL(BindAttribLocation, shader.program, COL, "vs_col");
+#if !defined(__WEBGL__)
+  OGL(BindFragDataLocation, shader.program, 0, "rt_col");
+#endif // __WEBGL__
+}
+
 static void buildfixedshaders(bool fatalerr) {
-  loopi(shadernum) {
+  loopi(fixedshadernum) {
     auto b = NEW(fixedshaderbuilder,
       "data/shaders/fixed_vp.glsl",
       "data/shaders/fixed_fp.glsl",
@@ -768,14 +781,6 @@ static void buildfixedshaders(bool fatalerr) {
       shadererror(fatalerr, "fixed shader");
   }
 }
-
-static void reloadshaders() {
-  loopv(allshaders) {
-    auto &s = allshaders[i];
-    s.first->build(*s.second, shaderfromfile, false);
-  }
-}
-CMD(reloadshaders, "");
 
 /*--------------------------------------------------------------------------
  - base rendering functions
@@ -845,7 +850,7 @@ void start(int w, int h) {
       sys::fatal("could not find core textures");
 }
 void finish() {
-  loopi(shadernum) destroyshader(shaders[i]);
+  loopi(fixedshadernum) destroyshader(shaders[i]);
   loopv(allshaders) DEL(allshaders[i].first);
   allshaders.destroy();
   rangei(TEX_CROSSHAIR, TEX_PREALLOCATED_NUM)

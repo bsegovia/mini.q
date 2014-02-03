@@ -150,7 +150,7 @@ void mdl::render(int frame, int range, const vec3f &o,
   OGL(VertexAttribPointer, ogl::POS1, 3, GL_FLOAT, 0, sizeof(float[5]), (void*)(pos1+2));
   ogl::setattribarray()(ogl::POS0, ogl::POS1, ogl::TEX0);
   ogl::bindtexture(GL_TEXTURE_2D, tex, 0);
-  ogl::bindfixedshader(ogl::KEYFRAME|ogl::DIFFUSETEX,frac);
+  ogl::bindfixedshader(ogl::FIXED_KEYFRAME|ogl::FIXED_DIFFUSETEX,frac);
   ogl::drawarrays(GL_TRIANGLES, 0, n);
   ogl::bindbuffer(ogl::ARRAY_BUFFER, 0);
   ogl::popmatrix();
