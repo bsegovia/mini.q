@@ -213,8 +213,7 @@ struct fixedshadertype : shadertype {
   u32 u_diffuse, u_delta, u_mvp; // uniforms
 };
 
-// can be reused by other simple shaders reusing the same skeleton as fixed
-// shaders
+// can be reused by other shaders reusing the same skeleton as fixed shaders
 struct fixedshaderbuilder : shaderbuilder {
   fixedshaderbuilder(const char *vppath, const char *fppath,
                      const char *vp, const char *fp, u32 rules);
@@ -223,7 +222,6 @@ struct fixedshaderbuilder : shaderbuilder {
   virtual void setvarying(shadertype &s);
   u32 rules;
 };
-
 } /* namespace ogl */
 } /* namespace q */
 
