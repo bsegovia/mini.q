@@ -506,7 +506,37 @@ void immdrawelements(int mode, int count, int type, const void *indices, const v
   drawelements(mode, count, type, fake);
 }
 
+// return {size, mode, type}
+static vec3i parseformat(const char *fmt) {
+  loopi(ATTRIB_NUM) disableattribarray(i);
+  int mode = GL_TRIANGLE_STRIP, type = GL_UNSIGNED_INT;
+  int offset = 0;
+  while (*fmt) {
+    switch (*fmt) {
+      case 'T': mode = GL_TRIANGLES; break;
+      case 'F': mode = GL_TRIANGLE_FAN; break;
+      case 'S': mode = GL_TRIANGLE_STRIP; break;
+      case 'i': type = GL_UNSIGNED_INT; break;
+      case 's': type = GL_UNSIGNED_SHORT; break;
+      case 'b': type = GL_UNSIGNED_BYTE; break;
+#define ATTRIB(CHAR, GL)\
+  case CHAR: ++fmt;\
+    enableattribarray(GL);\
+    immattrib(GL, int(*fmt-'0'), GL_FLOAT, offset);\
+    offset += int(*fmt-'0')*int(sizeof(float));\
+  break;
+  ATTRIB('p', POS0);
+  ATTRIB('t', TEX0);
+  ATTRIB('c', COL);
+#undef ATTRIB
+    }
+    ++fmt;
+  }
+  return vec3i(offset, mode, type);
+}
+
 void immdrawelememts(const char *fmt, int count, const void *indices, const void *vertices) {
+#if 0
   loopi(ATTRIB_NUM) disableattribarray(i);
   int mode = GL_TRIANGLE_STRIP, type = GL_UNSIGNED_INT;
   int offset = 0;
@@ -532,7 +562,10 @@ void immdrawelememts(const char *fmt, int count, const void *indices, const void
     ++fmt;
   }
   immvertexsize(offset);
-  immdrawelements(mode, count, type, indices, vertices);
+#endif
+  const auto parsed = parseformat(fmt);
+  immvertexsize(parsed.x);
+  immdrawelements(parsed.y, count, parsed.z, indices, vertices);
 }
 
 void immdraw(int mode, int pos, int tex, int col, size_t n, const float *data) {
@@ -557,6 +590,14 @@ void immdraw(int mode, int pos, int tex, int col, size_t n, const float *data) {
   immvertexsize(sz);
   immsetallattribs();
   immdrawarrays(mode, 0, n);
+}
+
+void immdraw(const char *fmt, int count, const void *data) {
+  const auto parsed = parseformat(fmt);
+  if (!immvertices(count*parsed.x, data)) return;
+  immvertexsize(parsed.x);
+  immsetallattribs();
+  immdrawarrays(parsed.y, 0, count);
 }
 
 /*--------------------------------------------------------------------------

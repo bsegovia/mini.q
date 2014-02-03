@@ -87,6 +87,7 @@ void immdrawelements(int mode, int count, int type, const void *indices, const v
 void immdrawelememts(const char *fmt, int count, const void *indices, const void *vertices);
 void immdrawarrays(int mode, int first, int count);
 void immdraw(int mode, int pos, int tex, int col, size_t n, const float *data);
+void immdraw(const char *fmt, int count, const void *data);
 
 // matrix interface
 enum {MODELVIEW, PROJECTION, MATRIX_MODE};
@@ -121,7 +122,7 @@ struct shadertype {
 void destroyshader(shadertype&);
 void bindshader(shadertype&);
 
-// to be overloaded  when creating shaders
+// to be overloaded when creating shaders
 struct shaderbuilder {
   shaderbuilder(const char *vppath, const char *fppath,
                 const char *vp, const char *fp) :
@@ -140,7 +141,7 @@ private:
 void shadererror(bool fatalerr, const char *msg);
 bool loadfromfile();
 
-// quick, dirty and super simple shader system to replace fixed pipeline
+// simple shader system to replace fixed pipeline
 static const u32 FIXED_KEYFRAME = 1<<0;
 static const u32 FIXED_DIFFUSETEX = 1<<1;
 static const u32 FIXED_COLOR = 1<<2;

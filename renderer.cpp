@@ -195,7 +195,7 @@ void frame(int w, int h, int curfps) {
   OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   ogl::bindfixedshader(ogl::FIXED_DIFFUSETEX);
   ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_CHECKBOARD));
-  ogl::immdraw(GL_TRIANGLE_STRIP, 3, 2, 0, 4, ground);
+  ogl::immdraw("St2p3", 4, ground);
   if (vertnum != 0) {
     if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_LINE);
     ogl::bindfixedshader(ogl::FIXED_COLOR);
@@ -217,7 +217,7 @@ void frame(int w, int h, int curfps) {
       0.f, 1.f,              0.f, float(sys::scrh),
       0.f, 0.f,              0.f,              0.f
     };
-    ogl::immdraw(GL_TRIANGLE_STRIP, 2, 2, 0, 4, quad);
+    ogl::immdraw("St2p2", 4, quad);
     ogl::enable(GL_CULL_FACE);
     popmatrices();
   } else

@@ -210,8 +210,8 @@ static void drawpoly(const float *coords, u32 numCoords, float r, u32 col) {
     verts.add(verttype(colf, coords[(i-1)*2], coords[(i-1)*2+1]));
     verts.add(verttype(colf, coords[i*2], coords[i*2+1]));
   }
-  ogl::bindfixedshader(ogl::COLOR);
-  ogl::immdraw(GL_TRIANGLES, 2, 0, 4, verts.length(), &verts[0][0]);
+  ogl::bindfixedshader(ogl::FIXED_COLOR);
+  ogl::immdraw("Tc4p2", verts.length(), &verts[0][0]);
 }
 
 static void drawrect(float x, float y, float w, float h, float fth, u32 col) {
