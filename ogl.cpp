@@ -146,7 +146,6 @@ union {
   struct {
     u32 shader:1; // will force to reload everything
     u32 mvp:1;
-    u32 fog:1;
   } flags;
   u32 any;
 } dirty;
@@ -561,7 +560,7 @@ void immdraw(int mode, int pos, int tex, int col, size_t n, const float *data) {
 }
 
 /*--------------------------------------------------------------------------
- - quick and dirty shader management
+ - shader management
  -------------------------------------------------------------------------*/
 static bool checkshader(const char *source, const char *rules, u32 shadernumame) {
   GLint result = GL_FALSE;
@@ -581,46 +580,40 @@ static bool checkshader(const char *source, const char *rules, u32 shadernumame)
   return result == GL_TRUE;
 }
 
+static const char header[] = {
+#if defined(__WEBGL__)
+  "precision highp float;\n"
+  "#define IF_WEBGL(X) X\n"
+  "#define IF_NOT_WEBGL(X)\n"
+  "#define SWITCH_WEBGL(X,Y) X\n"
+  "#define VS_IN attribute\n"
+  "#define VS_OUT varying\n"
+  "#define PS_IN varying\n"
+#else
+  "#version 130\n"
+  "#define IF_WEBGL(X)\n"
+  "#define IF_NOT_WEBGL(X) X\n"
+  "#define SWITCH_WEBGL(X,Y) Y\n"
+  "#define VS_IN in\n"
+  "#define VS_OUT out\n"
+  "#define PS_IN in\n"
+#endif // __WEBGL__
+};
+
 static u32 loadshader(GLenum type, const char *source, const char *rulestr) {
   u32 name;
   OGLR(name, CreateShader, type);
-  const char *sources[] = {rulestr, source};
-  OGL(ShaderSource, name, 2, sources, NULL);
+  const char *sources[] = {header, rulestr, source};
+  OGL(ShaderSource, name, 3, sources, NULL);
   OGL(CompileShader, name);
   if (!checkshader(source, rulestr, name)) return 0;
   return name;
 }
 
-#if defined(__WEBGL__)
-  #define OGL_PROGRAM_HEADER\
-  "precision highp float;\n"\
-  "#define IF_WEBGL(X) X\n"\
-  "#define IF_NOT_WEBGL(X)\n"\
-  "#define SWITCH_WEBGL(X,Y) X\n"\
-  "#define VS_IN attribute\n"\
-  "#define VS_OUT varying\n"\
-  "#define PS_IN varying\n"
-#else
-#define OGL_PROGRAM_HEADER\
-  "#version 130\n"\
-  "#define IF_WEBGL(X)\n"\
-  "#define IF_NOT_WEBGL(X) X\n"\
-  "#define SWITCH_WEBGL(X,Y) Y\n"\
-  "#define VS_IN in\n"\
-  "#define VS_OUT out\n"\
-  "#define PS_IN in\n"
-#endif // __WEBGL__
-
-static u32 loadprogram(const char *vertstr, const char *fragstr, u32 rules) {
+static u32 loadprogram(const char *vertstr, const char *fragstr, const char *rules) {
   u32 program = 0;
-  sprintf_sd(rulestr)(OGL_PROGRAM_HEADER
-                      "#define USE_COL %i\n"
-                      "#define USE_FOG %i\n"
-                      "#define USE_KEYFRAME %i\n"
-                      "#define USE_DIFFUSETEX %i\n",
-                      rules&COLOR,rules&FOG,rules&KEYFRAME,rules&DIFFUSETEX);
-  const u32 vert = loadshader(GL_VERTEX_SHADER, vertstr, rulestr);
-  const u32 frag = loadshader(GL_FRAGMENT_SHADER, fragstr, rulestr);
+  const u32 vert = loadshader(GL_VERTEX_SHADER, vertstr, rules);
+  const u32 frag = loadshader(GL_FRAGMENT_SHADER, fragstr, rules);
   if (vert == 0 || frag == 0) return 0;
   program = createprogram();
   OGL(AttachShader, program, vert);
@@ -631,9 +624,13 @@ static u32 loadprogram(const char *vertstr, const char *fragstr, u32 rules) {
 }
 #undef OGL_PROGRAM_HEADER
 
-static shadertype shaders[shadernum];
-static vec4f fogcolor;
-static vec2f fogstartend;
+struct fixedshadertype : shadertype {
+  fixedshadertype() : rules(0) {}
+  u32 rules; // flags to enable / disable features
+  u32 u_diffuse, u_delta; // uniforms
+};
+
+static fixedshadertype shaders[shadernum];
 
 void bindshader(shadertype &shader) {
   if (bindedshader != &shader) {
@@ -643,64 +640,38 @@ void bindshader(shadertype &shader) {
   }
 }
 
-void bindfixedshader(u32 flags) { bindshader(shaders[flags]); }
+void destroyshader(shadertype &s) {
+  deleteprogram(s.program);
+  s.program = 0;
+}
 
 static void linkshader(shadertype &shader) {
   OGL(LinkProgram, shader.program);
   OGL(ValidateProgram, shader.program);
 }
-void setshaderudelta(float delta) { // XXX find a better way to handle this!
-  if (bindedshader) OGL(Uniform1f, bindedshader->u_delta, delta);
+
+void bindfixedshader(u32 flags) { bindshader(shaders[flags]); }
+void bindfixedshader(u32 flags, float delta) {
+  bindfixedshader(flags);
+  OGL(Uniform1f, static_cast<fixedshadertype*>(bindedshader)->u_delta, delta);
 }
 
-static void setshaderuniform(shadertype &shader) {
-  OGL(UseProgram, shader.program);
-  OGLR(shader.u_mvp, GetUniformLocation, shader.program, "u_mvp");
-  if (shader.rules&KEYFRAME)
-    OGLR(shader.u_delta, GetUniformLocation, shader.program, "u_delta");
-  else
-    shader.u_delta = 0;
-  if (shader.rules&DIFFUSETEX) {
-    OGLR(shader.u_diffuse, GetUniformLocation, shader.program, "u_diffuse");
-    OGL(Uniform1i, shader.u_diffuse, 0);
-  }
-  if (shader.rules&FOG) {
-    OGLR(shader.u_zaxis, GetUniformLocation, shader.program, "u_zaxis");
-    OGLR(shader.u_fogcolor, GetUniformLocation, shader.program, "u_fogcolor");
-    OGLR(shader.u_fogstartend, GetUniformLocation, shader.program, "fogstartend");
-  }
-  OGL(UseProgram, 0);
+u32 shaderbuilder::compile(const char *vert, const char *frag) {
+  u32 program;
+  string rulestr;
+  setrules(rulestr);
+  if ((program = loadprogram(vert, frag, rulestr))==0) return 0;
+  return program;
 }
 
-static bool compileshader(shadertype &shader, const char *vert, const char *frag, u32 rules) {
-  memset(&shader, 0, sizeof(shadertype));
-  if ((shader.program = loadprogram(vert, frag, rules))==0) return false;
-  shader.rules = rules;
-  if (shader.rules&KEYFRAME) {
-    OGL(BindAttribLocation, shader.program, POS0, "vs_pos0");
-    OGL(BindAttribLocation, shader.program, POS1, "vs_pos1");
-  } else
-    OGL(BindAttribLocation, shader.program, POS0, "vs_pos");
-  if (shader.rules&DIFFUSETEX)
-    OGL(BindAttribLocation, shader.program, TEX0, "vs_tex");
-  if (shader.rules&COLOR)
-    OGL(BindAttribLocation, shader.program, COL, "vs_col");
-#if !defined(__WEBGL__)
-  OGL(BindFragDataLocation, shader.program, 0, "rt_col");
-#endif // __WEBGL__
-  return true;
-}
-
-static bool buildprogram(shadertype &shader, const char *vert, const char *frag, u32 rules, uniformcb cb = NULL) {
-  shadertype s;
-  if (!compileshader(s, vert, frag, rules)) return false;
-  if (shader.program) deleteprogram(shader.program);
-  // XXX we handle in a nasty way different shader size. I guess we should not
-  // make the copy like this
-  shader = s;
-  linkshader(shader);
-  setshaderuniform(shader);
-  if (cb) cb(shader);
+bool shaderbuilder::buildprogram(shadertype &s, const char *vert, const char *frag) {
+  const auto program = compile(vert, frag);
+  if (program == 0) return false;
+  if (s.program) deleteprogram(s.program);
+  s.program = program;
+  setvarying(s);
+  linkshader(s);
+  setuniform(s);
   dirty.any = ~0x0;
   return true;
 }
@@ -711,41 +682,71 @@ static char *loadshaderfile(const char *path) {
   return s;
 }
 
-// use to rebuild shaders easily
-struct shaderrebuild {
-  INLINE shaderrebuild() {}
-  INLINE shaderrebuild(shadertype *s, const shaderresource &rsc, u32 rules) :
-    s(s), rsc(rsc), rules(rules) {}
-  shadertype *s;
-  shaderresource rsc;
-  u32 rules;
-};
-static vector<shaderrebuild> allshaders;
-
-static const struct shaderresource fixed_rsc = {
-  "data/shaders/fixed_vp.glsl",
-  "data/shaders/fixed_fp.glsl",
-  shaders::fixed_vp,
-  shaders::fixed_fp,
-  NULL
-};
-
-static bool buildprogramfromfile(shadertype &s, const shaderresource &rsc, u32 rules) {
-  auto fixed_vp = loadshaderfile(rsc.vppath);
-  auto fixed_fp = loadshaderfile(rsc.fppath);
+bool shaderbuilder::buildprogramfromfile(shadertype &s) {
+  auto fixed_vp = loadshaderfile(vppath);
+  auto fixed_fp = loadshaderfile(fppath);
   if (fixed_fp == NULL || fixed_vp == NULL) return false;
-  auto ret = buildprogram(s, fixed_vp, fixed_fp, rules, rsc.cb);
+  auto ret = buildprogram(s, fixed_vp, fixed_fp);
   FREE(fixed_fp);
   FREE(fixed_vp);
   return ret;
 }
-bool buildshader(shadertype &s, const shaderresource &rsc, u32 rules, int fromfile, bool save) {
-  if (save) allshaders.add(shaderrebuild(&s, rsc, rules));
+
+// use to rebuild shaders on-demand later
+static vector<pair<shaderbuilder*, shadertype*>> allshaders;
+
+bool shaderbuilder::build(shadertype &s, int fromfile, bool save) {
+  if (save) allshaders.add(makepair(this, &s));
   if (fromfile)
-    return buildprogramfromfile(s, rsc, rules);
+    return buildprogramfromfile(s);
   else
-    return buildprogram(s, rsc.vp, rsc.fp, rules, rsc.cb);
+    return buildprogram(s, vppath, fppath);
 }
+
+fixedshaderbuilder::fixedshaderbuilder(const char *vppath, const char *fppath,
+                                       const char *vp, const char *fp,
+                                       u32 rules) :
+  shaderbuilder(vppath, fppath, vp, fp), rules(rules) {}
+
+void fixedshaderbuilder::setrules(string &str) {
+  sprintf_s(str)("#define USE_COL %d\n"
+                 "#define USE_KEYFRAME %d\n"
+                 "#define USE_DIFFUSETEX %d\n",
+                 rules&COLOR, rules&KEYFRAME, rules&DIFFUSETEX);
+}
+
+void fixedshaderbuilder::setuniform(shadertype &s) {
+  auto &shader = static_cast<fixedshadertype&>(s);
+  shader.usemvp = 1;
+  OGL(UseProgram, shader.program);
+  OGLR(shader.u_mvp, GetUniformLocation, shader.program, "u_mvp");
+  if (rules&KEYFRAME)
+    OGLR(shader.u_delta, GetUniformLocation, shader.program, "u_delta");
+  else
+    shader.u_delta = 0;
+  if (rules&DIFFUSETEX) {
+    OGLR(shader.u_diffuse, GetUniformLocation, shader.program, "u_diffuse");
+    OGL(Uniform1i, shader.u_diffuse, 0);
+  }
+  OGL(UseProgram, 0);
+}
+
+void fixedshaderbuilder::setvarying(shadertype &s) {
+  auto &shader = static_cast<fixedshadertype&>(s);
+  if (rules&KEYFRAME) {
+    OGL(BindAttribLocation, shader.program, POS0, "vs_pos0");
+    OGL(BindAttribLocation, shader.program, POS1, "vs_pos1");
+  } else
+    OGL(BindAttribLocation, shader.program, POS0, "vs_pos");
+  if (rules&DIFFUSETEX)
+    OGL(BindAttribLocation, shader.program, TEX0, "vs_tex");
+  if (rules&COLOR)
+    OGL(BindAttribLocation, shader.program, COL, "vs_col");
+#if !defined(__WEBGL__)
+  OGL(BindFragDataLocation, shader.program, 0, "rt_col");
+#endif // __WEBGL__
+}
+
 IVAR(shaderfromfile, 0, 1, 1);
 bool loadfromfile() { return shaderfromfile; }
 
@@ -755,23 +756,23 @@ void shadererror(bool fatalerr, const char *msg) {
   else
     con::out("unable to build fixed shaders %s", msg);
 }
-void destroyshader(shadertype &s) {
-  deleteprogram(s.program);
-  s.program = 0;
-}
-static void buildshaders(bool fatalerr) {
-  loopi(shadernum) if (!buildshader(shaders[i], fixed_rsc, i, shaderfromfile))
-    shadererror(fatalerr, "fixed shader");
+
+static void buildfixedshaders(bool fatalerr) {
+  loopi(shadernum) {
+    auto b = NEW(fixedshaderbuilder,
+      "data/shaders/fixed_vp.glsl",
+      "data/shaders/fixed_fp.glsl",
+      shaders::fixed_vp,
+      shaders::fixed_fp, i);
+    if (!b->build(shaders[i], shaderfromfile))
+      shadererror(fatalerr, "fixed shader");
+  }
 }
 
-static void destroyshaders() {
-  allshaders.destroy();
-  loopi(shadernum) destroyshader(shaders[i]);
-}
 static void reloadshaders() {
   loopv(allshaders) {
     auto &s = allshaders[i];
-    buildshader(*s.s, s.rsc, s.rules, shaderfromfile, false);
+    s.first->build(*s.second, shaderfromfile, false);
   }
 }
 CMD(reloadshaders, "");
@@ -782,19 +783,7 @@ CMD(reloadshaders, "");
 // flush all the states required for the draw call
 static void flush(void) {
   if (dirty.any == 0) return; // fast path
-  if (dirty.flags.shader) {
-    OGL(UseProgram, bindedshader->program);
-    dirty.flags.shader = 0;
-  }
-  if ((bindedshader->rules & FOG) && (dirty.flags.fog || dirty.flags.mvp)) {
-    const mat4x4f &mv = vp[MODELVIEW];
-    const vec4f zaxis(mv.vx.z,mv.vy.z,mv.vz.z,mv.vw.z);
-    OGL(Uniform2fv, bindedshader->u_fogstartend, 1, &fogstartend.x);
-    OGL(Uniform4fv, bindedshader->u_fogcolor, 1, &fogcolor.x);
-    OGL(Uniform4fv, bindedshader->u_zaxis, 1, &zaxis.x);
-    dirty.flags.fog = 0;
-  }
-  if (dirty.flags.mvp) {
+  if (dirty.flags.mvp && bindedshader->usemvp != 0) {
     viewproj = vp[PROJECTION]*vp[MODELVIEW];
     OGL(UniformMatrix4fv, bindedshader->u_mvp, 1, GL_FALSE, &viewproj.vx.x);
     dirty.flags.mvp = 0;
@@ -834,7 +823,7 @@ void start(int w, int h) {
   OGL(CullFace, GL_BACK);
   OGL(GetIntegerv, GL_MAX_TEXTURE_SIZE, &glmaxtexsize);
   dirty.any = ~0x0;
-  buildshaders(true);
+  buildfixedshaders(true);
   text::start();
   imminit();
   loopi(ATTRIB_NUM) enabledattribarray[i] = 0;
@@ -856,7 +845,9 @@ void start(int w, int h) {
       sys::fatal("could not find core textures");
 }
 void finish() {
-  destroyshaders();
+  loopi(shadernum) destroyshader(shaders[i]);
+  loopv(allshaders) DEL(allshaders[i].first);
+  allshaders.destroy();
   rangei(TEX_CROSSHAIR, TEX_PREALLOCATED_NUM)
     if (coretexarray[i]) OGL(DeleteTextures, 1, coretexarray+i);
 }

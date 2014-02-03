@@ -102,23 +102,6 @@ static struct deferredshadertype : ogl::shadertype {
   u32 u_nortex;
   u32 fs_tex;
 } deferredshader;
-static void deferreduniform(ogl::shadertype &s) {
-#if 0
-  auto &df = static_cast<fontshadertype&>(s);
-  OGLR(df.u_fontwh, GetUniformLocation, df.program, "u_fontwh");
-  OGLR(df.u_font_thickness, GetUniformLocation, df.program, "u_font_thickness");
-  OGLR(df.u_outline_width, GetUniformLocation, df.program, "u_outline_width");
-  OGLR(df.u_outline_color, GetUniformLocation, df.program, "u_outline_color");
-#endif
-}
-
-static const ogl::shaderresource deferred_rsc = {
-  "data/shaders/deferred_vp.glsl",
-  "data/shaders/deferred_fp.glsl",
-  shaders::deferred_vp,
-  shaders::deferred_fp,
-  deferreduniform
-};
 
 static void initdeferred() {
   nortex = ogl::maketex("TB I3 D3 B2 Wsr Wtr mn Mn", NULL, sys::scrw, sys::scrh);
@@ -130,8 +113,6 @@ static void initdeferred() {
   if (GL_FRAMEBUFFER_COMPLETE != ogl::CheckFramebufferStatus(GL_FRAMEBUFFER))
     sys::fatal("renderer: unable to init gbuffer framebuffer");
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
-  if (!ogl::buildshader(deferredshader, deferred_rsc, 0, false))
-    ogl::shadererror(true, "deferred shader");
 }
 
 static void cleandeferred() {
@@ -224,7 +205,7 @@ void frame(int w, int h, int curfps) {
   if (useframebuffer)
     OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
 
-  // blit the norbuffer into screen
+  // blit the normal buffer into screen
   if (useframebuffer) {
     setphysicalhud();
     ogl::bindfixedshader(ogl::DIFFUSETEX);
@@ -232,9 +213,9 @@ void frame(int w, int h, int curfps) {
     ogl::disable(GL_CULL_FACE);
     const float quad[] = {
       1.f, 1.f, float(sys::scrw), float(sys::scrh),
-      1.f, 0.f, float(sys::scrw), 0.f,
-      0.f, 1.f, 0.f, float(sys::scrh),
-      0.f, 0.f, 0.f, 0.f
+      1.f, 0.f, float(sys::scrw),              0.f,
+      0.f, 1.f,              0.f, float(sys::scrh),
+      0.f, 0.f,              0.f,              0.f
     };
     ogl::immdraw(GL_TRIANGLE_STRIP, 2, 2, 0, 4, quad);
     ogl::enable(GL_CULL_FACE);

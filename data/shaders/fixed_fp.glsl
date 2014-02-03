@@ -3,11 +3,6 @@
 uniform sampler2D u_diffuse;
 PS_IN vec2 fs_tex;
 #endif
-#if USE_FOG
-uniform vec4 u_fogcolor;
-uniform vec2 u_fogstartend;
-PS_IN float fs_fogz;
-#endif
 #if USE_COL
 PS_IN vec4 fs_col;
 #endif
@@ -25,10 +20,6 @@ void main() {
   col *= incol;
 #else
   col = incol;
-#endif
-#if USE_FOG
-  float factor = clamp((-fs_fogz-u_fogstartend.x)*u_fogstartend.y,0.0,1.0);
-  col.xyz = mix(col.xyz,u_fogcolor.xyz,factor);
 #endif
   SWITCH_WEBGL(gl_FragColor = col, rt_c = col);
   // SWITCH_WEBGL(gl_FragColor = col, rt_c = vec4(1.0,0.0,0.0,0.0));

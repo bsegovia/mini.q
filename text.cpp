@@ -26,32 +26,33 @@ static void buildfont() {
   textfont = id;
 }
 
-// handle font shaders
+// all font shader parameters
 static struct fontshadertype : ogl::shadertype {
   u32 u_fontwh, u_font_thickness;
   u32 u_outline_width, u_outline_color;
 } fontshader;
-static void fontuniform(ogl::shadertype &s) {
-  auto &df = static_cast<fontshadertype&>(s);
-  OGLR(df.u_fontwh, GetUniformLocation, df.program, "u_fontwh");
-  OGLR(df.u_font_thickness, GetUniformLocation, df.program, "u_font_thickness");
-  OGLR(df.u_outline_width, GetUniformLocation, df.program, "u_outline_width");
-  OGLR(df.u_outline_color, GetUniformLocation, df.program, "u_outline_color");
-}
-static const ogl::shaderresource font_rsc = {
-  "data/shaders/fixed_vp.glsl",
-  "data/shaders/font_fp.glsl",
-  shaders::fixed_vp,
-  shaders::font_fp,
-  fontuniform
+
+struct fontshaderbuilder : ogl::fixedshaderbuilder {
+  fontshaderbuilder() :
+    fixedshaderbuilder("data/shaders/fixed_vp.glsl",
+                       "data/shaders/font_fp.glsl",
+                       shaders::fixed_vp,
+                       shaders::font_fp,
+                       ogl::DIFFUSETEX) {}
+
+  void setuniform(ogl::shadertype &s) {
+    auto &df = static_cast<fontshadertype&>(s);
+    fixedshaderbuilder::setuniform(s);
+    OGLR(df.u_fontwh, GetUniformLocation, df.program, "u_fontwh");
+    OGLR(df.u_font_thickness, GetUniformLocation, df.program, "u_font_thickness");
+    OGLR(df.u_outline_width, GetUniformLocation, df.program, "u_outline_width");
+    OGLR(df.u_outline_color, GetUniformLocation, df.program, "u_outline_color");
+  }
 };
-static void loadfontshader(bool fatalerr, bool fromfile) {
-  using namespace ogl;
-  if (!buildshader(fontshader, font_rsc, DIFFUSETEX, fromfile))
-    shadererror(fatalerr, "font shader");
-}
+
 void start() {
-  loadfontshader(true, false);
+  if (!NEWE(fontshaderbuilder)->build(fontshader, ogl::loadfromfile()))
+    ogl::shadererror(true, "font shader");
   buildfont();
 }
 void finish() { ogl::destroyshader(fontshader); }

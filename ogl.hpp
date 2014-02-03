@@ -4,6 +4,7 @@
  -------------------------------------------------------------------------*/
 #pragma once
 #include "sys.hpp"
+#include "stl.hpp"
 
 namespace q {
 template<typename T> struct vec3;
@@ -112,35 +113,52 @@ INLINE void popmode(int mode) {
 
 // basic shader type
 struct shadertype {
-  INLINE shadertype() : rules(0), program(0) {}
-  u32 rules; // fog,keyframe...?
-  u32 program; // ogl program
-  u32 u_diffuse, u_delta, u_mvp; // uniforms
-  u32 u_zaxis, u_fogstartend, u_fogcolor; // uniforms
+  INLINE shadertype() : program(0), u_mvp(0), usemvp(0) {}
+  u32 program;
+  u32 u_mvp;
+  u32 usemvp;
 };
-void destroyshader(shadertype &s);
+void destroyshader(shadertype&);
+void bindshader(shadertype&);
 
 // quick, dirty and super simple shader system to replace fixed pipeline
-static const u32 FOG = 1<<0;
-static const u32 KEYFRAME = 1<<1;
-static const u32 DIFFUSETEX = 1<<2;
-static const u32 COLOR = 1<<3;
-static const int subtypenum = 4;
+static const u32 KEYFRAME = 1<<0;
+static const u32 DIFFUSETEX = 1<<1;
+static const u32 COLOR = 1<<2;
+static const int subtypenum = 3;
 static const int shadernum = 1<<subtypenum;
 void bindfixedshader(u32 flags);
-void bindshader(shadertype&);
-void setshaderudelta(float delta); // XXX find a better way to handle this!
+void bindfixedshader(u32 flags, float delta);
 
-// to create shaders with any extra uniforms
-typedef void (CDECL *uniformcb)(shadertype&);
-struct shaderresource {
+// to be overloaded  when creating shaders
+struct shaderbuilder {
+  shaderbuilder(const char *vppath, const char *fppath,
+                const char *vp, const char *fp) :
+    vppath(vppath), fppath(fppath), vp(vp), fp(fp) {}
+  bool build(shadertype &s, int fromfile, bool save = true);
+private:
   const char *vppath, *fppath;
   const char *vp, *fp;
-  uniformcb cb;
+  virtual void setrules(string &str) = 0;
+  virtual void setuniform(shadertype &s) = 0;
+  virtual void setvarying(shadertype &s) = 0;
+  u32 compile(const char *vertsrc, const char *fragsrc);
+  bool buildprogram(shadertype &s, const char *vert, const char *frag);
+  bool buildprogramfromfile(shadertype &s);
 };
-bool buildshader(shadertype &s, const shaderresource &rsc, u32 rules, int fromfile, bool save = true);
 void shadererror(bool fatalerr, const char *msg);
 bool loadfromfile();
+
+// can be reused by other simple shaders reusing the same skeleton as fixed
+// shaders
+struct fixedshaderbuilder : shaderbuilder {
+  fixedshaderbuilder(const char *vppath, const char *fppath,
+                     const char *vp, const char *fp, u32 rules);
+  virtual void setrules(string &str);
+  virtual void setuniform(shadertype &s);
+  virtual void setvarying(shadertype &s);
+  u32 rules;
+};
 
 // OGL debug macros
 #if !defined(__EMSCRIPTEN__)
