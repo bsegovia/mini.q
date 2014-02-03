@@ -27,7 +27,7 @@ static void buildfont() {
 }
 
 // all font shader parameters
-static struct fontshadertype : ogl::shadertype {
+static struct fontshadertype : ogl::fixedshadertype {
   u32 u_fontwh, u_font_thickness;
   u32 u_outline_width, u_outline_color;
 } fontshader;

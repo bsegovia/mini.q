@@ -479,6 +479,7 @@ static bool immvertices(int sz, const void *vertices) {
 }
 
 void immdrawarrays(int mode, int first, int count) {
+  fixedflush();
   drawarrays(mode,first,count);
 }
 
@@ -502,6 +503,7 @@ void immdrawelements(int mode, int count, int type, const void *indices, const v
   if (!immsetdata(ELEMENT_ARRAY_BUFFER, indexsz, indices)) return;
   if (!immvertices((maxindex+1)*immvertexsz, vertices)) return;
   immsetallattribs();
+  fixedflush();
   const void *fake = (const void *) intptr_t(drawibooffset);
   drawelements(mode, count, type, fake);
 }
@@ -634,7 +636,9 @@ bool shaderbuilder::buildprogram(shadertype &s, const char *vert, const char *fr
   s.program = program;
   setvarying(s);
   linkshader(s);
+  OGL(UseProgram, s.program);
   setuniform(s);
+  OGL(UseProgram, 0);
   dirty.any = ~0x0;
   return true;
 }
@@ -700,13 +704,18 @@ CMD(reloadshaders, "");
 /*--------------------------------------------------------------------------
  - fixed pipeline
  -------------------------------------------------------------------------*/
-struct fixedshadertype : shadertype {
-  fixedshadertype() : rules(0) {}
-  u32 rules; // flags to enable / disable features
-  u32 u_diffuse, u_delta; // uniforms
-};
-
 static fixedshadertype shaders[fixedshadernum];
+
+// flush all the states required for the draw call
+void fixedflush(void) {
+  if (dirty.any == 0) return; // fast path
+  if (dirty.flags.mvp) {
+    const auto s = static_cast<fixedshadertype*>(bindedshader);
+    viewproj = vp[PROJECTION]*vp[MODELVIEW];
+    OGL(UniformMatrix4fv, s->u_mvp, 1, GL_FALSE, &viewproj.vx.x);
+    dirty.flags.mvp = 0;
+  }
+}
 
 void bindfixedshader(u32 flags) { bindshader(shaders[flags]); }
 void bindfixedshader(u32 flags, float delta) {
@@ -730,8 +739,6 @@ void fixedshaderbuilder::setrules(string &str) {
 
 void fixedshaderbuilder::setuniform(shadertype &s) {
   auto &shader = static_cast<fixedshadertype&>(s);
-  shader.usemvp = 1;
-  OGL(UseProgram, shader.program);
   OGLR(shader.u_mvp, GetUniformLocation, shader.program, "u_mvp");
   if (rules&FIXED_KEYFRAME)
     OGLR(shader.u_delta, GetUniformLocation, shader.program, "u_delta");
@@ -741,7 +748,6 @@ void fixedshaderbuilder::setuniform(shadertype &s) {
     OGLR(shader.u_diffuse, GetUniformLocation, shader.program, "u_diffuse");
     OGL(Uniform1i, shader.u_diffuse, 0);
   }
-  OGL(UseProgram, 0);
 }
 
 void fixedshaderbuilder::setvarying(shadertype &s) {
@@ -775,21 +781,10 @@ static void buildfixedshaders(bool fatalerr) {
 /*--------------------------------------------------------------------------
  - base rendering functions
  -------------------------------------------------------------------------*/
-// flush all the states required for the draw call
-static void flush(void) {
-  if (dirty.any == 0) return; // fast path
-  if (dirty.flags.mvp && bindedshader->usemvp != 0) {
-    viewproj = vp[PROJECTION]*vp[MODELVIEW];
-    OGL(UniformMatrix4fv, bindedshader->u_mvp, 1, GL_FALSE, &viewproj.vx.x);
-    dirty.flags.mvp = 0;
-  }
-}
 void drawarrays(int mode, int first, int count) {
-  flush();
   OGL(DrawArrays, mode, first, count);
 }
 void drawelements(int mode, int count, int type, const void *indices) {
-  flush();
   OGL(DrawElements, mode, count, type, indices);
 }
 static u32 coretexarray[TEX_PREALLOCATED_NUM];

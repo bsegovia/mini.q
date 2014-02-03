@@ -190,6 +190,7 @@ void quit(const char *msg) {
 CMD(quit, "s");
 
 void fatal(const char *s, const char *o) {
+  assert(0);
   sprintf_sd(m)("%s%s (%s)\n", s, o, SDL_GetError());
   quit(m);
 }
