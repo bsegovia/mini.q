@@ -536,60 +536,9 @@ static vec3i parseformat(const char *fmt) {
 }
 
 void immdrawelememts(const char *fmt, int count, const void *indices, const void *vertices) {
-#if 0
-  loopi(ATTRIB_NUM) disableattribarray(i);
-  int mode = GL_TRIANGLE_STRIP, type = GL_UNSIGNED_INT;
-  int offset = 0;
-  while (*fmt) {
-    switch (*fmt) {
-      case 'T': mode = GL_TRIANGLES; break;
-      case 'F': mode = GL_TRIANGLE_FAN; break;
-      case 'S': mode = GL_TRIANGLE_STRIP; break;
-      case 'i': type = GL_UNSIGNED_INT; break;
-      case 's': type = GL_UNSIGNED_SHORT; break;
-      case 'b': type = GL_UNSIGNED_BYTE; break;
-#define ATTRIB(CHAR, GL)\
-  case CHAR: ++fmt;\
-    enableattribarray(GL);\
-    immattrib(GL, int(*fmt-'0'), GL_FLOAT, offset);\
-    offset += int(*fmt-'0')*int(sizeof(float));\
-  break;
-  ATTRIB('p', POS0);
-  ATTRIB('t', TEX0);
-  ATTRIB('c', COL);
-#undef ATTRIB
-    }
-    ++fmt;
-  }
-  immvertexsize(offset);
-#endif
   const auto parsed = parseformat(fmt);
   immvertexsize(parsed.x);
   immdrawelements(parsed.y, count, parsed.z, indices, vertices);
-}
-
-void immdraw(int mode, int pos, int tex, int col, size_t n, const float *data) {
-  const int sz = (pos+tex+col)*sizeof(float);
-  if (!immvertices(n*sz, data)) return;
-  loopi(ATTRIB_NUM) disableattribarray(i);
-  if (pos) {
-    immattrib(ogl::POS0, pos, GL_FLOAT, (tex+col)*sizeof(float));
-    enableattribarray(POS0);
-  } else
-    disableattribarray(POS0);
-  if (tex) {
-    immattrib(ogl::TEX0, tex, GL_FLOAT, col*sizeof(float));
-    enableattribarray(TEX0);
-  } else
-    disableattribarray(TEX0);
-  if (col) {
-    immattrib(ogl::COL, col, GL_FLOAT, 0);
-    enableattribarray(COL);
-  } else
-    disableattribarray(COL);
-  immvertexsize(sz);
-  immsetallattribs();
-  immdrawarrays(mode, 0, n);
 }
 
 void immdraw(const char *fmt, int count, const void *data) {

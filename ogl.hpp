@@ -86,7 +86,6 @@ void immattrib(int attrib, int n, int type, int offset);
 void immdrawelements(int mode, int count, int type, const void *indices, const void *vertices);
 void immdrawelememts(const char *fmt, int count, const void *indices, const void *vertices);
 void immdrawarrays(int mode, int first, int count);
-void immdraw(int mode, int pos, int tex, int col, size_t n, const float *data);
 void immdraw(const char *fmt, int count, const void *data);
 
 // matrix interface
