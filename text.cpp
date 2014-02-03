@@ -100,7 +100,7 @@ void drawf(const char *fstr, const vec2f &pos, ...) {
 
 void draw(const char *str, const vec2f &pos) {
   ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_CHARACTERS));
-  OGL(VertexAttrib3f,ogl::COL,1.f,1.f,1.f);
+  OGL(VertexAttrib3f,ogl::ATTRIB_COL,1.f,1.f,1.f);
 
   // use a triangle mesh to display the text
   const size_t len = strlen(str);
@@ -113,7 +113,7 @@ void draw(const char *str, const vec2f &pos) {
   for (int i = 0; str[i] != 0; ++i) {
     int c = str[i];
     if (c=='\t') { x = (x-pos.y+rr::PIXELTAB)/rr::PIXELTAB*rr::PIXELTAB+pos.y; continue; }
-    if (c=='\f') { OGL(VertexAttrib3f,ogl::COL,0.25f,1.f,0.5f); continue; }
+    if (c=='\f') { OGL(VertexAttrib3f,ogl::ATTRIB_COL,0.25f,1.f,0.5f); continue; }
     if (c==' ')  { x += displayw; continue; }
     c -= 32;
     if (c<0 || c>=95) continue;

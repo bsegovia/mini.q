@@ -145,10 +145,10 @@ void mdl::render(int frame, int range, const vec3f &o,
   if (fr2>=frame+range) fr2 = frame;
   auto pos0 = (const float*)(fr1*vboframesz);
   auto pos1 = (const float*)(fr2*vboframesz);
-  OGL(VertexAttribPointer, ogl::TEX0, 2, GL_FLOAT, 0, sizeof(float[5]), (void*)pos0);
-  OGL(VertexAttribPointer, ogl::POS0, 3, GL_FLOAT, 0, sizeof(float[5]), (void*)(pos0+2));
-  OGL(VertexAttribPointer, ogl::POS1, 3, GL_FLOAT, 0, sizeof(float[5]), (void*)(pos1+2));
-  ogl::setattribarray()(ogl::POS0, ogl::POS1, ogl::TEX0);
+  OGL(VertexAttribPointer, ogl::ATTRIB_TEX0, 2, GL_FLOAT, 0, sizeof(float[5]), (void*)pos0);
+  OGL(VertexAttribPointer, ogl::ATTRIB_POS0, 3, GL_FLOAT, 0, sizeof(float[5]), (void*)(pos0+2));
+  OGL(VertexAttribPointer, ogl::ATTRIB_POS1, 3, GL_FLOAT, 0, sizeof(float[5]), (void*)(pos1+2));
+  ogl::setattribarray()(ogl::ATTRIB_POS0, ogl::ATTRIB_POS1, ogl::ATTRIB_TEX0);
   ogl::bindtexture(GL_TEXTURE_2D, tex, 0);
   ogl::bindfixedshader(ogl::FIXED_KEYFRAME|ogl::FIXED_DIFFUSETEX,frac);
   ogl::fixedflush();

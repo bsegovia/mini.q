@@ -27,7 +27,17 @@ void finish();
 #endif /* __WEBGL__ */
 
 // vertex attributes
-enum {POS0, POS1, TEX0, TEX1, TEX2, TEX3, NOR, COL, ATTRIB_NUM};
+enum {
+  ATTRIB_POS0,
+  ATTRIB_POS1,
+  ATTRIB_TEX0,
+  ATTRIB_TEX1,
+  ATTRIB_TEX2,
+  ATTRIB_TEX3,
+  ATTRIB_NOR,
+  ATTRIB_COL,
+  ATTRIB_NUM
+};
 
 // track allocations
 void gentextures(s32 n, u32 *id);

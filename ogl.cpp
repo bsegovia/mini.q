@@ -527,9 +527,9 @@ static vec3i parseformat(const char *fmt) {
     immattrib(GL, int(*fmt-'0'), GL_FLOAT, offset);\
     offset += int(*fmt-'0')*int(sizeof(float));\
   break;
-  ATTRIB('p', POS0);
-  ATTRIB('t', TEX0);
-  ATTRIB('c', COL);
+  ATTRIB('p', ATTRIB_POS0);
+  ATTRIB('t', ATTRIB_TEX0);
+  ATTRIB('c', ATTRIB_COL);
 #undef ATTRIB
     }
     ++fmt;
@@ -753,14 +753,14 @@ void fixedshaderbuilder::setuniform(shadertype &s) {
 void fixedshaderbuilder::setvarying(shadertype &s) {
   auto &shader = static_cast<fixedshadertype&>(s);
   if (rules&FIXED_KEYFRAME) {
-    OGL(BindAttribLocation, shader.program, POS0, "vs_pos0");
-    OGL(BindAttribLocation, shader.program, POS1, "vs_pos1");
+    OGL(BindAttribLocation, shader.program, ATTRIB_POS0, "vs_pos0");
+    OGL(BindAttribLocation, shader.program, ATTRIB_POS1, "vs_pos1");
   } else
-    OGL(BindAttribLocation, shader.program, POS0, "vs_pos");
+    OGL(BindAttribLocation, shader.program, ATTRIB_POS0, "vs_pos");
   if (rules&FIXED_DIFFUSETEX)
-    OGL(BindAttribLocation, shader.program, TEX0, "vs_tex");
+    OGL(BindAttribLocation, shader.program, ATTRIB_TEX0, "vs_tex");
   if (rules&FIXED_COLOR)
-    OGL(BindAttribLocation, shader.program, COL, "vs_col");
+    OGL(BindAttribLocation, shader.program, ATTRIB_COL, "vs_col");
 #if !defined(__WEBGL__)
   OGL(BindFragDataLocation, shader.program, 0, "rt_col");
 #endif // __WEBGL__
