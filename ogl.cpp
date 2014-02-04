@@ -43,11 +43,11 @@ struct glext {
   void parse() {
     const char *exts = (const char *) ogl::GetString(GL_EXTENSIONS);
     for(;;) {
-      while(*exts == ' ') exts++;
-      if(!*exts) break;
+      while (*exts == ' ') exts++;
+      if (!*exts) break;
       const char *ext = exts;
-      while(*exts && *exts != ' ') exts++;
-      if(exts > ext) {
+      while (*exts && *exts != ' ') exts++;
+      if (exts > ext) {
         const auto str = NEWSTRING(ext, size_t(exts-ext));
         glexts.access(str,&str);
       }
@@ -81,7 +81,7 @@ static void startgl() {
 
   if (strstr(renderer, "Mesa") || strstr(version, "Mesa")) {
     mesa = true;
-    if(strstr(renderer, "Intel")) intel = true;
+    if (strstr(renderer, "Intel")) intel = true;
   } else if (strstr(vendor, "NVIDIA"))
     nvidia = true;
   else if (strstr(vendor, "ATI") || strstr(vendor, "Advanced Micro Devices"))
@@ -101,9 +101,9 @@ static void startgl() {
   con::out("ogl: glsl: %s", glslstr ? glslstr : "unknown");
 
   u32 glslmajorversion, glslminorversion;
-  if(glslstr && sscanf(glslstr, " %u.%u", &glslmajorversion, &glslminorversion) == 2)
+  if (glslstr && sscanf(glslstr, " %u.%u", &glslmajorversion, &glslminorversion) == 2)
     glslversion = glslmajorversion*100 + glslminorversion;
-  if(glslversion < 130)
+  if (glslversion < 130)
     sys::fatal("OpenGL: GLSL 1.30 or greater is required!");
 
 // load OGL 3.0 now
@@ -118,22 +118,24 @@ static void startgl() {
   GLint texsize = 0, texunits = 0, vtexunits = 0, cubetexsize = 0, drawbufs = 0;
   ogl::GetIntegerv(GL_MAX_TEXTURE_SIZE, &texsize);
   hwtexsize = texsize;
-  if(hwtexsize < 4096)
+  if (hwtexsize < 4096)
     sys::fatal("OpenGL: large texture support is required!");
   ogl::GetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &texunits);
   hwtexunits = texunits;
-  if(hwtexunits < 16)
+  if (hwtexunits < 16)
     sys::fatal("OpenGL: hardware does not support at least 16 texture units.");
   ogl::GetIntegerv(GL_MAX_VERTEX_TEXTURE_IMAGE_UNITS, &vtexunits);
   hwvtexunits = vtexunits;
-  if(hwvtexunits < 4)
+  if (hwvtexunits < 4)
     sys::fatal("OpenGL: hardware does not support at least 4 vertex texture units.");
   ogl::GetIntegerv(GL_MAX_CUBE_MAP_TEXTURE_SIZE, &cubetexsize);
   hwcubetexsize = cubetexsize;
   ogl::GetIntegerv(GL_MAX_DRAW_BUFFERS, &drawbufs);
-  if(drawbufs < 4) sys::fatal("OpenGL: hardware does not support at least 4 draw buffers.");
+  if (drawbufs < 4) sys::fatal("OpenGL: hardware does not support at least 4 draw buffers.");
 
-  if(ext.has("GL_EXT_timer_query") || ext.has("GL_ARB_timer_query")) {
+  if (!ext.has("GL_ARB_texture_rectangle"))
+    sys::fatal("OpenGL: GL_ARB_texture_rectangle extension is required");
+  if (ext.has("GL_EXT_timer_query") || ext.has("GL_ARB_timer_query")) {
     con::out("ogl: using timer query extension");
     hasTQ = true;
   }
@@ -295,16 +297,17 @@ u32 maketex(const char *fmt, ...) {
           case '1': target = GL_TEXTURE_1D; dimnum = 1; break;
           case '2': target = GL_TEXTURE_2D; dimnum = 2; break;
           case '3': target = GL_TEXTURE_3D; dimnum = 3; break;
+          case 'r': target = GL_TEXTURE_RECTANGLE; dimnum = 2; break;
         }
         ogl::bindtexture(target, id, 0);
         OGL(PixelStorei, GL_UNPACK_ALIGNMENT, 1);
         data = va_arg(args, void*);
         loopi(dimnum) dim[i] = va_arg(args, u32);
-        if (target == GL_TEXTURE_1D)
+        if (dimnum == 1)
           OGL(TexImage1D, target, 0, internalfmt, dim[0], 0, datafmt, type, data);
-        else if (target == GL_TEXTURE_2D)
+        else if (dimnum == 2)
           OGL(TexImage2D, target, 0, internalfmt, dim[0], dim[1], 0, datafmt, type, data);
-        else if (target == GL_TEXTURE_3D)
+        else if (dimnum == 3)
           OGL(TexImage3D, target, 0, internalfmt, dim[0], dim[1], dim[2], 0, datafmt, type, data);
       break;
       case 'G': OGL(GenerateMipmap, GL_TEXTURE_2D); break;
@@ -414,6 +417,10 @@ void bindbuffer(u32 target, u32 buffer) {
   }
 }
 
+// flush everything at draw time when activated
+static bool enabledflush = true;
+void immenableflush(bool v) {enabledflush = v;}
+
 // attributes in the vertex buffer
 static struct {int n, type, offset;} immattribs[ATTRIB_NUM];
 static int immvertexsz = 0;
@@ -437,13 +444,13 @@ static void imminit(void) {
   memset(immattribs, 0, sizeof(immattribs));
 }
 
-void immattrib(int attrib, int n, int type, int offset) {
+static void immattrib(int attrib, int n, int type, int offset) {
   immattribs[attrib].n = n;
   immattribs[attrib].type = type;
   immattribs[attrib].offset = offset;
 }
 
-void immvertexsize(int sz) { immvertexsz = sz; }
+static void immvertexsize(int sz) { immvertexsz = sz; }
 
 static void immsetallattribs(void) {
   loopi(ATTRIB_NUM) {
@@ -479,7 +486,7 @@ static bool immvertices(int sz, const void *vertices) {
 }
 
 void immdrawarrays(int mode, int first, int count) {
-  fixedflush();
+  if (enabledflush) fixedflush();
   drawarrays(mode,first,count);
 }
 
@@ -503,7 +510,7 @@ void immdrawelements(int mode, int count, int type, const void *indices, const v
   if (!immsetdata(ELEMENT_ARRAY_BUFFER, indexsz, indices)) return;
   if (!immvertices((maxindex+1)*immvertexsz, vertices)) return;
   immsetallattribs();
-  fixedflush();
+  if (enabledflush) fixedflush();
   const void *fake = (const void *) intptr_t(drawibooffset);
   drawelements(mode, count, type, fake);
 }
@@ -583,6 +590,7 @@ static const char header[] = {
   "#define PS_IN varying\n"
 #else
   "#version 130\n"
+  "#extension GL_ARB_texture_rectangle : enable\n"
   "#define IF_WEBGL(X)\n"
   "#define IF_NOT_WEBGL(X) X\n"
   "#define SWITCH_WEBGL(X,Y) Y\n"
@@ -624,6 +632,7 @@ static u32 loadprogram(const char *vertstr, const char *fragstr, const char *rul
 u32 shaderbuilder::compile(const char *vert, const char *frag) {
   u32 program;
   string rulestr;
+  rulestr[0] = 0;
   setrules(rulestr);
   if ((program = loadprogram(vert, frag, rulestr))==0) return 0;
   return program;

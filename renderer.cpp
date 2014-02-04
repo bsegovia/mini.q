@@ -15,14 +15,14 @@ namespace rr {
  -------------------------------------------------------------------------*/
 float VIRTH = 1.f;
 vec2f scrdim() { return vec2f(float(sys::scrw), float(sys::scrh)); }
-static void setphysicalhud() {
+static void setscreentransform() {
   const auto scr = scrdim();
   ogl::pushmode(ogl::MODELVIEW);
   ogl::identity();
   ogl::pushmode(ogl::PROJECTION);
   ogl::setortho(0.f, scr.x, 0.f, scr.y, -1.f, 1.f);
 }
-static void popmatrices() {
+static void popscreentransform() {
   ogl::popmode(ogl::PROJECTION);
   ogl::popmode(ogl::MODELVIEW);
 }
@@ -38,7 +38,7 @@ static void drawhud(int w, int h, int curfps) {
   ogl::enablev(GL_BLEND);
   ogl::disable(GL_DEPTH_TEST);
   OGL(BlendFunc, GL_ONE, GL_ONE);
-  setphysicalhud();
+  setscreentransform();
   text::displaywidth(text::fontdim().x);
   if (cmd) text::drawf("> %s_", vec2f(8.f, scr.y-50.f), cmd);
   con::render();
@@ -52,7 +52,7 @@ static void drawhud(int w, int h, int curfps) {
     textpos.y += fontdim.y;
     text::drawf("%i f/s", textpos, curfps);
   }
-  popmatrices();
+  popscreentransform();
   ogl::disable(GL_BLEND);
   ogl::enable(GL_DEPTH_TEST);
 }
@@ -94,6 +94,11 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
 /*--------------------------------------------------------------------------
  - deferred shading stuff
  -------------------------------------------------------------------------*/
+#define DEBUG_UNSPLIT 0
+#if DEBUG_UNSPLIT
+static u32 unsplittex;
+static u32 unsplitbuffer;
+#endif
 static u32 depthtex, nortex;
 static u32 gbuffer;
 
@@ -103,23 +108,65 @@ static struct deferredshadertype : ogl::shadertype {
   u32 fs_tex;
 } deferredshader;
 
+// can be reused by other shaders reusing the same skeleton as deferred shaders
+struct deferredshaderbuilder : ogl::shaderbuilder {
+  deferredshaderbuilder() :
+    shaderbuilder("data/shaders/deferred_vp.glsl",
+                  "data/shaders/deferred_fp.glsl",
+                  shaders::deferred_vp,
+                  shaders::deferred_fp) {}
+  virtual void setrules(string &str) {}
+  virtual void setuniform(ogl::shadertype &s) {
+  auto &shader = static_cast<deferredshadertype&>(s);
+    OGLR(shader.u_mvp, GetUniformLocation, shader.program, "u_mvp");
+    OGLR(shader.u_nortex, GetUniformLocation, shader.program, "u_nortex");
+    OGL(Uniform1i, shader.u_nortex, 0);
+  }
+  virtual void setvarying(ogl::shadertype &s) {
+    auto &shader = static_cast<deferredshadertype&>(s);
+    OGL(BindAttribLocation, shader.program, ogl::ATTRIB_POS0, "vs_pos");
+#if !defined(__WEBGL__)
+    OGL(BindFragDataLocation, shader.program, 0, "rt_col");
+#endif // __WEBGL__
+  }
+};
+
 static void initdeferred() {
-  nortex = ogl::maketex("TB I3 D3 B2 Wsr Wtr mn Mn", NULL, sys::scrw, sys::scrh);
-  depthtex = ogl::maketex("Tf Id Dd B2 Wsr Wtr mn Mn", NULL, sys::scrw, sys::scrh);
+  nortex = ogl::maketex("TB I3 D3 Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
+  depthtex = ogl::maketex("Tf Id Dd Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
   OGL(GenFramebuffers, 1, &gbuffer);
   OGL(BindFramebuffer, GL_FRAMEBUFFER, gbuffer);
-  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, nortex, 0);
-  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthtex, 0);
+  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, nortex, 0);
+  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_RECTANGLE, depthtex, 0);
   if (GL_FRAMEBUFFER_COMPLETE != ogl::CheckFramebufferStatus(GL_FRAMEBUFFER))
     sys::fatal("renderer: unable to init gbuffer framebuffer");
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
+  if (!NEWE(deferredshaderbuilder)->build(deferredshader, ogl::loadfromfile()))
+    ogl::shadererror(true, "deferred shader");
+
+#if DEBUG_UNSPLIT
+  unsplittex = ogl::maketex("TB I3 D3 Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
+  OGL(GenFramebuffers, 1, &unsplitbuffer);
+  OGL(BindFramebuffer, GL_FRAMEBUFFER, unsplitbuffer);
+  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, unsplittex, 0);
+  if (GL_FRAMEBUFFER_COMPLETE != ogl::CheckFramebufferStatus(GL_FRAMEBUFFER))
+    sys::fatal("renderer: unable to init debug unsplit framebuffer");
+  OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
+  // PAS BON
+  if (!NEWE(deferredshaderbuilder)->build(unsplitshader, ogl::loadfromfile()))
+    ogl::shadererror(true, "deferred shader");
+#endif
 }
 
 static void cleandeferred() {
-  OGL(DeleteTextures, 1, &nortex);
-  OGL(DeleteTextures, 1, &depthtex);
+  ogl::deletetextures(1, &nortex);
+  ogl::deletetextures(1, &depthtex);
   OGL(DeleteFramebuffers, 1, &gbuffer);
   ogl::destroyshader(deferredshader);
+#if DEBUG_UNSPLIT
+  ogl::deletetextures(1, &unsplittex);
+  OGL(DeleteFramebuffers, 1, &unsplitbuffer);
+#endif
 }
 
 /*--------------------------------------------------------------------------
@@ -158,8 +205,39 @@ static void makescene() {
   initialized_m = true;
   destroyscene(node);
 }
+struct screenquad {
+  static INLINE screenquad get2D() {
+    const screenquad qs = {
+      1.f, 1.f, float(sys::scrw), float(sys::scrh),
+      1.f, 0.f, float(sys::scrw),              0.f,
+      0.f, 1.f,              0.f, float(sys::scrh),
+      0.f, 0.f,              0.f,              0.f
+    };
+    return qs;
+  };
+  static INLINE screenquad getRect() {
+    const float w = float(sys::scrw), h = float(sys::scrh);
+    const screenquad qs = {w,h,w,0.f,0.f,h,0.f,0.f};
+    return qs;
+  };
+  float v[16];
+};
 
-static void transplayer(void) {
+static void deferred() {
+  ogl::bindshader(deferredshader);
+  ogl::bindtexture(GL_TEXTURE_RECTANGLE, nortex);
+  const auto &mv = ogl::matrix(ogl::MODELVIEW);
+  const auto &p  = ogl::matrix(ogl::PROJECTION);
+  const auto mvp = p*mv;
+  OGL(UniformMatrix4fv, deferredshader.u_mvp, 1, GL_FALSE, &mvp.vx.x);
+  ogl::disable(GL_CULL_FACE);
+  ogl::immenableflush(false);
+  ogl::immdraw("Sp2", 4, screenquad::getRect().v);
+  ogl::immenableflush(true);
+  ogl::enable(GL_CULL_FACE);
+}
+
+static void transplayer() {
   using namespace game;
   ogl::identity();
   ogl::rotate(player.ypr.z, vec3f(0.f,0.f,1.f));
@@ -207,19 +285,17 @@ void frame(int w, int h, int curfps) {
 
   // blit the normal buffer into screen
   if (useframebuffer) {
-    setphysicalhud();
+    setscreentransform();
+#if 0
     ogl::bindfixedshader(ogl::FIXED_DIFFUSETEX);
     ogl::bindtexture(GL_TEXTURE_2D, nortex);
     ogl::disable(GL_CULL_FACE);
-    const float quad[] = {
-      1.f, 1.f, float(sys::scrw), float(sys::scrh),
-      1.f, 0.f, float(sys::scrw),              0.f,
-      0.f, 1.f,              0.f, float(sys::scrh),
-      0.f, 0.f,              0.f,              0.f
-    };
-    ogl::immdraw("St2p2", 4, quad);
+    ogl::immdraw("St2p2", 4, screenquad::get2D().v);
     ogl::enable(GL_CULL_FACE);
-    popmatrices();
+#else
+    deferred();
+#endif
+    popscreentransform();
   } else
     drawhudgun(fovy, aspect, farplane);
   ogl::disable(GL_CULL_FACE);

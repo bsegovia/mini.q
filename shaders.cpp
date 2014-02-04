@@ -5,27 +5,46 @@
 #include "shaders.hpp"
 namespace q {
 namespace shaders {
-const char deferred_fp[] = {
-"uniform sampler2D u_nortex;\n"
-"PS_IN vec2 fs_tex;\n"
+const char debugunsplit_fp[] = {
+"uniform sampler2DRect u_nortex;\n"
 "IF_NOT_WEBGL(out vec4 rt_c);\n"
 
 "void main() {\n"
-"  vec4 nor = texture2D(u_nortex, fs_tex);\n"
+"  vec2 uv = gl_FragCoord.xy;\n"
+"  vec2 bufindex = uv / vec2(320.0,256.0);\n"
+"  vec2 pixindex = mod(uv, vec2(320.0,256.0));\n"
+"  vec2 interleaveduv = 4.0 * pixindex + bufindex;\n"
+"  vec4 nor = texture2DRect(u_nortex, uv);\n"
+"  //vec4 nor = texture2DRect(u_nortex, interleaveduv);\n"
+"  SWITCH_WEBGL(gl_FragColor = abs(nor), rt_c = abs(nor));\n"
+"}\n"
+};
+
+const char debugunsplit_vp[] = {
+"uniform mat4 u_mvp;\n"
+"VS_IN vec2 vs_pos;\n"
+"void main() {gl_Position = u_mvp*vec4(vs_pos,1.0,1.0);}\n"
+};
+
+const char deferred_fp[] = {
+"uniform sampler2DRect u_nortex;\n"
+"IF_NOT_WEBGL(out vec4 rt_c);\n"
+
+"void main() {\n"
+"  vec2 uv = gl_FragCoord.xy;\n"
+"  vec2 bufindex = uv / vec2(320.0,256.0);\n"
+"  vec2 pixindex = mod(uv, vec2(320.0,256.0));\n"
+"  vec2 interleaveduv = 4.0 * pixindex + bufindex;\n"
+"  vec4 nor = texture2DRect(u_nortex, uv);\n"
+"  //vec4 nor = texture2DRect(u_nortex, interleaveduv);\n"
 "  SWITCH_WEBGL(gl_FragColor = abs(nor), rt_c = abs(nor));\n"
 "}\n"
 };
 
 const char deferred_vp[] = {
 "uniform mat4 u_mvp;\n"
-"VS_IN vec3 vs_pos;\n"
-"VS_IN vec2 vs_tex;\n"
-"VS_OUT vec2 fs_tex;\n"
-
-"void main() {\n"
-"  fs_tex = vs_tex;\n"
-"  gl_Position = u_mvp*vec4(vs_pos,1.0);\n"
-"}\n"
+"VS_IN vec2 vs_pos;\n"
+"void main() {gl_Position = u_mvp*vec4(vs_pos,1.0,1.0);}\n"
 };
 
 const char fixed_fp[] = {
