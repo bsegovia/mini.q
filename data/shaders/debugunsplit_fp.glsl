@@ -10,7 +10,7 @@ void main() {
   vec2 pixindex = uv / vec2(SPLITNUM);
   vec2 unsplituv = pixindex + bufindex * u_subbufferdim;
   vec4 nor = texture2DRect(u_nortex, unsplituv);
-  SWITCH_WEBGL(gl_FragColor = abs(nor), rt_c = abs(nor));
+  SWITCH_WEBGL(gl_FragColor = nor, rt_c = nor);
 }
 //##};
 

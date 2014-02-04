@@ -17,7 +17,7 @@ const char debugunsplit_fp[] = {
 "  vec2 pixindex = uv / vec2(SPLITNUM);\n"
 "  vec2 unsplituv = pixindex + bufindex * u_subbufferdim;\n"
 "  vec4 nor = texture2DRect(u_nortex, unsplituv);\n"
-"  SWITCH_WEBGL(gl_FragColor = abs(nor), rt_c = abs(nor));\n"
+"  SWITCH_WEBGL(gl_FragColor = nor, rt_c = nor);\n"
 "}\n"
 };
 
@@ -29,17 +29,31 @@ const char debugunsplit_vp[] = {
 
 const char deferred_fp[] = {
 "uniform sampler2DRect u_nortex;\n"
+"uniform sampler2DRect u_depthtex;\n"
 "uniform vec2 u_subbufferdim;\n"
 "uniform vec2 u_rcpsubbufferdim;\n"
+"uniform mat4 u_invmvp;\n"
 "IF_NOT_WEBGL(out vec4 rt_c);\n"
+
+"const vec3 lightdir = normalize(vec3(1.0,-1.0,0.0));\n"
 
 "void main() {\n"
 "  vec2 uv = floor(gl_FragCoord.xy);\n"
 "  vec2 bufindex = uv * u_rcpsubbufferdim;\n"
 "  vec2 pixindex = mod(uv, u_subbufferdim);\n"
 "  vec2 splituv = SPLITNUM * pixindex + bufindex;\n"
-"  vec4 nor = texture2DRect(u_nortex, splituv);\n"
-"  SWITCH_WEBGL(gl_FragColor = abs(nor), rt_c = abs(nor));\n"
+
+"  vec3 nor = 2.0 * texture2DRect(u_nortex, splituv).xyz - 1.0;\n"
+"  float depth = texture2DRect(u_depthtex, splituv).r;\n"
+"  vec2 screenpos = 2.0 * splituv / vec2(1280.0,1024.0) - 1.0;\n"
+
+"  vec4 posw = u_invmvp * vec4(screenpos, depth, 1.0);\n"
+"  vec3 pos = posw.xyz / posw.w;\n"
+"  float col = max(dot(nor,lightdir),0.0);\n"
+"  //SWITCH_WEBGL(gl_FragColor, rt_c) = vec4(col,col,col,1.0);\n"
+"  SWITCH_WEBGL(gl_FragColor, rt_c) = vec4(depth,depth,depth,1.0);\n"
+"  //SWITCH_WEBGL(gl_FragColor, rt_c) = vec4(pos/30.0,1.0);\n"
+"//  SWITCH_WEBGL(gl_FragColor = abs(2.0*nor-1.0), rt_c = abs(2.0*nor-1.0));\n"
 "}\n"
 };
 

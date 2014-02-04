@@ -111,7 +111,7 @@ struct simpleshaderbuilder : ogl::shaderbuilder {
     sprintf_s(str)("#define SPLITNUM %f\n", float(SPLITNUM));
   }
   virtual void setuniform(ogl::shadertype &s) {
-  auto &shader = static_cast<simpleshadertype&>(s);
+    auto &shader = static_cast<simpleshadertype&>(s);
     OGLR(shader.u_mvp, GetUniformLocation, shader.program, "u_mvp");
     OGLR(shader.u_subbufferdim, GetUniformLocation, shader.program, "u_subbufferdim");
     OGLR(shader.u_rcpsubbufferdim, GetUniformLocation, shader.program, "u_rcpsubbufferdim");
@@ -127,12 +127,24 @@ struct simpleshaderbuilder : ogl::shaderbuilder {
   }
 };
 
+struct deferredshadertype : simpleshadertype {
+  u32 u_depthtex;
+  u32 u_invmvp;
+};
+
 struct deferredshaderbuilder : simpleshaderbuilder {
   deferredshaderbuilder() : simpleshaderbuilder(BUILDER_ARGS(deferred)) {}
+  virtual void setuniform(ogl::shadertype &s) {
+    auto &shader = static_cast<deferredshadertype&>(s);
+    simpleshaderbuilder::setuniform(s);
+    OGLR(shader.u_invmvp, GetUniformLocation, shader.program, "u_invmvp");
+    OGLR(shader.u_depthtex, GetUniformLocation, shader.program, "u_depthtex");
+    OGL(Uniform1i, shader.u_depthtex, 1);
+  }
 };
 static u32 depthtex, nortex;
 static u32 gbuffer;
-static simpleshadertype deferredshader;
+static deferredshadertype deferredshader;
 
 #if DEBUG_UNSPLIT
 static u32 unsplittex;
@@ -235,10 +247,11 @@ struct screenquad {
   float v[16];
 };
 
-static void deferred() {
+static void deferred(const mat4x4f &worldmvp) {
   const auto &mv = ogl::matrix(ogl::MODELVIEW);
   const auto &p  = ogl::matrix(ogl::PROJECTION);
   const auto mvp = p*mv;
+  const auto invmvp = worldmvp.inverse();
   ogl::disable(GL_CULL_FACE);
   ogl::immenableflush(false);
 
@@ -248,8 +261,10 @@ static void deferred() {
   const vec2f subbufferdim(float(sys::scrw/SPLITNUM), float(sys::scrh/SPLITNUM));
   const vec2f rcpsubbufferdim = rcp(subbufferdim);
   ogl::bindshader(deferredshader);
-  ogl::bindtexture(GL_TEXTURE_RECTANGLE, nortex);
+  ogl::bindtexture(GL_TEXTURE_RECTANGLE, nortex, 0);
+  ogl::bindtexture(GL_TEXTURE_RECTANGLE, depthtex, 1);
   OGL(UniformMatrix4fv, deferredshader.u_mvp, 1, GL_FALSE, &mvp.vx.x);
+  OGL(UniformMatrix4fv, deferredshader.u_invmvp, 1, GL_FALSE, &invmvp.vx.x);
   OGL(Uniform2fv, deferredshader.u_subbufferdim, 1, &subbufferdim.x);
   OGL(Uniform2fv, deferredshader.u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
   ogl::immdraw("Sp2", 4, screenquad::getRect().v);
@@ -313,11 +328,14 @@ void frame(int w, int h, int curfps) {
   }
   if (useframebuffer)
     OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
+  const auto &mv = ogl::matrix(ogl::MODELVIEW);
+  const auto &p  = ogl::matrix(ogl::PROJECTION);
+  const auto worldmvp = p*mv;
 
   // blit the normal buffer into screen
   if (useframebuffer) {
     setscreentransform();
-    deferred();
+    deferred(worldmvp);
     popscreentransform();
   } else
     drawhudgun(fovy, aspect, farplane);

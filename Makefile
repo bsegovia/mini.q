@@ -16,6 +16,7 @@ OBJS=\
   game.o\
   iso.o\
   md2.o\
+  math.o\
   mini.q.o\
   net.o\
   ogl.o\

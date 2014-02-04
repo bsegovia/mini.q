@@ -313,7 +313,7 @@ struct mesh_processor {
       const auto nor = trinormalu(idx);
       loopj(3) n[unpackidx(tri[j])] += nor;
     }
-    loopi(m_vertnum) n[m_first_vert+i] = abs(normalize(n[m_first_vert+i]));
+    loopi(m_vertnum) n[m_first_vert+i] = 0.5f*normalize(n[m_first_vert+i])+0.5f;
     //loopi(m_vertnum) n[m_first_vert+i] = vec3f(1.f,0.f,0.f);
   }
 
