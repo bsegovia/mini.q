@@ -161,7 +161,7 @@ TINLINE v2& op S##= (v2& a, const T &b) {a.x S##= b; a.y S##= b; return a;}
 OP(+) OP(/) OP(*) OP(-) OP(<<) OP(>>) OP(&) OP(|) OP(^)
 #undef OP
 
-#define OP(S) TINLINE v2 S (v2arg a) {return v2(S(a.x),S(a.y),S(a.z));}
+#define OP(S) TINLINE v2 S (v2arg a) {return v2(S(a.x),S(a.y));}
 OP(cos) OP(sin) OP(tan) OP(acos) OP(asin) OP(atan) OP(sinh) OP(cosh) OP(tanh)
 OP(abs) OP(rcp) OP(sqrt) OP(rsqrt) OP(floor) OP(ceil) OP(log2) OP(log10)
 #undef OP

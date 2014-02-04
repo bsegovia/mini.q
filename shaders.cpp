@@ -7,15 +7,16 @@ namespace q {
 namespace shaders {
 const char debugunsplit_fp[] = {
 "uniform sampler2DRect u_nortex;\n"
+"uniform vec2 u_subbufferdim;\n"
+"uniform vec2 u_rcpsubbufferdim;\n"
 "IF_NOT_WEBGL(out vec4 rt_c);\n"
 
 "void main() {\n"
-"  vec2 uv = gl_FragCoord.xy;\n"
-"  vec2 bufindex = uv / vec2(320.0,256.0);\n"
-"  vec2 pixindex = mod(uv, vec2(320.0,256.0));\n"
-"  vec2 interleaveduv = 4.0 * pixindex + bufindex;\n"
-"  vec4 nor = texture2DRect(u_nortex, uv);\n"
-"  //vec4 nor = texture2DRect(u_nortex, interleaveduv);\n"
+"  vec2 uv = floor(gl_FragCoord.xy);\n"
+"  vec2 bufindex = mod(uv, SPLITNUM);\n"
+"  vec2 pixindex = uv / vec2(SPLITNUM);\n"
+"  vec2 unsplituv = pixindex + bufindex * u_subbufferdim;\n"
+"  vec4 nor = texture2DRect(u_nortex, unsplituv);\n"
 "  SWITCH_WEBGL(gl_FragColor = abs(nor), rt_c = abs(nor));\n"
 "}\n"
 };
@@ -28,15 +29,16 @@ const char debugunsplit_vp[] = {
 
 const char deferred_fp[] = {
 "uniform sampler2DRect u_nortex;\n"
+"uniform vec2 u_subbufferdim;\n"
+"uniform vec2 u_rcpsubbufferdim;\n"
 "IF_NOT_WEBGL(out vec4 rt_c);\n"
 
 "void main() {\n"
-"  vec2 uv = gl_FragCoord.xy;\n"
-"  vec2 bufindex = uv / vec2(320.0,256.0);\n"
-"  vec2 pixindex = mod(uv, vec2(320.0,256.0));\n"
-"  vec2 interleaveduv = 4.0 * pixindex + bufindex;\n"
-"  vec4 nor = texture2DRect(u_nortex, uv);\n"
-"  //vec4 nor = texture2DRect(u_nortex, interleaveduv);\n"
+"  vec2 uv = floor(gl_FragCoord.xy);\n"
+"  vec2 bufindex = uv * u_rcpsubbufferdim;\n"
+"  vec2 pixindex = mod(uv, u_subbufferdim);\n"
+"  vec2 splituv = SPLITNUM * pixindex + bufindex;\n"
+"  vec4 nor = texture2DRect(u_nortex, splituv);\n"
 "  SWITCH_WEBGL(gl_FragColor = abs(nor), rt_c = abs(nor));\n"
 "}\n"
 };

@@ -777,11 +777,7 @@ void fixedshaderbuilder::setvarying(shadertype &s) {
 
 static void buildfixedshaders(bool fatalerr) {
   loopi(fixedshadernum) {
-    auto b = NEW(fixedshaderbuilder,
-      "data/shaders/fixed_vp.glsl",
-      "data/shaders/fixed_fp.glsl",
-      shaders::fixed_vp,
-      shaders::fixed_fp, i);
+    auto b = NEW(fixedshaderbuilder, BUILDER_ARGS(fixed), i);
     if (!b->build(shaders[i], shaderfromfile))
       shadererror(fatalerr, "fixed shader");
   }

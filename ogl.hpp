@@ -200,6 +200,12 @@ private:
   bool buildprogram(shadertype &s, const char *vert, const char *frag);
   bool buildprogramfromfile(shadertype &s);
 };
+#define BUILDER_ARGS(X) \
+"data/shaders/" #X "_vp.glsl", \
+"data/shaders/" #X "_fp.glsl", \
+shaders:: X##_vp, \
+shaders:: X##_fp
+
 void shadererror(bool fatalerr, const char *msg);
 bool loadfromfile();
 
