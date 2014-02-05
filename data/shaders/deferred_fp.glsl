@@ -16,9 +16,8 @@ void main() {
 
   vec3 nor = 2.0 * texture2DRect(u_nortex, splituv).xyz - 1.0;
   float depth = texture2DRect(u_depthtex, splituv).r;
-  vec2 screenpos = 2.0 * splituv / vec2(1280.0,1024.0) - 1.0;
 
-  vec4 posw = u_invmvp * vec4(screenpos, depth, 1.0);
+  vec4 posw = u_invmvp * vec4(splituv, depth, 1.0);
   vec3 pos = posw.xyz / posw.w;
   float col = max(dot(nor,lightdir),0.0);
   //SWITCH_WEBGL(gl_FragColor, rt_c) = vec4(col,col,col,1.0);

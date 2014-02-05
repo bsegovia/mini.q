@@ -45,14 +45,13 @@ const char deferred_fp[] = {
 
 "  vec3 nor = 2.0 * texture2DRect(u_nortex, splituv).xyz - 1.0;\n"
 "  float depth = texture2DRect(u_depthtex, splituv).r;\n"
-"  vec2 screenpos = 2.0 * splituv / vec2(1280.0,1024.0) - 1.0;\n"
 
-"  vec4 posw = u_invmvp * vec4(screenpos, depth, 1.0);\n"
+"  vec4 posw = u_invmvp * vec4(splituv, depth, 1.0);\n"
 "  vec3 pos = posw.xyz / posw.w;\n"
 "  float col = max(dot(nor,lightdir),0.0);\n"
 "  //SWITCH_WEBGL(gl_FragColor, rt_c) = vec4(col,col,col,1.0);\n"
-"  SWITCH_WEBGL(gl_FragColor, rt_c) = vec4(depth,depth,depth,1.0);\n"
-"  //SWITCH_WEBGL(gl_FragColor, rt_c) = vec4(pos/30.0,1.0);\n"
+"  //SWITCH_WEBGL(gl_FragColor, rt_c) = vec4(depth,depth,depth,1.0);\n"
+"  SWITCH_WEBGL(gl_FragColor, rt_c) = vec4(pos/30.0,1.0);\n"
 "//  SWITCH_WEBGL(gl_FragColor = abs(2.0*nor-1.0), rt_c = abs(2.0*nor-1.0));\n"
 "}\n"
 };
