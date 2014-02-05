@@ -251,12 +251,13 @@ static void deferred(const mat4x4f &worldmvp) {
   const auto &mv = ogl::matrix(ogl::MODELVIEW);
   const auto &p  = ogl::matrix(ogl::PROJECTION);
   const auto mvp = p*mv;
-  auto invmvp = worldmvp.inverse();
-  invmvp = invmvp * mat4x4f(
-      vec4f(2.f/1280.f,0.f,0.f,0.f),
-      vec4f(0.f,2.f/1024.f,0.f,0.f),
-      vec4f(0.f,0.f,1.f,0.f),
-      vec4f(-1.f,-1.f,0.f,1.f));
+  const auto invmvp = worldmvp.inverse();
+  const auto w = float(sys::scrw), h = float(sys::scrh);
+  const auto depthtr = invmvp * mat4x4f(vec4f(2.f/w,0.f,  0.f,0.f),
+                                        vec4f(0.f,  2.f/h,0.f,0.f),
+                                        vec4f(0.f,  0.f,  2.f,0.f),
+                                        vec4f(-1.f,-1.f, -1.f,1.f));
+  const auto m = invmvp * worldmvp;
   ogl::disable(GL_CULL_FACE);
   ogl::immenableflush(false);
 
@@ -269,7 +270,8 @@ static void deferred(const mat4x4f &worldmvp) {
   ogl::bindtexture(GL_TEXTURE_RECTANGLE, nortex, 0);
   ogl::bindtexture(GL_TEXTURE_RECTANGLE, depthtex, 1);
   OGL(UniformMatrix4fv, deferredshader.u_mvp, 1, GL_FALSE, &mvp.vx.x);
-  OGL(UniformMatrix4fv, deferredshader.u_invmvp, 1, GL_FALSE, &invmvp.vx.x);
+  OGL(UniformMatrix4fv, deferredshader.u_invmvp, 1, GL_FALSE, &depthtr.vx.x);
+  //OGL(UniformMatrix4fv, deferredshader.u_invmvp, 1, GL_FALSE, &invmvp.vx.x);
   OGL(Uniform2fv, deferredshader.u_subbufferdim, 1, &subbufferdim.x);
   OGL(Uniform2fv, deferredshader.u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
   ogl::immdraw("Sp2", 4, screenquad::getRect().v);
