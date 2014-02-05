@@ -130,6 +130,7 @@ struct simpleshaderbuilder : ogl::shaderbuilder {
 struct deferredshadertype : simpleshadertype {
   u32 u_depthtex;
   u32 u_invmvp;
+  u32 u_lightpos, u_lightpow;
 };
 
 struct deferredshaderbuilder : simpleshaderbuilder {
@@ -139,6 +140,8 @@ struct deferredshaderbuilder : simpleshaderbuilder {
     simpleshaderbuilder::setuniform(s);
     OGLR(shader.u_invmvp, GetUniformLocation, shader.program, "u_invmvp");
     OGLR(shader.u_depthtex, GetUniformLocation, shader.program, "u_depthtex");
+    OGLR(shader.u_lightpos, GetUniformLocation, shader.program, "u_lightpos");
+    OGLR(shader.u_lightpow, GetUniformLocation, shader.program, "u_lightpow");
     OGL(Uniform1i, shader.u_depthtex, 1);
   }
 };
@@ -229,22 +232,61 @@ static void makescene() {
   destroyscene(node);
 }
 struct screenquad {
-  static INLINE screenquad get2D() {
-    const float w = float(sys::scrw), h = float(sys::scrh);
-    const screenquad qs = {
-      1.f, 1.f, w, h,
-      1.f, 0.f, w, 0.f,
-      0.f, 1.f, 0.f, h,
-      0.f, 0.f, 0.f, 0.f
-    };
-    return qs;
-  };
-  static INLINE screenquad getRect() {
-    const float w = float(sys::scrw), h = float(sys::scrh);
+  static INLINE screenquad get() {
+    const auto w = float(sys::scrw), h = float(sys::scrh);
     const screenquad qs = {w,h,w,0.f,0.f,h,0.f,0.f};
     return qs;
   };
+  static INLINE screenquad getsubbuffer(vec2i xy) {
+    const auto w = float(sys::scrw/SPLITNUM);
+    const auto h = float(sys::scrh/SPLITNUM);
+    const auto sw = w*xy.x, sh = h*xy.y;
+    const auto ew = sw+w, eh = sh+h;
+    const screenquad qs = {ew,eh,ew,sh,sw,eh,sw,sh};
+    return qs;
+  }
   float v[16];
+};
+
+FVAR(lightscale, 0.f, 5000.f, 10000.f);
+static const vec3f lightpos[] = {
+  vec3f(8.f,20.f,8.f),
+  vec3f(10.f,20.f,8.f),
+  vec3f(12.f,20.f,8.f),
+  vec3f(14.f,20.f,8.f),
+  vec3f(6.f,20.f,8.f),
+  vec3f(16.f,20.f,4.f),
+  vec3f(16.f,21.f,7.f),
+  vec3f(16.f,22.f,9.f),
+  vec3f(8.f,20.f,9.f),
+  vec3f(10.f,20.f,10.f),
+  vec3f(12.f,20.f,12.f),
+  vec3f(14.f,20.f,13.f),
+  vec3f(6.f,20.f,14.f),
+  vec3f(16.f,20.f,15.f),
+  vec3f(15.f,21.f,7.f),
+  vec3f(16.f,22.f,10.f)
+};
+
+static const vec3f lightpow[] = {
+  vec3f(1.f,0.f,0.f),
+  vec3f(0.f,1.f,0.f),
+  vec3f(1.f,0.f,1.f),
+  vec3f(1.f,1.f,1.f),
+  vec3f(1.f,0.f,1.f),
+  vec3f(0.f,1.f,1.f),
+  vec3f(1.f,1.f,0.f),
+  vec3f(0.f,1.f,1.f),
+  vec3f(0.f,1.f,1.f),
+  vec3f(1.f,0.f,0.f),
+  vec3f(0.f,1.f,0.f),
+  vec3f(1.f,0.f,1.f),
+  vec3f(1.f,1.f,1.f),
+  vec3f(1.f,0.f,1.f),
+  vec3f(0.f,1.f,1.f),
+  vec3f(1.f,1.f,0.f),
+  vec3f(0.f,1.f,1.f),
+  vec3f(0.f,1.f,1.f)
 };
 
 static void deferred(const mat4x4f &worldmvp) {
@@ -257,13 +299,13 @@ static void deferred(const mat4x4f &worldmvp) {
                                         vec4f(0.f,  2.f/h,0.f,0.f),
                                         vec4f(0.f,  0.f,  2.f,0.f),
                                         vec4f(-1.f,-1.f, -1.f,1.f));
-  const auto m = invmvp * worldmvp;
   ogl::disable(GL_CULL_FACE);
   ogl::immenableflush(false);
 
 #if DEBUG_UNSPLIT
   OGL(BindFramebuffer, GL_FRAMEBUFFER, unsplitbuffer);
 #endif
+
   const vec2f subbufferdim(float(sys::scrw/SPLITNUM), float(sys::scrh/SPLITNUM));
   const vec2f rcpsubbufferdim = rcp(subbufferdim);
   ogl::bindshader(deferredshader);
@@ -271,10 +313,17 @@ static void deferred(const mat4x4f &worldmvp) {
   ogl::bindtexture(GL_TEXTURE_RECTANGLE, depthtex, 1);
   OGL(UniformMatrix4fv, deferredshader.u_mvp, 1, GL_FALSE, &mvp.vx.x);
   OGL(UniformMatrix4fv, deferredshader.u_invmvp, 1, GL_FALSE, &depthtr.vx.x);
-  //OGL(UniformMatrix4fv, deferredshader.u_invmvp, 1, GL_FALSE, &invmvp.vx.x);
   OGL(Uniform2fv, deferredshader.u_subbufferdim, 1, &subbufferdim.x);
   OGL(Uniform2fv, deferredshader.u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
-  ogl::immdraw("Sp2", 4, screenquad::getRect().v);
+
+
+  loopi(SPLITNUM) loopj(SPLITNUM) {
+    const auto idx = i+SPLITNUM*j;
+    const vec3f lpow = lightscale * lightpow[idx];
+    OGL(Uniform3fv, deferredshader.u_lightpos, 1, &lightpos[idx].x);
+    OGL(Uniform3fv, deferredshader.u_lightpow, 1, &lpow.x);
+    ogl::immdraw("Sp2", 4, screenquad::getsubbuffer(vec2i(i,j)).v);
+  }
 
 #if DEBUG_UNSPLIT
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
@@ -283,7 +332,7 @@ static void deferred(const mat4x4f &worldmvp) {
   OGL(UniformMatrix4fv, unsplitshader.u_mvp, 1, GL_FALSE, &mvp.vx.x);
   OGL(Uniform2fv, unsplitshader.u_subbufferdim, 1, &subbufferdim.x);
   OGL(Uniform2fv, unsplitshader.u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
-  ogl::immdraw("Sp2", 4, screenquad::getRect().v);
+  ogl::immdraw("Sp2", 4, screenquad::get().v);
 #endif
 
   ogl::immenableflush(true);
@@ -324,9 +373,11 @@ void frame(int w, int h, int curfps) {
     OGL(BindFramebuffer, GL_FRAMEBUFFER, gbuffer);
   OGL(ClearColor, 0.f, 0.f, 0.f, 1.f);
   OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+#if 0
   ogl::bindfixedshader(ogl::FIXED_DIFFUSETEX);
   ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_CHECKBOARD));
   ogl::immdraw("St2p3", 4, ground);
+#endif
   if (vertnum != 0) {
     if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_LINE);
     ogl::bindfixedshader(ogl::FIXED_COLOR);

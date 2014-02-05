@@ -144,8 +144,12 @@ static node *makescene0() {
     arcade = NEW(D, *arcade, *NEW(translation, pos, *hole));
   }
 
+  // add a ground box
+  const auto groundbox = NEW(size, 4.f, *NEW(box, vec3f(50.f, 4.f, 50.f)));
+  const auto ground = NEW(translation, vec3f(0.f,-3.f,0.f), *groundbox);
+
   // just make a union of them
-  return NEW(U, *scene0, *arcade);
+  return NEW(U, *ground, *NEW(U, *scene0, *arcade));
 }
 #else
 static node *makescene0() {

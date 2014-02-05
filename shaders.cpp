@@ -35,32 +35,24 @@ const char deferred_fp[] = {
 "uniform mat4 u_invmvp;\n"
 "IF_NOT_WEBGL(out vec4 rt_c);\n"
 
-"const vec3 lightdir = normalize(vec3(1.0,-1.0,0.0));\n"
-"const vec3 lightpos = vec3(4.f,4.f,4.f);\n"
-"const vec3 lightpow = vec3(100.f,0.f,0.f);\n"
+"uniform vec3 u_lightpos;// = vec3(4.f,4.f,4.f);\n"
+"uniform vec3 u_lightpow;// = vec3(100.f,0.f,0.f);\n"
 
 "void main() {\n"
 "  vec2 uv = floor(gl_FragCoord.xy);\n"
 "  vec2 bufindex = uv * u_rcpsubbufferdim;\n"
 "  vec2 pixindex = mod(uv, u_subbufferdim);\n"
 "  vec2 splituv = SPLITNUM * pixindex + bufindex;\n"
-
 "  vec3 nor = normalize(2.0*texture2DRect(u_nortex, splituv).xyz-1.0);\n"
 "  float depth = texture2DRect(u_depthtex, splituv).r;\n"
 "  vec4 posw = u_invmvp * vec4(splituv, depth, 1.0);\n"
-"  //vec2 screenpos = 2.0*(splituv/vec2(1280.0,1024.0))-1.0;\n"
-"  //vec4 posw = u_invmvp * vec4(screenpos, 2.0*depth-1.0, 1.0);\n"
 "  vec3 pos = posw.xyz / posw.w;\n"
 
-"  vec3 ldir = lightpos-pos;\n"
+"  vec3 ldir = u_lightpos-pos;\n"
 "  float llen2 = dot(ldir,ldir);\n"
-"  vec3 lit = lightpow * max(dot(nor,ldir),0.0) / (llen2*llen2);\n"
-"  vec3 col = lit;\n"
-"  //SWITCH_WEBGL(gl_FragColor, rt_c) = vec4(col,col,col,1.0);\n"
-"  //SWITCH_WEBGL(gl_FragColor, rt_c) = vec4(depth,depth,depth,1.0);\n"
-"  //SWITCH_WEBGL(gl_FragColor, rt_c) = vec4(mod(pos,2.0),1.0);\n"
-"  SWITCH_WEBGL(gl_FragColor, rt_c) = vec4(col,1.0);\n"
-"//  SWITCH_WEBGL(gl_FragColor = abs(2.0*nor-1.0), rt_c = abs(2.0*nor-1.0));\n"
+"  vec3 lit = u_lightpow * max(dot(nor,ldir),0.0) / (llen2*llen2);\n"
+"  SWITCH_WEBGL(gl_FragColor, rt_c) = vec4(lit,1.0);\n"
+"  //SWITCH_WEBGL(gl_FragColor, rt_c) = vec4(nor,1.0);\n"
 "}\n"
 };
 
