@@ -39,6 +39,10 @@ SHADERS=data/shaders/fixed_vp.glsl\
         data/shaders/fixed_fp.glsl\
         data/shaders/deferred_vp.glsl\
         data/shaders/deferred_fp.glsl\
+        data/shaders/debugunsplit_vp.glsl\
+        data/shaders/debugunsplit_fp.glsl\
+        data/shaders/forward_vp.glsl\
+        data/shaders/forward_fp.glsl\
         data/shaders/font_fp.glsl
 
 ## build embedded shader source

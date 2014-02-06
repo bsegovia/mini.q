@@ -5,11 +5,12 @@
 #include "shaders.hpp"
 namespace q {
 namespace shaders {
+#if DEBUG_UNSPLIT
 const char debugunsplit_fp[] = {
 "uniform sampler2DRect u_nortex;\n"
 "uniform vec2 u_subbufferdim;\n"
 "uniform vec2 u_rcpsubbufferdim;\n"
-"IF_NOT_WEBGL(out vec4 rt_c);\n"
+"IF_NOT_WEBGL(out vec4 rt_col);\n"
 
 "void main() {\n"
 "  vec2 uv = floor(gl_FragCoord.xy);\n"
@@ -17,15 +18,18 @@ const char debugunsplit_fp[] = {
 "  vec2 pixindex = uv / vec2(SPLITNUM);\n"
 "  vec2 unsplituv = pixindex + bufindex * u_subbufferdim;\n"
 "  vec4 nor = texture2DRect(u_nortex, unsplituv);\n"
-"  SWITCH_WEBGL(gl_FragColor = nor, rt_c = nor);\n"
+"  SWITCH_WEBGL(gl_FragColor, rt_col) = nor;\n"
 "}\n"
 };
+#endif
 
+#if DEBUG_UNSPLIT
 const char debugunsplit_vp[] = {
 "uniform mat4 u_mvp;\n"
 "VS_IN vec2 vs_pos;\n"
 "void main() {gl_Position = u_mvp*vec4(vs_pos,1.0,1.0);}\n"
 };
+#endif
 
 const char deferred_fp[] = {
 "uniform sampler2DRect u_nortex;\n"
@@ -33,10 +37,9 @@ const char deferred_fp[] = {
 "uniform vec2 u_subbufferdim;\n"
 "uniform vec2 u_rcpsubbufferdim;\n"
 "uniform mat4 u_invmvp;\n"
-"IF_NOT_WEBGL(out vec4 rt_c);\n"
-
-"uniform vec3 u_lightpos;// = vec3(4.f,4.f,4.f);\n"
-"uniform vec3 u_lightpow;// = vec3(100.f,0.f,0.f);\n"
+"uniform vec3 u_lightpos;\n"
+"uniform vec3 u_lightpow;\n"
+"IF_NOT_WEBGL(out vec4 rt_col);\n"
 
 "void main() {\n"
 "  vec2 uv = floor(gl_FragCoord.xy);\n"
@@ -47,12 +50,10 @@ const char deferred_fp[] = {
 "  float depth = texture2DRect(u_depthtex, splituv).r;\n"
 "  vec4 posw = u_invmvp * vec4(splituv, depth, 1.0);\n"
 "  vec3 pos = posw.xyz / posw.w;\n"
-
 "  vec3 ldir = u_lightpos-pos;\n"
 "  float llen2 = dot(ldir,ldir);\n"
 "  vec3 lit = u_lightpow * max(dot(nor,ldir),0.0) / (llen2*llen2);\n"
-"  SWITCH_WEBGL(gl_FragColor, rt_c) = vec4(lit,1.0);\n"
-"  //SWITCH_WEBGL(gl_FragColor, rt_c) = vec4(nor,1.0);\n"
+"  SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(lit,1.0);\n"
 "}\n"
 };
 
@@ -70,7 +71,7 @@ const char fixed_fp[] = {
 "#if USE_COL\n"
 "PS_IN vec4 fs_col;\n"
 "#endif\n"
-"IF_NOT_WEBGL(out vec4 rt_c);\n"
+"IF_NOT_WEBGL(out vec4 rt_col);\n"
 
 "void main() {\n"
 "  vec4 col;\n"
@@ -85,8 +86,7 @@ const char fixed_fp[] = {
 "#else\n"
 "  col = incol;\n"
 "#endif\n"
-"  SWITCH_WEBGL(gl_FragColor = col, rt_c = col);\n"
-"  // SWITCH_WEBGL(gl_FragColor = col, rt_c = vec4(1.0,0.0,0.0,0.0));\n"
+"  SWITCH_WEBGL(gl_FragColor, rt_col) = col;\n"
 "}\n"
 };
 
@@ -127,7 +127,7 @@ const char font_fp[] = {
 "uniform float u_outline_width;\n"
 "uniform vec4 u_outline_color;\n"
 "PS_IN vec2 fs_tex;\n"
-"IF_NOT_WEBGL(out vec4 rt_c);\n"
+"IF_NOT_WEBGL(out vec4 rt_col);\n"
 
 "#define RSQ2 0.7071078\n"
 
@@ -171,7 +171,36 @@ const char font_fp[] = {
 "  float o = u_font_thickness;\n"
 "  vec4 col = vec4(1.0-smoothstep(no-0.1, no, dist));\n"
 "  col += u_outline_color * (1.0-smoothstep(o-0.1, o, dist));\n"
-"  SWITCH_WEBGL(gl_FragColor = col, rt_c = col);\n"
+"  SWITCH_WEBGL(gl_FragColor, rt_col) = col;\n"
+"}\n"
+};
+
+const char forward_fp[] = {
+"uniform sampler2D u_lighttex;\n"
+"uniform vec2 u_subbufferdim;\n"
+"uniform vec2 u_rcpsubbufferdim;\n"
+"PS_IN vec3 fs_nor;\n"
+"IF_NOT_WEBGL(out vec4 rt_col);\n"
+
+"void main() {\n"
+"  vec2 uv = floor(gl_FragCoord.xy);\n"
+"  vec2 bufindex = mod(uv, SPLITNUM);\n"
+"  vec2 pixindex = uv / vec2(SPLITNUM);\n"
+"  vec2 unsplituv = pixindex + bufindex * u_subbufferdim;\n"
+"  vec4 col = texture2D(u_lighttex, unsplituv);\n"
+"  SWITCH_WEBGL(gl_FragColor, rt_col) = col;\n"
+"}\n"
+};
+
+const char forward_vp[] = {
+"uniform mat4 u_mvp;\n"
+"VS_IN vec3 vs_pos;\n"
+"VS_IN vec3 vs_nor;\n"
+"VS_OUT vec3 fs_nor;\n"
+
+"void main() {\n"
+"  fs_nor = vs_nor;\n"
+"  gl_Position = u_mvp*vec4(vs_pos,1.0);\n"
 "}\n"
 };
 

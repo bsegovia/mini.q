@@ -5,7 +5,7 @@ uniform float u_font_thickness;
 uniform float u_outline_width;
 uniform vec4 u_outline_color;
 PS_IN vec2 fs_tex;
-IF_NOT_WEBGL(out vec4 rt_c);
+IF_NOT_WEBGL(out vec4 rt_col);
 
 #define RSQ2 0.7071078
 
@@ -49,7 +49,7 @@ void main() {
   float o = u_font_thickness;
   vec4 col = vec4(1.0-smoothstep(no-0.1, no, dist));
   col += u_outline_color * (1.0-smoothstep(o-0.1, o, dist));
-  SWITCH_WEBGL(gl_FragColor = col, rt_c = col);
+  SWITCH_WEBGL(gl_FragColor, rt_col) = col;
 }
 //##};
 

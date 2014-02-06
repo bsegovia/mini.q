@@ -6,7 +6,7 @@ PS_IN vec2 fs_tex;
 #if USE_COL
 PS_IN vec4 fs_col;
 #endif
-IF_NOT_WEBGL(out vec4 rt_c);
+IF_NOT_WEBGL(out vec4 rt_col);
 
 void main() {
   vec4 col;
@@ -21,8 +21,7 @@ void main() {
 #else
   col = incol;
 #endif
-  SWITCH_WEBGL(gl_FragColor = col, rt_c = col);
-  // SWITCH_WEBGL(gl_FragColor = col, rt_c = vec4(1.0,0.0,0.0,0.0));
+  SWITCH_WEBGL(gl_FragColor, rt_col) = col;
 }
 //##};
 

@@ -102,20 +102,20 @@ struct simpleshadertype : ogl::shadertype {
 };
 
 #define SPLITNUM 4
+#define ULOC(NAME) OGLR(shader.NAME, GetUniformLocation, shader.program, #NAME)
+
+static void setdeferredrules(string &str) {
+  sprintf_s(str)("#define SPLITNUM %f\n", float(SPLITNUM));
+}
 
 struct simpleshaderbuilder : ogl::shaderbuilder {
   simpleshaderbuilder(const char *vppath, const char *fppath,
                       const char *vp, const char *fp) :
     shaderbuilder(vppath, fppath, vp, fp) {}
-  virtual void setrules(string &str) {
-    sprintf_s(str)("#define SPLITNUM %f\n", float(SPLITNUM));
-  }
+  virtual void setrules(string &str) {setdeferredrules(str);}
   virtual void setuniform(ogl::shadertype &s) {
     auto &shader = static_cast<simpleshadertype&>(s);
-    OGLR(shader.u_mvp, GetUniformLocation, shader.program, "u_mvp");
-    OGLR(shader.u_subbufferdim, GetUniformLocation, shader.program, "u_subbufferdim");
-    OGLR(shader.u_rcpsubbufferdim, GetUniformLocation, shader.program, "u_rcpsubbufferdim");
-    OGLR(shader.u_nortex, GetUniformLocation, shader.program, "u_nortex");
+    ULOC(u_mvp); ULOC(u_subbufferdim); ULOC(u_rcpsubbufferdim); ULOC(u_nortex);
     OGL(Uniform1i, shader.u_nortex, 0);
   }
   virtual void setvarying(ogl::shadertype &s) {
@@ -138,16 +138,37 @@ struct deferredshaderbuilder : simpleshaderbuilder {
   virtual void setuniform(ogl::shadertype &s) {
     auto &shader = static_cast<deferredshadertype&>(s);
     simpleshaderbuilder::setuniform(s);
-    OGLR(shader.u_invmvp, GetUniformLocation, shader.program, "u_invmvp");
-    OGLR(shader.u_depthtex, GetUniformLocation, shader.program, "u_depthtex");
-    OGLR(shader.u_lightpos, GetUniformLocation, shader.program, "u_lightpos");
-    OGLR(shader.u_lightpow, GetUniformLocation, shader.program, "u_lightpow");
+    ULOC(u_invmvp); ULOC(u_depthtex); ULOC(u_lightpos); ULOC(u_lightpow);
     OGL(Uniform1i, shader.u_depthtex, 1);
   }
 };
 static u32 depthtex, nortex;
 static u32 gbuffer;
 static deferredshadertype deferredshader;
+
+struct forwardshadertype : ogl::shadertype {
+  u32 u_mvp;
+  u32 u_rcpsubbufferdim, u_subbufferdim;
+  u32 u_lighttex;
+};
+struct forwardshaderbuilder : ogl::shaderbuilder {
+  forwardshaderbuilder() : shaderbuilder(BUILDER_ARGS(forward)) {}
+  virtual void setrules(string &str) {setdeferredrules(str);}
+  virtual void setuniform(ogl::shadertype &s) {
+    auto &shader = static_cast<forwardshadertype&>(s);
+    ULOC(u_mvp); ULOC(u_subbufferdim); ULOC(u_rcpsubbufferdim); ULOC(u_lighttex);
+    OGL(Uniform1i, shader.u_lighttex, 0);
+  }
+  virtual void setvarying(ogl::shadertype &s) {
+    auto &shader = static_cast<forwardshadertype&>(s);
+    OGL(BindAttribLocation, shader.program, ogl::ATTRIB_POS0, "vs_pos");
+    OGL(BindAttribLocation, shader.program, ogl::ATTRIB_COL, "vs_nor");
+#if !defined(__WEBGL__)
+    OGL(BindFragDataLocation, shader.program, 0, "rt_col");
+#endif // __WEBGL__
+  }
+};
+static forwardshadertype forwardshader;
 
 #if DEBUG_UNSPLIT
 static u32 unsplittex;
@@ -170,6 +191,8 @@ static void initdeferred() {
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
   if (!NEWE(deferredshaderbuilder)->build(deferredshader, ogl::loadfromfile()))
     ogl::shadererror(true, "deferred shader");
+  if (!NEWE(forwardshaderbuilder)->build(forwardshader, ogl::loadfromfile()))
+    ogl::shadererror(true, "forward shader");
 
 #if DEBUG_UNSPLIT
   unsplittex = ogl::maketex("TB I3 D3 Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
@@ -248,45 +271,29 @@ struct screenquad {
   float v[16];
 };
 
+// XXX just to have something to display
 FVAR(lightscale, 0.f, 5000.f, 10000.f);
 static const vec3f lightpos[] = {
-  vec3f(8.f,20.f,8.f),
-  vec3f(10.f,20.f,8.f),
-  vec3f(12.f,20.f,8.f),
-  vec3f(14.f,20.f,8.f),
-  vec3f(6.f,20.f,8.f),
-  vec3f(16.f,20.f,4.f),
-  vec3f(16.f,21.f,7.f),
-  vec3f(16.f,22.f,9.f),
-  vec3f(8.f,20.f,9.f),
-  vec3f(10.f,20.f,10.f),
-  vec3f(12.f,20.f,12.f),
-  vec3f(14.f,20.f,13.f),
-  vec3f(6.f,20.f,14.f),
-  vec3f(16.f,20.f,15.f),
-  vec3f(15.f,21.f,7.f),
-  vec3f(16.f,22.f,10.f)
+  vec3f(8.f,20.f,8.f), vec3f(10.f,20.f,8.f),
+  vec3f(12.f,20.f,8.f), vec3f(14.f,20.f,8.f),
+  vec3f(6.f,20.f,8.f), vec3f(16.f,20.f,4.f),
+  vec3f(16.f,21.f,7.f), vec3f(16.f,22.f,9.f),
+  vec3f(8.f,20.f,9.f), vec3f(10.f,20.f,10.f),
+  vec3f(12.f,20.f,12.f), vec3f(14.f,20.f,13.f),
+  vec3f(6.f,20.f,14.f), vec3f(16.f,20.f,15.f),
+  vec3f(15.f,21.f,7.f), vec3f(16.f,22.f,10.f)
 };
 
 static const vec3f lightpow[] = {
-  vec3f(1.f,0.f,0.f),
-  vec3f(0.f,1.f,0.f),
-  vec3f(1.f,0.f,1.f),
-  vec3f(1.f,1.f,1.f),
-  vec3f(1.f,0.f,1.f),
-  vec3f(0.f,1.f,1.f),
-  vec3f(1.f,1.f,0.f),
-  vec3f(0.f,1.f,1.f),
-  vec3f(0.f,1.f,1.f),
-  vec3f(1.f,0.f,0.f),
-  vec3f(0.f,1.f,0.f),
-  vec3f(1.f,0.f,1.f),
-  vec3f(1.f,1.f,1.f),
-  vec3f(1.f,0.f,1.f),
-  vec3f(0.f,1.f,1.f),
-  vec3f(1.f,1.f,0.f),
-  vec3f(0.f,1.f,1.f),
-  vec3f(0.f,1.f,1.f)
+  vec3f(1.f,0.f,0.f), vec3f(0.f,1.f,0.f),
+  vec3f(1.f,0.f,1.f), vec3f(1.f,1.f,1.f),
+  vec3f(1.f,0.f,1.f), vec3f(0.f,1.f,1.f),
+  vec3f(1.f,1.f,0.f), vec3f(0.f,1.f,1.f),
+  vec3f(0.f,1.f,1.f), vec3f(1.f,0.f,0.f),
+  vec3f(0.f,1.f,0.f), vec3f(1.f,0.f,1.f),
+  vec3f(1.f,1.f,1.f), vec3f(1.f,0.f,1.f),
+  vec3f(0.f,1.f,1.f), vec3f(1.f,1.f,0.f),
+  vec3f(0.f,1.f,1.f), vec3f(0.f,1.f,1.f)
 };
 
 static void deferred(const mat4x4f &worldmvp) {
@@ -348,6 +355,19 @@ static void transplayer() {
   ogl::translate(-player.o);
 }
 
+static void setforwardmatrices(float fovy, float aspect, float farplane) {
+  ogl::matrixmode(ogl::PROJECTION);
+  ogl::setperspective(fovy, aspect, 0.15f, farplane);
+  ogl::matrixmode(ogl::MODELVIEW);
+  transplayer();
+}
+
+static void forward(float fovy, float aspect, float farplane) {
+  setforwardmatrices(fov, aspect, farplane);
+  ogl::bindfixedshader(ogl::FIXED_COLOR);
+  ogl::immdrawelememts("Tip3c3", indexnum, &indices[0], &vertices[0].first[0]);
+}
+
 IVAR(linemode, 0, 0, 1);
 IVAR(useframebuffer, 0, 1, 1);
 
@@ -355,16 +375,16 @@ void frame(int w, int h, int curfps) {
   const float farplane = 100.f;
   const float aspect = float(sys::scrw) / float(sys::scrh);
   const float fovy = fov / aspect;
-  ogl::matrixmode(ogl::PROJECTION);
-  ogl::setperspective(fovy, aspect, 0.15f, farplane);
-  ogl::matrixmode(ogl::MODELVIEW);
-  transplayer();
+  setforwardmatrices(fovy, aspect, farplane);
+
+#if 0
   const float ground[] = {
     -100.f, -100.f, -100.f, 0.f, -100.f,
     -100.f, +100.f, -100.f, 0.f, +100.f,
     +100.f, -100.f, +100.f, 0.f, -100.f,
     +100.f, +100.f, +100.f, 0.f, +100.f
   };
+#endif
 
   makescene();
 
