@@ -37,6 +37,7 @@ void start(int argc, const char *argv[]) {
 
   con::out("init: video: mode");
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+//  SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
   if (!SDL_SetVideoMode(sys::scrw, sys::scrh, 0, SDL_OPENGL|fs)) sys::fatal("OpenGL failed");
   sys::initendiancheck();
 

@@ -149,15 +149,17 @@ static deferredshadertype deferredshader;
 struct forwardshadertype : ogl::shadertype {
   u32 u_mvp;
   u32 u_rcpsubbufferdim, u_subbufferdim;
-  u32 u_lighttex;
+  u32 u_lighttex, u_nortex;
 };
 struct forwardshaderbuilder : ogl::shaderbuilder {
   forwardshaderbuilder() : shaderbuilder(BUILDER_ARGS(forward)) {}
   virtual void setrules(string &str) {setdeferredrules(str);}
   virtual void setuniform(ogl::shadertype &s) {
     auto &shader = static_cast<forwardshadertype&>(s);
-    ULOC(u_mvp); ULOC(u_subbufferdim); ULOC(u_rcpsubbufferdim); ULOC(u_lighttex);
+    ULOC(u_mvp); ULOC(u_subbufferdim); ULOC(u_rcpsubbufferdim);
+    ULOC(u_lighttex); ULOC(u_nortex);
     OGL(Uniform1i, shader.u_lighttex, 0);
+    OGL(Uniform1i, shader.u_nortex, 1);
   }
   virtual void setvarying(ogl::shadertype &s) {
     auto &shader = static_cast<forwardshadertype&>(s);
@@ -334,12 +336,14 @@ static void deferred(const mat4x4f &worldmvp) {
 
 #if DEBUG_UNSPLIT
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
+#if 0
   ogl::bindshader(unsplitshader);
   ogl::bindtexture(GL_TEXTURE_RECTANGLE, unsplittex);
   OGL(UniformMatrix4fv, unsplitshader.u_mvp, 1, GL_FALSE, &mvp.vx.x);
   OGL(Uniform2fv, unsplitshader.u_subbufferdim, 1, &subbufferdim.x);
   OGL(Uniform2fv, unsplitshader.u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
   ogl::immdraw("Sp2", 4, screenquad::get().v);
+#endif
 #endif
 
   ogl::immenableflush(true);
@@ -362,10 +366,19 @@ static void setforwardmatrices(float fovy, float aspect, float farplane) {
   transplayer();
 }
 
-static void forward(float fovy, float aspect, float farplane) {
+static void forward(const mat4x4f &mvp, float fovy, float aspect, float farplane) {
   setforwardmatrices(fov, aspect, farplane);
-  ogl::bindfixedshader(ogl::FIXED_COLOR);
+  const vec2f subbufferdim(float(sys::scrw/SPLITNUM), float(sys::scrh/SPLITNUM));
+  const vec2f rcpsubbufferdim = rcp(subbufferdim);
+  ogl::bindshader(forwardshader);
+  ogl::bindtexture(GL_TEXTURE_RECTANGLE, unsplittex, 0);
+  ogl::bindtexture(GL_TEXTURE_RECTANGLE, nortex, 1);
+  OGL(UniformMatrix4fv, forwardshader.u_mvp, 1, GL_FALSE, &mvp.vx.x);
+  OGL(Uniform2fv, forwardshader.u_subbufferdim, 1, &subbufferdim.x);
+  OGL(Uniform2fv, forwardshader.u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
+  ogl::immenableflush(false);
   ogl::immdrawelememts("Tip3c3", indexnum, &indices[0], &vertices[0].first[0]);
+  ogl::immenableflush(true);
 }
 
 IVAR(linemode, 0, 0, 1);
@@ -415,6 +428,7 @@ void frame(int w, int h, int curfps) {
     setscreentransform();
     deferred(worldmvp);
     popscreentransform();
+    forward(worldmvp, fovy, aspect, farplane);
   } else
     drawhudgun(fovy, aspect, farplane);
   ogl::disable(GL_CULL_FACE);
