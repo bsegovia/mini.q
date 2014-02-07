@@ -233,6 +233,7 @@ template <class T> struct vector : noncopyable {
     ulen--;
     return e;
   }
+  void removeobj(const T &o) {loopi(ulen) if(buf[i]==o) remove(i--);}
   T &insert(int i, const T &e) {
     add(T());
     for(int p = ulen-1; p>i; p--) buf[p] = buf[p-1];

@@ -100,6 +100,24 @@ struct simpleshadertype : ogl::shadertype {
   u32 u_subbufferdim, u_rcpsubbufferdim;
   u32 fs_tex;
 };
+struct deferredshadertype : simpleshadertype {
+  u32 u_depthtex;
+  u32 u_invmvp;
+  u32 u_lightpos, u_lightpow;
+};
+struct forwardshadertype : ogl::shadertype {
+  u32 u_mvp;
+  u32 u_rcpsubbufferdim, u_subbufferdim;
+  u32 u_lighttex, u_nortex;
+};
+
+static u32 gdethtex, gnortex, finaltex;
+static u32 gbuffer, shadedbuffer;
+static deferredshadertype deferredshader;
+static forwardshadertype forwardshader;
+#if DEBUG_UNSPLIT
+static forwardshadertype unsplitshader;
+#endif
 
 #define SPLITNUM 4
 #define ULOC(NAME) OGLR(shader.NAME, GetUniformLocation, shader.program, #NAME)
@@ -127,30 +145,6 @@ struct simpleshaderbuilder : ogl::shaderbuilder {
   }
 };
 
-struct deferredshadertype : simpleshadertype {
-  u32 u_depthtex;
-  u32 u_invmvp;
-  u32 u_lightpos, u_lightpow;
-};
-
-struct deferredshaderbuilder : simpleshaderbuilder {
-  deferredshaderbuilder() : simpleshaderbuilder(BUILDER_ARGS(deferred)) {}
-  virtual void setuniform(ogl::shadertype &s) {
-    auto &shader = static_cast<deferredshadertype&>(s);
-    simpleshaderbuilder::setuniform(s);
-    ULOC(u_invmvp); ULOC(u_depthtex); ULOC(u_lightpos); ULOC(u_lightpow);
-    OGL(Uniform1i, shader.u_depthtex, 1);
-  }
-};
-static u32 depthtex, nortex;
-static u32 gbuffer;
-static deferredshadertype deferredshader;
-
-struct forwardshadertype : ogl::shadertype {
-  u32 u_mvp;
-  u32 u_rcpsubbufferdim, u_subbufferdim;
-  u32 u_lighttex, u_nortex;
-};
 struct forwardshaderbuilder : ogl::shaderbuilder {
   forwardshaderbuilder() : shaderbuilder(BUILDER_ARGS(forward)) {}
   virtual void setrules(string &str) {setdeferredrules(str);}
@@ -170,53 +164,79 @@ struct forwardshaderbuilder : ogl::shaderbuilder {
 #endif // __WEBGL__
   }
 };
-static forwardshadertype forwardshader;
+
+struct deferredshaderbuilder : simpleshaderbuilder {
+  deferredshaderbuilder() : simpleshaderbuilder(BUILDER_ARGS(deferred)) {}
+  virtual void setuniform(ogl::shadertype &s) {
+    auto &shader = static_cast<deferredshadertype&>(s);
+    simpleshaderbuilder::setuniform(s);
+    ULOC(u_invmvp); ULOC(u_depthtex); ULOC(u_lightpos); ULOC(u_lightpow);
+    OGL(Uniform1i, shader.u_depthtex, 1);
+  }
+};
 
 #if DEBUG_UNSPLIT
-static u32 unsplittex;
-static u32 unsplitbuffer;
-static simpleshadertype unsplitshader;
-struct debugunsplitshaderbuilder : simpleshaderbuilder {
-  debugunsplitshaderbuilder() : simpleshaderbuilder(BUILDER_ARGS(debugunsplit)) {}
+struct debugunsplitshaderbuilder : ogl::shaderbuilder {
+  debugunsplitshaderbuilder() : ogl::shaderbuilder(BUILDER_ARGS(debugunsplit)) {}
+  virtual void setrules(string &str) {setdeferredrules(str);}
+  virtual void setuniform(ogl::shadertype &s) {
+    auto &shader = static_cast<forwardshadertype&>(s);
+    ULOC(u_mvp); ULOC(u_subbufferdim); ULOC(u_rcpsubbufferdim);
+    ULOC(u_nortex); ULOC(u_lighttex);
+    OGL(Uniform1i, shader.u_lighttex, 0);
+    OGL(Uniform1i, shader.u_nortex, 1);
+  }
+  virtual void setvarying(ogl::shadertype &s) {
+    auto &shader = static_cast<forwardshadertype&>(s);
+    OGL(BindAttribLocation, shader.program, ogl::ATTRIB_POS0, "vs_pos");
+#if !defined(__WEBGL__)
+    OGL(BindFragDataLocation, shader.program, 0, "rt_col");
+#endif // __WEBGL__
+  }
 };
 #endif
 
 static void initdeferred() {
-  nortex = ogl::maketex("TB I3 D3 Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
-  depthtex = ogl::maketex("Tf Id Dd Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
+  // all textures
+  gnortex = ogl::maketex("TB I3 D3 Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
+  gdethtex = ogl::maketex("Tf Id Dd Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
+  finaltex = ogl::maketex("TB I3 D3 Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
+
+  // all frame buffer objects
   OGL(GenFramebuffers, 1, &gbuffer);
   OGL(BindFramebuffer, GL_FRAMEBUFFER, gbuffer);
-  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, nortex, 0);
-  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_RECTANGLE, depthtex, 0);
+  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, gnortex, 0);
+  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_RECTANGLE, gdethtex, 0);
   if (GL_FRAMEBUFFER_COMPLETE != ogl::CheckFramebufferStatus(GL_FRAMEBUFFER))
     sys::fatal("renderer: unable to init gbuffer framebuffer");
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
+  OGL(GenFramebuffers, 1, &shadedbuffer);
+  OGL(BindFramebuffer, GL_FRAMEBUFFER, shadedbuffer);
+  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, finaltex, 0);
+  if (GL_FRAMEBUFFER_COMPLETE != ogl::CheckFramebufferStatus(GL_FRAMEBUFFER))
+    sys::fatal("renderer: unable to init debug unsplit framebuffer");
+  OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
+
+  // all shaders
   if (!NEWE(deferredshaderbuilder)->build(deferredshader, ogl::loadfromfile()))
     ogl::shadererror(true, "deferred shader");
   if (!NEWE(forwardshaderbuilder)->build(forwardshader, ogl::loadfromfile()))
     ogl::shadererror(true, "forward shader");
-
 #if DEBUG_UNSPLIT
-  unsplittex = ogl::maketex("TB I3 D3 Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
-  OGL(GenFramebuffers, 1, &unsplitbuffer);
-  OGL(BindFramebuffer, GL_FRAMEBUFFER, unsplitbuffer);
-  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, unsplittex, 0);
-  if (GL_FRAMEBUFFER_COMPLETE != ogl::CheckFramebufferStatus(GL_FRAMEBUFFER))
-    sys::fatal("renderer: unable to init debug unsplit framebuffer");
-  OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
   if (!NEWE(debugunsplitshaderbuilder)->build(unsplitshader, ogl::loadfromfile()))
     ogl::shadererror(true, "unsplit debug shader");
 #endif
 }
 
 static void cleandeferred() {
-  ogl::deletetextures(1, &nortex);
-  ogl::deletetextures(1, &depthtex);
+  ogl::deletetextures(1, &gnortex);
+  ogl::deletetextures(1, &gdethtex);
+  ogl::deletetextures(1, &finaltex);
   OGL(DeleteFramebuffers, 1, &gbuffer);
+  OGL(DeleteFramebuffers, 1, &shadedbuffer);
   ogl::destroyshader(deferredshader);
 #if DEBUG_UNSPLIT
-  ogl::deletetextures(1, &unsplittex);
-  OGL(DeleteFramebuffers, 1, &unsplitbuffer);
+  ogl::destroyshader(unsplitshader);
 #endif
 }
 
@@ -274,7 +294,7 @@ struct screenquad {
 };
 
 // XXX just to have something to display
-FVAR(lightscale, 0.f, 5000.f, 10000.f);
+FVAR(lightscale, 0.f, 2000.f, 10000.f);
 static const vec3f lightpos[] = {
   vec3f(8.f,20.f,8.f), vec3f(10.f,20.f,8.f),
   vec3f(12.f,20.f,8.f), vec3f(14.f,20.f,8.f),
@@ -311,15 +331,12 @@ static void deferred(const mat4x4f &worldmvp) {
   ogl::disable(GL_CULL_FACE);
   ogl::immenableflush(false);
 
-#if DEBUG_UNSPLIT
-  OGL(BindFramebuffer, GL_FRAMEBUFFER, unsplitbuffer);
-#endif
-
+  OGL(BindFramebuffer, GL_FRAMEBUFFER, shadedbuffer);
   const vec2f subbufferdim(float(sys::scrw/SPLITNUM), float(sys::scrh/SPLITNUM));
   const vec2f rcpsubbufferdim = rcp(subbufferdim);
   ogl::bindshader(deferredshader);
-  ogl::bindtexture(GL_TEXTURE_RECTANGLE, nortex, 0);
-  ogl::bindtexture(GL_TEXTURE_RECTANGLE, depthtex, 1);
+  ogl::bindtexture(GL_TEXTURE_RECTANGLE, gnortex, 0);
+  ogl::bindtexture(GL_TEXTURE_RECTANGLE, gdethtex, 1);
   OGL(UniformMatrix4fv, deferredshader.u_mvp, 1, GL_FALSE, &mvp.vx.x);
   OGL(UniformMatrix4fv, deferredshader.u_invmvp, 1, GL_FALSE, &depthtr.vx.x);
   OGL(Uniform2fv, deferredshader.u_subbufferdim, 1, &subbufferdim.x);
@@ -333,17 +350,16 @@ static void deferred(const mat4x4f &worldmvp) {
     OGL(Uniform3fv, deferredshader.u_lightpow, 1, &lpow.x);
     ogl::immdraw("Sp2", 4, screenquad::getsubbuffer(vec2i(i,j)).v);
   }
+  OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
 
 #if DEBUG_UNSPLIT
-  OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
-#if 0
   ogl::bindshader(unsplitshader);
-  ogl::bindtexture(GL_TEXTURE_RECTANGLE, unsplittex);
+  ogl::bindtexture(GL_TEXTURE_RECTANGLE, finaltex, 0);
+  ogl::bindtexture(GL_TEXTURE_RECTANGLE, gnortex, 1);
   OGL(UniformMatrix4fv, unsplitshader.u_mvp, 1, GL_FALSE, &mvp.vx.x);
   OGL(Uniform2fv, unsplitshader.u_subbufferdim, 1, &subbufferdim.x);
   OGL(Uniform2fv, unsplitshader.u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
   ogl::immdraw("Sp2", 4, screenquad::get().v);
-#endif
 #endif
 
   ogl::immenableflush(true);
@@ -371,8 +387,8 @@ static void forward(const mat4x4f &mvp, float fovy, float aspect, float farplane
   const vec2f subbufferdim(float(sys::scrw/SPLITNUM), float(sys::scrh/SPLITNUM));
   const vec2f rcpsubbufferdim = rcp(subbufferdim);
   ogl::bindshader(forwardshader);
-  ogl::bindtexture(GL_TEXTURE_RECTANGLE, unsplittex, 0);
-  ogl::bindtexture(GL_TEXTURE_RECTANGLE, nortex, 1);
+  ogl::bindtexture(GL_TEXTURE_RECTANGLE, finaltex, 0);
+  ogl::bindtexture(GL_TEXTURE_RECTANGLE, gnortex, 1);
   OGL(UniformMatrix4fv, forwardshader.u_mvp, 1, GL_FALSE, &mvp.vx.x);
   OGL(Uniform2fv, forwardshader.u_subbufferdim, 1, &subbufferdim.x);
   OGL(Uniform2fv, forwardshader.u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
@@ -382,7 +398,6 @@ static void forward(const mat4x4f &mvp, float fovy, float aspect, float farplane
 }
 
 IVAR(linemode, 0, 0, 1);
-IVAR(useframebuffer, 0, 1, 1);
 
 void frame(int w, int h, int curfps) {
   const float farplane = 100.f;
@@ -402,10 +417,10 @@ void frame(int w, int h, int curfps) {
   makescene();
 
   // render the scene into the frame buffer
-  if (useframebuffer)
-    OGL(BindFramebuffer, GL_FRAMEBUFFER, gbuffer);
+  OGL(BindFramebuffer, GL_FRAMEBUFFER, gbuffer);
   OGL(ClearColor, 0.f, 0.f, 0.f, 1.f);
   OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 #if 0
   ogl::bindfixedshader(ogl::FIXED_DIFFUSETEX);
   ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_CHECKBOARD));
@@ -417,20 +432,19 @@ void frame(int w, int h, int curfps) {
     ogl::immdrawelememts("Tip3c3", indexnum, &indices[0], &vertices[0].first[0]);
     if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_FILL);
   }
-  if (useframebuffer)
-    OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
+  OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
   const auto &mv = ogl::matrix(ogl::MODELVIEW);
   const auto &p  = ogl::matrix(ogl::PROJECTION);
   const auto worldmvp = p*mv;
 
   // blit the normal buffer into screen
-  if (useframebuffer) {
-    setscreentransform();
-    deferred(worldmvp);
-    popscreentransform();
-    forward(worldmvp, fovy, aspect, farplane);
-  } else
-    drawhudgun(fovy, aspect, farplane);
+  setscreentransform();
+  deferred(worldmvp);
+  popscreentransform();
+#if !DEBUG_UNSPLIT
+  forward(worldmvp, fovy, aspect, farplane);
+#endif
+  // drawhudgun(fovy, aspect, farplane);
   ogl::disable(GL_CULL_FACE);
   drawhud(w,h,curfps);
   ogl::enable(GL_CULL_FACE);

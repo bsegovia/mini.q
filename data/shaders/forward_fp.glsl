@@ -22,12 +22,6 @@ void main() {
   vec3 col = vec3(0.0);
   vec2 nor = fs_nor.xy;
   float num = 0.0;
-#if 0
-  vec2 bufindex = mod(uv, SPLITNUM);
-  vec2 pixindex = uv / vec2(SPLITNUM);
-  vec2 unsplituv = pixindex + bufindex * u_subbufferdim;
-  vec3 col = texture2DRect(u_lighttex, unsplituv).xyz;
-#else
   SAMPLE(0,  -1.0, +1.0);
   SAMPLE(1,  -1.0,  0.0);
   SAMPLE(2,  -1.0, -1.0);
@@ -44,17 +38,7 @@ void main() {
   SAMPLE(13, +2.0,  0.0);
   SAMPLE(14, +2.0, -1.0);
   SAMPLE(15, +2.0, -2.0);
-#endif
-#if 0
-  SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(
-    col0 + col1 + col2 + col3 +
-    col4 + col5 + col6 + col7 + 
-    col8 + col9 + col10 + col11 +
-    col12 + col13 + col14 + col15, 1.0) ;
-#else
   SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(col, 1.0);
-  
-#endif
 }
 //##};
 

@@ -558,6 +558,122 @@ void immdraw(const char *fmt, int count, const void *data) {
   immdrawarrays(parsed.y, 0, count);
 }
 
+/*-------------------------------------------------------------------------
+ - GPU timer
+ -------------------------------------------------------------------------*/
+#if 0
+struct timer {
+  enum { MAXQUERY = 4 };
+  const char *name;
+  bool gpu;
+  u32 query[MAXQUERY];
+  int waiting;
+  uint starttime;
+  float result, print;
+};
+static vector<timer> timers;
+static vector<int> timerorder;
+static int timercycle = 0;
+
+extern int usetimers;
+static int deferquery=0;
+
+timer *findtimer(const char *name, bool gpu) {
+  loopv(timers) if (!strcmp(timers[i].name, name) && timers[i].gpu == gpu) {
+    timerorder.removeobj(i);
+    timerorder.add(i);
+    return &timers[i];
+  }
+  timerorder.add(timers.length());
+  timer &t = timers.add();
+  t.name = name;
+  t.gpu = gpu;
+  memset(t.query, 0, sizeof(t.query));
+  if (gpu) OGL(GenQueries, timer::MAXQUERY, t.query);
+  t.waiting = 0;
+  t.starttime = 0;
+  t.result = -1;
+  t.print = -1;
+  return &t;
+}
+
+timer *begintimer(const char *name, bool gpu) {
+  if (!usetimers || viewidx || inbetweenframes || (gpu && (!hasTQ || deferquery)))
+    return NULL;
+  timer *t = findtimer(name, gpu);
+  if (t->gpu) {
+    deferquery++;
+    OGL(BeginQuery, GL_TIME_ELAPSED_EXT, t->query[timercycle]);
+    t->waiting |= 1<<timercycle;
+  } else
+    t->starttime = getclockmillis();
+  return t;
+}
+
+void endtimer(timer *t)
+{
+  if (!t) return;
+  if (t->gpu) {
+    OGL(EndQuery, GL_TIME_ELAPSED_EXT);
+    deferquery--;
+  } else
+    t->result = max(float(getclockmillis() - t->starttime), 0.0f);
+}
+
+void synctimers() {
+  timercycle = (timercycle + 1) % timer::MAXQUERY;
+  loopv(timers) {
+    timer &t = timers[i];
+    if (t.waiting&(1<<timercycle)) {
+      GLint available = 0;
+      while (!available)
+        OGL(GetQueryObjectiv, t.query[timercycle], GL_QUERY_RESULT_AVAILABLE, &available);
+      GLuint64EXT result = 0;
+      OGL(GetQueryObjectui64v, t.query[timercycle], GL_QUERY_RESULT, &result);
+      t.result = max(float(result) * 1e-6f, 0.0f);
+      t.waiting &= ~(1<<timercycle);
+    }
+    else
+      t.result = -1;
+  }
+}
+
+void cleanuptimers() {
+  loopv(timers) {
+    timer &t = timers[i];
+    if (t.gpu) OGL(DeleteQueries, timer::MAXQUERY, t.query);
+  }
+  timers.destroy();
+  timerorder.destroy();
+}
+
+IVARF(usertimers, 0, 0, 1, cleanuptimers());
+IVAR(frametimer, 0, 0, 1);
+#if 0
+void printtimers(int conw, int conh)
+{
+  if (!frametimer && !usetimers) return;
+
+  static int lastprint = 0;
+  int offset = 0;
+  if (frametimer) {
+    static int printmillis = 0;
+    if (totalmillis - lastprint >= 200) printmillis = framemillis;
+    text::draw("frame time %i ms", conw-20*FONTH, conh-FONTH*3/2-offset*9*FONTH/8, printmillis);
+    offset++;
+  }
+  if (usetimers) loopv(timerorder) {
+    timer &t = timers[timerorder[i]];
+    if (t.print < 0 ? t.result >= 0 : totalmillis - lastprint >= 200) t.print = t.result;
+    if (t.print < 0 || (t.gpu && !(t.waiting&(1<<timercycle)))) continue;
+    text::draw("%s%s %5.2f ms", conw-20*FONTH, conh-FONTH*3/2-offset*9*FONTH/8, t.name, t.gpu ? "" : " (cpu)", t.print);
+    offset++;
+  }
+  if (totalmillis - lastprint >= 200) lastprint = totalmillis;
+}
+#endif
+#endif
+
 /*--------------------------------------------------------------------------
  - shader management
  -------------------------------------------------------------------------*/
