@@ -43,7 +43,10 @@ SHADERS=data/shaders/fixed_vp.glsl\
         data/shaders/debugunsplit_fp.glsl\
         data/shaders/forward_vp.glsl\
         data/shaders/forward_fp.glsl\
-        data/shaders/font_fp.glsl
+        data/shaders/font_fp.glsl\
+        data/shaders/noise2D.glsl\
+        data/shaders/noise3D.glsl\
+        data/shaders/noise4D.glsl
 
 ## build embedded shader source
 shaders.cpp: $(SHADERS)
