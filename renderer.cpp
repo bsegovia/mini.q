@@ -94,107 +94,155 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
 /*--------------------------------------------------------------------------
  - deferred shading stuff
  -------------------------------------------------------------------------*/
-struct simpleshadertype : ogl::shadertype {
-  u32 u_mvp;
-  u32 u_nortex;
-  u32 u_subbufferdim, u_rcpsubbufferdim;
-  u32 fs_tex;
+struct shaderlocation {
+  INLINE shaderlocation() {}
+  INLINE shaderlocation(vector<shaderlocation> **appendhere, u32 loc, const char *name)
+    : loc(loc), name(name)
+  {
+    if (*appendhere == NULL) *appendhere = NEWE(vector<shaderlocation>);
+    (*appendhere)->add(*this);
+  }
+  u32 loc;
+  const char *name;
 };
-struct deferredshadertype : simpleshadertype {
-  u32 u_depthtex;
-  u32 u_invmvp;
-  u32 u_lightpos, u_lightpow;
+struct uniformlocation {
+  INLINE uniformlocation() {}
+  INLINE uniformlocation(vector<uniformlocation> **appendhere, u32 &loc,
+                         const char *name, int defaultvalue=0, int hasdefault=0)
+    : loc(&loc), name(name), defaultvalue(defaultvalue), hasdefault(hasdefault)
+  {
+    if (*appendhere == NULL) *appendhere = NEWE(vector<uniformlocation>);
+    (*appendhere)->add(*this);
+  }
+  u32 *loc;
+  const char *name;
+  int defaultvalue;
+  int hasdefault;
 };
-struct forwardshadertype : ogl::shadertype {
-  u32 u_mvp;
-  u32 u_rcpsubbufferdim, u_subbufferdim;
-  u32 u_lighttex, u_nortex;
+
+typedef void (*rulescallback)(string &);
+
+struct shaderresource {
+  const char *vppath, *fppath, *fp, *vp;
+  vector<uniformlocation> **uniform;
+  vector<shaderlocation> **attrib;
+  vector<shaderlocation> **fragdata;
+  rulescallback rulescb;
+};
+
+typedef void (*destroycallback)();
+struct destroyregister {
+  destroyregister(destroycallback cb) {
+    atexit(cb);
+  }
+};
+
+#if !defined(__WEBGL__)
+#define LOCATIONS\
+  static vector<shaderlocation> *attrib = NULL;\
+  static vector<shaderlocation> *fragdata = NULL;\
+  static vector<uniformlocation> *uniform = NULL;
+#define FRAGDATA(NAME,LOC) static shaderlocation NAME##loc(&fragdata,LOC,#NAME);
+#else
+#define LOCATIONS\
+  static vector<shaderlocation> *attrib = NULL;\
+  static vector<uniformlocation> *uniform = NULL;
+#define FRAGDATA(NAME)
+#endif
+#define UNIFORMI(NAME,X) u32 NAME; static uniformlocation NAME##loc(&uniform,NAME,#NAME,X,1);
+#define UNIFORM(NAME) u32 NAME; static uniformlocation NAME##loc(&uniform,NAME,#NAME);
+#define ATTRIB(NAME,LOC) u32 NAME; static shaderlocation NAME##loc(&attrib,LOC,#NAME);
+
+#define BEGIN_SHADER(NAME) namespace NAME {\
+  static ogl::shadertype shader;\
+  static const char vppath[] = "data/shaders/" #NAME "_vp.glsl";\
+  static const char fppath[] = "data/shaders/" #NAME "_fp.glsl";\
+  static const char *vp = shaders:: NAME##_vp;\
+  static const char *fp = shaders:: NAME##_fp;\
+  LOCATIONS
+#define END_SHADER(NAME)\
+  void destroy() {\
+    SAFE_DEL(attrib);\
+    SAFE_DEL(fragdata);\
+    SAFE_DEL(uniform);\
+  }\
+  static const destroyregister destroyreg(destroy);\
+  static const shaderresource rsc = {vppath,fppath,fp,vp,&uniform,&attrib,&fragdata,rules};}
+
+#define SPLITNUM 4
+static void rules(string &str) {
+  sprintf_s(str)("#define SPLITNUM %f\n", float(SPLITNUM));
+}
+
+BEGIN_SHADER(deferred)
+  UNIFORM(u_mvp)
+  UNIFORM(u_subbufferdim)
+  UNIFORM(u_rcpsubbufferdim)
+  UNIFORM(u_invmvp)
+  UNIFORM(u_lightpos)
+  UNIFORM(u_lightpow)
+  UNIFORMI(u_nortex,0)
+  UNIFORMI(u_depthtex,1)
+  ATTRIB(vs_pos, ogl::ATTRIB_POS0)
+  FRAGDATA(rt_col, 0)
+END_SHADER(deferred)
+
+#define SHADER\
+  UNIFORM(u_mvp)\
+  UNIFORM(u_subbufferdim)\
+  UNIFORM(u_rcpsubbufferdim)\
+  UNIFORMI(u_lighttex,0)\
+  UNIFORMI(u_nortex,1)\
+  ATTRIB(vp_pos, ogl::ATTRIB_POS0)\
+  FRAGDATA(rt_col, 0)
+
+BEGIN_SHADER(forward)
+SHADER
+ATTRIB(vp_nor, ogl::ATTRIB_COL)
+END_SHADER(forward)
+
+BEGIN_SHADER(debugunsplit)
+SHADER
+END_SHADER(debugunsplit)
+
+#undef SHADER
+
+struct genericshaderbuilder : ogl::shaderbuilder {
+  genericshaderbuilder(const shaderresource &rsc) :
+    ogl::shaderbuilder(rsc.vppath, rsc.fppath, rsc.vp, rsc.fp), rsc(rsc)
+  {}
+  virtual void setrules(string &str) {
+    rsc.rulescb(str);
+  }
+  virtual void setuniform(ogl::shadertype &s) {
+    if (*rsc.uniform) {
+      auto &uniform = **rsc.uniform;
+      loopv(uniform) {
+        OGLR(*uniform[i].loc, GetUniformLocation, s.program, uniform[i].name);
+        if (uniform[i].hasdefault)
+          OGL(Uniform1i, *uniform[i].loc, uniform[i].defaultvalue);
+      }
+    }
+  }
+  virtual void setvarying(ogl::shadertype &s) {
+    if (*rsc.attrib) {
+      auto &attrib = **rsc.attrib;
+      loopv(attrib)
+        OGL(BindAttribLocation, s.program, attrib[i].loc, attrib[i].name);
+    }
+#if !defined(__WEBGL__)
+    if (*rsc.fragdata) {
+      auto &fragdata = **rsc.fragdata;
+      loopv(fragdata)
+        OGL(BindFragDataLocation, s.program, fragdata[i].loc, fragdata[i].name);
+    }
+#endif
+  }
+  const shaderresource &rsc;
 };
 
 static u32 gdethtex, gnortex, finaltex;
 static u32 gbuffer, shadedbuffer;
-static deferredshadertype deferredshader;
-static forwardshadertype forwardshader;
-#if DEBUG_UNSPLIT
-static forwardshadertype unsplitshader;
-#endif
-
-#define SPLITNUM 4
-#define ULOC(NAME) OGLR(shader.NAME, GetUniformLocation, shader.program, #NAME)
-
-static void setdeferredrules(string &str) {
-  sprintf_s(str)("#define SPLITNUM %f\n", float(SPLITNUM));
-}
-
-struct simpleshaderbuilder : ogl::shaderbuilder {
-  simpleshaderbuilder(const char *vppath, const char *fppath,
-                      const char *vp, const char *fp) :
-    shaderbuilder(vppath, fppath, vp, fp) {}
-  virtual void setrules(string &str) {setdeferredrules(str);}
-  virtual void setuniform(ogl::shadertype &s) {
-    auto &shader = static_cast<simpleshadertype&>(s);
-    ULOC(u_mvp); ULOC(u_subbufferdim); ULOC(u_rcpsubbufferdim); ULOC(u_nortex);
-    OGL(Uniform1i, shader.u_nortex, 0);
-  }
-  virtual void setvarying(ogl::shadertype &s) {
-    auto &shader = static_cast<simpleshadertype&>(s);
-    OGL(BindAttribLocation, shader.program, ogl::ATTRIB_POS0, "vs_pos");
-#if !defined(__WEBGL__)
-    OGL(BindFragDataLocation, shader.program, 0, "rt_col");
-#endif // __WEBGL__
-  }
-};
-
-struct forwardshaderbuilder : ogl::shaderbuilder {
-  forwardshaderbuilder() : shaderbuilder(BUILDER_ARGS(forward)) {}
-  virtual void setrules(string &str) {setdeferredrules(str);}
-  virtual void setuniform(ogl::shadertype &s) {
-    auto &shader = static_cast<forwardshadertype&>(s);
-    ULOC(u_mvp); ULOC(u_subbufferdim); ULOC(u_rcpsubbufferdim);
-    ULOC(u_lighttex); ULOC(u_nortex);
-    OGL(Uniform1i, shader.u_lighttex, 0);
-    OGL(Uniform1i, shader.u_nortex, 1);
-  }
-  virtual void setvarying(ogl::shadertype &s) {
-    auto &shader = static_cast<forwardshadertype&>(s);
-    OGL(BindAttribLocation, shader.program, ogl::ATTRIB_POS0, "vs_pos");
-    OGL(BindAttribLocation, shader.program, ogl::ATTRIB_COL, "vs_nor");
-#if !defined(__WEBGL__)
-    OGL(BindFragDataLocation, shader.program, 0, "rt_col");
-#endif // __WEBGL__
-  }
-};
-
-struct deferredshaderbuilder : simpleshaderbuilder {
-  deferredshaderbuilder() : simpleshaderbuilder(BUILDER_ARGS(deferred)) {}
-  virtual void setuniform(ogl::shadertype &s) {
-    auto &shader = static_cast<deferredshadertype&>(s);
-    simpleshaderbuilder::setuniform(s);
-    ULOC(u_invmvp); ULOC(u_depthtex); ULOC(u_lightpos); ULOC(u_lightpow);
-    OGL(Uniform1i, shader.u_depthtex, 1);
-  }
-};
-
-#if DEBUG_UNSPLIT
-struct debugunsplitshaderbuilder : ogl::shaderbuilder {
-  debugunsplitshaderbuilder() : ogl::shaderbuilder(BUILDER_ARGS(debugunsplit)) {}
-  virtual void setrules(string &str) {setdeferredrules(str);}
-  virtual void setuniform(ogl::shadertype &s) {
-    auto &shader = static_cast<forwardshadertype&>(s);
-    ULOC(u_mvp); ULOC(u_subbufferdim); ULOC(u_rcpsubbufferdim);
-    ULOC(u_nortex); ULOC(u_lighttex);
-    OGL(Uniform1i, shader.u_lighttex, 0);
-    OGL(Uniform1i, shader.u_nortex, 1);
-  }
-  virtual void setvarying(ogl::shadertype &s) {
-    auto &shader = static_cast<forwardshadertype&>(s);
-    OGL(BindAttribLocation, shader.program, ogl::ATTRIB_POS0, "vs_pos");
-#if !defined(__WEBGL__)
-    OGL(BindFragDataLocation, shader.program, 0, "rt_col");
-#endif // __WEBGL__
-  }
-};
-#endif
 
 static void initdeferred() {
   // all textures
@@ -218,13 +266,13 @@ static void initdeferred() {
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
 
   // all shaders
-  if (!NEWE(deferredshaderbuilder)->build(deferredshader, ogl::loadfromfile()))
+  if (!NEW(genericshaderbuilder, deferred::rsc)->build(deferred::shader, ogl::loadfromfile()))
     ogl::shadererror(true, "deferred shader");
-  if (!NEWE(forwardshaderbuilder)->build(forwardshader, ogl::loadfromfile()))
+  if (!NEW(genericshaderbuilder, forward::rsc)->build(forward::shader, ogl::loadfromfile()))
     ogl::shadererror(true, "forward shader");
 #if DEBUG_UNSPLIT
-  if (!NEWE(debugunsplitshaderbuilder)->build(unsplitshader, ogl::loadfromfile()))
-    ogl::shadererror(true, "unsplit debug shader");
+  if (!NEW(genericshaderbuilder, debugunsplit::rsc)->build(debugunsplit::shader, ogl::loadfromfile()))
+    ogl::shadererror(true, "debugunsplit shader");
 #endif
 }
 
@@ -234,9 +282,10 @@ static void cleandeferred() {
   ogl::deletetextures(1, &finaltex);
   OGL(DeleteFramebuffers, 1, &gbuffer);
   OGL(DeleteFramebuffers, 1, &shadedbuffer);
-  ogl::destroyshader(deferredshader);
+  ogl::destroyshader(deferred::shader);
+  ogl::destroyshader(forward::shader);
 #if DEBUG_UNSPLIT
-  ogl::destroyshader(unsplitshader);
+  ogl::destroyshader(debugunsplit::shader);
 #endif
 }
 
@@ -318,7 +367,7 @@ static const vec3f lightpow[] = {
   vec3f(0.f,1.f,1.f), vec3f(0.f,1.f,1.f)
 };
 
-static void deferred(const mat4x4f &worldmvp) {
+static void dodeferred(const mat4x4f &worldmvp) {
   const auto &mv = ogl::matrix(ogl::MODELVIEW);
   const auto &p  = ogl::matrix(ogl::PROJECTION);
   const auto mvp = p*mv;
@@ -334,31 +383,31 @@ static void deferred(const mat4x4f &worldmvp) {
   OGL(BindFramebuffer, GL_FRAMEBUFFER, shadedbuffer);
   const vec2f subbufferdim(float(sys::scrw/SPLITNUM), float(sys::scrh/SPLITNUM));
   const vec2f rcpsubbufferdim = rcp(subbufferdim);
-  ogl::bindshader(deferredshader);
+  ogl::bindshader(deferred::shader);
   ogl::bindtexture(GL_TEXTURE_RECTANGLE, gnortex, 0);
   ogl::bindtexture(GL_TEXTURE_RECTANGLE, gdethtex, 1);
-  OGL(UniformMatrix4fv, deferredshader.u_mvp, 1, GL_FALSE, &mvp.vx.x);
-  OGL(UniformMatrix4fv, deferredshader.u_invmvp, 1, GL_FALSE, &depthtr.vx.x);
-  OGL(Uniform2fv, deferredshader.u_subbufferdim, 1, &subbufferdim.x);
-  OGL(Uniform2fv, deferredshader.u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
+  OGL(UniformMatrix4fv, deferred::u_mvp, 1, GL_FALSE, &mvp.vx.x);
+  OGL(UniformMatrix4fv, deferred::u_invmvp, 1, GL_FALSE, &depthtr.vx.x);
+  OGL(Uniform2fv, deferred::u_subbufferdim, 1, &subbufferdim.x);
+  OGL(Uniform2fv, deferred::u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
 
 
   loopi(SPLITNUM) loopj(SPLITNUM) {
     const auto idx = i+SPLITNUM*j;
     const vec3f lpow = lightscale * lightpow[idx];
-    OGL(Uniform3fv, deferredshader.u_lightpos, 1, &lightpos[idx].x);
-    OGL(Uniform3fv, deferredshader.u_lightpow, 1, &lpow.x);
+    OGL(Uniform3fv, deferred::u_lightpos, 1, &lightpos[idx].x);
+    OGL(Uniform3fv, deferred::u_lightpow, 1, &lpow.x);
     ogl::immdraw("Sp2", 4, screenquad::getsubbuffer(vec2i(i,j)).v);
   }
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
 
 #if DEBUG_UNSPLIT
-  ogl::bindshader(unsplitshader);
+  ogl::bindshader(debugunsplit::shader);
   ogl::bindtexture(GL_TEXTURE_RECTANGLE, finaltex, 0);
   ogl::bindtexture(GL_TEXTURE_RECTANGLE, gnortex, 1);
-  OGL(UniformMatrix4fv, unsplitshader.u_mvp, 1, GL_FALSE, &mvp.vx.x);
-  OGL(Uniform2fv, unsplitshader.u_subbufferdim, 1, &subbufferdim.x);
-  OGL(Uniform2fv, unsplitshader.u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
+  OGL(UniformMatrix4fv, debugunsplit::u_mvp, 1, GL_FALSE, &mvp.vx.x);
+  OGL(Uniform2fv, debugunsplit::u_subbufferdim, 1, &subbufferdim.x);
+  OGL(Uniform2fv, debugunsplit::u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
   ogl::immdraw("Sp2", 4, screenquad::get().v);
 #endif
 
@@ -382,16 +431,16 @@ static void setforwardmatrices(float fovy, float aspect, float farplane) {
   transplayer();
 }
 
-static void forward(const mat4x4f &mvp, float fovy, float aspect, float farplane) {
+static void doforward(const mat4x4f &mvp, float fovy, float aspect, float farplane) {
   setforwardmatrices(fov, aspect, farplane);
   const vec2f subbufferdim(float(sys::scrw/SPLITNUM), float(sys::scrh/SPLITNUM));
   const vec2f rcpsubbufferdim = rcp(subbufferdim);
-  ogl::bindshader(forwardshader);
+  ogl::bindshader(forward::shader);
   ogl::bindtexture(GL_TEXTURE_RECTANGLE, finaltex, 0);
   ogl::bindtexture(GL_TEXTURE_RECTANGLE, gnortex, 1);
-  OGL(UniformMatrix4fv, forwardshader.u_mvp, 1, GL_FALSE, &mvp.vx.x);
-  OGL(Uniform2fv, forwardshader.u_subbufferdim, 1, &subbufferdim.x);
-  OGL(Uniform2fv, forwardshader.u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
+  OGL(UniformMatrix4fv, forward::u_mvp, 1, GL_FALSE, &mvp.vx.x);
+  OGL(Uniform2fv, forward::u_subbufferdim, 1, &subbufferdim.x);
+  OGL(Uniform2fv, forward::u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
   ogl::immenableflush(false);
   ogl::immdrawelememts("Tip3c3", indexnum, &indices[0], &vertices[0].first[0]);
   ogl::immenableflush(true);
@@ -439,10 +488,10 @@ void frame(int w, int h, int curfps) {
 
   // blit the normal buffer into screen
   setscreentransform();
-  deferred(worldmvp);
+  dodeferred(worldmvp);
   popscreentransform();
 #if !DEBUG_UNSPLIT
-  forward(worldmvp, fovy, aspect, farplane);
+  doforward(worldmvp, fovy, aspect, farplane);
 #endif
   // drawhudgun(fovy, aspect, farplane);
   ogl::disable(GL_CULL_FACE);
