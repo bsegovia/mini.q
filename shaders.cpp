@@ -6,21 +6,22 @@
 namespace q {
 namespace shaders {
 
-shaderlocation::shaderlocation(vector<shaderlocation> **appendhere,
-                               u32 loc, const char *name, const char *type,
-                               bool attrib)
+inoutloc::inoutloc(vector<inoutloc> **appendhere,
+                   u32 loc, const char *name, const char *type,
+                   bool attrib)
   : name(name), type(type), loc(loc), attrib(attrib)
 {
-  if (*appendhere == NULL) *appendhere = NEWE(vector<shaderlocation>);
+  if (*appendhere == NULL) *appendhere = NEWE(vector<inoutloc>);
   (*appendhere)->add(*this);
 }
-uniformlocation::uniformlocation(vector<uniformlocation> **appendhere,
-                                 u32 &loc, const char *name, const char *type,
-                                 bool vertex, int defaultvalue, bool hasdefault)
+
+uniformloc::uniformloc(vector<uniformloc> **appendhere,
+                       u32 &loc, const char *name, const char *type,
+                       bool vertex, int defaultvalue, bool hasdefault)
   : loc(&loc), name(name), type(type), defaultvalue(defaultvalue),
     hasdefault(hasdefault), vertex(vertex)
 {
-  if (*appendhere == NULL) *appendhere = NEWE(vector<uniformlocation>);
+  if (*appendhere == NULL) *appendhere = NEWE(vector<uniformloc>);
   (*appendhere)->add(*this);
 }
 
@@ -66,7 +67,7 @@ void builder::setuniform(ogl::shadertype &s) {
     }
   }
 }
-void builder::setvarying(ogl::shadertype &s) {
+void builder::setinout(ogl::shadertype &s) {
   if (*rsc.attrib) {
     auto &attrib = **rsc.attrib;
     loopv(attrib)

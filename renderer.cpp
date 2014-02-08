@@ -94,40 +94,6 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
 /*--------------------------------------------------------------------------
  - deferred shading stuff
  -------------------------------------------------------------------------*/
-#if 0
-struct shaderlocation {
-  INLINE shaderlocation() {}
-  INLINE shaderlocation(vector<shaderlocation> **appendhere,
-                        u32 loc, const char *name, const char *type,
-                        bool attrib)
-    : name(name), type(type), loc(loc), attrib(attrib)
-  {
-    if (*appendhere == NULL) *appendhere = NEWE(vector<shaderlocation>);
-    (*appendhere)->add(*this);
-  }
-  const char *name, *type;
-  u32 loc;
-  bool attrib;
-};
-struct uniformlocation {
-  INLINE uniformlocation() {}
-  INLINE uniformlocation(vector<uniformlocation> **appendhere,
-                         u32 &loc, const char *name, const char *type,
-                         bool vertex, int defaultvalue=0, bool hasdefault=false)
-    : loc(&loc), name(name), type(type), defaultvalue(defaultvalue),
-      hasdefault(hasdefault), vertex(vertex)
-  {
-    if (*appendhere == NULL) *appendhere = NEWE(vector<uniformlocation>);
-    (*appendhere)->add(*this);
-  }
-  u32 *loc;
-  const char *name, *type;
-  int defaultvalue;
-  bool hasdefault;
-  bool vertex;
-};
-#endif
-
 #define SPLITNUM 4
 static void rules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
   sprintf_sd(str)("#define SPLITNUM %f\n", float(SPLITNUM));

@@ -766,7 +766,7 @@ bool shaderbuilder::buildprogram(shadertype &s, const char *vert, const char *fr
   if (program == 0) return false;
   if (s.program) deleteprogram(s.program);
   s.program = program;
-  setvarying(s);
+  setinout(s);
   linkshader(s);
   OGL(UseProgram, s.program);
   setuniform(s);
@@ -884,7 +884,7 @@ void fixedshaderbuilder::setuniform(shadertype &s) {
   }
 }
 
-void fixedshaderbuilder::setvarying(shadertype &s) {
+void fixedshaderbuilder::setinout(shadertype &s) {
   auto &shader = static_cast<fixedshadertype&>(s);
   if (rules&FIXED_KEYFRAME) {
     OGL(BindAttribLocation, shader.program, ATTRIB_POS0, "vs_pos0");

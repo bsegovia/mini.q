@@ -9,24 +9,27 @@
 namespace q {
 namespace shaders {
 
+/*--------------------------------------------------------------------------
+ - boiler plate to declare a shader and interoperate with GLSL side
+ -------------------------------------------------------------------------*/
 #if !defined(__WEBGL__)
 #define LOCATIONS\
-  static vector<shaders::shaderlocation> *attrib = NULL, *fragdata = NULL;\
-  static vector<shaders::uniformlocation> *uniform = NULL;
+  static vector<shaders::inoutloc> *attrib = NULL, *fragdata = NULL;\
+  static vector<shaders::uniformloc> *uniform = NULL;
 #define FRAGDATA(T,N,LOC)\
-  static shaders::shaderlocation N##loc(&fragdata,LOC,#N,#T,false);
+  static shaders::inoutloc N##loc(&fragdata,LOC,#N,#T,false);
 #else
 #define LOCATIONS\
-  static vector<shaders::shaderlocation> *attrib = NULL;\
-  static vector<shaders::uniformlocation> *uniform = NULL;
+  static vector<shaders::inoutloc> *attrib = NULL;\
+  static vector<shaders::uniformloc> *uniform = NULL;
 #define FRAGDATA(T,N,LOC)
 #endif
 #define UNIFORMI(T,N,X,V)\
-  u32 N; static const shaders::uniformlocation N##loc(&uniform,N,#N,#T,V,X,true);
+  u32 N; static const shaders::uniformloc N##loc(&uniform,N,#N,#T,V,X,true);
 #define UNIFORM(T,N,V)\
-  u32 N; static const shaders::uniformlocation N##loc(&uniform,N,#N,#T,V);
+  u32 N; static const shaders::uniformloc N##loc(&uniform,N,#N,#T,V);
 #define VATTRIB(T,N,LOC)\
-  u32 N; static const shaders::shaderlocation N##loc(&attrib,LOC,#N,#T,true);
+  u32 N; static const shaders::inoutloc N##loc(&attrib,LOC,#N,#T,true);
 
 #define VUNIFORM(T,N) UNIFORM(T,N,true)
 #define VUNIFORMI(T,N,X) UNIFORMI(T,N,X,true)
@@ -52,20 +55,20 @@ namespace shaders {
   };\
 }
 
-struct shaderlocation {
-  INLINE shaderlocation() {}
-  shaderlocation(vector<shaderlocation> **appendhere,
-                 u32 loc, const char *name, const char *type,
-                 bool attrib);
+struct inoutloc {
+  INLINE inoutloc() {}
+  inoutloc(vector<inoutloc> **appendhere,
+           u32 loc, const char *name, const char *type,
+           bool attrib);
   const char *name, *type;
   u32 loc;
   bool attrib;
 };
-struct uniformlocation {
-  INLINE uniformlocation() {}
-  uniformlocation(vector<uniformlocation> **appendhere,
-                  u32 &loc, const char *name, const char *type,
-                  bool vertex, int defaultvalue=0, bool hasdefault=false);
+struct uniformloc {
+  INLINE uniformloc() {}
+  uniformloc(vector<uniformloc> **appendhere,
+             u32 &loc, const char *name, const char *type,
+             bool vertex, int defaultvalue=0, bool hasdefault=false);
   u32 *loc;
   const char *name, *type;
   int defaultvalue;
@@ -77,9 +80,9 @@ typedef void (*rulescallback)(ogl::shaderrules&, ogl::shaderrules&);
 
 struct shaderresource {
   const char *vppath, *fppath, *fp, *vp;
-  vector<uniformlocation> **uniform;
-  vector<shaderlocation> **attrib;
-  vector<shaderlocation> **fragdata;
+  vector<uniformloc> **uniform;
+  vector<inoutloc> **attrib;
+  vector<inoutloc> **fragdata;
   rulescallback rulescb;
 };
 
@@ -88,14 +91,20 @@ struct destroyregister {
   destroyregister(destroycallback cb) {atexit(cb);}
 };
 
+/*--------------------------------------------------------------------------
+ - shader builder for shaders specified using the above macro system
+ -------------------------------------------------------------------------*/
 struct builder : ogl::shaderbuilder {
   builder(const shaderresource &rsc);
   void setrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules);
   void setuniform(ogl::shadertype &s);
-  void setvarying(ogl::shadertype &s);
+  void setinout(ogl::shadertype &s);
   const shaderresource &rsc;
 };
 
+/*--------------------------------------------------------------------------
+ - declare the source code for all game shaders and shader libraries
+ -------------------------------------------------------------------------*/
 #define DEBUG_UNSPLIT 1
 #define SHADER(NAME)\
 extern const char NAME##_vp[], NAME##_fp[];
@@ -108,7 +117,6 @@ SHADER(debugunsplit);
 extern const char noise2D[], noise3D[], noise4D[];
 extern const char font_fp[];
 extern const char dfrm_fp[];
-
 } /* namespace shaders */
 } /* namespace q */
 
