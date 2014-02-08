@@ -142,16 +142,19 @@ struct destroyregister {
   static vector<shaderlocation> *attrib = NULL;\
   static vector<shaderlocation> *fragdata = NULL;\
   static vector<uniformlocation> *uniform = NULL;
-#define FRAGDATA(NAME,LOC) static shaderlocation NAME##loc(&fragdata,LOC,#NAME);
+#define FRAGDATA(T, NAME,LOC) static shaderlocation NAME##loc(&fragdata,LOC,#NAME);
 #else
 #define LOCATIONS\
   static vector<shaderlocation> *attrib = NULL;\
   static vector<uniformlocation> *uniform = NULL;
-#define FRAGDATA(NAME)
+#define FRAGDATA(T, NAME, LOC)
 #endif
-#define UNIFORMI(NAME,X) u32 NAME; static uniformlocation NAME##loc(&uniform,NAME,#NAME,X,1);
-#define UNIFORM(NAME) u32 NAME; static uniformlocation NAME##loc(&uniform,NAME,#NAME);
-#define ATTRIB(NAME,LOC) u32 NAME; static shaderlocation NAME##loc(&attrib,LOC,#NAME);
+#define UNIFORMI(T, NAME,X)\
+  u32 NAME; static uniformlocation NAME##loc(&uniform,NAME,#NAME,X,1);
+#define UNIFORM(T, NAME)\
+  u32 NAME; static uniformlocation NAME##loc(&uniform,NAME,#NAME);
+#define ATTRIB(T, NAME,LOC)\
+  u32 NAME; static shaderlocation NAME##loc(&attrib,LOC,#NAME);
 
 #define BEGIN_SHADER(NAME) namespace NAME {\
   static ogl::shadertype shader;\
@@ -177,37 +180,19 @@ static void rules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
 }
 
 BEGIN_SHADER(deferred)
-  UNIFORM(u_mvp)
-  UNIFORM(u_subbufferdim)
-  UNIFORM(u_rcpsubbufferdim)
-  UNIFORM(u_invmvp)
-  UNIFORM(u_lightpos)
-  UNIFORM(u_lightpow)
-  UNIFORMI(u_nortex,0)
-  UNIFORMI(u_depthtex,1)
-  ATTRIB(vs_pos, ogl::ATTRIB_POS0)
-  FRAGDATA(rt_col, 0)
+#include "data/shaders/deferred_fp_decl.glsl"
+#include "data/shaders/deferred_vp_decl.glsl"
 END_SHADER(deferred)
 
-#define SHADER\
-  UNIFORM(u_mvp)\
-  UNIFORM(u_subbufferdim)\
-  UNIFORM(u_rcpsubbufferdim)\
-  UNIFORMI(u_lighttex,0)\
-  UNIFORMI(u_nortex,1)\
-  ATTRIB(vp_pos, ogl::ATTRIB_POS0)\
-  FRAGDATA(rt_col, 0)
-
 BEGIN_SHADER(forward)
-SHADER
-ATTRIB(vp_nor, ogl::ATTRIB_COL)
+#include "data/shaders/forward_fp_decl.glsl"
+#include "data/shaders/forward_vp_decl.glsl"
 END_SHADER(forward)
 
 BEGIN_SHADER(debugunsplit)
-SHADER
+#include "data/shaders/debugunsplit_fp_decl.glsl"
+#include "data/shaders/debugunsplit_vp_decl.glsl"
 END_SHADER(debugunsplit)
-
-#undef SHADER
 
 struct genericshaderbuilder : ogl::shaderbuilder {
   genericshaderbuilder(const shaderresource &rsc) :
