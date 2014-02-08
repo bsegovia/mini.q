@@ -39,11 +39,13 @@ enum {
   ATTRIB_NUM
 };
 
-// track allocations
+// like OGL versions but also track allocations
 void gentextures(s32 n, u32 *id);
-void genbuffers(s32 n, u32 *id);
 void deletetextures(s32 n, u32 *id);
+void genbuffers(s32 n, u32 *id);
 void deletebuffers(s32 n, u32 *id);
+void genframebuffers(s32 n, u32 *id);
+void deleteframebuffers(s32 n, u32 *id);
 
 // following functions also ensure state tracking
 enum {ARRAY_BUFFER, ELEMENT_ARRAY_BUFFER, BUFFER_NUM};

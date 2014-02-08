@@ -84,6 +84,7 @@ void finish() {
   rr::finish();
   md2::finish();
   shaders::finish();
+  text::finish();
   ogl::finish();
   task::finish();
   con::finish();

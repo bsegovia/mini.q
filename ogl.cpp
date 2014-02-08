@@ -18,7 +18,7 @@ namespace q {
 namespace ogl {
 
 /*-------------------------------------------------------------------------
- - OGL extensions / versions ...
+ - OGL extensions / versions...
  -------------------------------------------------------------------------*/
 #if !defined(__WEBGL__)
 #define OGLPROC110(FIELD,NAME,PROTOTYPE) PROTOTYPE FIELD = NULL;
@@ -175,7 +175,7 @@ void disableattribarray(u32 target) {
 /*--------------------------------------------------------------------------
  - simple resource management
  -------------------------------------------------------------------------*/
-static s32 texturenum = 0, buffernum = 0, programnum = 0;
+static s32 texturenum=0, buffernum=0, programnum=0, framebuffernum=0;
 
 void gentextures(s32 n, u32 *id) {
   texturenum += n;
@@ -183,7 +183,7 @@ void gentextures(s32 n, u32 *id) {
 }
 void deletetextures(s32 n, u32 *id) {
   texturenum -= n;
-  if (texturenum < 0) sys::fatal("textures already freed");
+  assert(texturenum >= 0);
   OGL(DeleteTextures, n, id);
 }
 void genbuffers(s32 n, u32 *id) {
@@ -192,11 +192,20 @@ void genbuffers(s32 n, u32 *id) {
 }
 void deletebuffers(s32 n, u32 *id) {
   buffernum -= n;
-  if (buffernum < 0) sys::fatal("buffers already freed");
+  assert(buffernum >= 0);
   OGL(DeleteBuffers, n, id);
 }
+void genframebuffers(s32 n, u32 *id) {
+  framebuffernum += n;
+  OGL(GenFramebuffers, n, id);
+}
+void deleteframebuffers(s32 n, u32 *id) {
+  framebuffernum -= n;
+  assert(framebuffernum >= 0);
+  OGL(DeleteFramebuffers, n, id);
+}
 
-static u32 createprogram(void) {
+static u32 createprogram() {
   programnum++;
 #if defined(__WEBGL__)
   return glCreateProgram();
@@ -226,7 +235,7 @@ void loadmatrix(const mat4x4f &m) {
   dirty.flags.mvp=1;
   vp[vpmode] = m;
 }
-void identity(void) {
+void identity() {
   dirty.flags.mvp=1;
   vp[vpmode] = mat4x4f(one);
 }
@@ -254,11 +263,11 @@ void scale(const vec3f &s) {
   dirty.flags.mvp=1;
   vp[vpmode] = scale(vp[vpmode],s);
 }
-void pushmatrix(void) {
+void pushmatrix() {
   assert(vpdepth+1<MATRIX_STACK);
   vpstack[vpdepth++][vpmode] = vp[vpmode];
 }
-void popmatrix(void) {
+void popmatrix() {
   assert(vpdepth>0);
   dirty.flags.mvp=1;
   vp[vpmode] = vpstack[--vpdepth][vpmode];
@@ -438,10 +447,14 @@ static void initbuffer(u32 &bo, int target, int size) {
   bindbuffer(target, 0);
 }
 
-static void imminit(void) {
+static void imminit() {
   initbuffer(bigvbo, ARRAY_BUFFER, immbuffersize);
   initbuffer(bigibo, ELEMENT_ARRAY_BUFFER, immbuffersize);
   memset(immattribs, 0, sizeof(immattribs));
+}
+static void immdestroy() {
+  ogl::deletebuffers(1, &bigibo);
+  ogl::deletebuffers(1, &bigvbo);
 }
 
 static void immattrib(int attrib, int n, int type, int offset) {
@@ -452,7 +465,7 @@ static void immattrib(int attrib, int n, int type, int offset) {
 
 static void immvertexsize(int sz) { immvertexsz = sz; }
 
-static void immsetallattribs(void) {
+static void immsetallattribs() {
   loopi(ATTRIB_NUM) {
     if (!enabledattribarray[i]) continue;
     const void *fake = (const void *) intptr_t(drawvbooffset+immattribs[i].offset);
@@ -839,7 +852,7 @@ CMD(reloadshaders, "");
 static fixedshadertype shaders[fixedshadernum];
 
 // flush all the states required for the draw call
-void fixedflush(void) {
+void fixedflush() {
   if (dirty.any == 0) return; // fast path
   if (dirty.flags.mvp) {
     const auto s = static_cast<fixedshadertype*>(bindedshader);
@@ -969,7 +982,12 @@ void finish() {
   loopv(allshaders) DEL(allshaders[i].first);
   allshaders.destroy();
   rangei(TEX_CROSSHAIR, TEX_PREALLOCATED_NUM)
-    if (coretexarray[i]) OGL(DeleteTextures, 1, coretexarray+i);
+    if (coretexarray[i]) ogl::deletetextures(1, coretexarray+i);
+  immdestroy();
+  if (programnum) printf("ogl: %d shaders are still allocated\n", programnum);
+  if (texturenum) printf("ogl: %d textures are still allocated\n", texturenum);
+  if (buffernum) printf("ogl: %d buffers are still allocated\n", buffernum);
+  if (framebuffernum) printf("ogl: %d frame buffers are still allocated\n", framebuffernum);
 }
 } /* namespace ogl */
 } /* namespace q */

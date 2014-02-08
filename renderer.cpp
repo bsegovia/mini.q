@@ -128,14 +128,14 @@ static void initdeferred() {
   finaltex = ogl::maketex("TB I3 D3 Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
 
   // all frame buffer objects
-  OGL(GenFramebuffers, 1, &gbuffer);
+  ogl::genframebuffers(1, &gbuffer);
   OGL(BindFramebuffer, GL_FRAMEBUFFER, gbuffer);
   OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, gnortex, 0);
   OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_RECTANGLE, gdethtex, 0);
   if (GL_FRAMEBUFFER_COMPLETE != ogl::CheckFramebufferStatus(GL_FRAMEBUFFER))
     sys::fatal("renderer: unable to init gbuffer framebuffer");
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
-  OGL(GenFramebuffers, 1, &shadedbuffer);
+  ogl::genframebuffers(1, &shadedbuffer);
   OGL(BindFramebuffer, GL_FRAMEBUFFER, shadedbuffer);
   OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, finaltex, 0);
   if (GL_FRAMEBUFFER_COMPLETE != ogl::CheckFramebufferStatus(GL_FRAMEBUFFER))
@@ -147,8 +147,8 @@ static void cleandeferred() {
   ogl::deletetextures(1, &gnortex);
   ogl::deletetextures(1, &gdethtex);
   ogl::deletetextures(1, &finaltex);
-  OGL(DeleteFramebuffers, 1, &gbuffer);
-  OGL(DeleteFramebuffers, 1, &shadedbuffer);
+  ogl::deleteframebuffers(1, &gbuffer);
+  ogl::deleteframebuffers(1, &shadedbuffer);
   ogl::destroyshader(deferred::shader);
   ogl::destroyshader(forward::shader);
 #if DEBUG_UNSPLIT
