@@ -49,8 +49,8 @@ SHADERS=data/shaders/fixed_vp.glsl\
         data/shaders/noise4D.glsl
 
 ## build embedded shader source
-shaders.cpp: $(SHADERS)
-	./scripts/stringify_all_shaders.sh shaders.cpp shaders.hpp
+shaders.cxx: $(SHADERS)
+	./scripts/stringify_all_shaders.sh shaders.cxx
 
 ## build font header
 font.hxx: compress_chars data/font8x16.png

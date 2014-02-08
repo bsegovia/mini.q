@@ -35,7 +35,7 @@ ogl.o: ogl.cpp ogl.hxx $(HEADERS)
 qef.o: qef.cpp qef.hpp sys.hpp
 physics.o: physics.cpp $(HEADERS)
 renderer.o: renderer.cpp $(HEADERS) $(SHADER_DECLARATIONS)
-shaders.o: shaders.cpp $(HEADERS)
+shaders.o: shaders.cpp shaders.cxx $(HEADERS)
 sound.o: sound.cpp $(HEADERS)
 script.o: script.cpp $(HEADERS)
 stl.o: stl.cpp math.hpp stl.hpp sys.hpp

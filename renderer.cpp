@@ -94,6 +94,7 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
 /*--------------------------------------------------------------------------
  - deferred shading stuff
  -------------------------------------------------------------------------*/
+#if 0
 struct shaderlocation {
   INLINE shaderlocation() {}
   INLINE shaderlocation(vector<shaderlocation> **appendhere,
@@ -125,68 +126,7 @@ struct uniformlocation {
   bool hasdefault;
   bool vertex;
 };
-
-typedef void (*rulescallback)(ogl::shaderrules&, ogl::shaderrules&);
-
-struct shaderresource {
-  const char *vppath, *fppath, *fp, *vp;
-  vector<uniformlocation> **uniform;
-  vector<shaderlocation> **attrib;
-  vector<shaderlocation> **fragdata;
-  rulescallback rulescb;
-};
-
-typedef void (*destroycallback)();
-struct destroyregister {
-  destroyregister(destroycallback cb) {atexit(cb);}
-};
-
-#if !defined(__WEBGL__)
-#define LOCATIONS\
-  static vector<shaderlocation> *attrib = NULL;\
-  static vector<shaderlocation> *fragdata = NULL;\
-  static vector<uniformlocation> *uniform = NULL;
-#define FRAGDATA(T,N,LOC)\
-  static shaderlocation N##loc(&fragdata,LOC,#N,#T,false);
-#else
-#define LOCATIONS\
-  static vector<shaderlocation> *attrib = NULL;\
-  static vector<uniformlocation> *uniform = NULL;
-#define FRAGDATA(T,N,LOC)
 #endif
-#define UNIFORMI(T,N,X,V)\
-  u32 N; static const uniformlocation N##loc(&uniform,N,#N,#T,V,X,true);
-#define UNIFORM(T,N,V)\
-  u32 N; static const uniformlocation N##loc(&uniform,N,#N,#T,V);
-#define ATTRIB(T,N,LOC)\
-  u32 N; static const shaderlocation N##loc(&attrib,LOC,#N,#T,true);
-
-#define VUNIFORM(T,N) UNIFORM(T,N,true)
-#define VUNIFORMI(T,N,X) UNIFORMI(T,N,X,true)
-#define FUNIFORM(T,N) UNIFORM(T,N,false)
-#define FUNIFORMI(T,N,X) UNIFORMI(T,N,X,false)
-
-#define BEGIN_SHADER(N) namespace N {\
-  static ogl::shadertype shader;\
-  static const char vppath[] = "data/shaders/" #N "_vp.glsl";\
-  static const char fppath[] = "data/shaders/" #N "_fp.glsl";\
-  static const char *vp = shaders:: N##_vp;\
-  static const char *fp = shaders:: N##_fp;\
-  LOCATIONS
-#define END_SHADER(N)\
-  void destroy() {\
-    SAFE_DEL(attrib);\
-    SAFE_DEL(fragdata);\
-    SAFE_DEL(uniform);\
-  }\
-  static const destroyregister destroyreg(destroy);\
-  static const shaderresource rsc = {\
-    vppath, fppath,\
-    vp, fp,\
-    &uniform, &attrib, &fragdata,\
-    rules\
-  };\
-}
 
 #define SPLITNUM 4
 static void rules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
@@ -209,66 +149,6 @@ BEGIN_SHADER(debugunsplit)
 #include "data/shaders/debugunsplit_fp.decl"
 #include "data/shaders/debugunsplit_vp.decl"
 END_SHADER(debugunsplit)
-
-struct genericshaderbuilder : ogl::shaderbuilder {
-  genericshaderbuilder(const shaderresource &rsc) :
-    ogl::shaderbuilder(rsc.vppath, rsc.fppath, rsc.vp, rsc.fp), rsc(rsc)
-  {}
-  void setrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
-    if (*rsc.uniform) {
-      auto &uniform = **rsc.uniform;
-      loopv(uniform) {
-        sprintf_sd(rule)("uniform %s %s;\n", uniform[i].type, uniform[i].name);
-        if (uniform[i].vertex)
-          vertrules.add(NEWSTRING(rule));
-        else
-          fragrules.add(NEWSTRING(rule));
-      }
-    }
-    if (*rsc.attrib) {
-      auto &attrib = **rsc.attrib;
-      loopv(attrib) {
-        sprintf_sd(rule)("VS_IN %s %s;\n", attrib[i].type, attrib[i].name);
-        vertrules.add(NEWSTRING(rule));
-      }
-    }
-#if !defined(__WEBGL__)
-    if (*rsc.fragdata) {
-      auto &fragdata = **rsc.fragdata;
-      loopv(fragdata) {
-        sprintf_sd(rule)("out %s %s;\n", fragdata[i].type, fragdata[i].name);
-        fragrules.add(NEWSTRING(rule));
-      }
-    }
-#endif
-    rsc.rulescb(vertrules, fragrules);
-  }
-  void setuniform(ogl::shadertype &s) {
-    if (*rsc.uniform) {
-      auto &uniform = **rsc.uniform;
-      loopv(uniform) {
-        OGLR(*uniform[i].loc, GetUniformLocation, s.program, uniform[i].name);
-        if (uniform[i].hasdefault)
-          OGL(Uniform1i, *uniform[i].loc, uniform[i].defaultvalue);
-      }
-    }
-  }
-  void setvarying(ogl::shadertype &s) {
-    if (*rsc.attrib) {
-      auto &attrib = **rsc.attrib;
-      loopv(attrib)
-        OGL(BindAttribLocation, s.program, attrib[i].loc, attrib[i].name);
-    }
-#if !defined(__WEBGL__)
-    if (*rsc.fragdata) {
-      auto &fragdata = **rsc.fragdata;
-      loopv(fragdata)
-        OGL(BindFragDataLocation, s.program, fragdata[i].loc, fragdata[i].name);
-    }
-#endif
-  }
-  const shaderresource &rsc;
-};
 
 static u32 gdethtex, gnortex, finaltex;
 static u32 gbuffer, shadedbuffer;
@@ -295,12 +175,12 @@ static void initdeferred() {
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
 
   // all shaders
-  if (!NEW(genericshaderbuilder, deferred::rsc)->build(deferred::shader, ogl::loadfromfile()))
+  if (!NEW(shaders::builder,deferred::rsc)->build(deferred::shader, ogl::loadfromfile()))
     ogl::shadererror(true, "deferred shader");
-  if (!NEW(genericshaderbuilder, forward::rsc)->build(forward::shader, ogl::loadfromfile()))
+  if (!NEW(shaders::builder,forward::rsc)->build(forward::shader, ogl::loadfromfile()))
     ogl::shadererror(true, "forward shader");
 #if DEBUG_UNSPLIT
-  if (!NEW(genericshaderbuilder, debugunsplit::rsc)->build(debugunsplit::shader, ogl::loadfromfile()))
+  if (!NEW(shaders::builder,debugunsplit::rsc)->build(debugunsplit::shader, ogl::loadfromfile()))
     ogl::shadererror(true, "debugunsplit shader");
 #endif
 }
