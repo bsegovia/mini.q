@@ -120,7 +120,7 @@ struct uniformlocation {
   int hasdefault;
 };
 
-typedef void (*rulescallback)(string &);
+typedef void (*rulescallback)(ogl::shaderrules&, ogl::shaderrules&);
 
 struct shaderresource {
   const char *vppath, *fppath, *fp, *vp;
@@ -170,8 +170,10 @@ struct destroyregister {
   static const shaderresource rsc = {vppath,fppath,fp,vp,&uniform,&attrib,&fragdata,rules};}
 
 #define SPLITNUM 4
-static void rules(string &str) {
-  sprintf_s(str)("#define SPLITNUM %f\n", float(SPLITNUM));
+static void rules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
+  sprintf_sd(str)("#define SPLITNUM %f\n", float(SPLITNUM));
+  vertrules.add(NEWSTRING(str));
+  fragrules.add(NEWSTRING(str));
 }
 
 BEGIN_SHADER(deferred)
@@ -211,8 +213,8 @@ struct genericshaderbuilder : ogl::shaderbuilder {
   genericshaderbuilder(const shaderresource &rsc) :
     ogl::shaderbuilder(rsc.vppath, rsc.fppath, rsc.vp, rsc.fp), rsc(rsc)
   {}
-  virtual void setrules(string &str) {
-    rsc.rulescb(str);
+  virtual void setrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
+    rsc.rulescb(vertrules, fragrules);
   }
   virtual void setuniform(ogl::shadertype &s) {
     if (*rsc.uniform) {

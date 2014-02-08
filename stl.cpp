@@ -34,7 +34,7 @@ u32 murmurhash2(const void *key, int len, u32 seed) {
 
 char *newstring(const char *s, size_t l, const char *filename, int linenum) {
   char *b = (char*) sys::memalloc(l+1, filename, linenum);
-  strncpy(b,s,l);
+  if (s) strncpy(b,s,l);
   b[l] = 0;
   return b;
 }

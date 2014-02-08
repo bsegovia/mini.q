@@ -677,7 +677,7 @@ void printtimers(int conw, int conh)
 /*--------------------------------------------------------------------------
  - shader management
  -------------------------------------------------------------------------*/
-static bool checkshader(const char *source, const char *rules, u32 shadernumame) {
+static bool checkshader(const char *source, u32 shadernumame) {
   GLint result = GL_FALSE;
   int infologlength;
 
@@ -689,7 +689,7 @@ static bool checkshader(const char *source, const char *rules, u32 shadernumame)
     buffer[infologlength] = 0;
     OGL(GetShaderInfoLog, shadernumame, infologlength, NULL, buffer);
     con::out("%s", buffer);
-    printf("in\n%s%s\n", rules, source);
+    printf("in\n%s\n", source);
     FREE(buffer);
   }
   return result == GL_TRUE;
@@ -716,13 +716,16 @@ static const char header[] = {
 #endif // __WEBGL__
 };
 
-static u32 loadshader(GLenum type, const char *source, const char *rulestr) {
+static u32 loadshader(GLenum type, const char *source, const shaderrules &rules) {
   u32 name;
   OGLR(name, CreateShader, type);
-  const char *sources[] = {header, rulestr, source};
-  OGL(ShaderSource, name, 3, sources, NULL);
+  vector<const char*> sources;
+  sources.add(header);
+  loopv(rules) sources.add(rules[i]);
+  sources.add(source);
+  OGL(ShaderSource, name, rules.length()+2, &sources[0], NULL);
   OGL(CompileShader, name);
-  if (!checkshader(source, rulestr, name)) return 0;
+  if (!checkshader(source, name)) return 0;
   return name;
 }
 
@@ -731,10 +734,13 @@ static void linkshader(shadertype &shader) {
   OGL(ValidateProgram, shader.program);
 }
 
-static u32 loadprogram(const char *vertstr, const char *fragstr, const char *rules) {
+static u32 loadprogram(const char *vertstr, const char *fragstr,
+                       const shaderrules &vertrules,
+                       const shaderrules &fragrules)
+{
   u32 program = 0;
-  const u32 vert = loadshader(GL_VERTEX_SHADER, vertstr, rules);
-  const u32 frag = loadshader(GL_FRAGMENT_SHADER, fragstr, rules);
+  const u32 vert = loadshader(GL_VERTEX_SHADER, vertstr, vertrules);
+  const u32 frag = loadshader(GL_FRAGMENT_SHADER, fragstr, fragrules);
   if (vert == 0 || frag == 0) return 0;
   program = createprogram();
   OGL(AttachShader, program, vert);
@@ -747,10 +753,11 @@ static u32 loadprogram(const char *vertstr, const char *fragstr, const char *rul
 
 u32 shaderbuilder::compile(const char *vert, const char *frag) {
   u32 program;
-  string rulestr;
-  rulestr[0] = 0;
-  setrules(rulestr);
-  if ((program = loadprogram(vert, frag, rulestr))==0) return 0;
+  vector<char*> fragrules, vertrules;
+  setrules(fragrules, vertrules);
+  if ((program = loadprogram(vert, frag, fragrules, vertrules))==0) return 0;
+  loopv(vertrules) FREE(vertrules[i]);
+  loopv(fragrules) FREE(fragrules[i]);
   return program;
 }
 
@@ -853,13 +860,15 @@ fixedshaderbuilder::fixedshaderbuilder(const char *vppath, const char *fppath,
                                        u32 rules) :
   shaderbuilder(vppath, fppath, vp, fp), rules(rules) {}
 
-void fixedshaderbuilder::setrules(string &str) {
-  sprintf_s(str)("#define USE_COL %d\n"
+void fixedshaderbuilder::setrules(shaderrules &vertrules, shaderrules &fragrules) {
+  sprintf_sd(str)("#define USE_COL %d\n"
                  "#define USE_KEYFRAME %d\n"
                  "#define USE_DIFFUSETEX %d\n",
                  rules&FIXED_COLOR,
                  rules&FIXED_KEYFRAME,
                  rules&FIXED_DIFFUSETEX);
+  vertrules.add(NEWSTRING(str));
+  fragrules.add(NEWSTRING(str));
 }
 
 void fixedshaderbuilder::setuniform(shadertype &s) {

@@ -37,6 +37,8 @@ include Makefile.dep
 
 SHADERS=data/shaders/fixed_vp.glsl\
         data/shaders/fixed_fp.glsl\
+        data/shaders/deferred_vp_decl.glsl\
+        data/shaders/deferred_fp_decl.glsl\
         data/shaders/deferred_vp.glsl\
         data/shaders/deferred_fp.glsl\
         data/shaders/debugunsplit_vp.glsl\

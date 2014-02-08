@@ -53,11 +53,26 @@ const char debugunsplit_fp[] = {
 };
 #endif
 
+const char debugunsplit_fp_decl[] = {
+"UNIFORMI(sampler2DRect, u_lighttex, 0)\n"
+"UNIFORMI(sampler2DRect, u_nortex, 1)\n"
+"UNIFORM(vec2, u_subbufferdim)\n"
+"UNIFORM(vec2, u_rcpsubbufferdim)\n"
+"FRAGDATA(vec4, rt_col, 0)\n"
+};
+
 #if DEBUG_UNSPLIT
 const char debugunsplit_vp[] = {
 "uniform mat4 u_mvp;\n"
 "VS_IN vec2 vs_pos;\n"
 "void main() {gl_Position = u_mvp*vec4(vs_pos,1.0,1.0);}\n"
+};
+#endif
+
+#if DEBUG_UNSPLIT
+const char debugunsplit_vp_decl[] = {
+"UNIFORM(mat4, u_mvp)\n"
+"ATTRIB(vec2, vs_pos, ogl::ATTRIB_POS0);\n"
 };
 #endif
 
@@ -87,10 +102,26 @@ const char deferred_fp[] = {
 "}\n"
 };
 
+const char deferred_fp_decl[] = {
+"UNIFORMI(sampler2DRect, u_nortex, 0)\n"
+"UNIFORMI(sampler2DRect, u_depthtex, 1)\n"
+"UNIFORM(vec2, u_subbufferdim)\n"
+"UNIFORM(vec2, u_rcpsubbufferdim)\n"
+"UNIFORM(mat4, u_invmvp)\n"
+"UNIFORM(vec3, u_lightpos)\n"
+"UNIFORM(vec3, u_lightpow)\n"
+"FRAGDATA(vec4, rt_col, 0)\n"
+};
+
 const char deferred_vp[] = {
 "uniform mat4 u_mvp;\n"
 "VS_IN vec2 vs_pos;\n"
 "void main() {gl_Position = u_mvp*vec4(vs_pos,1.0,1.0);}\n"
+};
+
+const char deferred_vp_decl[] = {
+"UNIFORM(mat4, u_mvp)\n"
+"ATTRIB(vec2, vs_pos, ogl::ATTRIB_POS0);\n"
 };
 
 const char fixed_fp[] = {
@@ -249,6 +280,14 @@ const char forward_fp[] = {
 "}\n"
 };
 
+const char forward_fp_decl[] = {
+"UNIFORMI(sampler2DRect, u_lighttex, 0)\n"
+"UNIFORMI(sampler2DRect, u_nortex, 1)\n"
+"UNIFORM(vec2, u_subbufferdim)\n"
+"UNIFORM(vec2, u_rcpsubbufferdim)\n"
+"FRAGDATA(vec4, rt_col, 0)\n"
+};
+
 const char forward_vp[] = {
 "uniform mat4 u_mvp;\n"
 "VS_IN vec3 vs_pos;\n"
@@ -259,6 +298,12 @@ const char forward_vp[] = {
 "  fs_nor = vs_nor;\n"
 "  gl_Position = u_mvp*vec4(vs_pos,1.0);\n"
 "}\n"
+};
+
+const char forward_vp_decl[] = {
+"UNIFORM(mat4, u_mvp)\n"
+"ATTRIB(vec3, vs_pos, ogl::ATTRIB_POS0)\n"
+"ATTRIB(vec3, vs_nor, ogl::ATTRIB_COL0)\n"
 };
 
 //

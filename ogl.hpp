@@ -184,6 +184,9 @@ struct shadertype {
 void destroyshader(shadertype&);
 void bindshader(shadertype&);
 
+// provides rules source when compiling a shader
+typedef vector<char*> shaderrules;
+
 // to be overloaded when creating shaders
 struct shaderbuilder {
   shaderbuilder(const char *vppath, const char *fppath,
@@ -193,7 +196,7 @@ struct shaderbuilder {
 private:
   const char *vppath, *fppath;
   const char *vp, *fp;
-  virtual void setrules(string &str) = 0;
+  virtual void setrules(shaderrules &vertrules, shaderrules &fragrules) = 0;
   virtual void setuniform(shadertype &s) = 0;
   virtual void setvarying(shadertype &s) = 0;
   u32 compile(const char *vertsrc, const char *fragsrc);
@@ -232,7 +235,7 @@ struct fixedshadertype : shadertype {
 struct fixedshaderbuilder : shaderbuilder {
   fixedshaderbuilder(const char *vppath, const char *fppath,
                      const char *vp, const char *fp, u32 rules);
-  virtual void setrules(string &str);
+  virtual void setrules(shaderrules&, shaderrules&);
   virtual void setuniform(shadertype &s);
   virtual void setvarying(shadertype &s);
   u32 rules;
