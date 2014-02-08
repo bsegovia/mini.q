@@ -2,6 +2,7 @@
  - mini.q - a minimalistic multiplayer FPS
  - shaders.cpp -> shader system mostly based on c++ premain and macros
  -------------------------------------------------------------------------*/
+#pragma once
 #include "ogl.hpp"
 #include "stl.hpp"
 #include "sys.hpp"
@@ -9,7 +10,7 @@
 namespace q {
 namespace shaders {
 
-/*--------------------------------------------------------------------------
+/*-------------------------------------------------------------------------
  - boiler plate to declare a shader and interoperate with GLSL side
  -------------------------------------------------------------------------*/
 #if !defined(__WEBGL__)
@@ -32,8 +33,8 @@ namespace shaders {
   u32 N; static const shaders::inoutloc N##loc(&attrib,LOC,#N,#T,true);
 
 #define VUNIFORM(T,N) UNIFORM(T,N,true)
-#define VUNIFORMI(T,N,X) UNIFORMI(T,N,X,true)
 #define FUNIFORM(T,N) UNIFORM(T,N,false)
+#define VUNIFORMI(T,N,X) UNIFORMI(T,N,X,true)
 #define FUNIFORMI(T,N,X) UNIFORMI(T,N,X,false)
 
 #define BEGIN_SHADER(N) namespace N {\
@@ -43,8 +44,9 @@ namespace shaders {
   static const char *vp = shaders:: N##_vp;\
   static const char *fp = shaders:: N##_fp;\
   LOCATIONS
+
 #define END_SHADER(N)\
-  void destroy() {\
+  static void destroy() {\
     SAFE_DEL(attrib);\
     SAFE_DEL(fragdata);\
     SAFE_DEL(uniform);\
@@ -53,7 +55,8 @@ namespace shaders {
   static const shaders::shaderresource rsc = {\
     vppath, fppath, vp, fp, &uniform, &attrib, &fragdata, rules\
   };\
-}
+  static const shaders::shaderregister shaderreg(shader,rsc,#N);\
+} /* namespace N */
 
 struct inoutloc {
   INLINE inoutloc() {}
@@ -81,33 +84,34 @@ typedef void (*rulescallback)(ogl::shaderrules&, ogl::shaderrules&);
 struct shaderresource {
   const char *vppath, *fppath, *fp, *vp;
   vector<uniformloc> **uniform;
-  vector<inoutloc> **attrib;
-  vector<inoutloc> **fragdata;
+  vector<inoutloc> **attrib, **fragdata;
   rulescallback rulescb;
 };
 
 typedef void (*destroycallback)();
 struct destroyregister {
-  destroyregister(destroycallback cb) {atexit(cb);}
+  destroyregister(destroycallback cb);
+};
+struct shaderregister {
+  shaderregister(ogl::shadertype &s, const shaderresource &r, const char *name);
 };
 
-/*--------------------------------------------------------------------------
+/*-------------------------------------------------------------------------
  - shader builder for shaders specified using the above macro system
  -------------------------------------------------------------------------*/
 struct builder : ogl::shaderbuilder {
   builder(const shaderresource &rsc);
-  void setrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules);
-  void setuniform(ogl::shadertype &s);
-  void setinout(ogl::shadertype &s);
+  void setrules(ogl::shaderrules &vert, ogl::shaderrules &frag);
+  void setuniform(ogl::shadertype&);
+  void setinout(ogl::shadertype&);
   const shaderresource &rsc;
 };
 
-/*--------------------------------------------------------------------------
+/*-------------------------------------------------------------------------
  - declare the source code for all game shaders and shader libraries
  -------------------------------------------------------------------------*/
 #define DEBUG_UNSPLIT 1
-#define SHADER(NAME)\
-extern const char NAME##_vp[], NAME##_fp[];
+#define SHADER(NAME) extern const char NAME##_vp[], NAME##_fp[];
 SHADER(fixed);
 SHADER(forward);
 SHADER(deferred);
@@ -117,6 +121,8 @@ SHADER(debugunsplit);
 extern const char noise2D[], noise3D[], noise4D[];
 extern const char font_fp[];
 extern const char dfrm_fp[];
+void start();
+void finish();
 } /* namespace shaders */
 } /* namespace q */
 

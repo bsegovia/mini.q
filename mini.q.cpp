@@ -43,6 +43,8 @@ void start(int argc, const char *argv[]) {
 
   con::out("init: video: ogl");
   ogl::start(sys::scrw, sys::scrh);
+  con::out("init: video: shader system");
+  shaders::start();
 
   con::out("init: video: misc");
   SDL_WM_SetCaption("mini.q", NULL);
@@ -81,6 +83,7 @@ void finish() {
   iso::finish();
   rr::finish();
   md2::finish();
+  shaders::finish();
   ogl::finish();
   task::finish();
   con::finish();

@@ -111,10 +111,12 @@ BEGIN_SHADER(forward)
 #include "data/shaders/forward_vp.decl"
 END_SHADER(forward)
 
+#if DEBUG_UNSPLIT
 BEGIN_SHADER(debugunsplit)
 #include "data/shaders/debugunsplit_fp.decl"
 #include "data/shaders/debugunsplit_vp.decl"
 END_SHADER(debugunsplit)
+#endif
 
 static u32 gdethtex, gnortex, finaltex;
 static u32 gbuffer, shadedbuffer;
@@ -139,16 +141,6 @@ static void initdeferred() {
   if (GL_FRAMEBUFFER_COMPLETE != ogl::CheckFramebufferStatus(GL_FRAMEBUFFER))
     sys::fatal("renderer: unable to init debug unsplit framebuffer");
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
-
-  // all shaders
-  if (!NEW(shaders::builder,deferred::rsc)->build(deferred::shader, ogl::loadfromfile()))
-    ogl::shadererror(true, "deferred shader");
-  if (!NEW(shaders::builder,forward::rsc)->build(forward::shader, ogl::loadfromfile()))
-    ogl::shadererror(true, "forward shader");
-#if DEBUG_UNSPLIT
-  if (!NEW(shaders::builder,debugunsplit::rsc)->build(debugunsplit::shader, ogl::loadfromfile()))
-    ogl::shadererror(true, "debugunsplit shader");
-#endif
 }
 
 static void cleandeferred() {

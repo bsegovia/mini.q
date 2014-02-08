@@ -12,6 +12,7 @@
 #include "renderer.hpp"
 #include "physics.hpp"
 #include "script.hpp"
+#include "shaders.hpp"
 #include "sound.hpp"
 #include "stl.hpp"
 #include "sys.hpp"

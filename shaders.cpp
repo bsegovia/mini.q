@@ -25,6 +25,30 @@ uniformloc::uniformloc(vector<uniformloc> **appendhere,
   (*appendhere)->add(*this);
 }
 
+destroyregister::destroyregister(destroycallback cb) {atexit(cb);}
+
+struct shaderdef {
+  ogl::shadertype *s;
+  const shaderresource *r;
+  const char *name;
+};
+static vector<shaderdef> *allshaders = NULL;
+
+shaderregister::shaderregister(ogl::shadertype &s, const shaderresource &rsc, const char *name) {
+  if (allshaders == NULL)
+    allshaders = NEWE(vector<shaderdef>);
+  allshaders->add({&s, &rsc, name});
+}
+
+void start() {
+  if (allshaders) loopv(*allshaders) {
+    const auto b = NEW(builder, *(*allshaders)[i].r);
+    if (!b->build(*(*allshaders)[i].s, ogl::loadfromfile()))
+      ogl::shadererror(true, (*allshaders)[i].name);
+  }
+}
+void finish() {SAFE_DEL(allshaders);}
+
 builder::builder(const shaderresource &rsc) :
   ogl::shaderbuilder(rsc.vppath, rsc.fppath, rsc.vp, rsc.fp), rsc(rsc)
 {}
@@ -81,7 +105,6 @@ void builder::setinout(ogl::shadertype &s) {
   }
 #endif
 }
-
 #include "shaders.cxx"
 } /* namespace q */
 } /* namespace shaders */
