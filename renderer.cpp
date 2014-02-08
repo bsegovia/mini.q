@@ -195,7 +195,7 @@ static void makescene() {
 struct screenquad {
   static INLINE screenquad get() {
     const auto w = float(sys::scrw), h = float(sys::scrh);
-    const screenquad qs = {w,h,w,0.f,0.f,h,0.f,0.f};
+    const screenquad qs = {{w,h,w,0.f,0.f,h,0.f,0.f}};
     return qs;
   };
   static INLINE screenquad getsubbuffer(vec2i xy) {
@@ -203,7 +203,7 @@ struct screenquad {
     const auto h = float(sys::scrh/SPLITNUM);
     const auto sw = w*xy.x, sh = h*xy.y;
     const auto ew = sw+w, eh = sh+h;
-    const screenquad qs = {ew,eh,ew,sh,sw,eh,sw,sh};
+    const screenquad qs = {{ew,eh,ew,sh,sw,eh,sw,sh}};
     return qs;
   }
   float v[16];

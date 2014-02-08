@@ -812,7 +812,7 @@ bool shaderbuilder::build(shadertype &s, int fromfile, bool save) {
   if (fromfile)
     return buildprogramfromfile(s);
   else
-    return buildprogram(s, vppath, fppath);
+    return buildprogram(s, vp, fp);
 }
 
 void bindshader(shadertype &shader) {
