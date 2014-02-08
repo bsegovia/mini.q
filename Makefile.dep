@@ -16,6 +16,14 @@ HEADERS=\
   task.hpp\
   text.hpp
 
+SHADER_DECLARATIONS=\
+  data/shaders/debugunsplit_fp.decl\
+  data/shaders/debugunsplit_vp.decl\
+  data/shaders/deferred_fp.decl\
+  data/shaders/deferred_vp.decl\
+  data/shaders/forward_fp.decl\
+  data/shaders/forward_vp.decl
+
 con.o: con.cpp $(HEADERS)
 csg.o: csg.cpp sys.hpp stl.hpp math.hpp csg.hpp
 game.o: game.cpp $(HEADERS)
@@ -26,7 +34,7 @@ net.o: net.cpp net.hpp stl.hpp sys.hpp
 ogl.o: ogl.cpp ogl.hxx $(HEADERS)
 qef.o: qef.cpp qef.hpp sys.hpp
 physics.o: physics.cpp $(HEADERS)
-renderer.o: renderer.cpp $(HEADERS)
+renderer.o: renderer.cpp $(HEADERS) $(SHADER_DECLARATIONS)
 shaders.o: shaders.cpp $(HEADERS)
 sound.o: sound.cpp $(HEADERS)
 script.o: script.cpp $(HEADERS)

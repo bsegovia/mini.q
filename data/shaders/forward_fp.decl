@@ -1,0 +1,8 @@
+//##const char forward_fp_decl[] = {
+FUNIFORMI(sampler2DRect, u_lighttex, 0)
+FUNIFORMI(sampler2DRect, u_nortex, 1)
+FUNIFORM(vec2, u_subbufferdim)
+FUNIFORM(vec2, u_rcpsubbufferdim)
+FRAGDATA(vec4, rt_col, 0)
+//##};
+

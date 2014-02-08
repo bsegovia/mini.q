@@ -96,34 +96,40 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
  -------------------------------------------------------------------------*/
 struct shaderlocation {
   INLINE shaderlocation() {}
-  INLINE shaderlocation(vector<shaderlocation> **appendhere, u32 loc, const char *name)
-    : loc(loc), name(name)
+  INLINE shaderlocation(vector<shaderlocation> **appendhere,
+                        u32 loc, const char *name, const char *type,
+                        bool attrib)
+    : name(name), type(type), loc(loc), attrib(attrib)
   {
     if (*appendhere == NULL) *appendhere = NEWE(vector<shaderlocation>);
     (*appendhere)->add(*this);
   }
+  const char *name, *type;
   u32 loc;
-  const char *name;
+  bool attrib;
 };
 struct uniformlocation {
   INLINE uniformlocation() {}
-  INLINE uniformlocation(vector<uniformlocation> **appendhere, u32 &loc,
-                         const char *name, int defaultvalue=0, int hasdefault=0)
-    : loc(&loc), name(name), defaultvalue(defaultvalue), hasdefault(hasdefault)
+  INLINE uniformlocation(vector<uniformlocation> **appendhere,
+                         u32 &loc, const char *name, const char *type,
+                         bool vertex, int defaultvalue=0, bool hasdefault=false)
+    : loc(&loc), name(name), type(type), defaultvalue(defaultvalue),
+      hasdefault(hasdefault), vertex(vertex)
   {
     if (*appendhere == NULL) *appendhere = NEWE(vector<uniformlocation>);
     (*appendhere)->add(*this);
   }
   u32 *loc;
-  const char *name;
+  const char *name, *type;
   int defaultvalue;
-  int hasdefault;
+  bool hasdefault;
+  bool vertex;
 };
 
 typedef void (*rulescallback)(ogl::shaderrules&, ogl::shaderrules&);
 
 struct shaderresource {
-  const char *vppath, *fppath, *fp, *vp, *vpdecl, *fpdecl;
+  const char *vppath, *fppath, *fp, *vp;
   vector<uniformlocation> **uniform;
   vector<shaderlocation> **attrib;
   vector<shaderlocation> **fragdata;
@@ -132,9 +138,7 @@ struct shaderresource {
 
 typedef void (*destroycallback)();
 struct destroyregister {
-  destroyregister(destroycallback cb) {
-    atexit(cb);
-  }
+  destroyregister(destroycallback cb) {atexit(cb);}
 };
 
 #if !defined(__WEBGL__)
@@ -142,30 +146,34 @@ struct destroyregister {
   static vector<shaderlocation> *attrib = NULL;\
   static vector<shaderlocation> *fragdata = NULL;\
   static vector<uniformlocation> *uniform = NULL;
-#define FRAGDATA(T, NAME,LOC) static shaderlocation NAME##loc(&fragdata,LOC,#NAME);
+#define FRAGDATA(T,N,LOC)\
+  static shaderlocation N##loc(&fragdata,LOC,#N,#T,false);
 #else
 #define LOCATIONS\
   static vector<shaderlocation> *attrib = NULL;\
   static vector<uniformlocation> *uniform = NULL;
-#define FRAGDATA(T, NAME, LOC)
+#define FRAGDATA(T,N,LOC)
 #endif
-#define UNIFORMI(T, NAME, X)\
-  u32 NAME; static uniformlocation NAME##loc(&uniform,NAME,#NAME,X,1);
-#define UNIFORM(T, NAME)\
-  u32 NAME; static uniformlocation NAME##loc(&uniform,NAME,#NAME);
-#define ATTRIB(T, NAME, LOC)\
-  u32 NAME; static shaderlocation NAME##loc(&attrib,LOC,#NAME);
+#define UNIFORMI(T,N,X,V)\
+  u32 N; static const uniformlocation N##loc(&uniform,N,#N,#T,V,X,true);
+#define UNIFORM(T,N,V)\
+  u32 N; static const uniformlocation N##loc(&uniform,N,#N,#T,V);
+#define ATTRIB(T,N,LOC)\
+  u32 N; static const shaderlocation N##loc(&attrib,LOC,#N,#T,true);
 
-#define BEGIN_SHADER(NAME) namespace NAME {\
+#define VUNIFORM(T,N) UNIFORM(T,N,true)
+#define VUNIFORMI(T,N,X) UNIFORMI(T,N,X,true)
+#define FUNIFORM(T,N) UNIFORM(T,N,false)
+#define FUNIFORMI(T,N,X) UNIFORMI(T,N,X,false)
+
+#define BEGIN_SHADER(N) namespace N {\
   static ogl::shadertype shader;\
-  static const char vppath[] = "data/shaders/" #NAME "_vp.glsl";\
-  static const char fppath[] = "data/shaders/" #NAME "_fp.glsl";\
-  static const char *vp = shaders:: NAME##_vp;\
-  static const char *fp = shaders:: NAME##_fp;\
-  static const char *vpdecl = shaders:: NAME##_vp_decl;\
-  static const char *fpdecl = shaders:: NAME##_fp_decl;\
+  static const char vppath[] = "data/shaders/" #N "_vp.glsl";\
+  static const char fppath[] = "data/shaders/" #N "_fp.glsl";\
+  static const char *vp = shaders:: N##_vp;\
+  static const char *fp = shaders:: N##_fp;\
   LOCATIONS
-#define END_SHADER(NAME)\
+#define END_SHADER(N)\
   void destroy() {\
     SAFE_DEL(attrib);\
     SAFE_DEL(fragdata);\
@@ -175,7 +183,6 @@ struct destroyregister {
   static const shaderresource rsc = {\
     vppath, fppath,\
     vp, fp,\
-    vpdecl, fpdecl,\
     &uniform, &attrib, &fragdata,\
     rules\
   };\
@@ -189,32 +196,54 @@ static void rules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
 }
 
 BEGIN_SHADER(deferred)
-#include "data/shaders/deferred_fp_decl.glsl"
-#include "data/shaders/deferred_vp_decl.glsl"
+#include "data/shaders/deferred_fp.decl"
+#include "data/shaders/deferred_vp.decl"
 END_SHADER(deferred)
 
 BEGIN_SHADER(forward)
-#include "data/shaders/forward_fp_decl.glsl"
-#include "data/shaders/forward_vp_decl.glsl"
+#include "data/shaders/forward_fp.decl"
+#include "data/shaders/forward_vp.decl"
 END_SHADER(forward)
 
 BEGIN_SHADER(debugunsplit)
-#include "data/shaders/debugunsplit_fp_decl.glsl"
-#include "data/shaders/debugunsplit_vp_decl.glsl"
+#include "data/shaders/debugunsplit_fp.decl"
+#include "data/shaders/debugunsplit_vp.decl"
 END_SHADER(debugunsplit)
 
 struct genericshaderbuilder : ogl::shaderbuilder {
   genericshaderbuilder(const shaderresource &rsc) :
     ogl::shaderbuilder(rsc.vppath, rsc.fppath, rsc.vp, rsc.fp), rsc(rsc)
   {}
-  virtual void setrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
-    vertrules.add(NEWSTRING(shaders::macros));
-    vertrules.add(NEWSTRING(rsc.vpdecl));
-    fragrules.add(NEWSTRING(shaders::macros));
-    fragrules.add(NEWSTRING(rsc.fpdecl));
+  void setrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
+    if (*rsc.uniform) {
+      auto &uniform = **rsc.uniform;
+      loopv(uniform) {
+        sprintf_sd(rule)("uniform %s %s;\n", uniform[i].type, uniform[i].name);
+        if (uniform[i].vertex)
+          vertrules.add(NEWSTRING(rule));
+        else
+          fragrules.add(NEWSTRING(rule));
+      }
+    }
+    if (*rsc.attrib) {
+      auto &attrib = **rsc.attrib;
+      loopv(attrib) {
+        sprintf_sd(rule)("VS_IN %s %s;\n", attrib[i].type, attrib[i].name);
+        vertrules.add(NEWSTRING(rule));
+      }
+    }
+#if !defined(__WEBGL__)
+    if (*rsc.fragdata) {
+      auto &fragdata = **rsc.fragdata;
+      loopv(fragdata) {
+        sprintf_sd(rule)("out %s %s;\n", fragdata[i].type, fragdata[i].name);
+        fragrules.add(NEWSTRING(rule));
+      }
+    }
+#endif
     rsc.rulescb(vertrules, fragrules);
   }
-  virtual void setuniform(ogl::shadertype &s) {
+  void setuniform(ogl::shadertype &s) {
     if (*rsc.uniform) {
       auto &uniform = **rsc.uniform;
       loopv(uniform) {
@@ -224,7 +253,7 @@ struct genericshaderbuilder : ogl::shaderbuilder {
       }
     }
   }
-  virtual void setvarying(ogl::shadertype &s) {
+  void setvarying(ogl::shadertype &s) {
     if (*rsc.attrib) {
       auto &attrib = **rsc.attrib;
       loopv(attrib)

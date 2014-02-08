@@ -37,8 +37,6 @@ include Makefile.dep
 
 SHADERS=data/shaders/fixed_vp.glsl\
         data/shaders/fixed_fp.glsl\
-        data/shaders/deferred_vp_decl.glsl\
-        data/shaders/deferred_fp_decl.glsl\
         data/shaders/deferred_vp.glsl\
         data/shaders/deferred_fp.glsl\
         data/shaders/debugunsplit_vp.glsl\
@@ -48,8 +46,7 @@ SHADERS=data/shaders/fixed_vp.glsl\
         data/shaders/font_fp.glsl\
         data/shaders/noise2D.glsl\
         data/shaders/noise3D.glsl\
-        data/shaders/noise4D.glsl\
-        data/shaders/macros.glsl
+        data/shaders/noise4D.glsl
 
 ## build embedded shader source
 shaders.cpp: $(SHADERS)

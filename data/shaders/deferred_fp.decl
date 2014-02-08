@@ -1,0 +1,11 @@
+//##const char deferred_fp_decl[] = {
+FUNIFORMI(sampler2DRect, u_nortex, 0)
+FUNIFORMI(sampler2DRect, u_depthtex, 1)
+FUNIFORM(vec2, u_subbufferdim)
+FUNIFORM(vec2, u_rcpsubbufferdim)
+FUNIFORM(mat4, u_invmvp)
+FUNIFORM(vec3, u_lightpos)
+FUNIFORM(vec3, u_lightpow)
+FRAGDATA(vec4, rt_col, 0)
+//##};
+
