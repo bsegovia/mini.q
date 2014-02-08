@@ -1,13 +1,4 @@
 //##const char deferred_fp[] = {
-uniform sampler2DRect u_nortex;
-uniform sampler2DRect u_depthtex;
-uniform vec2 u_subbufferdim;
-uniform vec2 u_rcpsubbufferdim;
-uniform mat4 u_invmvp;
-uniform vec3 u_lightpos;
-uniform vec3 u_lightpow;
-IF_NOT_WEBGL(out vec4 rt_col);
-
 void main() {
   vec2 uv = floor(gl_FragCoord.xy);
   vec2 bufindex = uv * u_rcpsubbufferdim;

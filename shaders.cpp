@@ -7,11 +7,13 @@ namespace q {
 namespace shaders {
 #if DEBUG_UNSPLIT
 const char debugunsplit_fp[] = {
+"#if 0\n"
 "uniform sampler2DRect u_lighttex;\n"
 "uniform sampler2DRect u_nortex;\n"
 "uniform vec2 u_subbufferdim;\n"
 "uniform vec2 u_rcpsubbufferdim;\n"
 "IF_NOT_WEBGL(out vec4 rt_col);\n"
+"#endif\n"
 
 "#define SAMPLE(NUM, X, Y) \\n"
 "  vec2 uv##NUM = uv+vec2(X,Y);\\n"
@@ -63,8 +65,6 @@ const char debugunsplit_fp_decl[] = {
 
 #if DEBUG_UNSPLIT
 const char debugunsplit_vp[] = {
-"uniform mat4 u_mvp;\n"
-"VS_IN vec2 vs_pos;\n"
 "void main() {gl_Position = u_mvp*vec4(vs_pos,1.0,1.0);}\n"
 };
 #endif
@@ -77,15 +77,6 @@ const char debugunsplit_vp_decl[] = {
 #endif
 
 const char deferred_fp[] = {
-"uniform sampler2DRect u_nortex;\n"
-"uniform sampler2DRect u_depthtex;\n"
-"uniform vec2 u_subbufferdim;\n"
-"uniform vec2 u_rcpsubbufferdim;\n"
-"uniform mat4 u_invmvp;\n"
-"uniform vec3 u_lightpos;\n"
-"uniform vec3 u_lightpow;\n"
-"IF_NOT_WEBGL(out vec4 rt_col);\n"
-
 "void main() {\n"
 "  vec2 uv = floor(gl_FragCoord.xy);\n"
 "  vec2 bufindex = uv * u_rcpsubbufferdim;\n"
@@ -113,15 +104,14 @@ const char deferred_fp_decl[] = {
 "FRAGDATA(vec4, rt_col, 0)\n"
 };
 
+
 const char deferred_vp[] = {
-"uniform mat4 u_mvp;\n"
-"VS_IN vec2 vs_pos;\n"
 "void main() {gl_Position = u_mvp*vec4(vs_pos,1.0,1.0);}\n"
 };
 
 const char deferred_vp_decl[] = {
 "UNIFORM(mat4, u_mvp)\n"
-"ATTRIB(vec2, vs_pos, ogl::ATTRIB_POS0);\n"
+"ATTRIB(vec2, vs_pos, ogl::ATTRIB_POS0)\n"
 };
 
 const char fixed_fp[] = {
@@ -237,12 +227,7 @@ const char font_fp[] = {
 };
 
 const char forward_fp[] = {
-"uniform sampler2DRect u_lighttex;\n"
-"uniform sampler2DRect u_nortex;\n"
-"uniform vec2 u_subbufferdim;\n"
-"uniform vec2 u_rcpsubbufferdim;\n"
 "PS_IN vec3 fs_nor;\n"
-"IF_NOT_WEBGL(out vec4 rt_col);\n"
 
 "#define SAMPLE(NUM, X, Y) \\n"
 "  vec2 uv##NUM = uv+vec2(X,Y);\\n"
@@ -289,9 +274,11 @@ const char forward_fp_decl[] = {
 };
 
 const char forward_vp[] = {
+"#if 0\n"
 "uniform mat4 u_mvp;\n"
 "VS_IN vec3 vs_pos;\n"
 "VS_IN vec3 vs_nor;\n"
+"#endif\n"
 "VS_OUT vec3 fs_nor;\n"
 
 "void main() {\n"
@@ -303,7 +290,14 @@ const char forward_vp[] = {
 const char forward_vp_decl[] = {
 "UNIFORM(mat4, u_mvp)\n"
 "ATTRIB(vec3, vs_pos, ogl::ATTRIB_POS0)\n"
-"ATTRIB(vec3, vs_nor, ogl::ATTRIB_COL0)\n"
+"ATTRIB(vec3, vs_nor, ogl::ATTRIB_COL)\n"
+};
+
+const char macros[] = {
+"#define UNIFORM(T, NAME) uniform T NAME;\n"
+"#define UNIFORMI(T, NAME, LOC) uniform T NAME;\n"
+"#define ATTRIB(T, NAME, LOC) VS_IN T NAME;\n"
+"#define FRAGDATA(T, NAME, LOC) IF_NOT_WEBGL(out T NAME);\n"
 };
 
 //

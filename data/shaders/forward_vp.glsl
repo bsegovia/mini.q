@@ -1,7 +1,9 @@
 //##const char forward_vp[] = {
+#if 0
 uniform mat4 u_mvp;
 VS_IN vec3 vs_pos;
 VS_IN vec3 vs_nor;
+#endif
 VS_OUT vec3 fs_nor;
 
 void main() {

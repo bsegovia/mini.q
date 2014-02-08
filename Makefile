@@ -48,7 +48,8 @@ SHADERS=data/shaders/fixed_vp.glsl\
         data/shaders/font_fp.glsl\
         data/shaders/noise2D.glsl\
         data/shaders/noise3D.glsl\
-        data/shaders/noise4D.glsl
+        data/shaders/noise4D.glsl\
+        data/shaders/macros.glsl
 
 ## build embedded shader source
 shaders.cpp: $(SHADERS)

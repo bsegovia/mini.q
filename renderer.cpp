@@ -123,7 +123,7 @@ struct uniformlocation {
 typedef void (*rulescallback)(ogl::shaderrules&, ogl::shaderrules&);
 
 struct shaderresource {
-  const char *vppath, *fppath, *fp, *vp;
+  const char *vppath, *fppath, *fp, *vp, *vpdecl, *fpdecl;
   vector<uniformlocation> **uniform;
   vector<shaderlocation> **attrib;
   vector<shaderlocation> **fragdata;
@@ -149,11 +149,11 @@ struct destroyregister {
   static vector<uniformlocation> *uniform = NULL;
 #define FRAGDATA(T, NAME, LOC)
 #endif
-#define UNIFORMI(T, NAME,X)\
+#define UNIFORMI(T, NAME, X)\
   u32 NAME; static uniformlocation NAME##loc(&uniform,NAME,#NAME,X,1);
 #define UNIFORM(T, NAME)\
   u32 NAME; static uniformlocation NAME##loc(&uniform,NAME,#NAME);
-#define ATTRIB(T, NAME,LOC)\
+#define ATTRIB(T, NAME, LOC)\
   u32 NAME; static shaderlocation NAME##loc(&attrib,LOC,#NAME);
 
 #define BEGIN_SHADER(NAME) namespace NAME {\
@@ -162,6 +162,8 @@ struct destroyregister {
   static const char fppath[] = "data/shaders/" #NAME "_fp.glsl";\
   static const char *vp = shaders:: NAME##_vp;\
   static const char *fp = shaders:: NAME##_fp;\
+  static const char *vpdecl = shaders:: NAME##_vp_decl;\
+  static const char *fpdecl = shaders:: NAME##_fp_decl;\
   LOCATIONS
 #define END_SHADER(NAME)\
   void destroy() {\
@@ -170,7 +172,14 @@ struct destroyregister {
     SAFE_DEL(uniform);\
   }\
   static const destroyregister destroyreg(destroy);\
-  static const shaderresource rsc = {vppath,fppath,fp,vp,&uniform,&attrib,&fragdata,rules};}
+  static const shaderresource rsc = {\
+    vppath, fppath,\
+    vp, fp,\
+    vpdecl, fpdecl,\
+    &uniform, &attrib, &fragdata,\
+    rules\
+  };\
+}
 
 #define SPLITNUM 4
 static void rules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
@@ -199,6 +208,10 @@ struct genericshaderbuilder : ogl::shaderbuilder {
     ogl::shaderbuilder(rsc.vppath, rsc.fppath, rsc.vp, rsc.fp), rsc(rsc)
   {}
   virtual void setrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
+    vertrules.add(NEWSTRING(shaders::macros));
+    vertrules.add(NEWSTRING(rsc.vpdecl));
+    fragrules.add(NEWSTRING(shaders::macros));
+    fragrules.add(NEWSTRING(rsc.fpdecl));
     rsc.rulescb(vertrules, fragrules);
   }
   virtual void setuniform(ogl::shadertype &s) {

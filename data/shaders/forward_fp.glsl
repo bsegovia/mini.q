@@ -1,10 +1,5 @@
 //##const char forward_fp[] = {
-uniform sampler2DRect u_lighttex;
-uniform sampler2DRect u_nortex;
-uniform vec2 u_subbufferdim;
-uniform vec2 u_rcpsubbufferdim;
 PS_IN vec3 fs_nor;
-IF_NOT_WEBGL(out vec4 rt_col);
 
 #define SAMPLE(NUM, X, Y) \
   vec2 uv##NUM = uv+vec2(X,Y);\
