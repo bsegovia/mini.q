@@ -215,6 +215,15 @@ void shadererror(bool fatalerr, const char *msg);
 bool loadfromfile();
 
 /*--------------------------------------------------------------------------
+ - timer functions to measure performance on CPU/GPU
+ -------------------------------------------------------------------------*/
+void beginframe();
+void endframe();
+struct timer *begintimer(const char *name, bool gpu);
+void endtimer(struct timer *t);
+void printtimers(float conw, float conh);
+
+/*--------------------------------------------------------------------------
  - simple shader system to replace fixed pipeline
  -------------------------------------------------------------------------*/
 static const u32 FIXED_KEYFRAME = 1<<0;

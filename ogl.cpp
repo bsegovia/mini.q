@@ -640,10 +640,10 @@ void endtimer(timer *t) {
     t->result = max(sys::millis() - t->starttime, 0.0f);
 }
 
-void synctimers() {
+static void synctimers() {
   timercycle = (timercycle + 1) % timer::MAXQUERY;
   loopv(timers) {
-    timer &t = timers[i];
+    auto &t = timers[i];
     if (t.waiting&(1<<timercycle)) {
       GLint available = 0;
       while (!available)
@@ -668,29 +668,47 @@ void cleanuptimers() {
 
 IVARF(usetimers, 0, 0, 1, cleanuptimers());
 IVAR(frametimer, 0, 0, 1);
-#if 0
-void printtimers(int conw, int conh)
-{
+static float framemillis = 0.f, totalmillis = 0.f;
+
+void printtimers(float conw, float conh) {
   if (!frametimer && !usetimers) return;
 
-  static int lastprint = 0;
+  static float lastprint = 0.f;
   int offset = 0;
+  const auto dim = text::fontdim();
   if (frametimer) {
-    static int printmillis = 0;
-    if (totalmillis - lastprint >= 200) printmillis = framemillis;
-    text::draw("frame time %i ms", conw-20*FONTH, conh-FONTH*3/2-offset*9*FONTH/8, printmillis);
+    static float printmillis = 0.f;
+    if (totalmillis - lastprint >= 200.f)
+      printmillis = framemillis;
+    const vec2f tp(conw-20.f*dim.y, conh-dim.y*3.f/2.f-float(offset)*9.f*dim.y/8.f);
+    text::drawf("frame time %5.2 ms", tp, printmillis);
     offset++;
   }
   if (usetimers) loopv(timerorder) {
-    timer &t = timers[timerorder[i]];
-    if (t.print < 0 ? t.result >= 0 : totalmillis - lastprint >= 200) t.print = t.result;
-    if (t.print < 0 || (t.gpu && !(t.waiting&(1<<timercycle)))) continue;
-    text::draw("%s%s %5.2f ms", conw-20*FONTH, conh-FONTH*3/2-offset*9*FONTH/8, t.name, t.gpu ? "" : " (cpu)", t.print);
-    offset++;
+    auto &t = timers[timerorder[i]];
+    if (t.print < 0.f ? t.result >= 0.f : totalmillis - lastprint >= 200.f)
+      t.print = t.result;
+    if (t.print < 0 || (t.gpu && !(t.waiting&(1<<timercycle))))
+      continue;
+    const vec2f tp(conw-20.f*dim.y, conh-dim.y*3.f/2.f-offset*9.f*dim.y/8.f);
+    text::drawf("%s%s %5.2f ms", tp, t.name, t.gpu ? "" : " (cpu)", t.print);
+    ++offset;
   }
-  if (totalmillis - lastprint >= 200) lastprint = totalmillis;
+  if (totalmillis - lastprint >= 200.f)
+    lastprint = totalmillis;
 }
-#endif
+
+void beginframe() {
+  synctimers();
+  totalmillis = sys::millis();
+}
+
+void endframe() {
+  if (frametimer) {
+    OGL(Finish);
+    framemillis = sys::millis() - totalmillis;
+  }
+}
 
 /*--------------------------------------------------------------------------
  - shader management

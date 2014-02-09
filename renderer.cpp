@@ -7,6 +7,8 @@
 #include "csg.hpp"
 #include "shaders.hpp"
 
+#define DEBUG_UNSPLIT 0
+
 namespace q {
 namespace rr {
 
@@ -51,6 +53,7 @@ static void drawhud(int w, int h, int curfps) {
     text::drawf("yaw: %f pitch: %f roll: %f", textpos, ypr.x, ypr.y, ypr.z);
     textpos.y += fontdim.y;
     text::drawf("%i f/s", textpos, curfps);
+    ogl::printtimers(400.f, 400.f);
   }
   popscreentransform();
   ogl::disable(GL_BLEND);
@@ -111,12 +114,10 @@ BEGIN_SHADER(forward)
 #include "data/shaders/forward_vp.decl"
 END_SHADER(forward)
 
-#if DEBUG_UNSPLIT
 BEGIN_SHADER(debugunsplit)
 #include "data/shaders/debugunsplit_fp.decl"
 #include "data/shaders/debugunsplit_vp.decl"
 END_SHADER(debugunsplit)
-#endif
 
 static u32 gdethtex, gnortex, finaltex;
 static u32 gbuffer, shadedbuffer;
@@ -247,6 +248,7 @@ static void dodeferred(const mat4x4f &worldmvp) {
   ogl::disable(GL_CULL_FACE);
   ogl::immenableflush(false);
 
+  const auto deferredtimer = ogl::begintimer("deferred", true);
   OGL(BindFramebuffer, GL_FRAMEBUFFER, shadedbuffer);
   const vec2f subbufferdim(float(sys::scrw/SPLITNUM), float(sys::scrh/SPLITNUM));
   const vec2f rcpsubbufferdim = rcp(subbufferdim);
@@ -258,7 +260,6 @@ static void dodeferred(const mat4x4f &worldmvp) {
   OGL(Uniform2fv, deferred::u_subbufferdim, 1, &subbufferdim.x);
   OGL(Uniform2fv, deferred::u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
 
-
   loopi(SPLITNUM) loopj(SPLITNUM) {
     const auto idx = i+SPLITNUM*j;
     const vec3f lpow = lightscale * lightpow[idx];
@@ -267,8 +268,10 @@ static void dodeferred(const mat4x4f &worldmvp) {
     ogl::immdraw("Sp2", 4, screenquad::getsubbuffer(vec2i(i,j)).v);
   }
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
+  ogl::endtimer(deferredtimer);
 
 #if DEBUG_UNSPLIT
+  const auto unsplittimer = ogl::begintimer("unsplit", true);
   ogl::bindshader(debugunsplit::shader);
   ogl::bindtexture(GL_TEXTURE_RECTANGLE, finaltex, 0);
   ogl::bindtexture(GL_TEXTURE_RECTANGLE, gnortex, 1);
@@ -276,6 +279,7 @@ static void dodeferred(const mat4x4f &worldmvp) {
   OGL(Uniform2fv, debugunsplit::u_subbufferdim, 1, &subbufferdim.x);
   OGL(Uniform2fv, debugunsplit::u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
   ogl::immdraw("Sp2", 4, screenquad::get().v);
+  ogl::endtimer(unsplittimer);
 #endif
 
   ogl::immenableflush(true);
@@ -299,6 +303,7 @@ static void setforwardmatrices(float fovy, float aspect, float farplane) {
 }
 
 static void doforward(const mat4x4f &mvp, float fovy, float aspect, float farplane) {
+  const auto forwartimer = ogl::begintimer("forward", true);
   setforwardmatrices(fov, aspect, farplane);
   const vec2f subbufferdim(float(sys::scrw/SPLITNUM), float(sys::scrh/SPLITNUM));
   const vec2f rcpsubbufferdim = rcp(subbufferdim);
@@ -311,6 +316,7 @@ static void doforward(const mat4x4f &mvp, float fovy, float aspect, float farpla
   ogl::immenableflush(false);
   ogl::immdrawelememts("Tip3c3", indexnum, &indices[0], &vertices[0].first[0]);
   ogl::immenableflush(true);
+  ogl::endtimer(forwartimer);
 }
 
 IVAR(linemode, 0, 0, 1);
@@ -333,6 +339,7 @@ void frame(int w, int h, int curfps) {
   makescene();
 
   // render the scene into the frame buffer
+  const auto gbuffertimer = ogl::begintimer("gbuffer", true);
   OGL(BindFramebuffer, GL_FRAMEBUFFER, gbuffer);
   OGL(ClearColor, 0.f, 0.f, 0.f, 1.f);
   OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -349,6 +356,8 @@ void frame(int w, int h, int curfps) {
     if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_FILL);
   }
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
+  ogl::endtimer(gbuffertimer);
+
   const auto &mv = ogl::matrix(ogl::MODELVIEW);
   const auto &p  = ogl::matrix(ogl::PROJECTION);
   const auto worldmvp = p*mv;
@@ -357,13 +366,17 @@ void frame(int w, int h, int curfps) {
   setscreentransform();
   dodeferred(worldmvp);
   popscreentransform();
+
 #if !DEBUG_UNSPLIT
   doforward(worldmvp, fovy, aspect, farplane);
 #endif
+
+  const auto hudtimer = ogl::begintimer("hud", true);
   // drawhudgun(fovy, aspect, farplane);
   ogl::disable(GL_CULL_FACE);
   drawhud(w,h,curfps);
   ogl::enable(GL_CULL_FACE);
+  ogl::endtimer(hudtimer);
 }
 } /* namespace rr */
 } /* namespace q */

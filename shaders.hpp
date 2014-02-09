@@ -110,7 +110,6 @@ struct builder : ogl::shaderbuilder {
 /*-------------------------------------------------------------------------
  - declare the source code for all game shaders and shader libraries
  -------------------------------------------------------------------------*/
-#define DEBUG_UNSPLIT 1
 #define SHADER(NAME) extern const char NAME##_vp[], NAME##_fp[];
 SHADER(fixed);
 SHADER(forward);

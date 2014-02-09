@@ -194,6 +194,7 @@ INLINE void mainloop() {
   static float fps = 30.0f;
   fps = (1000.0f/game::curtime+fps*50.f)/51.f;
   SDL_GL_SwapBuffers();
+  ogl::beginframe();
 #if TEST_UI
   gui();
 #else
@@ -243,6 +244,7 @@ INLINE void mainloop() {
       break;
     }
   }
+  ogl::endframe();
 }
 
 static int run() {

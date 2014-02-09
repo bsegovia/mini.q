@@ -2,7 +2,6 @@
  - mini.q - a minimalistic multiplayer FPS
  - shaders.cxx -> stores shaders (do not modify)
  -------------------------------------------------------------------------*/
-#if DEBUG_UNSPLIT
 const char debugunsplit_fp[] = {
 "#define SAMPLE(NUM, X, Y) \\n"
 "  vec2 uv##NUM = uv+vec2(X,Y);\\n"
@@ -42,13 +41,10 @@ const char debugunsplit_fp[] = {
 "  SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(col, 1.0);\n"
 "}\n"
 };
-#endif
 
-#if DEBUG_UNSPLIT
 const char debugunsplit_vp[] = {
 "void main() {gl_Position = u_mvp*vec4(vs_pos,1.0,1.0);}\n"
 };
-#endif
 
 const char deferred_fp[] = {
 "void main() {\n"

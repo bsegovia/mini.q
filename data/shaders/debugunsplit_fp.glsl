@@ -1,4 +1,3 @@
-//###if DEBUG_UNSPLIT
 //##const char debugunsplit_fp[] = {
 #define SAMPLE(NUM, X, Y) \
   vec2 uv##NUM = uv+vec2(X,Y);\
@@ -38,5 +37,4 @@ void main() {
   SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(col, 1.0);
 }
 //##};
-//###endif
 
