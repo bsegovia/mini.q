@@ -38,6 +38,9 @@ static bool mesa = false, intel = false, nvidia = false, amd = false;
 static bool hasTQ = false;
 static u32 hwtexunits = 0, hwvtexunits = 0, hwtexsize = 0, hwcubetexsize = 0;
 
+static PFNGLGETQUERYOBJECTI64VEXTPROC GetQueryObjecti64v = NULL;
+static PFNGLGETQUERYOBJECTUI64VEXTPROC GetQueryObjectui64v = NULL;
+
 struct glext {
   ~glext() { for (auto item : glexts) FREE(item.second); }
   void parse() {
@@ -136,7 +139,13 @@ static void startgl() {
   if (!ext.has("GL_ARB_texture_rectangle"))
     sys::fatal("OpenGL: GL_ARB_texture_rectangle extension is required");
   if (ext.has("GL_EXT_timer_query") || ext.has("GL_ARB_timer_query")) {
-    con::out("ogl: using timer query extension");
+    if(ext.has("GL_EXT_timer_query")) {
+      GetQueryObjecti64v  = (PFNGLGETQUERYOBJECTI64VEXTPROC)  getfunction("glGetQueryObjecti64vEXT");
+      GetQueryObjectui64v = (PFNGLGETQUERYOBJECTUI64VEXTPROC) getfunction("glGetQueryObjectui64vEXT");
+    } else {
+      GetQueryObjecti64v  = (PFNGLGETQUERYOBJECTI64VEXTPROC)  getfunction("glGetQueryObjecti64v");
+      GetQueryObjectui64v = (PFNGLGETQUERYOBJECTUI64VEXTPROC) getfunction("glGetQueryObjectui64v");
+    }
     hasTQ = true;
   }
 }
@@ -572,65 +581,63 @@ void immdraw(const char *fmt, int count, const void *data) {
 }
 
 /*-------------------------------------------------------------------------
- - GPU timer
+ - GPU timer (taken from Tesseract)
  -------------------------------------------------------------------------*/
-#if 0
 struct timer {
   enum { MAXQUERY = 4 };
   const char *name;
   bool gpu;
   u32 query[MAXQUERY];
   int waiting;
-  uint starttime;
+  float starttime;
   float result, print;
 };
 static vector<timer> timers;
 static vector<int> timerorder;
 static int timercycle = 0;
 
-extern int usetimers;
+IVAR(usetimers, 0, 0, 1);
 static int deferquery=0;
 
-timer *findtimer(const char *name, bool gpu) {
+static timer *findtimer(const char *name, bool gpu) {
   loopv(timers) if (!strcmp(timers[i].name, name) && timers[i].gpu == gpu) {
     timerorder.removeobj(i);
     timerorder.add(i);
     return &timers[i];
   }
   timerorder.add(timers.length());
-  timer &t = timers.add();
+  auto &t = timers.add();
   t.name = name;
   t.gpu = gpu;
   memset(t.query, 0, sizeof(t.query));
   if (gpu) OGL(GenQueries, timer::MAXQUERY, t.query);
   t.waiting = 0;
-  t.starttime = 0;
+  t.starttime = 0.f;
   t.result = -1;
   t.print = -1;
   return &t;
 }
 
 timer *begintimer(const char *name, bool gpu) {
-  if (!usetimers || viewidx || inbetweenframes || (gpu && (!hasTQ || deferquery)))
+  if (!usetimers || (gpu && (!hasTQ || deferquery)))
     return NULL;
-  timer *t = findtimer(name, gpu);
+  const auto t = findtimer(name, gpu);
   if (t->gpu) {
     deferquery++;
     OGL(BeginQuery, GL_TIME_ELAPSED_EXT, t->query[timercycle]);
     t->waiting |= 1<<timercycle;
   } else
-    t->starttime = getclockmillis();
+    t->starttime = sys::millis();
   return t;
 }
 
-void endtimer(timer *t)
-{
+void endtimer(timer *t) {
   if (!t) return;
   if (t->gpu) {
     OGL(EndQuery, GL_TIME_ELAPSED_EXT);
     deferquery--;
   } else
-    t->result = max(float(getclockmillis() - t->starttime), 0.0f);
+    t->result = max(sys::millis() - t->starttime, 0.0f);
 }
 
 void synctimers() {
@@ -645,8 +652,7 @@ void synctimers() {
       OGL(GetQueryObjectui64v, t.query[timercycle], GL_QUERY_RESULT, &result);
       t.result = max(float(result) * 1e-6f, 0.0f);
       t.waiting &= ~(1<<timercycle);
-    }
-    else
+    } else
       t.result = -1;
   }
 }
@@ -684,7 +690,6 @@ void printtimers(int conw, int conh)
   }
   if (totalmillis - lastprint >= 200) lastprint = totalmillis;
 }
-#endif
 #endif
 
 /*--------------------------------------------------------------------------
