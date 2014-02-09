@@ -80,6 +80,7 @@ static void drawhudmodel(int start, int end, float speed, int base) {
               false, 1.0f, speed, 0, base);
 }
 
+#if 0
 static void drawhudgun(float fovy, float aspect, float farplane) {
   if (!showhudgun) return;
 
@@ -93,6 +94,7 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
 #endif
   drawhudmodel(6, 1, 100.f, 0);
 }
+#endif
 
 /*--------------------------------------------------------------------------
  - deferred shading stuff
