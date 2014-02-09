@@ -25,24 +25,19 @@ namespace shaders {
   static vector<shaders::uniformloc> *uniform = NULL;
 #define FRAGDATA(T,N,LOC)
 #endif
-#define UNIFORMI(T,N,X,V)\
+#define PUNIFORMI(T,N,X,V)\
   u32 N; static const shaders::uniformloc N##loc(&uniform,N,#N,#T,V,X,true);
-#define UNIFORM(T,N,V)\
+#define PUNIFORM(T,N,V)\
   u32 N; static const shaders::uniformloc N##loc(&uniform,N,#N,#T,V);
 #define VATTRIB(T,N,LOC)\
   u32 N; static const shaders::inoutloc N##loc(&attrib,LOC,#N,#T,true);
-
-#define VUNIFORM(T,N) UNIFORM(T,N,true)
-#define FUNIFORM(T,N) UNIFORM(T,N,false)
-#define VUNIFORMI(T,N,X) UNIFORMI(T,N,X,true)
-#define FUNIFORMI(T,N,X) UNIFORMI(T,N,X,false)
 
 #define BEGIN_SHADER(N) namespace N {\
   static ogl::shadertype shader;\
   static const char vppath[] = "data/shaders/" #N "_vp.glsl";\
   static const char fppath[] = "data/shaders/" #N "_fp.glsl";\
-  static const char *vp = shaders:: N##_vp;\
-  static const char *fp = shaders:: N##_fp;\
+  static const char *vp = shaders:: JOIN(N,_vp);\
+  static const char *fp = shaders:: JOIN(N,_fp);\
   LOCATIONS
 
 #define END_SHADER(N)\

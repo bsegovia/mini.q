@@ -1,6 +1,6 @@
 //###if DEBUG_UNSPLIT
 //##const char debugunsplit_vp_decl[] = {
-VUNIFORM(mat4, u_mvp)
+UNIFORM(mat4, u_mvp)
 VATTRIB(vec2, vs_pos, ogl::ATTRIB_POS0);
 //##};
 //###endif

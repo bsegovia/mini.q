@@ -104,20 +104,20 @@ static void rules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
   fragrules.add(NEWSTRING(str));
 }
 
-BEGIN_SHADER(deferred)
-#include "data/shaders/deferred_fp.decl"
-#include "data/shaders/deferred_vp.decl"
-END_SHADER(deferred)
+#define SHADERNAME deferred
+#define VERTEX_PROGRAM "data/shaders/deferred_vp.decl"
+#define FRAGMENT_PROGRAM "data/shaders/deferred_fp.decl"
+#include "shaderdecl.hpp"
 
-BEGIN_SHADER(forward)
-#include "data/shaders/forward_fp.decl"
-#include "data/shaders/forward_vp.decl"
-END_SHADER(forward)
+#define SHADERNAME forward
+#define VERTEX_PROGRAM "data/shaders/forward_vp.decl"
+#define FRAGMENT_PROGRAM "data/shaders/forward_fp.decl"
+#include "shaderdecl.hpp"
 
-BEGIN_SHADER(debugunsplit)
-#include "data/shaders/debugunsplit_fp.decl"
-#include "data/shaders/debugunsplit_vp.decl"
-END_SHADER(debugunsplit)
+#define SHADERNAME debugunsplit
+#define VERTEX_PROGRAM "data/shaders/debugunsplit_vp.decl"
+#define FRAGMENT_PROGRAM "data/shaders/debugunsplit_fp.decl"
+#include "shaderdecl.hpp"
 
 static u32 gdethtex, gnortex, finaltex;
 static u32 gbuffer, shadedbuffer;
