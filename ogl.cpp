@@ -596,7 +596,7 @@ static vector<timer> timers;
 static vector<int> timerorder;
 static int timercycle = 0;
 
-IVAR(usetimers, 0, 0, 1);
+extern int usetimers;
 static int deferquery=0;
 
 static timer *findtimer(const char *name, bool gpu) {
@@ -666,7 +666,7 @@ void cleanuptimers() {
   timerorder.destroy();
 }
 
-IVARF(usertimers, 0, 0, 1, cleanuptimers());
+IVARF(usetimers, 0, 0, 1, cleanuptimers());
 IVAR(frametimer, 0, 0, 1);
 #if 0
 void printtimers(int conw, int conh)
