@@ -87,7 +87,7 @@ struct includedirective {
 typedef void (*rulescallback)(ogl::shaderrules&, ogl::shaderrules&);
 
 struct shaderresource {
-  const char *vppath, *fppath, *fp, *vp;
+  const char *vppath, *fppath, *vp, *fp;
   vector<uniformloc> **uniform;
   vector<inoutloc> **attrib, **fragdata;
   vector<includedirective> **include;

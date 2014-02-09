@@ -851,7 +851,7 @@ void destroyshader(shadertype &s) {
   s.program = 0;
 }
 
-IVAR(shaderfromfile, 0, 1, 1);
+IVAR(shaderfromfile, 0, 0, 1);
 bool loadfromfile() { return shaderfromfile; }
 
 void shadererror(bool fatalerr, const char *msg) {

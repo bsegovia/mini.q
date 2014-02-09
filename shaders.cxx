@@ -3,15 +3,15 @@
  - shaders.cxx -> stores shaders (do not modify)
  -------------------------------------------------------------------------*/
 const char debugunsplit_fp[] = {
-"#define SAMPLE(NUM, X, Y) \\n"
-"  vec2 uv##NUM = uv+vec2(X,Y);\\n"
-"  vec2 bufindex##NUM = mod(uv##NUM, SPLITNUM);\\n"
-"  vec2 pixindex##NUM = uv##NUM / vec2(SPLITNUM);\\n"
-"  vec2 unsplituv##NUM = pixindex##NUM + bufindex##NUM * u_subbufferdim;\\n"
-"  vec3 col##NUM = texture2DRect(u_lighttex, unsplituv##NUM).xyz;\\n"
-"  vec2 nor##NUM = texture2DRect(u_nortex, uv##NUM).xy;\\n"
-"  bool ok##NUM = dot(nor##NUM, nor) > 0.8;\\n"
-"  col += ok##NUM ? col##NUM : vec3(0.0);\\n"
+"#define SAMPLE(NUM, X, Y) \\\n"
+"  vec2 uv##NUM = uv+vec2(X,Y);\\\n"
+"  vec2 bufindex##NUM = mod(uv##NUM, SPLITNUM);\\\n"
+"  vec2 pixindex##NUM = uv##NUM / vec2(SPLITNUM);\\\n"
+"  vec2 unsplituv##NUM = pixindex##NUM + bufindex##NUM * u_subbufferdim;\\\n"
+"  vec3 col##NUM = texture2DRect(u_lighttex, unsplituv##NUM).xyz;\\\n"
+"  vec2 nor##NUM = texture2DRect(u_nortex, uv##NUM).xy;\\\n"
+"  bool ok##NUM = dot(nor##NUM, nor) > 0.8;\\\n"
+"  col += ok##NUM ? col##NUM : vec3(0.0);\\\n"
 "  num += ok##NUM ? 1.0 : 0.0;\n"
 
 "void main() {\n"
@@ -182,15 +182,15 @@ const char font_fp[] = {
 const char forward_fp[] = {
 "PS_IN vec3 fs_nor;\n"
 
-"#define SAMPLE(NUM, X, Y) \\n"
-"  vec2 uv##NUM = uv+vec2(X,Y);\\n"
-"  vec2 bufindex##NUM = mod(uv##NUM, SPLITNUM);\\n"
-"  vec2 pixindex##NUM = uv##NUM / vec2(SPLITNUM);\\n"
-"  vec2 unsplituv##NUM = pixindex##NUM + bufindex##NUM * u_subbufferdim;\\n"
-"  vec3 col##NUM = texture2DRect(u_lighttex, unsplituv##NUM).xyz;\\n"
-"  vec2 nor##NUM = texture2DRect(u_nortex, uv##NUM).xy;\\n"
-"  bool ok##NUM = dot(nor##NUM, nor) > 0.8;\\n"
-"  col += ok##NUM ? col##NUM : vec3(0.0);\\n"
+"#define SAMPLE(NUM, X, Y) \\\n"
+"  vec2 uv##NUM = uv+vec2(X,Y);\\\n"
+"  vec2 bufindex##NUM = mod(uv##NUM, SPLITNUM);\\\n"
+"  vec2 pixindex##NUM = uv##NUM / vec2(SPLITNUM);\\\n"
+"  vec2 unsplituv##NUM = pixindex##NUM + bufindex##NUM * u_subbufferdim;\\\n"
+"  vec3 col##NUM = texture2DRect(u_lighttex, unsplituv##NUM).xyz;\\\n"
+"  vec2 nor##NUM = texture2DRect(u_nortex, uv##NUM).xy;\\\n"
+"  bool ok##NUM = dot(nor##NUM, nor) > 0.8;\\\n"
+"  col += ok##NUM ? col##NUM : vec3(0.0);\\\n"
 "  num += ok##NUM ? 1.0 : 0.0;\n"
 
 "void main() {\n"
@@ -301,7 +301,7 @@ const char noise3D[] = {
 "vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }\n"
 "vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }\n"
 "vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }\n"
-"dede\n"
+
 "float snoise(vec3 v) {\n"
 "  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;\n"
 "  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);\n"
