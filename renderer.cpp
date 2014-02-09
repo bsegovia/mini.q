@@ -162,18 +162,23 @@ static void cleandeferred() {
  -------------------------------------------------------------------------*/
 FVARP(fov, 30.f, 90.f, 160.f);
 
+#if 0
 typedef pair<vec3f,vec3f> vertex;
 static u32 vertnum = 0u, indexnum = 0u;
 static vector<vertex> vertices;
 static vector<u32> indices;
+#endif
+static u32 scenenorbo = 0u, sceneposbo = 0u, sceneibo = 0u;
+static u32 indexnum = 0u;
 static bool initialized_m = false;
 
 void start() {
   initdeferred();
 }
 void finish() {
-  vertices.destroy();
-  indices.destroy();
+  ogl::deletebuffers(1, &sceneposbo);
+  ogl::deletebuffers(1, &scenenorbo);
+  ogl::deletebuffers(1, &sceneibo);
   cleandeferred();
 }
 static const float CELLSIZE = 0.2f;
@@ -182,14 +187,22 @@ static void makescene() {
   const float start = sys::millis();
   const auto node = csg::makescene();
   auto m = iso::dc_mesh_mt(vec3f(zero), 2048, CELLSIZE, *node);
-  loopi(m.m_vertnum) vertices.add(makepair(m.m_pos[i], m.m_nor[i]));
-  loopi(m.m_indexnum) indices.add(m.m_index[i]);
-  vertnum = m.m_vertnum;
+  ogl::genbuffers(1, &sceneposbo);
+  ogl::bindbuffer(ogl::ARRAY_BUFFER, sceneposbo);
+  OGL(BufferData, GL_ARRAY_BUFFER, m.m_vertnum*sizeof(vec3f), &m.m_pos[0].x, GL_STATIC_DRAW);
+  ogl::genbuffers(1, &scenenorbo);
+  ogl::bindbuffer(ogl::ARRAY_BUFFER, scenenorbo);
+  OGL(BufferData, GL_ARRAY_BUFFER, m.m_vertnum*sizeof(vec3f), &m.m_nor[0].x, GL_STATIC_DRAW);
+  ogl::bindbuffer(ogl::ARRAY_BUFFER, 0);
+  ogl::genbuffers(1, &sceneibo);
+  ogl::bindbuffer(ogl::ELEMENT_ARRAY_BUFFER, sceneibo);
+  OGL(BufferData, GL_ELEMENT_ARRAY_BUFFER, m.m_indexnum*sizeof(u32), &m.m_index[0], GL_STATIC_DRAW);
+  ogl::bindbuffer(ogl::ELEMENT_ARRAY_BUFFER, 0);
   indexnum = m.m_indexnum;
+
   const auto duration = sys::millis() - start;
-  assert(indexnum%3 == 0);
   con::out("elapsed %f ms ", duration);
-  con::out("tris %i verts %i", indexnum/3, vertnum);
+  con::out("tris %i verts %i", m.m_indexnum/3, m.m_vertnum);
   initialized_m = true;
   destroyscene(node);
 }
@@ -302,6 +315,19 @@ static void setforwardmatrices(float fovy, float aspect, float farplane) {
   transplayer();
 }
 
+static void renderscene(bool flush) {
+  ogl::bindbuffer(ogl::ARRAY_BUFFER, sceneposbo);
+  OGL(VertexAttribPointer, ogl::ATTRIB_POS0, 3, GL_FLOAT, 0, sizeof(vec3f), NULL);
+  ogl::bindbuffer(ogl::ARRAY_BUFFER, scenenorbo);
+  OGL(VertexAttribPointer, ogl::ATTRIB_COL, 3, GL_FLOAT, 0, sizeof(vec3f), NULL);
+  ogl::setattribarray()(ogl::ATTRIB_POS0, ogl::ATTRIB_COL);
+  ogl::bindbuffer(ogl::ELEMENT_ARRAY_BUFFER, sceneibo);
+  if (flush) ogl::fixedflush();
+  ogl::drawelements(GL_TRIANGLES, indexnum, GL_UNSIGNED_INT, NULL);
+  ogl::bindbuffer(ogl::ELEMENT_ARRAY_BUFFER, 0);
+  ogl::bindbuffer(ogl::ARRAY_BUFFER, 0);
+}
+
 static void doforward(const mat4x4f &mvp, float fovy, float aspect, float farplane) {
   const auto forwartimer = ogl::begintimer("forward", true);
   setforwardmatrices(fov, aspect, farplane);
@@ -313,9 +339,7 @@ static void doforward(const mat4x4f &mvp, float fovy, float aspect, float farpla
   OGL(UniformMatrix4fv, forward::u_mvp, 1, GL_FALSE, &mvp.vx.x);
   OGL(Uniform2fv, forward::u_subbufferdim, 1, &subbufferdim.x);
   OGL(Uniform2fv, forward::u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
-  ogl::immenableflush(false);
-  ogl::immdrawelememts("Tip3c3", indexnum, &indices[0], &vertices[0].first[0]);
-  ogl::immenableflush(true);
+  renderscene(false);
   ogl::endtimer(forwartimer);
 }
 
@@ -349,10 +373,10 @@ void frame(int w, int h, int curfps) {
   ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_CHECKBOARD));
   ogl::immdraw("St2p3", 4, ground);
 #endif
-  if (vertnum != 0) {
+  if (indexnum != 0) {
     if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_LINE);
     ogl::bindfixedshader(ogl::FIXED_COLOR);
-    ogl::immdrawelememts("Tip3c3", indexnum, &indices[0], &vertices[0].first[0]);
+    renderscene(true);
     if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_FILL);
   }
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
