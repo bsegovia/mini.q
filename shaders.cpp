@@ -25,6 +25,14 @@ uniformloc::uniformloc(vector<uniformloc> **appendhere,
   (*appendhere)->add(*this);
 }
 
+includedirective::includedirective(vector<includedirective> **appendhere,
+                                   const char *source, bool vertex)
+  : source(source), vertex(vertex)
+{
+  if (*appendhere == NULL) *appendhere = NEWE(vector<includedirective>);
+  (*appendhere)->add(*this);
+}
+
 destroyregister::destroyregister(destroycallback cb) {atexit(cb);}
 
 struct shaderdef {
@@ -47,7 +55,10 @@ void start() {
       ogl::shadererror(true, (*allshaders)[i].name);
   }
 }
-void finish() {SAFE_DEL(allshaders);}
+void finish() {
+  if (allshaders) loopv(*allshaders) ogl::destroyshader(*(*allshaders)[i].s);
+  SAFE_DEL(allshaders);
+}
 
 builder::builder(const shaderresource &rsc) :
   ogl::shaderbuilder(rsc.vppath, rsc.fppath, rsc.vp, rsc.fp), rsc(rsc)
@@ -79,6 +90,10 @@ void builder::setrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules)
     }
   }
 #endif
+  if (*rsc.include) {
+    auto &include = **rsc.include;
+    loopv(include) fragrules.add(NEWSTRING(include[i].source));
+  }
   rsc.rulescb(vertrules, fragrules);
 }
 void builder::setuniform(ogl::shadertype &s) {

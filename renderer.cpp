@@ -119,6 +119,11 @@ static void rules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
 #define FRAGMENT_PROGRAM "data/shaders/debugunsplit_fp.decl"
 #include "shaderdecl.hpp"
 
+#define SHADERNAME simple_material
+#define VERTEX_PROGRAM "data/shaders/simple_material_vp.decl"
+#define FRAGMENT_PROGRAM "data/shaders/simple_material_fp.decl"
+#include "shaderdecl.hpp"
+
 static u32 gdethtex, gnortex, finaltex;
 static u32 gbuffer, shadedbuffer;
 
@@ -150,11 +155,6 @@ static void cleandeferred() {
   ogl::deletetextures(1, &finaltex);
   ogl::deleteframebuffers(1, &gbuffer);
   ogl::deleteframebuffers(1, &shadedbuffer);
-  ogl::destroyshader(deferred::shader);
-  ogl::destroyshader(forward::shader);
-#if DEBUG_UNSPLIT
-  ogl::destroyshader(debugunsplit::shader);
-#endif
 }
 
 /*--------------------------------------------------------------------------

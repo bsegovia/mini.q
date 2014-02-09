@@ -209,6 +209,10 @@ INLINE void NAME##v(First first, Rest... rest) {\
 #define _DO_JOIN(X, Y) _DO_JOIN2(X, Y)
 #define _DO_JOIN2(X, Y) X##Y
 
+// stringification
+#define STRINGIFY(X) _DO_STRINGIFY(X)
+#define _DO_STRINGIFY(X) #X
+
 #if !defined(NDEBUG)
 #define STATS(X) q::s32 X = 0;
 #define STATS_ADD(X,Y) (atomic_add(&X,Y))

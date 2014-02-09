@@ -1,14 +1,18 @@
 BEGIN_SHADER(SHADERNAME)
 
+#define INCLUDE(N) PINCLUDE(N,true)
 #define UNIFORM(T,N) PUNIFORM(T,N,true)
 #define UNIFORMI(T,N,X) PUNIFORMI(T,N,X,true)
 #include VERTEX_PROGRAM
+#undef INCLUDE
 #undef UNIFORM
 #undef UNIFORMI
 
+#define INCLUDE(N) PINCLUDE(N,false)
 #define UNIFORM(T,N) PUNIFORM(T,N,false)
 #define UNIFORMI(T,N,X) PUNIFORMI(T,N,X,false)
 #include FRAGMENT_PROGRAM
+#undef INCLUDE
 #undef UNIFORM
 #undef UNIFORMI
 

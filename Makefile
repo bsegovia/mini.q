@@ -1,4 +1,4 @@
-#CXX=clang++
+CXX=clang++
 CXXOPTFLAGS=-Wall -O2 -DMEMORY_DEBUGGER -g
 CXXRELFLAGS=-Wall -O2 -DNDEBUG
 CXXDEBUGFLAGS=-Wall -O0 -DMEMORY_DEBUGGER -g
@@ -41,6 +41,8 @@ SHADERS=data/shaders/fixed_vp.glsl\
         data/shaders/deferred_fp.glsl\
         data/shaders/debugunsplit_vp.glsl\
         data/shaders/debugunsplit_fp.glsl\
+        data/shaders/simple_material_vp.glsl\
+        data/shaders/simple_material_fp.glsl\
         data/shaders/forward_vp.glsl\
         data/shaders/forward_fp.glsl\
         data/shaders/font_fp.glsl\

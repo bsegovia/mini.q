@@ -301,7 +301,7 @@ const char noise3D[] = {
 "vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }\n"
 "vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }\n"
 "vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }\n"
-
+"dede\n"
 "float snoise(vec3 v) {\n"
 "  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;\n"
 "  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);\n"
@@ -482,4 +482,19 @@ const char noise4D[] = {
 "      + dot(m1*m1, vec2(dot(p3, x3), dot(p4, x4)))) ;\n"
 "}\n"
 };
+const char simple_material_fp[] = {
+"PS_IN vec3 fs_nor;\n"
+"void main() {\n"
+"  SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(abs(fs_nor.xyz), 1.0);\n"
+"}\n"
+};
+
+const char simple_material_vp[] = {
+"VS_OUT vec3 fs_nor;\n"
+"void main() {\n"
+"  fs_nor = vs_nor;\n"
+"  gl_Position = u_mvp*vec4(vs_pos,1.0);\n"
+"}\n"
+};
+
 

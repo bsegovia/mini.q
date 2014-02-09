@@ -1,8 +1,6 @@
-//##const char forward_fp_decl[] = {
 UNIFORMI(sampler2DRect, u_lighttex, 0)
 UNIFORMI(sampler2DRect, u_nortex, 1)
 UNIFORM(vec2, u_subbufferdim)
 UNIFORM(vec2, u_rcpsubbufferdim)
 FRAGDATA(vec4, rt_col, 0)
-//##};
 

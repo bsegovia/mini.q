@@ -16,26 +16,30 @@ namespace shaders {
 #if !defined(__WEBGL__)
 #define LOCATIONS\
   static vector<shaders::inoutloc> *attrib = NULL, *fragdata = NULL;\
-  static vector<shaders::uniformloc> *uniform = NULL;
+  static vector<shaders::uniformloc> *uniform = NULL;\
+  static vector<shaders::includedirective> *include = NULL;
 #define FRAGDATA(T,N,LOC)\
   static shaders::inoutloc N##loc(&fragdata,LOC,#N,#T,false);
 #else
 #define LOCATIONS\
   static vector<shaders::inoutloc> *attrib = NULL;\
-  static vector<shaders::uniformloc> *uniform = NULL;
+  static vector<shaders::uniformloc> *uniform = NULL;\
+  static vector<shaders::includedirective> *include = NULL;
 #define FRAGDATA(T,N,LOC)
 #endif
 #define PUNIFORMI(T,N,X,V)\
   u32 N; static const shaders::uniformloc N##loc(&uniform,N,#N,#T,V,X,true);
 #define PUNIFORM(T,N,V)\
   u32 N; static const shaders::uniformloc N##loc(&uniform,N,#N,#T,V);
+#define PINCLUDE(N,V)\
+  static const shaders::includedirective N##include##V(&include,shaders::N,V);
 #define VATTRIB(T,N,LOC)\
-  u32 N; static const shaders::inoutloc N##loc(&attrib,LOC,#N,#T,true);
+  static const shaders::inoutloc N##loc(&attrib,LOC,#N,#T,true);
 
 #define BEGIN_SHADER(N) namespace N {\
   static ogl::shadertype shader;\
-  static const char vppath[] = "data/shaders/" #N "_vp.glsl";\
-  static const char fppath[] = "data/shaders/" #N "_fp.glsl";\
+  static const char vppath[] = "data/shaders/" STRINGIFY(N) "_vp.glsl";\
+  static const char fppath[] = "data/shaders/" STRINGIFY(N) "_fp.glsl";\
   static const char *vp = shaders:: JOIN(N,_vp);\
   static const char *fp = shaders:: JOIN(N,_fp);\
   LOCATIONS
@@ -45,10 +49,11 @@ namespace shaders {
     SAFE_DEL(attrib);\
     SAFE_DEL(fragdata);\
     SAFE_DEL(uniform);\
+    SAFE_DEL(include);\
   }\
   static const shaders::destroyregister destroyreg(destroy);\
   static const shaders::shaderresource rsc = {\
-    vppath, fppath, vp, fp, &uniform, &attrib, &fragdata, rules\
+    vppath, fppath, vp, fp, &uniform, &attrib, &fragdata, &include, rules\
   };\
   static const shaders::shaderregister shaderreg(shader,rsc,#N);\
 } /* namespace N */
@@ -73,13 +78,19 @@ struct uniformloc {
   bool hasdefault;
   bool vertex;
 };
-
+struct includedirective {
+  INLINE includedirective() {}
+  includedirective(vector<includedirective> **appendhere, const char *source, bool vertex);
+  const char *source;
+  bool vertex;
+};
 typedef void (*rulescallback)(ogl::shaderrules&, ogl::shaderrules&);
 
 struct shaderresource {
   const char *vppath, *fppath, *fp, *vp;
   vector<uniformloc> **uniform;
   vector<inoutloc> **attrib, **fragdata;
+  vector<includedirective> **include;
   rulescallback rulescb;
 };
 
@@ -110,6 +121,7 @@ SHADER(fixed);
 SHADER(forward);
 SHADER(deferred);
 SHADER(debugunsplit);
+SHADER(simple_material);
 #undef SHADER
 
 extern const char noise2D[], noise3D[], noise4D[];
