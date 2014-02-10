@@ -1,0 +1,5 @@
+INCLUDE(fxaa)
+UNIFORMI(sampler2D, u_tex, 0)
+UNIFORM(vec2, u_rcptexsize)
+FRAGDATA(vec4, rt_col, 0)
+
