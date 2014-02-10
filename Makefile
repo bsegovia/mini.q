@@ -43,6 +43,8 @@ SHADERS=data/shaders/fixed_vp.glsl\
         data/shaders/debugunsplit_fp.glsl\
         data/shaders/simple_material_vp.glsl\
         data/shaders/simple_material_fp.glsl\
+        data/shaders/split_deferred_vp.glsl\
+        data/shaders/split_deferred_fp.glsl\
         data/shaders/forward_vp.glsl\
         data/shaders/forward_fp.glsl\
         data/shaders/font_fp.glsl\

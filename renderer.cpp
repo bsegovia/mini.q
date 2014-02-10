@@ -7,7 +7,10 @@
 #include "csg.hpp"
 #include "shaders.hpp"
 
-#define DEBUG_UNSPLIT 0
+#define SPLIT_AND_FORWARD 0
+#define SPLIT_AND_UNSPLIT 1
+#define NORMAL_DEFERRED 2
+#define RENDER_MODE NORMAL_DEFERRED
 
 namespace q {
 namespace rr {
@@ -106,6 +109,11 @@ static void rules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
   fragrules.add(NEWSTRING(str));
 }
 
+#define SHADERNAME split_deferred
+#define VERTEX_PROGRAM "data/shaders/split_deferred_vp.decl"
+#define FRAGMENT_PROGRAM "data/shaders/split_deferred_fp.decl"
+#include "shaderdecl.hpp"
+
 #define SHADERNAME deferred
 #define VERTEX_PROGRAM "data/shaders/deferred_vp.decl"
 #define FRAGMENT_PROGRAM "data/shaders/deferred_fp.decl"
@@ -164,12 +172,6 @@ static void cleandeferred() {
  -------------------------------------------------------------------------*/
 FVARP(fov, 30.f, 90.f, 160.f);
 
-#if 0
-typedef pair<vec3f,vec3f> vertex;
-static u32 vertnum = 0u, indexnum = 0u;
-static vector<vertex> vertices;
-static vector<u32> indices;
-#endif
 static u32 scenenorbo = 0u, sceneposbo = 0u, sceneibo = 0u;
 static u32 indexnum = 0u;
 static bool initialized_m = false;
@@ -263,29 +265,39 @@ static void dodeferred(const mat4x4f &worldmvp) {
   ogl::disable(GL_CULL_FACE);
   ogl::immenableflush(false);
 
+#if RENDER_MODE == NORMAL_DEFERRED
   const auto deferredtimer = ogl::begintimer("deferred", true);
+  ogl::bindshader(deferred::shader);
+#define SYSTEM deferred
+#else
+  const auto deferredtimer = ogl::begintimer("deferred", true);
+  ogl::bindshader(split_deferred::shader);
   OGL(BindFramebuffer, GL_FRAMEBUFFER, shadedbuffer);
+#define SYSTEM split_deferred
+#endif
   const vec2f subbufferdim(float(sys::scrw/SPLITNUM), float(sys::scrh/SPLITNUM));
   const vec2f rcpsubbufferdim = rcp(subbufferdim);
-  ogl::bindshader(deferred::shader);
   ogl::bindtexture(GL_TEXTURE_RECTANGLE, gnortex, 0);
   ogl::bindtexture(GL_TEXTURE_RECTANGLE, gdethtex, 1);
-  OGL(UniformMatrix4fv, deferred::u_mvp, 1, GL_FALSE, &mvp.vx.x);
-  OGL(UniformMatrix4fv, deferred::u_invmvp, 1, GL_FALSE, &depthtr.vx.x);
-  OGL(Uniform2fv, deferred::u_subbufferdim, 1, &subbufferdim.x);
-  OGL(Uniform2fv, deferred::u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
+  OGL(UniformMatrix4fv, SYSTEM::u_mvp, 1, GL_FALSE, &mvp.vx.x);
+  OGL(UniformMatrix4fv, SYSTEM::u_invmvp, 1, GL_FALSE, &depthtr.vx.x);
+  OGL(Uniform2fv, SYSTEM::u_subbufferdim, 1, &subbufferdim.x);
+  OGL(Uniform2fv, SYSTEM::u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
 
   loopi(SPLITNUM) loopj(SPLITNUM) {
     const auto idx = i+SPLITNUM*j;
     const vec3f lpow = lightscale * lightpow[idx];
-    OGL(Uniform3fv, deferred::u_lightpos, 1, &lightpos[idx].x);
-    OGL(Uniform3fv, deferred::u_lightpow, 1, &lpow.x);
+    OGL(Uniform3fv, SYSTEM::u_lightpos, 1, &lightpos[idx].x);
+    OGL(Uniform3fv, SYSTEM::u_lightpow, 1, &lpow.x);
     ogl::immdraw("Sp2", 4, screenquad::getsubbuffer(vec2i(i,j)).v);
   }
+#undef SYSTEM
+#if RENDER_MODE != NORMAL_DEFERRED
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
+#endif
   ogl::endtimer(deferredtimer);
 
-#if DEBUG_UNSPLIT
+#if RENDER_MODE == SPLIT_AND_UNSPLIT
   const auto unsplittimer = ogl::begintimer("unsplit", true);
   ogl::bindshader(debugunsplit::shader);
   ogl::bindtexture(GL_TEXTURE_RECTANGLE, finaltex, 0);
@@ -330,6 +342,7 @@ static void renderscene(bool flush) {
   ogl::bindbuffer(ogl::ARRAY_BUFFER, 0);
 }
 
+#if RENDER_MODE == SPLIT_AND_FORWARD
 static void doforward(const mat4x4f &mvp, float fovy, float aspect, float farplane) {
   const auto forwartimer = ogl::begintimer("forward", true);
   setforwardmatrices(fov, aspect, farplane);
@@ -344,6 +357,7 @@ static void doforward(const mat4x4f &mvp, float fovy, float aspect, float farpla
   renderscene(false);
   ogl::endtimer(forwartimer);
 }
+#endif
 
 IVAR(linemode, 0, 0, 1);
 
@@ -375,25 +389,26 @@ void frame(int w, int h, int curfps) {
   ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_CHECKBOARD));
   ogl::immdraw("St2p3", 4, ground);
 #endif
+  const auto &mv = ogl::matrix(ogl::MODELVIEW);
+  const auto &p  = ogl::matrix(ogl::PROJECTION);
+  const auto worldmvp = p*mv;
+
   if (indexnum != 0) {
     if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_LINE);
-    ogl::bindfixedshader(ogl::FIXED_COLOR);
-    renderscene(true);
+    ogl::bindshader(simple_material::shader);
+    OGL(UniformMatrix4fv, deferred::u_mvp, 1, GL_FALSE, &worldmvp.vx.x);
+    renderscene(false);
     if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_FILL);
   }
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
   ogl::endtimer(gbuffertimer);
 
-  const auto &mv = ogl::matrix(ogl::MODELVIEW);
-  const auto &p  = ogl::matrix(ogl::PROJECTION);
-  const auto worldmvp = p*mv;
-
-  // blit the normal buffer into screen
+  // perform deferred shading
   setscreentransform();
   dodeferred(worldmvp);
   popscreentransform();
 
-#if !DEBUG_UNSPLIT
+#if RENDER_MODE == SPLIT_AND_FORWARD
   doforward(worldmvp, fovy, aspect, farplane);
 #endif
 

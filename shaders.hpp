@@ -122,6 +122,7 @@ SHADER(forward);
 SHADER(deferred);
 SHADER(debugunsplit);
 SHADER(simple_material);
+SHADER(split_deferred);
 #undef SHADER
 
 extern const char noise2D[], noise3D[], noise4D[];

@@ -51,6 +51,7 @@ CMDN(bind, bindkey, "ss");
 void finish() {
   loopv(conlines) FREE(conlines[i].cref);
   loopv(vhistory) FREE(vhistory[i]);
+  vhistory.destroy();
   conlines.destroy();
   loopi(numkm) {
     FREE(keyms[i].name);

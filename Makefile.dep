@@ -21,6 +21,10 @@ SHADER_DECLARATIONS=\
   data/shaders/debugunsplit_vp.decl\
   data/shaders/deferred_fp.decl\
   data/shaders/deferred_vp.decl\
+  data/shaders/split_deferred_fp.decl\
+  data/shaders/split_deferred_vp.decl\
+  data/shaders/simple_material_vp.decl\
+  data/shaders/simple_material_fp.decl\
   data/shaders/forward_fp.decl\
   data/shaders/forward_vp.decl
 

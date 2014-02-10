@@ -596,7 +596,7 @@ static vector<timer> timers;
 static vector<int> timerorder;
 static int timercycle = 0;
 
-extern int usetimers;
+extern int gputimers;
 static int deferquery=0;
 
 static timer *findtimer(const char *name, bool gpu) {
@@ -619,7 +619,7 @@ static timer *findtimer(const char *name, bool gpu) {
 }
 
 timer *begintimer(const char *name, bool gpu) {
-  if (!usetimers || (gpu && (!hasTQ || deferquery)))
+  if (!gputimers || (gpu && (!hasTQ || deferquery)))
     return NULL;
   const auto t = findtimer(name, gpu);
   if (t->gpu) {
@@ -657,7 +657,7 @@ static void synctimers() {
   }
 }
 
-void cleanuptimers() {
+static void cleanuptimers() {
   loopv(timers) {
     timer &t = timers[i];
     if (t.gpu) OGL(DeleteQueries, timer::MAXQUERY, t.query);
@@ -666,12 +666,12 @@ void cleanuptimers() {
   timerorder.destroy();
 }
 
-IVARF(usetimers, 0, 0, 1, cleanuptimers());
+IVARF(gputimers, 0, 0, 1, cleanuptimers());
 IVAR(frametimer, 0, 0, 1);
 static float framemillis = 0.f, totalmillis = 0.f;
 
 void printtimers(float conw, float conh) {
-  if (!frametimer && !usetimers) return;
+  if (!frametimer && !gputimers) return;
 
   static float lastprint = 0.f;
   int offset = 0;
@@ -684,7 +684,7 @@ void printtimers(float conw, float conh) {
     text::drawf("frame time %5.2 ms", tp, printmillis);
     offset++;
   }
-  if (usetimers) loopv(timerorder) {
+  if (gputimers) loopv(timerorder) {
     auto &t = timers[timerorder[i]];
     if (t.print < 0.f ? t.result >= 0.f : totalmillis - lastprint >= 200.f)
       t.print = t.result;
@@ -851,7 +851,7 @@ void destroyshader(shadertype &s) {
   s.program = 0;
 }
 
-IVAR(shaderfromfile, 0, 0, 1);
+IVAR(shaderfromfile, 0, 1, 1);
 bool loadfromfile() { return shaderfromfile; }
 
 void shadererror(bool fatalerr, const char *msg) {
@@ -1011,6 +1011,7 @@ void finish() {
   if (texturenum) printf("ogl: %d textures are still allocated\n", texturenum);
   if (buffernum) printf("ogl: %d buffers are still allocated\n", buffernum);
   if (framebuffernum) printf("ogl: %d frame buffers are still allocated\n", framebuffernum);
+  cleanuptimers();
 }
 } /* namespace ogl */
 } /* namespace q */

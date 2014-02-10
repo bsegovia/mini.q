@@ -49,17 +49,8 @@ const char debugunsplit_vp[] = {
 const char deferred_fp[] = {
 "void main() {\n"
 "  vec2 uv = floor(gl_FragCoord.xy);\n"
-"  vec2 bufindex = uv * u_rcpsubbufferdim;\n"
-"  vec2 pixindex = mod(uv, u_subbufferdim);\n"
-"  vec2 splituv = SPLITNUM * pixindex + bufindex;\n"
-"  vec3 nor = normalize(2.0*texture2DRect(u_nortex, splituv).xyz-1.0);\n"
-"  float depth = texture2DRect(u_depthtex, splituv).r;\n"
-"  vec4 posw = u_invmvp * vec4(splituv, depth, 1.0);\n"
-"  vec3 pos = posw.xyz / posw.w;\n"
-"  vec3 ldir = u_lightpos-pos;\n"
-"  float llen2 = dot(ldir,ldir);\n"
-"  vec3 lit = u_lightpow * max(dot(nor,ldir),0.0) / (llen2*llen2);\n"
-"  SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(lit,1.0);\n"
+"  vec3 nor = normalize(2.0*texture2DRect(u_nortex, uv).xyz-1.0);\n"
+"  SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(nor,1.0);\n"
 "}\n"
 };
 
@@ -484,17 +475,48 @@ const char noise4D[] = {
 };
 const char simple_material_fp[] = {
 "PS_IN vec3 fs_nor;\n"
+"PS_IN vec3 fs_pos;\n"
 "void main() {\n"
-"  SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(abs(fs_nor.xyz), 1.0);\n"
+"  vec3 p = fs_pos*3.0;\n"
+"  float c = snoise(p);\n"
+"  float dx = snoise(p+vec3(0.01,0.0,0.0));\n"
+"  float dy = snoise(p+vec3(0.0,0.01,0.0));\n"
+"  float dz = snoise(p+vec3(0.0,0.0,0.01));\n"
+"  vec3 dn = normalize(vec3(c-dx, c-dy, c-dz));\n"
+"  vec3 n = normalize(fs_nor + dn/10.0);\n"
+"  SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(abs(n), 1.0);\n"
 "}\n"
 };
 
 const char simple_material_vp[] = {
+"VS_OUT vec3 fs_pos;\n"
 "VS_OUT vec3 fs_nor;\n"
 "void main() {\n"
 "  fs_nor = vs_nor;\n"
+"  fs_pos = vs_pos;\n"
 "  gl_Position = u_mvp*vec4(vs_pos,1.0);\n"
 "}\n"
+};
+
+const char split_deferred_fp[] = {
+"void main() {\n"
+"  vec2 uv = floor(gl_FragCoord.xy);\n"
+"  vec2 bufindex = uv * u_rcpsubbufferdim;\n"
+"  vec2 pixindex = mod(uv, u_subbufferdim);\n"
+"  vec2 splituv = SPLITNUM * pixindex + bufindex;\n"
+"  vec3 nor = normalize(2.0*texture2DRect(u_nortex, splituv).xyz-1.0);\n"
+"  float depth = texture2DRect(u_depthtex, splituv).r;\n"
+"  vec4 posw = u_invmvp * vec4(splituv, depth, 1.0);\n"
+"  vec3 pos = posw.xyz / posw.w;\n"
+"  vec3 ldir = u_lightpos-pos;\n"
+"  float llen2 = dot(ldir,ldir);\n"
+"  vec3 lit = u_lightpow * max(dot(nor,ldir),0.0) / (llen2*llen2);\n"
+"  SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(lit,1.0);\n"
+"}\n"
+};
+
+const char split_deferred_vp[] = {
+"void main() {gl_Position = u_mvp*vec4(vs_pos,1.0,1.0);}\n"
 };
 
 
