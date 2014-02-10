@@ -80,6 +80,7 @@ void finish() {
     fprintf(f, "playerypr %f %f %f\n", ypr.x, ypr.y, ypr.z);
     fclose(f);
   }
+#if !defined(RELEASE)
   iso::finish();
   rr::finish();
   md2::finish();
@@ -88,6 +89,7 @@ void finish() {
   ogl::finish();
   task::finish();
   con::finish();
+#endif
 }
 
 #if TEST_UI

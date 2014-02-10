@@ -861,6 +861,7 @@ void shadererror(bool fatalerr, const char *msg) {
     con::out("unable to build fixed shaders %s", msg);
 }
 
+#if !defined(RELEASE)
 static void reloadshaders() {
   loopv(allshaders) {
     auto &s = allshaders[i];
@@ -868,6 +869,7 @@ static void reloadshaders() {
   }
 }
 CMD(reloadshaders, "");
+#endif
 
 /*--------------------------------------------------------------------------
  - fixed pipeline
@@ -1000,6 +1002,8 @@ void start(int w, int h) {
     if (coretexarray[i] == 0)
       sys::fatal("could not find core textures");
 }
+
+#if !defined(RELEASE)
 void finish() {
   loopi(fixedshadernum) destroyshader(shaders[i]);
   loopv(allshaders) DEL(allshaders[i].first);
@@ -1013,6 +1017,7 @@ void finish() {
   if (framebuffernum) printf("ogl: %d frame buffers are still allocated\n", framebuffernum);
   cleanuptimers();
 }
+#endif
 } /* namespace ogl */
 } /* namespace q */
 

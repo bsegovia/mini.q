@@ -279,7 +279,7 @@ void *memrealloc(void *ptr, size_t sz, const char *filename, int linenum);
 void memfree(void *);
 template <typename T> void callctor(void *ptr) { new (ptr) T; }
 template <typename T, typename... Args>
-void callctor(void *ptr, Args&&... args) { new (ptr) T(args...); }
+INLINE void callctor(void *ptr, Args&&... args) { new (ptr) T(args...); }
 
 template <typename T, typename... Args>
 INLINE T *memconstructa(s32 n, const char *filename, int linenum, Args&&... args) {

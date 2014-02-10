@@ -55,7 +55,9 @@ void start() {
     ogl::shadererror(true, "font shader");
   buildfont();
 }
+#if !defined(RELEASE)
 void finish() { ogl::destroyshader(fontshader); }
+#endif
 
 // font parameters
 static vec4f fontoutlinecolor = zero;

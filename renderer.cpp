@@ -159,6 +159,7 @@ static void initdeferred() {
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
 }
 
+#if !defined(RELEASE)
 static void cleandeferred() {
   ogl::deletetextures(1, &gnortex);
   ogl::deletetextures(1, &gdethtex);
@@ -166,6 +167,7 @@ static void cleandeferred() {
   ogl::deleteframebuffers(1, &gbuffer);
   ogl::deleteframebuffers(1, &shadedbuffer);
 }
+#endif
 
 /*--------------------------------------------------------------------------
  - render the complete frame
@@ -179,12 +181,15 @@ static bool initialized_m = false;
 void start() {
   initdeferred();
 }
+#if !defined(RELEASE)
 void finish() {
   ogl::deletebuffers(1, &sceneposbo);
   ogl::deletebuffers(1, &scenenorbo);
   ogl::deletebuffers(1, &sceneibo);
   cleandeferred();
 }
+#endif
+
 static const float CELLSIZE = 0.2f;
 static void makescene() {
   if (initialized_m) return;

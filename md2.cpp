@@ -174,12 +174,14 @@ static void delayedload(mdl *m, float scale, int snap) {
 }
 
 void start() {}
+#if !defined(RELEASE)
 void finish() {
   for (auto &m : mdllookup) {
     DEL(m.second);
     mdllookup.remove(&m);
   }
 }
+#endif
 
 mdl *loadmodel(const char *name) {
   auto mm = mdllookup.access(name);

@@ -48,6 +48,7 @@ static void bindkey(char *key, char *action) {
 }
 CMDN(bind, bindkey, "ss");
 
+#if !defined(RELEASE)
 void finish() {
   loopv(conlines) FREE(conlines[i].cref);
   loopv(vhistory) FREE(vhistory[i]);
@@ -58,6 +59,7 @@ void finish() {
     FREE(keyms[i].action);
   }
 }
+#endif
 
 static void line(const char *sf, bool highlight) {
   cline cl;

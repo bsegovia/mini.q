@@ -176,6 +176,9 @@ char *loadfile(const char *fn, int *size) {
 }
 
 void quit(const char *msg) {
+#if defined(RELEASE)
+  _exit(EXIT_SUCCESS);
+#else
   if (msg && strlen(msg)) {
 #if defined(__WIN32__)
     MessageBox(NULL, msg, "cube fatal error", MB_OK|MB_SYSTEMMODAL);
@@ -186,6 +189,7 @@ void quit(const char *msg) {
     q::finish();
   SDL_Quit();
   exit(msg && strlen(msg) ? EXIT_FAILURE : EXIT_SUCCESS);
+#endif
 }
 CMD(quit, "s");
 

@@ -1,13 +1,12 @@
 CXX=clang++
+FLAGS=-fno-exceptions -fno-unwind-tables -fvisibility=hidden -fvisibility-inlines-hidden -fno-rtti -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags`
 CXXOPTFLAGS=-Wall -O2 -DMEMORY_DEBUGGER -g
-CXXRELFLAGS=-Wall -O2 -DNDEBUG
+CXXRELFLAGS=-Wall -fomit-frame-pointer -O2 -DNDEBUG -DRELEASE
 CXXDEBUGFLAGS=-Wall -O0 -DMEMORY_DEBUGGER -g
-#CXX=~/src/emscripten/em++
-#CXXOPTFLAGS=-Wall -DMEMORY_DEBUGGER -pg -O3 -DNDEBUG -std=c++11
 
-CXXFLAGS=$(CXXDEBUGFLAGS) -fno-exceptions -fno-rtti -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags`
+#CXXFLAGS=$(CXXDEBUGFLAGS) -fno-exceptions -fno-rtti -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags`
 #CXXFLAGS=$(CXXOPTFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags` -fsanitize=address
-#CXXFLAGS=$(CXXRELFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags` #-fsanitize=address
+CXXFLAGS=$(FLAGS) $(CXXRELFLAGS)
 #CXXFLAGS=$(CXXOPTFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags`
 LIBS=`sdl-config --libs` -g -lSDL_image -lSDL_mixer
 OBJS=\

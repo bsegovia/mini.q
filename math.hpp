@@ -8,6 +8,7 @@
 #include <cfloat>
 
 namespace q {
+#define TNOINLINE template <typename T> NOINLINE
 #define TINLINE template <typename T> INLINE
 #define UINLINE template <typename U> INLINE
 #define op operator
@@ -410,7 +411,7 @@ TINLINE v4  op* (m44arg m, v4arg v) {
 TINLINE v4 op* (v4arg v, m44arg m) {
   return v4(dot(m.vx,v), dot(m.vy,v), dot(m.vz,v), dot(m.vw,v));
 }
-TINLINE m44 op* (m44arg m, m44arg n) {
+TNOINLINE m44 op* (m44arg m, m44arg n) {
   const v4 a0 = m.vx, a1 = m.vy, a2 = m.vz, a3 = m.vw;
   const v4 b0 = n.vx, b1 = n.vy, b2 = n.vz, b3 = n.vw;
   return m44(a0*b0.x + a1*b0.y + a2*b0.z + a3*b0.w,
@@ -653,6 +654,7 @@ typedef quat<float>  quat3f;
 typedef quat<double> quat3d;
 
 #undef TINLINE
+#undef TNOINLINE
 #undef UINLINE
 #undef op
 #undef v2
