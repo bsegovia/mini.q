@@ -1,12 +1,12 @@
-CXX=clang++
-FLAGS=-fno-exceptions -fno-unwind-tables -fvisibility=hidden -fvisibility-inlines-hidden -fno-rtti -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags`
-CXXOPTFLAGS=-Wall -O2 -DMEMORY_DEBUGGER -g
-CXXRELFLAGS=-Wall -fomit-frame-pointer -O2 -DNDEBUG -DRELEASE
-CXXDEBUGFLAGS=-Wall -O0 -DMEMORY_DEBUGGER -g
+#CXX=clang++
+FLAGS=-Wall -fno-exceptions -fno-unwind-tables -fvisibility=hidden -fvisibility-inlines-hidden -fno-rtti -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags`
+CXXDEBUGFLAGS=-O0 -DMEMORY_DEBUGGER -g
+CXXOPTFLAGS=-O2 -DMEMORY_DEBUGGER -g
+CXXRELFLAGS=-fomit-frame-pointer -Os -DNDEBUG -DRELEASE
 
-#CXXFLAGS=$(CXXDEBUGFLAGS) -fno-exceptions -fno-rtti -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags`
+CXXFLAGS=$(FLAGS) $(CXXDEBUGFLAGS)
 #CXXFLAGS=$(CXXOPTFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags` -fsanitize=address
-CXXFLAGS=$(FLAGS) $(CXXRELFLAGS)
+#CXXFLAGS=$(FLAGS) $(CXXRELFLAGS)
 #CXXFLAGS=$(CXXOPTFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags`
 LIBS=`sdl-config --libs` -g -lSDL_image -lSDL_mixer
 OBJS=\
@@ -36,6 +36,8 @@ include Makefile.dep
 
 SHADERS=data/shaders/fixed_vp.glsl\
         data/shaders/fixed_fp.glsl\
+        data/shaders/blit_vp.glsl\
+        data/shaders/blit_fp.glsl\
         data/shaders/deferred_vp.glsl\
         data/shaders/deferred_fp.glsl\
         data/shaders/debugunsplit_vp.glsl\
@@ -47,6 +49,9 @@ SHADERS=data/shaders/fixed_vp.glsl\
         data/shaders/forward_vp.glsl\
         data/shaders/forward_fp.glsl\
         data/shaders/font_fp.glsl\
+        data/shaders/fxaa_vp.glsl\
+        data/shaders/fxaa_fp.glsl\
+        data/shaders/fxaa.glsl\
         data/shaders/noise2D.glsl\
         data/shaders/noise3D.glsl\
         data/shaders/noise4D.glsl

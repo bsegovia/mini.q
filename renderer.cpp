@@ -7,11 +7,6 @@
 #include "csg.hpp"
 #include "shaders.hpp"
 
-#define SPLIT_AND_FORWARD 0
-#define SPLIT_AND_UNSPLIT 1
-#define NORMAL_DEFERRED 2
-#define RENDER_MODE NORMAL_DEFERRED
-
 namespace q {
 namespace rr {
 
@@ -124,6 +119,11 @@ static void rules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
 #define FRAGMENT_PROGRAM "data/shaders/forward_fp.decl"
 #include "shaderdecl.hpp"
 
+#define SHADERNAME blit
+#define VERTEX_PROGRAM "data/shaders/blit_vp.decl"
+#define FRAGMENT_PROGRAM "data/shaders/blit_fp.decl"
+#include "shaderdecl.hpp"
+
 #define SHADERNAME debugunsplit
 #define VERTEX_PROGRAM "data/shaders/debugunsplit_vp.decl"
 #define FRAGMENT_PROGRAM "data/shaders/debugunsplit_fp.decl"
@@ -134,6 +134,11 @@ static void rules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
 #define FRAGMENT_PROGRAM "data/shaders/simple_material_fp.decl"
 #include "shaderdecl.hpp"
 
+#define SHADERNAME fxaa
+#define VERTEX_PROGRAM "data/shaders/fxaa_vp.decl"
+#define FRAGMENT_PROGRAM "data/shaders/fxaa_fp.decl"
+#include "shaderdecl.hpp"
+
 static u32 gdethtex, gnortex, finaltex;
 static u32 gbuffer, shadedbuffer;
 
@@ -141,7 +146,7 @@ static void initdeferred() {
   // all textures
   gnortex = ogl::maketex("TB I3 D3 Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
   gdethtex = ogl::maketex("Tf Id Dd Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
-  finaltex = ogl::maketex("TB I3 D3 Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
+  finaltex = ogl::maketex("TB I3 D3 B2 Wse Wte mn Ml", NULL, sys::scrw, sys::scrh);
 
   // all frame buffer objects
   ogl::genframebuffers(1, &gbuffer);
@@ -153,7 +158,7 @@ static void initdeferred() {
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
   ogl::genframebuffers(1, &shadedbuffer);
   OGL(BindFramebuffer, GL_FRAMEBUFFER, shadedbuffer);
-  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, finaltex, 0);
+  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, finaltex, 0);
   if (GL_FRAMEBUFFER_COMPLETE != ogl::CheckFramebufferStatus(GL_FRAMEBUFFER))
     sys::fatal("renderer: unable to init debug unsplit framebuffer");
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
@@ -218,16 +223,17 @@ static void makescene() {
 struct screenquad {
   static INLINE screenquad get() {
     const auto w = float(sys::scrw), h = float(sys::scrh);
-    const screenquad qs = {{w,h,w,0.f,0.f,h,0.f,0.f}};
-    return qs;
+    return screenquad({{w,h,w,0.f,0.f,h,0.f,0.f}});
+  };
+  static INLINE screenquad getnormalized() {
+    return screenquad({{1.f,1.f,1.f,-1.f,-1.f,1.f,-1.f,-1.f}});
   };
   static INLINE screenquad getsubbuffer(vec2i xy) {
     const auto w = float(sys::scrw/SPLITNUM);
     const auto h = float(sys::scrh/SPLITNUM);
     const auto sw = w*xy.x, sh = h*xy.y;
     const auto ew = sw+w, eh = sh+h;
-    const screenquad qs = {{ew,eh,ew,sh,sw,eh,sw,sh}};
-    return qs;
+    return screenquad({{ew,eh,ew,sh,sw,eh,sw,sh}});
   }
   float v[16];
 };
@@ -270,49 +276,31 @@ static void dodeferred(const mat4x4f &worldmvp) {
   ogl::disable(GL_CULL_FACE);
   ogl::immenableflush(false);
 
-#if RENDER_MODE == NORMAL_DEFERRED
   const auto deferredtimer = ogl::begintimer("deferred", true);
-  ogl::bindshader(deferred::shader);
-#define SYSTEM deferred
-#else
-  const auto deferredtimer = ogl::begintimer("deferred", true);
-  ogl::bindshader(split_deferred::shader);
   OGL(BindFramebuffer, GL_FRAMEBUFFER, shadedbuffer);
-#define SYSTEM split_deferred
-#endif
-  const vec2f subbufferdim(float(sys::scrw/SPLITNUM), float(sys::scrh/SPLITNUM));
-  const vec2f rcpsubbufferdim = rcp(subbufferdim);
+  ogl::bindshader(deferred::shader);
   ogl::bindtexture(GL_TEXTURE_RECTANGLE, gnortex, 0);
   ogl::bindtexture(GL_TEXTURE_RECTANGLE, gdethtex, 1);
-  OGL(UniformMatrix4fv, SYSTEM::u_mvp, 1, GL_FALSE, &mvp.vx.x);
-  OGL(UniformMatrix4fv, SYSTEM::u_invmvp, 1, GL_FALSE, &depthtr.vx.x);
-  OGL(Uniform2fv, SYSTEM::u_subbufferdim, 1, &subbufferdim.x);
-  OGL(Uniform2fv, SYSTEM::u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
+  OGL(UniformMatrix4fv, deferred::u_invmvp, 1, GL_FALSE, &depthtr.vx.x);
 
-  loopi(SPLITNUM) loopj(SPLITNUM) {
-    const auto idx = i+SPLITNUM*j;
-    const vec3f lpow = lightscale * lightpow[idx];
-    OGL(Uniform3fv, SYSTEM::u_lightpos, 1, &lightpos[idx].x);
-    OGL(Uniform3fv, SYSTEM::u_lightpow, 1, &lpow.x);
-    ogl::immdraw("Sp2", 4, screenquad::getsubbuffer(vec2i(i,j)).v);
-  }
-#undef SYSTEM
-#if RENDER_MODE != NORMAL_DEFERRED
+  const vec3f lpow = lightscale * lightpow[0];
+  const vec3f lpos = lightpos[0];
+  OGL(Uniform3fv, deferred::u_lightpos, 1, &lpos.x);
+  OGL(Uniform3fv, deferred::u_lightpow, 1, &lpow.x);
+  ogl::immdraw("Sp2", 4, screenquad::getnormalized().v);
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
-#endif
   ogl::endtimer(deferredtimer);
 
-#if RENDER_MODE == SPLIT_AND_UNSPLIT
-  const auto unsplittimer = ogl::begintimer("unsplit", true);
-  ogl::bindshader(debugunsplit::shader);
-  ogl::bindtexture(GL_TEXTURE_RECTANGLE, finaltex, 0);
-  ogl::bindtexture(GL_TEXTURE_RECTANGLE, gnortex, 1);
-  OGL(UniformMatrix4fv, debugunsplit::u_mvp, 1, GL_FALSE, &mvp.vx.x);
-  OGL(Uniform2fv, debugunsplit::u_subbufferdim, 1, &subbufferdim.x);
-  OGL(Uniform2fv, debugunsplit::u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
-  ogl::immdraw("Sp2", 4, screenquad::get().v);
-  ogl::endtimer(unsplittimer);
-#endif
+  // const auto blittimer = ogl::begintimer("blit", true);
+  const auto fxaatimer = ogl::begintimer("fxaa", true);
+  ogl::bindshader(fxaa::shader);
+  OGL(DepthMask, GL_FALSE);
+  const vec2f rcptexsize(1.f/float(sys::scrw), 1.f/float(sys::scrh));
+  OGL(Uniform2fv, fxaa::u_rcptexsize, 1, &rcptexsize.x);
+  ogl::bindtexture(GL_TEXTURE_2D, finaltex, 0);
+  ogl::immdraw("Sp2", 4, screenquad::getnormalized().v);
+  OGL(DepthMask, GL_TRUE);
+  ogl::endtimer(fxaatimer);
 
   ogl::immenableflush(true);
   ogl::enable(GL_CULL_FACE);
@@ -347,23 +335,6 @@ static void renderscene(bool flush) {
   ogl::bindbuffer(ogl::ARRAY_BUFFER, 0);
 }
 
-#if RENDER_MODE == SPLIT_AND_FORWARD
-static void doforward(const mat4x4f &mvp, float fovy, float aspect, float farplane) {
-  const auto forwartimer = ogl::begintimer("forward", true);
-  setforwardmatrices(fov, aspect, farplane);
-  const vec2f subbufferdim(float(sys::scrw/SPLITNUM), float(sys::scrh/SPLITNUM));
-  const vec2f rcpsubbufferdim = rcp(subbufferdim);
-  ogl::bindshader(forward::shader);
-  ogl::bindtexture(GL_TEXTURE_RECTANGLE, finaltex, 0);
-  ogl::bindtexture(GL_TEXTURE_RECTANGLE, gnortex, 1);
-  OGL(UniformMatrix4fv, forward::u_mvp, 1, GL_FALSE, &mvp.vx.x);
-  OGL(Uniform2fv, forward::u_subbufferdim, 1, &subbufferdim.x);
-  OGL(Uniform2fv, forward::u_rcpsubbufferdim, 1, &rcpsubbufferdim.x);
-  renderscene(false);
-  ogl::endtimer(forwartimer);
-}
-#endif
-
 IVAR(linemode, 0, 0, 1);
 
 void frame(int w, int h, int curfps) {
@@ -387,13 +358,8 @@ void frame(int w, int h, int curfps) {
   const auto gbuffertimer = ogl::begintimer("gbuffer", true);
   OGL(BindFramebuffer, GL_FRAMEBUFFER, gbuffer);
   OGL(ClearColor, 0.f, 0.f, 0.f, 1.f);
-  OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  OGL(Clear, GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 
-#if 0
-  ogl::bindfixedshader(ogl::FIXED_DIFFUSETEX);
-  ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_CHECKBOARD));
-  ogl::immdraw("St2p3", 4, ground);
-#endif
   const auto &mv = ogl::matrix(ogl::MODELVIEW);
   const auto &p  = ogl::matrix(ogl::PROJECTION);
   const auto worldmvp = p*mv;
@@ -401,7 +367,7 @@ void frame(int w, int h, int curfps) {
   if (indexnum != 0) {
     if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_LINE);
     ogl::bindshader(simple_material::shader);
-    OGL(UniformMatrix4fv, deferred::u_mvp, 1, GL_FALSE, &worldmvp.vx.x);
+    OGL(UniformMatrix4fv, simple_material::u_mvp, 1, GL_FALSE, &worldmvp.vx.x);
     renderscene(false);
     if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_FILL);
   }
@@ -412,10 +378,6 @@ void frame(int w, int h, int curfps) {
   setscreentransform();
   dodeferred(worldmvp);
   popscreentransform();
-
-#if RENDER_MODE == SPLIT_AND_FORWARD
-  doforward(worldmvp, fovy, aspect, farplane);
-#endif
 
   const auto hudtimer = ogl::begintimer("hud", true);
   // drawhudgun(fovy, aspect, farplane);

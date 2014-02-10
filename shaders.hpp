@@ -44,6 +44,19 @@ namespace shaders {
   static const char *fp = shaders:: JOIN(N,_fp);\
   LOCATIONS
 
+#if defined(RELEASE)
+#define DESTROY_SHADER
+#else
+#define DESTROY_SHADER\
+  static void destroy() {\
+    SAFE_DEL(attrib);\
+    SAFE_DEL(fragdata);\
+    SAFE_DEL(uniform);\
+    SAFE_DEL(include);\
+  }\
+  static const shaders::destroyregister destroyreg(destroy);
+#endif
+
 #define END_SHADER(N)\
   static void destroy() {\
     SAFE_DEL(attrib);\
@@ -117,6 +130,8 @@ struct builder : ogl::shaderbuilder {
  - declare the source code for all game shaders and shader libraries
  -------------------------------------------------------------------------*/
 #define SHADER(NAME) extern const char NAME##_vp[], NAME##_fp[];
+SHADER(fxaa);
+SHADER(blit);
 SHADER(fixed);
 SHADER(forward);
 SHADER(deferred);
@@ -125,7 +140,7 @@ SHADER(simple_material);
 SHADER(split_deferred);
 #undef SHADER
 
-extern const char noise2D[], noise3D[], noise4D[];
+extern const char noise2D[], noise3D[], noise4D[], fxaa[];
 extern const char font_fp[];
 extern const char dfrm_fp[];
 void start();

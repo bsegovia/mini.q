@@ -19,6 +19,8 @@ HEADERS=\
 SHADER_DECLARATIONS=\
   data/shaders/debugunsplit_fp.decl\
   data/shaders/debugunsplit_vp.decl\
+  data/shaders/fxaa_vp.decl\
+  data/shaders/fxaa_fp.decl\
   data/shaders/deferred_fp.decl\
   data/shaders/deferred_vp.decl\
   data/shaders/split_deferred_fp.decl\
