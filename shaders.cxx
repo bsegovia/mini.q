@@ -1130,20 +1130,18 @@ const char fxaa_vp[] = {
 };
 
 const char hell[] = {
+"#if 0\n"
 "const float PI=3.14159265358979323846;\n"
-
 "float speed=iGlobalTime*0.2975;\n"
 "float ground_x=1.0-0.325*sin(PI*speed*0.25);\n"
 "float ground_y=1.0;\n"
 "float ground_z=0.5;\n"
 
-"vec2 rotate(vec2 k,float t)\n"
-"{\n"
+"vec2 rotate(vec2 k,float t) {\n"
 "  return vec2(cos(t)*k.x-sin(t)*k.y,sin(t)*k.x+cos(t)*k.y);\n"
 "}\n"
 
-"float draw_scene(vec3 p)\n"
-"{\n"
+"float draw_scene(vec3 p) {\n"
 "  float tunnel_m=0.125*cos(PI*p.z*1.0+speed*4.0-PI);\n"
 "  float tunnel1_p=2.0;\n"
 "  float tunnel1_w=tunnel1_p*0.225;\n"
@@ -1179,8 +1177,7 @@ const char hell[] = {
 "  vec3 ray=vec3(ground_x,ground_y,ground_z-speed*2.5);\n"
 "  float t=0.0;\n"
 "  const int ray_n=96;\n"
-"  for(int i=0;i<ray_n;i++)\n"
-"  {\n"
+"  for(int i=0;i<ray_n;i++) {\n"
 "    float k=draw_scene(ray+dir*t);\n"
 "    t+=k*0.75;\n"
 "  }\n"
@@ -1191,6 +1188,13 @@ const char hell[] = {
 "  vec3 color=vec3(c,c,c)+t*0.0625;\n"
 "  return vec4(vec3(c-t*0.0375+p.y*0.05,c-t*0.025-p.y*0.0625,c+t*0.025-p.y*0.025)+color*color,1.0);\n"
 "}\n"
+"#else\n"
+"vec4 entry(void) {\n"
+"  vec2 sq = fract(16.0*gl_FragCoord.xy/iResolution.xy);\n"
+"  vec4 col = any(lessThan(sq,vec2(0.03))) ? vec4(0.0) : vec4(0.7);\n"
+"  return col;\n"
+"}\n"
+"#endif\n"
 };
 
 //

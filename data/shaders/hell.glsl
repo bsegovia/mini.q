@@ -1,18 +1,16 @@
 //##const char hell[] = {
+#if 0
 const float PI=3.14159265358979323846;
-
 float speed=iGlobalTime*0.2975;
 float ground_x=1.0-0.325*sin(PI*speed*0.25);
 float ground_y=1.0;
 float ground_z=0.5;
 
-vec2 rotate(vec2 k,float t)
-{
+vec2 rotate(vec2 k,float t) {
   return vec2(cos(t)*k.x-sin(t)*k.y,sin(t)*k.x+cos(t)*k.y);
 }
 
-float draw_scene(vec3 p)
-{
+float draw_scene(vec3 p) {
   float tunnel_m=0.125*cos(PI*p.z*1.0+speed*4.0-PI);
   float tunnel1_p=2.0;
   float tunnel1_w=tunnel1_p*0.225;
@@ -48,8 +46,7 @@ vec4 entry(void) {
   vec3 ray=vec3(ground_x,ground_y,ground_z-speed*2.5);
   float t=0.0;
   const int ray_n=96;
-  for(int i=0;i<ray_n;i++)
-  {
+  for(int i=0;i<ray_n;i++) {
     float k=draw_scene(ray+dir*t);
     t+=k*0.75;
   }
@@ -60,5 +57,43 @@ vec4 entry(void) {
   vec3 color=vec3(c,c,c)+t*0.0625;
   return vec4(vec3(c-t*0.0375+p.y*0.05,c-t*0.025-p.y*0.0625,c+t*0.025-p.y*0.025)+color*color,1.0);
 }
+#else
+vec4 diffuse(vec2 p) {
+  vec2 sq = abs(0.5-fract(5.0*p));
+  vec4 black = mix(vec4(0.3), vec4(0.4,0.3,0.3,0.2), vec4(snoise(200.0*p)));
+  vec4 whitedirt = mix(vec4(0.7), vec4(0.6), vec4(snoise(200.0*p)));
+  whitedirt += mix(vec4(0.1), vec4(0.15), vec4(snoise(50.0*p)));
+  whitedirt += mix(vec4(0.05), vec4(0.08), vec4(snoise(20.0*p)));
+  vec2 s = smoothstep(vec2(0.015), vec2(0.020 + 0.005*snoise(20.0+20.0*p)), sq);
+  vec4 col = mix(black, whitedirt, s.x*s.y);
+  return col;
+}
+
+float height(vec2 p) {
+  vec2 sq = abs(0.5-fract(5.0*p));
+  float blackh = mix(0.44, 0.45, snoise(100.0*p));
+  float whitedirth = mix(0.48, 0.49, snoise(100.0*p));
+  whitedirth += mix(0.48, 0.49, snoise(25.0*p));
+  whitedirth += mix(0.48, 0.49, snoise(10.0*p));
+  vec2 s = smoothstep(vec2(0.015), vec2(0.030 + 0.005*snoise(20.0+20.0*p)), sq);
+  float h = mix(blackh, whitedirth, s.x*s.y);
+  return h;
+}
+
+vec4 entry(void) {
+  vec3 ldir = normalize(vec3(cos(iGlobalTime)*0.5,0.5,0.5));
+  vec2 p = gl_FragCoord.xy/iResolution.xy;
+  vec4 col = diffuse(p);
+  float h  = height(p);
+  float hx = height((gl_FragCoord.xy+vec2(0.01,0.0))/iResolution.xy);
+  float hy = height((gl_FragCoord.xy+vec2(0.0,0.01))/iResolution.xy);
+  vec2 n = 0.05f*normalize(vec2(h-hx,h-hy));
+  vec3 gn = normalize(vec3(n.x,1.0,n.y));
+  col *= 1.3;
+  return col * max(dot(gn,ldir),0.0);
+//  return vec4(abs(n), 1.0, 1.0); //col;
+  //return col;
+}
+#endif
 //##};
 

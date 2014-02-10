@@ -1,3 +1,4 @@
+INCLUDE(noise2D)
 UNIFORM(vec3, iResolution)
 UNIFORM(float, iGlobalTime)
 FRAGDATA(vec4, rt_col, 0)
