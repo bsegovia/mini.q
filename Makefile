@@ -26,6 +26,7 @@ OBJS=\
   shaders.o\
   sound.o\
   stl.o\
+  sky.o\
   sys.o\
   task.o\
   text.o\
@@ -36,8 +37,6 @@ include Makefile.dep
 
 SHADERS=data/shaders/fixed_vp.glsl\
         data/shaders/fixed_fp.glsl\
-        data/shaders/blit_vp.glsl\
-        data/shaders/blit_fp.glsl\
         data/shaders/deferred_vp.glsl\
         data/shaders/deferred_fp.glsl\
         data/shaders/debugunsplit_vp.glsl\
@@ -48,10 +47,13 @@ SHADERS=data/shaders/fixed_vp.glsl\
         data/shaders/split_deferred_fp.glsl\
         data/shaders/forward_vp.glsl\
         data/shaders/forward_fp.glsl\
+        data/shaders/shadertoy_vp.glsl\
+        data/shaders/shadertoy_fp.glsl\
         data/shaders/font_fp.glsl\
         data/shaders/fxaa_vp.glsl\
         data/shaders/fxaa_fp.glsl\
         data/shaders/fxaa.glsl\
+        data/shaders/hell.glsl\
         data/shaders/noise2D.glsl\
         data/shaders/noise3D.glsl\
         data/shaders/noise4D.glsl

@@ -2,16 +2,6 @@
  - mini.q - a minimalistic multiplayer FPS
  - shaders.cxx -> stores shaders (do not modify)
  -------------------------------------------------------------------------*/
-const char blit_fp[] = {
-"void main() {\n"
-"  SWITCH_WEBGL(gl_FragColor, rt_col) = texture2D(u_tex,gl_FragCoord.xy*u_rcptexsize);\n"
-"}\n"
-};
-
-const char blit_vp[] = {
-"void main() {gl_Position = vec4(vs_pos,0.0,1.0);}\n"
-};
-
 const char debugunsplit_fp[] = {
 "#define SAMPLE(NUM, X, Y) \\\n"
 "  vec2 uv##NUM = uv+vec2(X,Y);\\\n"
@@ -58,9 +48,23 @@ const char debugunsplit_vp[] = {
 
 const char deferred_fp[] = {
 "void main() {\n"
-"  vec2 uv = floor(gl_FragCoord.xy);\n"
+"  vec2 uv = gl_FragCoord.xy;\n"
 "  vec3 nor = normalize(2.0*texture2DRect(u_nortex, uv).xyz-1.0);\n"
-"  SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(nor,1.0);\n"
+"  float depth = texture2DRect(u_depthtex, uv).r;\n"
+"  vec4 outcol;\n"
+"  if (depth != 1.0) {\n"
+"    vec4 posw = u_invmvp * vec4(uv, depth, 1.0);\n"
+"    vec3 pos = posw.xyz / posw.w;\n"
+"    vec3 ldir = u_lightpos-pos;\n"
+"    float llen2 = dot(ldir,ldir);\n"
+"    outcol.xyz = vec3(2000.0) * max(dot(nor,ldir),0.0) / (llen2*llen2);\n"
+"    outcol.w = 1.0;\n"
+"  } else {\n"
+"    vec4 rdh = u_dirinvmvp * vec4(uv, 0.0, 1.0);\n"
+"    vec3 rd = normalize(rdh.xyz/rdh.w);\n"
+"    outcol = vec4(getsky(rd, u_sundir), 1.0);\n"
+"  }\n"
+"  SWITCH_WEBGL(gl_FragColor, rt_col) = outcol;\n"
 "}\n"
 };
 
@@ -693,7 +697,7 @@ const char fxaa[] = {
 "#if (FXAA_GREEN_AS_LUMA == 0)\n"
 "    FxaaFloat FxaaLuma(FxaaFloat4 rgba) { return rgba.w; }\n"
 "#else\n"
-"    FxaaFloat FxaaLuma(FxaaFloat4 rgba) { return dot(rgba.xyz,vec3(0.2126,0.7512,0.0722)); }\n"
+"    FxaaFloat FxaaLuma(FxaaFloat4 rgba) { return rgba.r; }\n"
 "#endif\n"
 
 "/*--------------------------------------------------------------------------*/\n"
@@ -1125,6 +1129,70 @@ const char fxaa_vp[] = {
 "void main() {gl_Position = vec4(vs_pos,0.0,1.0);}\n"
 };
 
+const char hell[] = {
+"const float PI=3.14159265358979323846;\n"
+
+"float speed=iGlobalTime*0.2975;\n"
+"float ground_x=1.0-0.325*sin(PI*speed*0.25);\n"
+"float ground_y=1.0;\n"
+"float ground_z=0.5;\n"
+
+"vec2 rotate(vec2 k,float t)\n"
+"{\n"
+"  return vec2(cos(t)*k.x-sin(t)*k.y,sin(t)*k.x+cos(t)*k.y);\n"
+"}\n"
+
+"float draw_scene(vec3 p)\n"
+"{\n"
+"  float tunnel_m=0.125*cos(PI*p.z*1.0+speed*4.0-PI);\n"
+"  float tunnel1_p=2.0;\n"
+"  float tunnel1_w=tunnel1_p*0.225;\n"
+"  float tunnel1=length(mod(p.xy,tunnel1_p)-tunnel1_p*0.5)-tunnel1_w;  // tunnel1\n"
+"  float tunnel2_p=2.0;\n"
+"  float tunnel2_w=tunnel2_p*0.2125+tunnel2_p*0.0125*cos(PI*p.y*8.0)+tunnel2_p*0.0125*cos(PI*p.z*8.0);\n"
+"  float tunnel2=length(mod(p.xy,tunnel2_p)-tunnel2_p*0.5)-tunnel2_w;  // tunnel2\n"
+"  float hole1_p=1.0;\n"
+"  float hole1_w=hole1_p*0.5;\n"
+"  float hole1=length(mod(p.xz,hole1_p).xy-hole1_p*0.5)-hole1_w;  // hole1\n"
+"  float hole2_p=0.25;\n"
+"  float hole2_w=hole2_p*0.375;\n"
+"  float hole2=length(mod(p.yz,hole2_p).xy-hole2_p*0.5)-hole2_w;  // hole2\n"
+"  float hole3_p=0.5;\n"
+"  float hole3_w=hole3_p*0.25+0.125*sin(PI*p.z*2.0);\n"
+"  float hole3=length(mod(p.xy,hole3_p).xy-hole3_p*0.5)-hole3_w;  // hole3\n"
+"  float tube_m=0.075*sin(PI*p.z*1.0);\n"
+"  float tube_p=0.5+tube_m;\n"
+"  float tube_w=tube_p*0.025+0.00125*cos(PI*p.z*128.0);\n"
+"  float tube=length(mod(p.xy,tube_p)-tube_p*0.5)-tube_w;      // tube\n"
+"  float bubble_p=0.05;\n"
+"  float bubble_w=bubble_p*0.5+0.025*cos(PI*p.z*2.0);\n"
+"  float bubble=length(mod(p.yz,bubble_p)-bubble_p*0.5)-bubble_w;  // bubble\n"
+"  return max(min(min(-tunnel1,mix(tunnel2,-bubble,0.375)),max(min(-hole1,hole2),-hole3)),-tube);\n"
+"}\n"
+
+"vec4 entry(void) {\n"
+"  vec2 position=(gl_FragCoord.xy/iResolution.xy);\n"
+"  vec2 p=-1.0+2.0*position;\n"
+"  vec3 dir=normalize(vec3(p*vec2(1.77,1.0),1.0));    // screen ratio (x,y) fov (z)\n"
+"  dir.zx=rotate(dir.zx,-PI*speed*0.25);        // rotation y\n"
+"  dir.xy=rotate(dir.xy,-speed*0.5);          // rotation z\n"
+"  vec3 ray=vec3(ground_x,ground_y,ground_z-speed*2.5);\n"
+"  float t=0.0;\n"
+"  const int ray_n=96;\n"
+"  for(int i=0;i<ray_n;i++)\n"
+"  {\n"
+"    float k=draw_scene(ray+dir*t);\n"
+"    t+=k*0.75;\n"
+"  }\n"
+"  vec3 hit=ray+dir*t;\n"
+"  vec2 h=vec2(-0.0025,0.002); // light\n"
+"  vec3 n=normalize(vec3(draw_scene(hit+h.xyx),draw_scene(hit+h.yxy),draw_scene(hit+h.yyx)));\n"
+"  float c=(n.x+n.y+n.z)*0.35;\n"
+"  vec3 color=vec3(c,c,c)+t*0.0625;\n"
+"  return vec4(vec3(c-t*0.0375+p.y*0.05,c-t*0.025-p.y*0.0625,c+t*0.025-p.y*0.025)+color*color,1.0);\n"
+"}\n"
+};
+
 //
 // Description : Array and textureless GLSL 2D simplex noise function.
 //      Author : Ian McEwan, Ashima Arts.
@@ -1381,6 +1449,16 @@ const char noise4D[] = {
 "      + dot(m1*m1, vec2(dot(p3, x3), dot(p4, x4)))) ;\n"
 "}\n"
 };
+const char shadertoy_fp[] = {
+"void main() {\n"
+"  SWITCH_WEBGL(gl_FragColor, rt_col) = entry();\n"
+"}\n"
+};
+
+const char shadertoy_vp[] = {
+"void main() {gl_Position = vec4(vs_pos,0.0,1.0);}\n"
+};
+
 const char simple_material_fp[] = {
 "PS_IN vec3 fs_nor;\n"
 "PS_IN vec3 fs_pos;\n"
@@ -1403,6 +1481,32 @@ const char simple_material_vp[] = {
 "  fs_nor = vs_nor;\n"
 "  fs_pos = vs_pos;\n"
 "  gl_Position = u_mvp*vec4(vs_pos,1.0);\n"
+"}\n"
+};
+
+const char sky[] = {
+// License Creative Commons Attribution-NonCommercial-ShareAlike 3.0
+// Unported License.
+// From rolling hills by Dave Hoskins (https://www.shadertoy.com/view/Xsf3zX)
+
+"const float PI = 3.141592653, PI2 = 2.0*PI;\n"
+"const vec3 SUN_COLOR = vec3(1.0, 0.75, 0.6);\n"
+
+"vec3 getsky(vec3 rd, bool withsun, vec3 sunlight, vec3 suncolour) {\n"
+"  float sunamount = withsun ? max(dot(rd, sunlight), 0.0 ) : 0.0;\n"
+"  float factor = pow(1.0-max(rd.y,0.0),6.0);\n"
+"  vec3 sun = suncolour * sunamount * sunamount * 0.25\n"
+"           + SUN_COLOR * min(pow(sunamount, 800.0)*1.5, 0.3);\n"
+"  return clamp(mix(vec3(0.1,0.2,0.3),vec3(0.32,0.32,0.32), factor)+sun,0.0,1.0);\n"
+"}\n"
+
+"vec3 getsky(vec3 rd, vec3 sunlight) {\n"
+"  // X = north, Y = top\n"
+"  vec3 suncolour = SUN_COLOR;\n"
+"  if (sunlight.y < 0.12)\n"
+"    suncolour = mix(vec3(2.0,0.4,0.2), SUN_COLOR, smoothstep(0.0,1.0,sunlight.y*8.0));\n"
+"  vec3 col = sqrt(getsky(rd, true, sunlight, suncolour));\n"
+"  return col + suncolour*mix(0.0, 0.051, sunlight.y<0.05 ? 1.0-sunlight.y*20.0 : 0.0);\n"
 "}\n"
 };
 

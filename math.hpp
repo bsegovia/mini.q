@@ -73,19 +73,21 @@ INLINE bool   select(bool s, bool  t , bool f) { return s ? t : f; }
 INLINE int    select(bool s, int   t,   int f) { return s ? t : f; }
 INLINE float  select(bool s, float t, float f) { return s ? t : f; }
 INLINE double select(bool s, double t, double f) { return s ? t : f; }
-TINLINE T max (T a, T b) {return a<b? b:a;}
-TINLINE T min (T a, T b) {return a<b? a:b;}
-TINLINE T min (T a, T b, T c) {return min(min(a,b),c);}
-TINLINE T max (T a, T b, T c) {return max(max(a,b),c);}
-TINLINE T max (T a, T b, T c, T d) {return max(max(a,b),max(c,d));}
-TINLINE T min (T a, T b, T c, T d) {return min(min(a,b),min(c,d));}
-TINLINE T min (T a, T b, T c, T d, T e) {return min(min(min(a,b),min(c,d)),e);}
-TINLINE T max (T a, T b, T c, T d, T e) {return max(max(max(a,b),max(c,d)),e);}
-TINLINE T clamp (T x, T lower = T(zero), T upper = T(one)) {return max(lower,min(x,upper));}
-TINLINE T deg2rad (T x) {return x * T(1.74532925199432957692e-2);}
-TINLINE T rad2deg (T x) {return x * T(5.72957795130823208768e1);}
-TINLINE T sin2cos (T x) {return sqrt(max(T(zero),T(one)-x*x));}
-TINLINE T cos2sin (T x) {return sin2cos(x);}
+TINLINE T fract(T x) {return x-floor(x);}
+TINLINE T mod(T a, T b) {return a-b*floor(a/b);}
+TINLINE T max(T a, T b) {return a<b? b:a;}
+TINLINE T min(T a, T b) {return a<b? a:b;}
+TINLINE T min(T a, T b, T c) {return min(min(a,b),c);}
+TINLINE T max(T a, T b, T c) {return max(max(a,b),c);}
+TINLINE T max(T a, T b, T c, T d) {return max(max(a,b),max(c,d));}
+TINLINE T min(T a, T b, T c, T d) {return min(min(a,b),min(c,d));}
+TINLINE T min(T a, T b, T c, T d, T e) {return min(min(min(a,b),min(c,d)),e);}
+TINLINE T max(T a, T b, T c, T d, T e) {return max(max(max(a,b),max(c,d)),e);}
+TINLINE T clamp(T x, T lower = T(zero), T upper = T(one)) {return max(lower,min(x,upper));}
+TINLINE T deg2rad(T x) {return x * T(1.74532925199432957692e-2);}
+TINLINE T rad2deg(T x) {return x * T(5.72957795130823208768e1);}
+TINLINE T sin2cos(T x) {return sqrt(max(T(zero),T(one)-x*x));}
+TINLINE T cos2sin(T x) {return sin2cos(x);}
 
 /*-------------------------------------------------------------------------
  - 3D graphics related linear algebra (vectors, matrices)

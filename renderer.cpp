@@ -4,6 +4,7 @@
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
 #include "iso.hpp"
+#include "sky.hpp"
 #include "csg.hpp"
 #include "shaders.hpp"
 
@@ -61,6 +62,7 @@ static void drawhud(int w, int h, int curfps) {
 /*--------------------------------------------------------------------------
  - handle the HUD gun
  -------------------------------------------------------------------------*/
+#if 0
 static const char *hudgunnames[] = {
   "hudguns/fist",
   "hudguns/shotg",
@@ -78,7 +80,6 @@ static void drawhudmodel(int start, int end, float speed, int base) {
               false, 1.0f, speed, 0, base);
 }
 
-#if 0
 static void drawhudgun(float fovy, float aspect, float farplane) {
   if (!showhudgun) return;
 
@@ -98,12 +99,14 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
  - deferred shading stuff
  -------------------------------------------------------------------------*/
 #define SPLITNUM 4
-static void rules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
+
+static void deferredrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
   sprintf_sd(str)("#define SPLITNUM %f\n", float(SPLITNUM));
   vertrules.add(NEWSTRING(str));
   fragrules.add(NEWSTRING(str));
 }
 
+#define RULES deferredrules
 #define SHADERNAME split_deferred
 #define VERTEX_PROGRAM "data/shaders/split_deferred_vp.decl"
 #define FRAGMENT_PROGRAM "data/shaders/split_deferred_fp.decl"
@@ -119,11 +122,6 @@ static void rules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
 #define FRAGMENT_PROGRAM "data/shaders/forward_fp.decl"
 #include "shaderdecl.hpp"
 
-#define SHADERNAME blit
-#define VERTEX_PROGRAM "data/shaders/blit_vp.decl"
-#define FRAGMENT_PROGRAM "data/shaders/blit_fp.decl"
-#include "shaderdecl.hpp"
-
 #define SHADERNAME debugunsplit
 #define VERTEX_PROGRAM "data/shaders/debugunsplit_vp.decl"
 #define FRAGMENT_PROGRAM "data/shaders/debugunsplit_fp.decl"
@@ -137,6 +135,23 @@ static void rules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
 #define SHADERNAME fxaa
 #define VERTEX_PROGRAM "data/shaders/fxaa_vp.decl"
 #define FRAGMENT_PROGRAM "data/shaders/fxaa_fp.decl"
+#include "shaderdecl.hpp"
+#undef RULES
+
+static void shadertoyrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
+  if (ogl::loadfromfile()) {
+    auto s = sys::loadfile("data/shaders/hell.glsl");
+    assert(s);
+    fragrules.add(s);
+  } else
+    fragrules.add(NEWSTRING(shaders::hell));
+}
+
+#define RULES shadertoyrules
+#define NAMESPACENAME hell
+#define SHADERNAME shadertoy
+#define VERTEX_PROGRAM "data/shaders/shadertoy_vp.decl"
+#define FRAGMENT_PROGRAM "data/shaders/shadertoy_fp.decl"
 #include "shaderdecl.hpp"
 
 static u32 gdethtex, gnortex, finaltex;
@@ -174,6 +189,55 @@ static void cleandeferred() {
 }
 #endif
 
+static void transplayer(bool zeropos) {
+  using namespace game;
+  ogl::identity();
+  ogl::rotate(player.ypr.z, vec3f(0.f,0.f,1.f));
+  ogl::rotate(player.ypr.y, vec3f(1.f,0.f,0.f));
+  ogl::rotate(player.ypr.x, vec3f(0.f,1.f,0.f));
+  if (!zeropos) ogl::translate(-player.o);
+}
+
+static void setforwardmatrices(float fovy, float aspect, float farplane, bool zeropos) {
+  ogl::matrixmode(ogl::PROJECTION);
+  ogl::setperspective(fovy, aspect, 0.15f, farplane);
+  ogl::matrixmode(ogl::MODELVIEW);
+  transplayer(zeropos);
+}
+
+INLINE mat4x4f viewporttr(float w, float h) {
+  return mat4x4f(vec4f(2.f/w,0.f,  0.f,0.f),
+                 vec4f(0.f,  2.f/h,0.f,0.f),
+                 vec4f(0.f,  0.f,  2.f,0.f),
+                 vec4f(-1.f,-1.f, -1.f,1.f));
+}
+
+static mat4x4f getinvmvp(float w, float h,
+                         float fovy, float aspect, float farplane,
+                         bool zeropos)
+{
+  setforwardmatrices(fovy, aspect, farplane, zeropos);
+  const auto &mv = ogl::matrix(ogl::MODELVIEW);
+  const auto &p  = ogl::matrix(ogl::PROJECTION);
+  const auto worldmvp = p*mv;
+  const auto invmvp = worldmvp.inverse();
+  return invmvp * viewporttr(w, h);
+}
+
+/*--------------------------------------------------------------------------
+ - sky parameters
+ -------------------------------------------------------------------------*/
+static const auto latitude = 42.f;
+static const auto longitude = 1.f;
+static const auto utc_hour = 7.8f;
+static vec3f getsundir() {
+  const auto jglobaltime = 1.f+sys::millis()*1e-3f*.75f;
+  const auto season = mod(jglobaltime, 4.f)/4.f;
+  const auto day = floor(season*365.f)+100.f;
+  const auto jd2000 = sky::julianday2000((day*24.f+utc_hour)*3600.f);
+  return sky::sunvector(jd2000, latitude, longitude);
+}
+
 /*--------------------------------------------------------------------------
  - render the complete frame
  -------------------------------------------------------------------------*/
@@ -188,9 +252,11 @@ void start() {
 }
 #if !defined(RELEASE)
 void finish() {
-  ogl::deletebuffers(1, &sceneposbo);
-  ogl::deletebuffers(1, &scenenorbo);
-  ogl::deletebuffers(1, &sceneibo);
+  if (initialized_m) {
+    ogl::deletebuffers(1, &sceneposbo);
+    ogl::deletebuffers(1, &scenenorbo);
+    ogl::deletebuffers(1, &sceneibo);
+  }
   cleandeferred();
 }
 #endif
@@ -263,16 +329,11 @@ static const vec3f lightpow[] = {
   vec3f(0.f,1.f,1.f), vec3f(0.f,1.f,1.f)
 };
 
-static void dodeferred(const mat4x4f &worldmvp) {
-  const auto &mv = ogl::matrix(ogl::MODELVIEW);
-  const auto &p  = ogl::matrix(ogl::PROJECTION);
-  const auto mvp = p*mv;
+static void dodeferred(const mat4x4f &worldmvp, const mat4x4f &dirinvmvp) {
   const auto invmvp = worldmvp.inverse();
   const auto w = float(sys::scrw), h = float(sys::scrh);
-  const auto depthtr = invmvp * mat4x4f(vec4f(2.f/w,0.f,  0.f,0.f),
-                                        vec4f(0.f,  2.f/h,0.f,0.f),
-                                        vec4f(0.f,  0.f,  2.f,0.f),
-                                        vec4f(-1.f,-1.f, -1.f,1.f));
+  const auto depthtr = invmvp * viewporttr(w,h);
+  const auto sundir = getsundir();
   ogl::disable(GL_CULL_FACE);
   ogl::immenableflush(false);
 
@@ -282,16 +343,17 @@ static void dodeferred(const mat4x4f &worldmvp) {
   ogl::bindtexture(GL_TEXTURE_RECTANGLE, gnortex, 0);
   ogl::bindtexture(GL_TEXTURE_RECTANGLE, gdethtex, 1);
   OGL(UniformMatrix4fv, deferred::u_invmvp, 1, GL_FALSE, &depthtr.vx.x);
+  OGL(UniformMatrix4fv, deferred::u_dirinvmvp, 1, GL_FALSE, &dirinvmvp.vx.x);
 
   const vec3f lpow = lightscale * lightpow[0];
   const vec3f lpos = lightpos[0];
+  OGL(Uniform3fv, deferred::u_sundir, 1, &sundir.x);
   OGL(Uniform3fv, deferred::u_lightpos, 1, &lpos.x);
   OGL(Uniform3fv, deferred::u_lightpow, 1, &lpow.x);
   ogl::immdraw("Sp2", 4, screenquad::getnormalized().v);
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
   ogl::endtimer(deferredtimer);
 
-  // const auto blittimer = ogl::begintimer("blit", true);
   const auto fxaatimer = ogl::begintimer("fxaa", true);
   ogl::bindshader(fxaa::shader);
   OGL(DepthMask, GL_FALSE);
@@ -304,22 +366,6 @@ static void dodeferred(const mat4x4f &worldmvp) {
 
   ogl::immenableflush(true);
   ogl::enable(GL_CULL_FACE);
-}
-
-static void transplayer() {
-  using namespace game;
-  ogl::identity();
-  ogl::rotate(player.ypr.z, vec3f(0.f,0.f,1.f));
-  ogl::rotate(player.ypr.y, vec3f(1.f,0.f,0.f));
-  ogl::rotate(player.ypr.x, vec3f(0.f,1.f,0.f));
-  ogl::translate(-player.o);
-}
-
-static void setforwardmatrices(float fovy, float aspect, float farplane) {
-  ogl::matrixmode(ogl::PROJECTION);
-  ogl::setperspective(fovy, aspect, 0.15f, farplane);
-  ogl::matrixmode(ogl::MODELVIEW);
-  transplayer();
 }
 
 static void renderscene(bool flush) {
@@ -336,48 +382,60 @@ static void renderscene(bool flush) {
 }
 
 IVAR(linemode, 0, 0, 1);
+IVAR(shadertoy, 0, 0, 1);
+
+static void doshadertoy(float fovy, float aspect, float farplane) {
+  const auto shadertoytimer = ogl::begintimer("shadertoy", true);
+  const auto w = float(sys::scrw), h = float(sys::scrh);
+  ogl::bindshader(hell::shader);
+  ogl::disablev(GL_CULL_FACE, GL_DEPTH_TEST);
+  OGL(DepthMask, GL_FALSE);
+  const vec2f iResolution(w, h);
+  const float sec = 1e-3f * sys::millis();
+  OGL(Uniform3fv, hell::iResolution, 1, &iResolution.x);
+  OGL(Uniform1f, hell::iGlobalTime, sec);
+  ogl::immenableflush(false);
+  ogl::immdraw("Sp2", 4, screenquad::getnormalized().v);
+  ogl::immenableflush(true);
+  OGL(DepthMask, GL_TRUE);
+  ogl::enablev(GL_CULL_FACE, GL_DEPTH_TEST);
+  ogl::endtimer(shadertoytimer);
+}
 
 void frame(int w, int h, int curfps) {
   const float farplane = 100.f;
   const float aspect = float(sys::scrw) / float(sys::scrh);
   const float fovy = fov / aspect;
-  setforwardmatrices(fovy, aspect, farplane);
+  if (shadertoy)
+    doshadertoy(fovy, aspect, farplane);
+  else {
+    setforwardmatrices(fovy, aspect, farplane, false);
+    makescene();
 
-#if 0
-  const float ground[] = {
-    -100.f, -100.f, -100.f, 0.f, -100.f,
-    -100.f, +100.f, -100.f, 0.f, +100.f,
-    +100.f, -100.f, +100.f, 0.f, -100.f,
-    +100.f, +100.f, +100.f, 0.f, +100.f
-  };
-#endif
+    // render the scene into the frame buffer
+    const auto gbuffertimer = ogl::begintimer("gbuffer", true);
+    OGL(BindFramebuffer, GL_FRAMEBUFFER, gbuffer);
+    OGL(Clear, GL_DEPTH_BUFFER_BIT);
 
-  makescene();
+    const auto &mv = ogl::matrix(ogl::MODELVIEW);
+    const auto &p  = ogl::matrix(ogl::PROJECTION);
+    const auto worldmvp = p*mv;
+    const auto dirinvmvp = getinvmvp(float(w), float(h), fovy, aspect, farplane, true);
+    if (indexnum != 0) {
+      if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_LINE);
+      ogl::bindshader(simple_material::shader);
+      OGL(UniformMatrix4fv, simple_material::u_mvp, 1, GL_FALSE, &worldmvp.vx.x);
+      renderscene(false);
+      if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_FILL);
+    }
+    OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
+    ogl::endtimer(gbuffertimer);
 
-  // render the scene into the frame buffer
-  const auto gbuffertimer = ogl::begintimer("gbuffer", true);
-  OGL(BindFramebuffer, GL_FRAMEBUFFER, gbuffer);
-  OGL(ClearColor, 0.f, 0.f, 0.f, 1.f);
-  OGL(Clear, GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-
-  const auto &mv = ogl::matrix(ogl::MODELVIEW);
-  const auto &p  = ogl::matrix(ogl::PROJECTION);
-  const auto worldmvp = p*mv;
-
-  if (indexnum != 0) {
-    if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_LINE);
-    ogl::bindshader(simple_material::shader);
-    OGL(UniformMatrix4fv, simple_material::u_mvp, 1, GL_FALSE, &worldmvp.vx.x);
-    renderscene(false);
-    if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_FILL);
+    // perform deferred shading
+    setscreentransform();
+    dodeferred(worldmvp, dirinvmvp);
+    popscreentransform();
   }
-  OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
-  ogl::endtimer(gbuffertimer);
-
-  // perform deferred shading
-  setscreentransform();
-  dodeferred(worldmvp);
-  popscreentransform();
 
   const auto hudtimer = ogl::begintimer("hud", true);
   // drawhudgun(fovy, aspect, farplane);

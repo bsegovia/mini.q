@@ -812,7 +812,7 @@ bool shaderbuilder::buildprogram(shadertype &s, const char *vert, const char *fr
 }
 
 static char *loadshaderfile(const char *path) {
-  char *s = sys::loadfile(path);
+  auto s = sys::loadfile(path);
   if (s == NULL) con::out("unable to load shader %s", path);
   return s;
 }

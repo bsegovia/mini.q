@@ -12,6 +12,7 @@ HEADERS=\
   shaders.hpp\
   sound.hpp\
   stl.hpp\
+  sky.hpp\
   sys.hpp\
   task.hpp\
   text.hpp
@@ -27,6 +28,8 @@ SHADER_DECLARATIONS=\
   data/shaders/split_deferred_vp.decl\
   data/shaders/simple_material_vp.decl\
   data/shaders/simple_material_fp.decl\
+  data/shaders/shadertoy_fp.decl\
+  data/shaders/shadertoy_vp.decl\
   data/shaders/forward_fp.decl\
   data/shaders/forward_vp.decl
 

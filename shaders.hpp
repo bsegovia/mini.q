@@ -36,12 +36,12 @@ namespace shaders {
 #define VATTRIB(T,N,LOC)\
   static const shaders::inoutloc N##loc(&attrib,LOC,#N,#T,true);
 
-#define BEGIN_SHADER(N) namespace N {\
+#define BEGIN_SHADER(SHADER, NAMESPACE) namespace NAMESPACE {\
   static ogl::shadertype shader;\
-  static const char vppath[] = "data/shaders/" STRINGIFY(N) "_vp.glsl";\
-  static const char fppath[] = "data/shaders/" STRINGIFY(N) "_fp.glsl";\
-  static const char *vp = shaders:: JOIN(N,_vp);\
-  static const char *fp = shaders:: JOIN(N,_fp);\
+  static const char vppath[] = "data/shaders/" STRINGIFY(SHADER) "_vp.glsl";\
+  static const char fppath[] = "data/shaders/" STRINGIFY(SHADER) "_fp.glsl";\
+  static const char *vp = shaders:: JOIN(SHADER,_vp);\
+  static const char *fp = shaders:: JOIN(SHADER,_fp);\
   LOCATIONS
 
 #if defined(RELEASE)
@@ -66,10 +66,10 @@ namespace shaders {
   }\
   static const shaders::destroyregister destroyreg(destroy);\
   static const shaders::shaderresource rsc = {\
-    vppath, fppath, vp, fp, &uniform, &attrib, &fragdata, &include, rules\
+    vppath, fppath, vp, fp, &uniform, &attrib, &fragdata, &include, RULES\
   };\
-  static const shaders::shaderregister shaderreg(shader,rsc,#N);\
-} /* namespace N */
+  static const shaders::shaderregister shaderreg(shader,rsc,STRINGIFY(N));\
+}
 
 struct inoutloc {
   INLINE inoutloc() {}
@@ -131,16 +131,16 @@ struct builder : ogl::shaderbuilder {
  -------------------------------------------------------------------------*/
 #define SHADER(NAME) extern const char NAME##_vp[], NAME##_fp[];
 SHADER(fxaa);
-SHADER(blit);
 SHADER(fixed);
 SHADER(forward);
 SHADER(deferred);
+SHADER(shadertoy);
 SHADER(debugunsplit);
 SHADER(simple_material);
 SHADER(split_deferred);
 #undef SHADER
 
-extern const char noise2D[], noise3D[], noise4D[], fxaa[];
+extern const char noise2D[], noise3D[], noise4D[], fxaa[], hell[], sky[];
 extern const char font_fp[];
 extern const char dfrm_fp[];
 void start();
