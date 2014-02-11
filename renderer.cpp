@@ -16,7 +16,7 @@ namespace rr {
  -------------------------------------------------------------------------*/
 float VIRTH = 1.f;
 vec2f scrdim() { return vec2f(float(sys::scrw), float(sys::scrh)); }
-static void setscreentransform() {
+static void pushscreentransform() {
   const auto scr = scrdim();
   ogl::pushmode(ogl::MODELVIEW);
   ogl::identity();
@@ -39,7 +39,7 @@ static void drawhud(int w, int h, int curfps) {
   ogl::enablev(GL_BLEND);
   ogl::disable(GL_DEPTH_TEST);
   OGL(BlendFunc, GL_ONE, GL_ONE);
-  setscreentransform();
+  pushscreentransform();
   text::displaywidth(text::fontdim().x);
   if (cmd) text::drawf("> %s_", vec2f(8.f, scr.y-50.f), cmd);
   con::render();
@@ -322,8 +322,8 @@ struct context {
     dirinvmvp = (p*dirmv).inverse() * viewporttr(w, h);
   }
 
-  void begin() {makescene();}
-  void end() {}
+  INLINE void begin() {makescene();}
+  INLINE void end() {}
 
   void dogbuffer() {
     const auto gbuffertimer = ogl::begintimer("gbuffer", true);
