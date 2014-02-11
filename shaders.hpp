@@ -13,39 +13,46 @@ namespace shaders {
 /*-------------------------------------------------------------------------
  - boiler plate to declare a shader and interoperate with GLSL side
  -------------------------------------------------------------------------*/
-struct inoutloc {
-  INLINE inoutloc() {}
-  inoutloc(vector<inoutloc> **appendhere,
-           u32 loc, const char *name, const char *type,
-           bool attrib);
+struct fragdatadesc {
+  typedef vector<fragdatadesc> vec;
+  INLINE fragdatadesc() {}
+  fragdatadesc(vec **v, u32 loc, const char *name, const char *type);
   const char *name, *type;
   u32 loc;
-  bool attrib;
 };
-struct uniformloc {
-  INLINE uniformloc() {}
-  uniformloc(vector<uniformloc> **appendhere,
-             u32 &loc, const char *name, const char *type,
-             bool vertex, int defaultvalue=0, bool hasdefault=false);
+struct attribdesc {
+  typedef vector<attribdesc> vec;
+  INLINE attribdesc() {}
+  attribdesc(vec **v, u32 loc, const char *name, const char *type);
+  const char *name, *type;
+  u32 loc;
+};
+struct uniformdesc {
+  typedef vector<uniformdesc> vec;
+  INLINE uniformdesc() {}
+  uniformdesc(vec **v, u32 &loc, const char *name, const char *type,
+              bool vertex, int defaultvalue=0, bool hasdefault=false);
   u32 *loc;
   const char *name, *type;
   int defaultvalue;
   bool hasdefault;
   bool vertex;
 };
-struct includedirective {
-  INLINE includedirective() {}
-  includedirective(vector<includedirective> **appendhere, const char *source, bool vertex);
+struct includedesc {
+  typedef vector<includedesc> vec;
+  INLINE includedesc() {}
+  includedesc(vec **v, const char *source, bool vertex);
   const char *source;
   bool vertex;
 };
 typedef void (*rulescallback)(ogl::shaderrules&, ogl::shaderrules&);
 
-struct shaderresource {
+struct shaderdesc {
   const char *vppath, *fppath, *vp, *fp;
-  vector<uniformloc> **uniform;
-  vector<inoutloc> **attrib, **fragdata;
-  vector<includedirective> **include;
+  vector<uniformdesc> **uniform;
+  vector<attribdesc> **attrib;
+  vector<fragdatadesc> **fragdata;
+  vector<includedesc> **include;
   rulescallback rulescb;
 };
 
@@ -54,18 +61,18 @@ struct destroyregister {
   destroyregister(destroycallback cb);
 };
 struct shaderregister {
-  shaderregister(ogl::shadertype &s, const shaderresource &r, const char *name);
+  shaderregister(ogl::shadertype &s, const shaderdesc &r, const char *name);
 };
 
 /*-------------------------------------------------------------------------
  - shader builder for shaders specified using the above macro system
  -------------------------------------------------------------------------*/
 struct builder : ogl::shaderbuilder {
-  builder(const shaderresource &rsc);
+  builder(const shaderdesc &desc);
   void setrules(ogl::shaderrules &vert, ogl::shaderrules &frag);
   void setuniform(ogl::shadertype&);
   void setinout(ogl::shadertype&);
-  const shaderresource &rsc;
+  const shaderdesc &desc;
 };
 
 /*-------------------------------------------------------------------------

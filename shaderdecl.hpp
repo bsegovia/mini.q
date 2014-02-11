@@ -7,27 +7,20 @@
  - we define our macro system here...
  -------------------------------------------------------------------------*/
 #if !defined(__WEBGL__)
-#define LOCATIONS\
-  static vector<shaders::inoutloc> *attrib = NULL, *fragdata = NULL;\
-  static vector<shaders::uniformloc> *uniform = NULL;\
-  static vector<shaders::includedirective> *include = NULL;
 #define FRAGDATA(T,N,LOC)\
-  static shaders::inoutloc N##loc(&fragdata,LOC,#N,#T,false);
+  static shaders::fragdatadesc N##desc(&fragdata,LOC,#N,#T);
 #else
-#define LOCATIONS\
-  static vector<shaders::inoutloc> *attrib = NULL;\
-  static vector<shaders::uniformloc> *uniform = NULL;\
-  static vector<shaders::includedirective> *include = NULL;
 #define FRAGDATA(T,N,LOC)
 #endif
+
 #define PUNIFORMI(T,N,X,V)\
-  u32 N; static const shaders::uniformloc N##loc(&uniform,N,#N,#T,V,X,true);
+  u32 N; static const shaders::uniformdesc N##desc(&uniform,N,#N,#T,V,X,true);
 #define PUNIFORM(T,N,V)\
-  u32 N; static const shaders::uniformloc N##loc(&uniform,N,#N,#T,V);
+  u32 N; static const shaders::uniformdesc N##desc(&uniform,N,#N,#T,V);
 #define PINCLUDE(N,V)\
-  static const shaders::includedirective N##include##V(&include,shaders::N,V);
+  static const shaders::includedesc N##include##V(&include,shaders::N,V);
 #define VATTRIB(T,N,LOC)\
-  static const shaders::inoutloc N##loc(&attrib,LOC,#N,#T,true);
+  static const shaders::attribdesc N##desc(&attrib,LOC,#N,#T);
 
 #define BEGIN_SHADER(SHADER, NAMESPACE) namespace NAMESPACE {\
   static ogl::shadertype shader;\
@@ -35,7 +28,10 @@
   static const char fppath[] = "data/shaders/" STRINGIFY(SHADER) "_fp.glsl";\
   static const char *vp = shaders:: JOIN(SHADER,_vp);\
   static const char *fp = shaders:: JOIN(SHADER,_fp);\
-  LOCATIONS
+  static vector<shaders::fragdatadesc> *fragdata = NULL;\
+  static vector<shaders::attribdesc> *attrib = NULL;\
+  static vector<shaders::uniformdesc> *uniform = NULL;\
+  static vector<shaders::includedesc> *include = NULL;
 
 #if defined(RELEASE)
 #define DESTROY_SHADER
@@ -58,7 +54,7 @@
     SAFE_DEL(include);\
   }\
   static const shaders::destroyregister destroyreg(destroy);\
-  static const shaders::shaderresource rsc = {\
+  static const shaders::shaderdesc rsc = {\
     vppath, fppath, vp, fp, &uniform, &attrib, &fragdata, &include, RULES\
   };\
   static const shaders::shaderregister shaderreg(shader,rsc,STRINGIFY(N));\
@@ -71,7 +67,6 @@
  - ... and we instantiate the shader descriptor here
  -------------------------------------------------------------------------*/
 BEGIN_SHADER(SHADERNAME, SHADERNAMESPACE)
-
 #define INCLUDE(N) PINCLUDE(N,true)
 #define UNIFORM(T,N) PUNIFORM(T,N,true)
 #define UNIFORMI(T,N,X) PUNIFORMI(T,N,X,true)
@@ -87,8 +82,11 @@ BEGIN_SHADER(SHADERNAME, SHADERNAMESPACE)
 #undef INCLUDE
 #undef UNIFORM
 #undef UNIFORMI
-
 END_SHADER(SHADERNAME)
+
+/*-------------------------------------------------------------------------
+ - finally, clean up this definition hell
+ -------------------------------------------------------------------------*/
 #undef SHADERNAMESPACE
 #undef SHADERNAME
 #undef VERTEX_PROGRAM
