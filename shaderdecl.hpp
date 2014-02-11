@@ -95,13 +95,11 @@ static const shaders::shaderregister shaderreg(s, rsc, STRINGIFY(N));
 #undef SHADERNAME
 #undef VERTEX_PROGRAM
 #undef FRAGMENT_PROGRAM
-#undef LOCATIONS
 #undef FRAGDATA
 #undef PUNIFORMI
 #undef PUNIFORM
 #undef PINCLUDE
 #undef VATTRIB
 #undef BEGIN_SHADER
-#undef DESTROY_SHADER
 #undef END_SHADER
 
