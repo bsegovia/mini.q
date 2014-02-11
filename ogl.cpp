@@ -508,8 +508,7 @@ void immdrawarrays(int mode, int first, int count) {
   drawarrays(mode,first,count);
 }
 
-void immdrawelements(int mode, int count, int type, const void *indices, const void *vertices)
-{
+void immdrawelements(int mode, int count, int type, const void *indices, const void *vertices) {
   int indexsz = count;
   int maxindex = 0;
   switch (type) {
@@ -563,8 +562,7 @@ static vec3i parseformat(const char *fmt) {
   return vec3i(offset, mode, type);
 }
 
-void immdrawelememts(const char *fmt, int count, const void *indices, const void *vertices)
-{
+void immdrawelememts(const char *fmt, int count, const void *indices, const void *vertices) {
   const auto parsed = parseformat(fmt);
   immvertexsize(parsed.x);
   immdrawelements(parsed.y, count, parsed.z, indices, vertices);
