@@ -101,12 +101,14 @@ void builder::setuniform(ogl::shadertype &s) {
     }
   }
 }
-void builder::setinout(ogl::shadertype &s) {
+void builder::setattrib(ogl::shadertype &s) {
   if (*desc.attrib) {
     auto &attrib = **desc.attrib;
     loopv(attrib)
       OGL(BindAttribLocation, s.program, attrib[i].loc, attrib[i].name);
   }
+}
+void builder::setfragdata(ogl::shadertype &s) {
 #if !defined(__WEBGL__)
   if (*desc.fragdata) {
     auto &fragdata = **desc.fragdata;

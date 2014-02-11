@@ -71,7 +71,8 @@ struct builder : ogl::shaderbuilder {
   builder(const shaderdesc &desc);
   void setrules(ogl::shaderrules &vert, ogl::shaderrules &frag);
   void setuniform(ogl::shadertype&);
-  void setinout(ogl::shadertype&);
+  void setattrib(ogl::shadertype&);
+  void setfragdata(ogl::shadertype&);
   const shaderdesc &desc;
 };
 

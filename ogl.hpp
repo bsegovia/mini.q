@@ -201,7 +201,8 @@ private:
   const char *vp, *fp;
   virtual void setrules(shaderrules &vertrules, shaderrules &fragrules) = 0;
   virtual void setuniform(shadertype &s) = 0;
-  virtual void setinout(shadertype &s) = 0;
+  virtual void setattrib(shadertype &s) = 0;
+  virtual void setfragdata(shadertype &s) = 0;
   u32 compile(const char *vertsrc, const char *fragsrc);
   bool buildprogram(shadertype &s, const char *vert, const char *frag);
   bool buildprogramfromfile(shadertype &s);
@@ -249,7 +250,8 @@ struct fixedshaderbuilder : shaderbuilder {
                      const char *vp, const char *fp, u32 rules);
   virtual void setrules(shaderrules&, shaderrules&);
   virtual void setuniform(shadertype &s);
-  virtual void setinout(shadertype &s);
+  virtual void setattrib(shadertype &s);
+  virtual void setfragdata(shadertype &s);
   u32 rules;
 };
 } /* namespace ogl */

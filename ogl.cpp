@@ -798,7 +798,8 @@ bool shaderbuilder::buildprogram(shadertype &s, const char *vert, const char *fr
   if (program == 0) return false;
   if (s.program) deleteprogram(s.program);
   s.program = program;
-  setinout(s);
+  setattrib(s);
+  setfragdata(s);
   linkshader(s);
   OGL(UseProgram, s.program);
   setuniform(s);
@@ -918,7 +919,7 @@ void fixedshaderbuilder::setuniform(shadertype &s) {
   }
 }
 
-void fixedshaderbuilder::setinout(shadertype &s) {
+void fixedshaderbuilder::setattrib(shadertype &s) {
   auto &shader = static_cast<fixedshadertype&>(s);
   if (rules&FIXED_KEYFRAME) {
     OGL(BindAttribLocation, shader.program, ATTRIB_POS0, "vs_pos0");
@@ -930,6 +931,13 @@ void fixedshaderbuilder::setinout(shadertype &s) {
   if (rules&FIXED_COLOR)
     OGL(BindAttribLocation, shader.program, ATTRIB_COL, "vs_col");
 #if !defined(__WEBGL__)
+  OGL(BindFragDataLocation, shader.program, 0, "rt_col");
+#endif // __WEBGL__
+}
+
+void fixedshaderbuilder::setfragdata(shadertype &s) {
+#if !defined(__WEBGL__)
+  auto &shader = static_cast<fixedshadertype&>(s);
   OGL(BindFragDataLocation, shader.program, 0, "rt_col");
 #endif // __WEBGL__
 }
