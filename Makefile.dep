@@ -43,7 +43,7 @@ net.o: net.cpp net.hpp stl.hpp sys.hpp
 ogl.o: ogl.cpp ogl.hxx $(HEADERS)
 qef.o: qef.cpp qef.hpp sys.hpp
 physics.o: physics.cpp $(HEADERS)
-renderer.o: renderer.cpp $(HEADERS) $(SHADER_DECLARATIONS)
+renderer.o: renderer.cpp $(HEADERS) $(SHADER_DECLARATIONS) shaderdecl.hpp
 shaders.o: shaders.cpp shaders.cxx $(HEADERS)
 sound.o: sound.cpp $(HEADERS)
 script.o: script.cpp $(HEADERS)
