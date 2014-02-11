@@ -253,8 +253,8 @@ static void makescene() {
   indexnum = m.m_indexnum;
 
   const auto duration = sys::millis() - start;
-  con::out("elapsed %f ms ", duration);
-  con::out("tris %i verts %i", m.m_indexnum/3, m.m_vertnum);
+  con::out("csg: elapsed %f ms ", duration);
+  con::out("csg: tris %i verts %i", m.m_indexnum/3, m.m_vertnum);
   initialized_m = true;
   destroyscene(node);
 }
@@ -306,6 +306,7 @@ IVAR(linemode, 0, 0, 1);
 
 struct context {
   context(float w, float h, float fovy, float aspect, float farplane) {
+    // XXX bad code. we should invert transform instead of calling "inverse".
     ogl::matrixmode(ogl::PROJECTION);
     ogl::setperspective(fovy, aspect, 0.15f, farplane);
     const auto p = ogl::matrix(ogl::PROJECTION);
