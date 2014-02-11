@@ -22,8 +22,8 @@ struct shadertype : ogl::shadertype {
 #undef INCLUDE
 #undef UNIFORMI
 #undef UNIFORM
-#undef VATTRIB
 #undef FRAGDATA
+#undef VATTRIB
 } /* namespace SHADERNAMESPACE */
 
 /*-------------------------------------------------------------------------
@@ -83,13 +83,13 @@ static const shaders::destroyregister destroyreg(destroy);
 #endif
 
 static const shaders::shaderdesc rsc = {
-  vppath, fppath, vp, fp, &uniform, &attrib, &fragdata, &include, RULES\
+  vppath, fppath, vp, fp, &uniform, &attrib, &fragdata, &include, RULES
 };
 static const shaders::shaderregister shaderreg(s, rsc, STRINGIFY(N));
 } /* namespace SHADERNAMESPACE */
 
 /*-------------------------------------------------------------------------
- - finally, we clean up this definition hell
+ - finally, we clean up this definition mess
  -------------------------------------------------------------------------*/
 #undef SHADERNAMESPACE
 #undef SHADERNAME

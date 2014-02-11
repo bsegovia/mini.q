@@ -897,11 +897,11 @@ fixedshaderbuilder::fixedshaderbuilder(const char *vppath, const char *fppath,
 
 void fixedshaderbuilder::setrules(shaderrules &vertrules, shaderrules &fragrules) {
   sprintf_sd(str)("#define USE_COL %d\n"
-                 "#define USE_KEYFRAME %d\n"
-                 "#define USE_DIFFUSETEX %d\n",
-                 rules&FIXED_COLOR,
-                 rules&FIXED_KEYFRAME,
-                 rules&FIXED_DIFFUSETEX);
+                  "#define USE_KEYFRAME %d\n"
+                  "#define USE_DIFFUSETEX %d\n",
+                  rules&FIXED_COLOR,
+                  rules&FIXED_KEYFRAME,
+                  rules&FIXED_DIFFUSETEX);
   vertrules.add(NEWSTRING(str));
   fragrules.add(NEWSTRING(str));
 }
@@ -909,30 +909,18 @@ void fixedshaderbuilder::setrules(shaderrules &vertrules, shaderrules &fragrules
 void fixedshaderbuilder::setuniform(shadertype &s) {
   auto &shader = static_cast<fixedshadertype&>(s);
   OGLR(shader.u_mvp, GetUniformLocation, shader.program, "u_mvp");
-  if (rules&FIXED_KEYFRAME)
-    OGLR(shader.u_delta, GetUniformLocation, shader.program, "u_delta");
-  else
-    shader.u_delta = 0;
-  if (rules&FIXED_DIFFUSETEX) {
-    OGLR(shader.u_diffuse, GetUniformLocation, shader.program, "u_diffuse");
-    OGL(Uniform1i, shader.u_diffuse, 0);
-  }
+  OGLR(shader.u_delta, GetUniformLocation, shader.program, "u_delta");
+  OGLR(shader.u_diffuse, GetUniformLocation, shader.program, "u_diffuse");
+  if (shader.u_diffuse != ~0x0u) OGL(Uniform1i, shader.u_diffuse, 0);
 }
 
 void fixedshaderbuilder::setattrib(shadertype &s) {
   auto &shader = static_cast<fixedshadertype&>(s);
-  if (rules&FIXED_KEYFRAME) {
-    OGL(BindAttribLocation, shader.program, ATTRIB_POS0, "vs_pos0");
-    OGL(BindAttribLocation, shader.program, ATTRIB_POS1, "vs_pos1");
-  } else
-    OGL(BindAttribLocation, shader.program, ATTRIB_POS0, "vs_pos");
-  if (rules&FIXED_DIFFUSETEX)
-    OGL(BindAttribLocation, shader.program, ATTRIB_TEX0, "vs_tex");
-  if (rules&FIXED_COLOR)
-    OGL(BindAttribLocation, shader.program, ATTRIB_COL, "vs_col");
-#if !defined(__WEBGL__)
-  OGL(BindFragDataLocation, shader.program, 0, "rt_col");
-#endif // __WEBGL__
+  OGL(BindAttribLocation, shader.program, ATTRIB_POS0, "vs_pos0");
+  OGL(BindAttribLocation, shader.program, ATTRIB_POS1, "vs_pos1");
+  OGL(BindAttribLocation, shader.program, ATTRIB_POS0, "vs_pos");
+  OGL(BindAttribLocation, shader.program, ATTRIB_TEX0, "vs_tex");
+  OGL(BindAttribLocation, shader.program, ATTRIB_COL, "vs_col");
 }
 
 void fixedshaderbuilder::setfragdata(shadertype &s) {
