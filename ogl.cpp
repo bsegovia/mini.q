@@ -435,10 +435,6 @@ void bindbuffer(u32 target, u32 buffer) {
   }
 }
 
-// flush everything at draw time when activated
-static bool enabledflush = true;
-void immenableflush(bool v) {enabledflush = v;}
-
 // attributes in the vertex buffer
 static struct {int n, type, offset;} immattribs[ATTRIB_NUM];
 static int immvertexsz = 0;
@@ -508,11 +504,12 @@ static bool immvertices(int sz, const void *vertices) {
 }
 
 void immdrawarrays(int mode, int first, int count) {
-  if (enabledflush) fixedflush();
+  if (bindedshader->fixedfunction) fixedflush();
   drawarrays(mode,first,count);
 }
 
-void immdrawelements(int mode, int count, int type, const void *indices, const void *vertices) {
+void immdrawelements(int mode, int count, int type, const void *indices, const void *vertices)
+{
   int indexsz = count;
   int maxindex = 0;
   switch (type) {
@@ -532,7 +529,7 @@ void immdrawelements(int mode, int count, int type, const void *indices, const v
   if (!immsetdata(ELEMENT_ARRAY_BUFFER, indexsz, indices)) return;
   if (!immvertices((maxindex+1)*immvertexsz, vertices)) return;
   immsetallattribs();
-  if (enabledflush) fixedflush();
+  if (bindedshader->fixedfunction) fixedflush();
   const void *fake = (const void *) intptr_t(drawibooffset);
   drawelements(mode, count, type, fake);
 }
@@ -566,7 +563,8 @@ static vec3i parseformat(const char *fmt) {
   return vec3i(offset, mode, type);
 }
 
-void immdrawelememts(const char *fmt, int count, const void *indices, const void *vertices) {
+void immdrawelememts(const char *fmt, int count, const void *indices, const void *vertices)
+{
   const auto parsed = parseformat(fmt);
   immvertexsize(parsed.x);
   immdrawelements(parsed.y, count, parsed.z, indices, vertices);

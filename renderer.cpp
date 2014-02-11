@@ -258,6 +258,7 @@ static void makescene() {
   initialized_m = true;
   destroyscene(node);
 }
+
 struct screenquad {
   static INLINE screenquad get() {
     const auto w = float(sys::scrw), h = float(sys::scrh);
@@ -321,13 +322,8 @@ struct context {
     dirinvmvp = (p*dirmv).inverse() * viewporttr(w, h);
   }
 
-  void begin() {
-    ogl::immenableflush(false);
-    makescene();
-  }
-  void end() {
-    ogl::immenableflush(true);
-  }
+  void begin() {makescene();}
+  void end() {}
 
   void dogbuffer() {
     const auto gbuffertimer = ogl::begintimer("gbuffer", true);
@@ -402,9 +398,7 @@ static void doshadertoy(float fovy, float aspect, float farplane) {
   const float sec = 1e-3f * sys::millis();
   OGL(Uniform3fv, hell::iResolution, 1, &iResolution.x);
   OGL(Uniform1f, hell::iGlobalTime, sec);
-  ogl::immenableflush(false);
   ogl::immdraw("Sp2", 4, screenquad::getnormalized().v);
-  ogl::immenableflush(true);
   OGL(DepthMask, GL_TRUE);
   ogl::enablev(GL_CULL_FACE, GL_DEPTH_TEST);
   ogl::endtimer(shadertoytimer);

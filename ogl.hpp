@@ -149,7 +149,6 @@ void immdrawelements(int mode, int count, int type, const void *indices, const v
 void immdrawelememts(const char *fmt, int count, const void *indices, const void *vertices);
 void immdrawarrays(int mode, int first, int count);
 void immdraw(const char *fmt, int count, const void *data);
-void immenableflush(bool v);
 
 /*--------------------------------------------------------------------------
  - matrix interface similar to OpenGL 1.x
@@ -180,8 +179,10 @@ INLINE void popmode(int mode) {
  - basic shader type
  -------------------------------------------------------------------------*/
 struct shadertype {
-  INLINE shadertype() : program(0) {}
+  INLINE shadertype(bool fixedfunction=false) :
+    program(0), fixedfunction(fixedfunction) {}
   u32 program;
+  bool fixedfunction;
 };
 void destroyshader(shadertype&);
 void bindshader(shadertype&);
@@ -237,7 +238,7 @@ void fixedflush();
 
 // can be reused for similar shaders
 struct fixedshadertype : shadertype {
-  fixedshadertype() : rules(0) {}
+  fixedshadertype() : shadertype(true), rules(0) {}
   u32 rules; // flags to enable / disable features
   u32 u_diffuse, u_delta, u_mvp; // uniforms
 };
