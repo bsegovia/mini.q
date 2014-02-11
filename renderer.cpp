@@ -332,8 +332,8 @@ struct context {
     OGL(Clear, GL_DEPTH_BUFFER_BIT);
     if (indexnum != 0) {
       if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_LINE);
-      ogl::bindshader(simple_material::shader);
-      OGL(UniformMatrix4fv, simple_material::u_mvp, 1, GL_FALSE, &mvp.vx.x);
+      ogl::bindshader(simple_material::s);
+      OGL(UniformMatrix4fv, simple_material::s.u_mvp, 1, GL_FALSE, &mvp.vx.x);
       ogl::bindbuffer(ogl::ARRAY_BUFFER, sceneposbo);
       OGL(VertexAttribPointer, ogl::ATTRIB_POS0, 3, GL_FLOAT, 0, sizeof(vec3f), NULL);
       ogl::bindbuffer(ogl::ARRAY_BUFFER, scenenorbo);
@@ -353,18 +353,18 @@ struct context {
     const auto deferredtimer = ogl::begintimer("deferred", true);
     OGL(BindFramebuffer, GL_FRAMEBUFFER, shadedbuffer);
     ogl::disable(GL_CULL_FACE);
-    ogl::bindshader(deferred::shader);
+    ogl::bindshader(deferred::s);
     ogl::bindtexture(GL_TEXTURE_RECTANGLE, gnortex, 0);
     ogl::bindtexture(GL_TEXTURE_RECTANGLE, gdethtex, 1);
-    OGL(UniformMatrix4fv, deferred::u_invmvp, 1, GL_FALSE, &invmvp.vx.x);
-    OGL(UniformMatrix4fv, deferred::u_dirinvmvp, 1, GL_FALSE, &dirinvmvp.vx.x);
+    OGL(UniformMatrix4fv, deferred::s.u_invmvp, 1, GL_FALSE, &invmvp.vx.x);
+    OGL(UniformMatrix4fv, deferred::s.u_dirinvmvp, 1, GL_FALSE, &dirinvmvp.vx.x);
 
     const auto sundir = getsundir();
     const auto lpow = lightscale * lightpow[0];
     const auto lpos = lightpos[0];
-    OGL(Uniform3fv, deferred::u_sundir, 1, &sundir.x);
-    OGL(Uniform3fv, deferred::u_lightpos, 1, &lpos.x);
-    OGL(Uniform3fv, deferred::u_lightpow, 1, &lpow.x);
+    OGL(Uniform3fv, deferred::s.u_sundir, 1, &sundir.x);
+    OGL(Uniform3fv, deferred::s.u_lightpos, 1, &lpos.x);
+    OGL(Uniform3fv, deferred::s.u_lightpow, 1, &lpow.x);
     ogl::immdraw("Sp2", 4, screenquad::getnormalized().v);
     OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
     ogl::enable(GL_CULL_FACE);
@@ -373,11 +373,11 @@ struct context {
 
   void dofxaa() {
     const auto fxaatimer = ogl::begintimer("fxaa", true);
-    ogl::bindshader(fxaa::shader);
+    ogl::bindshader(fxaa::s);
     ogl::disable(GL_CULL_FACE);
     OGL(DepthMask, GL_FALSE);
     const vec2f rcptexsize(1.f/float(sys::scrw), 1.f/float(sys::scrh));
-    OGL(Uniform2fv, fxaa::u_rcptexsize, 1, &rcptexsize.x);
+    OGL(Uniform2fv, fxaa::s.u_rcptexsize, 1, &rcptexsize.x);
     ogl::bindtexture(GL_TEXTURE_2D, finaltex, 0);
     ogl::immdraw("Sp2", 4, screenquad::getnormalized().v);
     OGL(DepthMask, GL_TRUE);
@@ -392,13 +392,13 @@ IVAR(shadertoy, 0, 0, 1);
 static void doshadertoy(float fovy, float aspect, float farplane) {
   const auto shadertoytimer = ogl::begintimer("shadertoy", true);
   const auto w = float(sys::scrw), h = float(sys::scrh);
-  ogl::bindshader(hell::shader);
+  ogl::bindshader(hell::s);
   ogl::disablev(GL_CULL_FACE, GL_DEPTH_TEST);
   OGL(DepthMask, GL_FALSE);
   const vec2f iResolution(w, h);
   const float sec = 1e-3f * sys::millis();
-  OGL(Uniform3fv, hell::iResolution, 1, &iResolution.x);
-  OGL(Uniform1f, hell::iGlobalTime, sec);
+  OGL(Uniform3fv, hell::s.iResolution, 1, &iResolution.x);
+  OGL(Uniform1f, hell::s.iGlobalTime, sec);
   ogl::immdraw("Sp2", 4, screenquad::getnormalized().v);
   OGL(DepthMask, GL_TRUE);
   ogl::enablev(GL_CULL_FACE, GL_DEPTH_TEST);

@@ -15,7 +15,7 @@
 #define UNIFORMI(T,N,I) u32 N;
 #define INCLUDE(N)
 namespace SHADERNAMESPACE {
-struct shadertype {
+struct shadertype : ogl::shadertype {
 #include VERTEX_PROGRAM
 #include FRAGMENT_PROGRAM
 };
@@ -37,16 +37,16 @@ struct shadertype {
 #endif
 
 #define PUNIFORMI(T,N,X,V)\
-  u32 N; static const shaders::uniformdesc N##desc(&uniform,N,#N,#T,V,X,true);
+  static const shaders::uniformdesc N##desc(&uniform,s.N,#N,#T,V,X,true);
 #define PUNIFORM(T,N,V)\
-  u32 N; static const shaders::uniformdesc N##desc(&uniform,N,#N,#T,V);
+  static const shaders::uniformdesc N##desc(&uniform,s.N,#N,#T,V);
 #define PINCLUDE(N,V)\
   static const shaders::includedesc N##include##V(&include,shaders::N,V);
 #define VATTRIB(T,N,LOC)\
   static const shaders::attribdesc N##desc(&attrib,LOC,#N,#T);
 
 namespace SHADERNAMESPACE {
-static ogl::shadertype shader;
+static shadertype s;
 static const char vppath[] = "data/shaders/" STRINGIFY(SHADERNAME) "_vp.glsl";
 static const char fppath[] = "data/shaders/" STRINGIFY(SHADERNAME) "_fp.glsl";
 static const char *vp = shaders:: JOIN(SHADERNAME,_vp);
@@ -72,6 +72,7 @@ static vector<shaders::includedesc> *include = NULL;
 #undef UNIFORM
 #undef UNIFORMI
 
+#if !defined(RELEASE)
 static void destroy() {
   SAFE_DEL(attrib);
   SAFE_DEL(fragdata);
@@ -79,10 +80,12 @@ static void destroy() {
   SAFE_DEL(include);
 }
 static const shaders::destroyregister destroyreg(destroy);
+#endif
+
 static const shaders::shaderdesc rsc = {
   vppath, fppath, vp, fp, &uniform, &attrib, &fragdata, &include, RULES\
 };
-static const shaders::shaderregister shaderreg(shader,rsc,STRINGIFY(N));
+static const shaders::shaderregister shaderreg(s, rsc, STRINGIFY(N));
 } /* namespace SHADERNAMESPACE */
 
 /*-------------------------------------------------------------------------
