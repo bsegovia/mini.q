@@ -63,14 +63,14 @@
   };\
   static const shaders::shaderregister shaderreg(shader,rsc,STRINGIFY(N));\
 }
-#ifndef NAMESPACENAME
-#define NAMESPACENAME SHADERNAME
+#ifndef SHADERNAMESPACE
+#define SHADERNAMESPACE SHADERNAME
 #endif
 
 /*-------------------------------------------------------------------------
  - ... and we instantiate the shader descriptor here
  -------------------------------------------------------------------------*/
-BEGIN_SHADER(SHADERNAME, NAMESPACENAME)
+BEGIN_SHADER(SHADERNAME, SHADERNAMESPACE)
 
 #define INCLUDE(N) PINCLUDE(N,true)
 #define UNIFORM(T,N) PUNIFORM(T,N,true)
@@ -89,7 +89,7 @@ BEGIN_SHADER(SHADERNAME, NAMESPACENAME)
 #undef UNIFORMI
 
 END_SHADER(SHADERNAME)
-#undef NAMESPACENAME
+#undef SHADERNAMESPACE
 #undef SHADERNAME
 #undef VERTEX_PROGRAM
 #undef FRAGMENT_PROGRAM

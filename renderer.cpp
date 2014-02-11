@@ -148,7 +148,7 @@ static void shadertoyrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragru
 }
 
 #define RULES shadertoyrules
-#define NAMESPACENAME hell
+#define SHADERNAMESPACE hell
 #define SHADERNAME shadertoy
 #define VERTEX_PROGRAM "data/shaders/shadertoy_vp.decl"
 #define FRAGMENT_PROGRAM "data/shaders/shadertoy_fp.decl"
