@@ -105,24 +105,24 @@ void draw(const char *str, const vec2f &pos) {
   OGL(VertexAttrib3f,ogl::ATTRIB_COL,1.f,1.f,1.f);
 
   // use a triangle mesh to display the text
-  const size_t len = strlen(str);
-  indextype *indices = (indextype*) alloca(len*sizeof(int[6]));
+  const auto len = strlen(str);
+  auto indices = (indextype*) alloca(len*sizeof(int[6]));
   auto verts = (vec4f*) alloca(len*sizeof(vec4f[4]));
 
   // traverse the string and build the mesh
-  int index = 0, vert = 0;
-  float x = pos.x, y = pos.y;
+  auto index = 0, vert = 0;
+  auto x = pos.x, y = pos.y;
   for (int i = 0; str[i] != 0; ++i) {
     int c = str[i];
-    if (c=='\t') { x = (x-pos.y+rr::PIXELTAB)/rr::PIXELTAB*rr::PIXELTAB+pos.y; continue; }
-    if (c=='\f') { OGL(VertexAttrib3f,ogl::ATTRIB_COL,0.25f,1.f,0.5f); continue; }
-    if (c==' ')  { x += displayw; continue; }
+    if (c=='\t') {x = (x-pos.y+rr::PIXELTAB)/rr::PIXELTAB*rr::PIXELTAB+pos.y; continue;}
+    if (c=='\f') {OGL(VertexAttrib3f,ogl::ATTRIB_COL,0.25f,1.f,0.5f); continue;}
+    if (c==' ')  {x += displayw; continue;}
     c -= 32;
     if (c<0 || c>=95) continue;
-    const float in_left   = (float(c%fontcol)*float(charw)-0.05f) / float(fontw);
-    const float in_top    = (float(c/fontcol)*float(charh)-0.05f) / float(fonth);
-    const float in_right  = in_left + (float(charw)-0.05f)/float(fontw);
-    const float in_bottom = in_top + (float(charh)-0.05f)/float(fonth);
+    const auto in_left   = (float(c%fontcol)*float(charw)-0.05f) / float(fontw);
+    const auto in_top    = (float(c/fontcol)*float(charh)-0.05f) / float(fonth);
+    const auto in_right  = in_left + (float(charw)-0.05f)/float(fontw);
+    const auto in_bottom = in_top + (float(charh)-0.05f)/float(fonth);
 
     loopj(6) indices[index+j] = vert+twotriangles[j];
     verts[vert+0] = vec4f(in_left, in_bottom,   x,         y);

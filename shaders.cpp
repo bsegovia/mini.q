@@ -34,20 +34,22 @@ struct shaderdef {
   ogl::shadertype *s;
   const shaderdesc *d;
   const char *n;
+  u32 idx;
 };
 static vector<shaderdef> *allshaders = NULL;
 
-shaderregister::shaderregister(ogl::shadertype &s, const shaderdesc &desc, const char *name) {
+shaderregister::shaderregister(ogl::shadertype &s, const shaderdesc &desc, const char *name, u32 num) {
   if (allshaders == NULL)
     allshaders = NEWE(vector<shaderdef>);
-  allshaders->add({&s, &desc, name});
+  loopi(int(num)) allshaders->add({&s, &desc, name, u32(i)});
 }
 
 void start() {
   if (allshaders) loopv(*allshaders) {
     const auto &def = (*allshaders)[i];
-    const auto b = NEW(builder, *def.d);
-    if (!b->build(*def.s, ogl::loadfromfile())) ogl::shadererror(true, def.n);
+    const auto b = NEW(builder, *def.d, def.idx);
+    if (!b->build(*def.s, ogl::loadfromfile()))
+      ogl::shadererror(true, def.n);
   }
 }
 void finish() {
@@ -55,8 +57,9 @@ void finish() {
   SAFE_DEL(allshaders);
 }
 
-builder::builder(const shaderdesc &desc) :
-  ogl::shaderbuilder(desc.vppath, desc.fppath, desc.vp, desc.fp), desc(desc)
+builder::builder(const shaderdesc &desc, u32 rule) :
+  ogl::shaderbuilder(desc.vppath, desc.fppath, desc.vp, desc.fp),
+  desc(desc), rule(rule)
 {}
 void builder::setrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
   if (*desc.uniform) {

@@ -61,19 +61,20 @@ struct destroyregister {
   destroyregister(destroycallback cb);
 };
 struct shaderregister {
-  shaderregister(ogl::shadertype &s, const shaderdesc &r, const char *name);
+  shaderregister(ogl::shadertype &s, const shaderdesc &r, const char *name, u32 num=1);
 };
 
 /*-------------------------------------------------------------------------
  - shader builder for shaders specified using the above macro system
  -------------------------------------------------------------------------*/
 struct builder : ogl::shaderbuilder {
-  builder(const shaderdesc &desc);
+  builder(const shaderdesc &desc, u32 rule = 0);
   void setrules(ogl::shaderrules &vert, ogl::shaderrules &frag);
   void setuniform(ogl::shadertype&);
   void setattrib(ogl::shadertype&);
   void setfragdata(ogl::shadertype&);
   const shaderdesc &desc;
+  u32 rule;
 };
 
 /*-------------------------------------------------------------------------
