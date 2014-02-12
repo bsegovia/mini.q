@@ -24,6 +24,8 @@ struct shadertype : ogl::shadertype {
 #undef UNIFORM
 #undef FRAGDATA
 #undef VATTRIB
+template <u32 n> struct shadertypetrait    {typedef shadertype type[n];};
+template <>      struct shadertypetrait<1> {typedef shadertype type;};
 } /* namespace SHADERNAMESPACE */
 
 /*-------------------------------------------------------------------------
@@ -37,16 +39,20 @@ struct shadertype : ogl::shadertype {
 #endif
 
 #define PUNIFORMI(T,N,X,V)\
-  static const shaders::uniformdesc N##desc(&uniform,s.N,#N,#T,V,X,true);
+  static const shaders::uniformdesc N##desc(&uniform,offsetof(shadertype,N),#N,#T,V,X,true);
 #define PUNIFORM(T,N,V)\
-  static const shaders::uniformdesc N##desc(&uniform,s.N,#N,#T,V);
+  static const shaders::uniformdesc N##desc(&uniform,offsetof(shadertype,N),#N,#T,V);
 #define PINCLUDE(N,V)\
   static const shaders::includedesc N##include##V(&include,shaders::N,V);
 #define VATTRIB(T,N,LOC)\
   static const shaders::attribdesc N##desc(&attrib,LOC,#N,#T);
 
+#ifndef SHADERVARIANT
+#define SHADERVARIANT 1
+#endif
+
 namespace SHADERNAMESPACE {
-static shadertype s;
+static shadertypetrait<SHADERVARIANT>::type s;
 static const char vppath[] = "data/shaders/" STRINGIFY(SHADERNAME) "_vp.glsl";
 static const char fppath[] = "data/shaders/" STRINGIFY(SHADERNAME) "_fp.glsl";
 static const char *vp = shaders:: JOIN(SHADERNAME,_vp);
@@ -91,6 +97,7 @@ static const shaders::shaderregister shaderreg(s, rsc, STRINGIFY(N));
 /*-------------------------------------------------------------------------
  - finally, we clean up this definition mess
  -------------------------------------------------------------------------*/
+#undef SHADERVARIANT
 #undef SHADERNAMESPACE
 #undef SHADERNAME
 #undef VERTEX_PROGRAM
@@ -100,6 +107,4 @@ static const shaders::shaderregister shaderreg(s, rsc, STRINGIFY(N));
 #undef PUNIFORM
 #undef PINCLUDE
 #undef VATTRIB
-#undef BEGIN_SHADER
-#undef END_SHADER
 

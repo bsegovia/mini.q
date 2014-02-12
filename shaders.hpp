@@ -30,9 +30,9 @@ struct attribdesc {
 struct uniformdesc {
   typedef vector<uniformdesc> vec;
   INLINE uniformdesc() {}
-  uniformdesc(vec **v, u32 &loc, const char *name, const char *type,
+  uniformdesc(vec **v, u32 offset, const char *name, const char *type,
               bool vertex, int defaultvalue=0, bool hasdefault=false);
-  u32 *loc;
+  u32 offset;
   const char *name, *type;
   int defaultvalue;
   bool hasdefault;

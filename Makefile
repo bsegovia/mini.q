@@ -8,7 +8,7 @@ CXXFLAGS=$(FLAGS) $(CXXDEBUGFLAGS)
 #CXXFLAGS=$(CXXOPTFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags` -fsanitize=address
 #CXXFLAGS=$(FLAGS) $(CXXRELFLAGS)
 #CXXFLAGS=$(CXXOPTFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags`
-LIBS=`sdl-config --libs` -g -lSDL_image -lSDL_mixer
+LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer
 OBJS=\
   con.o\
   csg.o\

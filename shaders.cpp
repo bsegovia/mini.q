@@ -20,10 +20,10 @@ attribdesc::attribdesc(attribdesc::vec **v, u32 loc, const char *name, const cha
 includedesc::includedesc(includedesc::vec **v, const char *source, bool vertex)
   : source(source), vertex(vertex) {allocateappend(v, this);}
 
-uniformdesc::uniformdesc(uniformdesc::vec **v, u32 &loc,
+uniformdesc::uniformdesc(uniformdesc::vec **v, u32 offset,
                          const char *name, const char *type,
                          bool vertex, int defaultvalue, bool hasdefault)
-  : loc(&loc), name(name), type(type),
+  : offset(offset), name(name), type(type),
     defaultvalue(defaultvalue), hasdefault(hasdefault),
     vertex(vertex)
 {allocateappend(v, this);}
@@ -95,9 +95,10 @@ void builder::setuniform(ogl::shadertype &s) {
   if (*desc.uniform) {
     auto &uniform = **desc.uniform;
     loopv(uniform) {
-      OGLR(*uniform[i].loc, GetUniformLocation, s.program, uniform[i].name);
+      const auto idx = (uniform[i].offset-sizeof(ogl::shadertype))/sizeof(u32);
+      OGLR(s.internal[idx], GetUniformLocation, s.program, uniform[i].name);
       if (uniform[i].hasdefault)
-        OGL(Uniform1i, *uniform[i].loc, uniform[i].defaultvalue);
+        OGL(Uniform1i, s.internal[idx], uniform[i].defaultvalue);
     }
   }
 }
