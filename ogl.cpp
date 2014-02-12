@@ -871,25 +871,7 @@ CMD(reloadshaders, "");
 /*--------------------------------------------------------------------------
  - fixed pipeline
  -------------------------------------------------------------------------*/
-static fixedshadertype shaders[fixedshadernum];
-
-// flush all the states required for the draw call
-void fixedflush() {
-  if (dirty.any == 0) return; // fast path
-  if (dirty.flags.mvp) {
-    const auto s = static_cast<fixedshadertype*>(bindedshader);
-    viewproj = vp[PROJECTION]*vp[MODELVIEW];
-    OGL(UniformMatrix4fv, s->u_mvp, 1, GL_FALSE, &viewproj.vx.x);
-    dirty.flags.mvp = 0;
-  }
-}
-
-void bindfixedshader(u32 flags) { bindshader(shaders[flags]); }
-void bindfixedshader(u32 flags, float delta) {
-  bindfixedshader(flags);
-  OGL(Uniform1f, static_cast<fixedshadertype*>(bindedshader)->u_delta, delta);
-}
-
+#if 0
 fixedshaderbuilder::fixedshaderbuilder(const char *vppath, const char *fppath,
                                        const char *vp, const char *fp,
                                        u32 rules) :
@@ -922,7 +904,6 @@ void fixedshaderbuilder::setattrib(shadertype &s) {
   OGL(BindAttribLocation, shader.program, ATTRIB_TEX0, "vs_tex");
   OGL(BindAttribLocation, shader.program, ATTRIB_COL, "vs_col");
 }
-
 void fixedshaderbuilder::setfragdata(shadertype &s) {
 #if !defined(__WEBGL__)
   auto &shader = static_cast<fixedshadertype&>(s);
@@ -936,6 +917,45 @@ static void buildfixedshaders(bool fatalerr) {
     if (!b->build(shaders[i], shaderfromfile))
       shadererror(fatalerr, "fixed shader");
   }
+}
+#else
+
+void fixedrules(shaderrules &vert, shaderrules &frag, u32 rule) {
+  sprintf_sd(str)("#define USE_COL %d\n"
+                  "#define USE_KEYFRAME %d\n"
+                  "#define USE_DIFFUSETEX %d\n",
+                  rule&FIXED_COLOR,
+                  rule&FIXED_KEYFRAME,
+                  rule&FIXED_DIFFUSETEX);
+  vert.add(NEWSTRING(str));
+  frag.add(NEWSTRING(str));
+}
+
+#define RULES fixedrules
+#define SHADERNAME fixed
+#define SHADERVARIANT fixedshadernum
+#define VERTEX_PROGRAM "data/shaders/fixed_vp.decl"
+#define FRAGMENT_PROGRAM "data/shaders/fixed_fp.decl"
+#include "shaderdecl.hpp"
+#undef RULES
+
+#endif
+
+// flush all the states required for the draw call
+void fixedflush() {
+  if (dirty.any == 0) return; // fast path
+  if (dirty.flags.mvp) {
+    const auto s = static_cast<fixed::shadertype*>(bindedshader);
+    viewproj = vp[PROJECTION]*vp[MODELVIEW];
+    OGL(UniformMatrix4fv, s->u_mvp, 1, GL_FALSE, &viewproj.vx.x);
+    dirty.flags.mvp = 0;
+  }
+}
+
+void bindfixedshader(u32 flags) {bindshader(fixed::s[flags]);}
+void bindfixedshader(u32 flags, float delta) {
+  bindfixedshader(flags);
+  OGL(Uniform1f, static_cast<fixed::shadertype*>(bindedshader)->u_delta, delta);
 }
 
 /*--------------------------------------------------------------------------
@@ -973,7 +993,8 @@ void start(int w, int h) {
   OGL(CullFace, GL_BACK);
   OGL(GetIntegerv, GL_MAX_TEXTURE_SIZE, &glmaxtexsize);
   dirty.any = ~0x0;
-  buildfixedshaders(true);
+  loopi(fixedshadernum) fixed::s[i].fixedfunction = true;
+  // buildfixedshaders(true);
   text::start();
   imminit();
   loopi(ATTRIB_NUM) enabledattribarray[i] = 0;
@@ -997,7 +1018,7 @@ void start(int w, int h) {
 
 #if !defined(RELEASE)
 void finish() {
-  loopi(fixedshadernum) destroyshader(shaders[i]);
+  // loopi(fixedshadernum) destroyshader(shaders[i]);
   loopv(allshaders) DEL(allshaders[i].first);
   allshaders.destroy();
   rangei(TEX_CROSSHAIR, TEX_PREALLOCATED_NUM)

@@ -26,6 +26,7 @@ static void buildfont() {
   textfont = id;
 }
 
+#if 0
 // all font shader parameters
 static struct fontshadertype : ogl::fixedshadertype {
   u32 u_fontwh, u_font_thickness;
@@ -49,14 +50,26 @@ struct fontshaderbuilder : ogl::fixedshaderbuilder {
     OGLR(df.u_outline_color, GetUniformLocation, df.program, "u_outline_color");
   }
 };
+#else
+static void fontrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32) {
+  ogl::fixedrules(vert,frag,ogl::FIXED_DIFFUSETEX);
+}
+#define RULES fontrules
+#define SHADERNAME font
+#define VERTEX_PROGRAM "data/shaders/fixed_vp.decl"
+#define FRAGMENT_PROGRAM "data/shaders/font_fp.decl"
+#include "shaderdecl.hpp"
+#undef RULES
+#endif
 
 void start() {
-  if (!NEWE(fontshaderbuilder)->build(fontshader, ogl::loadfromfile()))
-    ogl::shadererror(true, "font shader");
+  //if (!NEWE(fontshaderbuilder)->build(fontshader, ogl::loadfromfile()))
+  //  ogl::shadererror(true, "font shader");
   buildfont();
+  font::s.fixedfunction = true;
 }
 #if !defined(RELEASE)
-void finish() { ogl::destroyshader(fontshader); }
+void finish() {}//ogl::destroyshader(fontshader);}
 #endif
 
 // font parameters
@@ -71,11 +84,11 @@ void thickness(float t) { fontthickness = t; }
 void outlinecolor(const vec4f &c) { fontoutlinecolor = c; }
 void outlinewidth(float w) { fontoutlinewidth = w; }
 static void bindfontshader() {
-  ogl::bindshader(fontshader);
-  OGL(Uniform2f, fontshader.u_fontwh, float(fontw), float(fonth));
-  OGL(Uniform1f, fontshader.u_font_thickness, fontthickness);
-  OGL(Uniform4fv, fontshader.u_outline_color, 1, &fontoutlinecolor.x);
-  OGL(Uniform1f, fontshader.u_outline_width, fontoutlinewidth);
+  ogl::bindshader(font::s);
+  OGL(Uniform2f, font::s.u_fontwh, float(fontw), float(fonth));
+  OGL(Uniform1f, font::s.u_font_thickness, fontthickness);
+  OGL(Uniform4fv, font::s.u_outline_color, 1, &fontoutlinecolor.x);
+  OGL(Uniform1f, font::s.u_outline_width, fontoutlinewidth);
 }
 
 typedef u16 indextype;

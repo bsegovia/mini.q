@@ -38,10 +38,14 @@ struct shaderdef {
 };
 static vector<shaderdef> *allshaders = NULL;
 
-shaderregister::shaderregister(ogl::shadertype &s, const shaderdesc &desc, const char *name, u32 num) {
-  if (allshaders == NULL)
-    allshaders = NEWE(vector<shaderdef>);
-  loopi(int(num)) allshaders->add({&s, &desc, name, u32(i)});
+shaderregister::shaderregister(ogl::shadertype &s, const shaderdesc &desc, const char *name, u32) {
+  if (allshaders == NULL) allshaders = NEWE(vector<shaderdef>);
+  allshaders->add({&s, &desc, name, 0u});
+}
+
+shaderregister::shaderregister(ogl::shadertype *s, const shaderdesc &desc, const char *name, u32 num) {
+  if (allshaders == NULL) allshaders = NEWE(vector<shaderdef>);
+  loopi(int(num)) allshaders->add({s+i, &desc, name, u32(i)});
 }
 
 void start() {
@@ -92,7 +96,7 @@ void builder::setrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules)
     auto &include = **desc.include;
     loopv(include) fragrules.add(NEWSTRING(include[i].source));
   }
-  desc.rulescb(vertrules, fragrules);
+  desc.rulescb(vertrules, fragrules, rule);
 }
 void builder::setuniform(ogl::shadertype &s) {
   if (*desc.uniform) {

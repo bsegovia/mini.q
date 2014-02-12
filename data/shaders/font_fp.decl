@@ -1,0 +1,7 @@
+UNIFORMI(sampler2D, u_diffuse, 0)
+UNIFORM(vec2, u_fontwh)
+UNIFORM(float, u_font_thickness)
+UNIFORM(float, u_outline_width)
+UNIFORM(vec4, u_outline_color)
+FRAGDATA(vec4, rt_col, 0)
+

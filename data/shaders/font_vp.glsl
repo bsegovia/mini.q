@@ -1,4 +1,4 @@
-//##const char fixed_vp[] = {
+//##const char font_vp[] = {
 #if USE_COL
 VS_OUT vec4 fs_col;
 #endif

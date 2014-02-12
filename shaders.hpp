@@ -45,7 +45,7 @@ struct includedesc {
   const char *source;
   bool vertex;
 };
-typedef void (*rulescallback)(ogl::shaderrules&, ogl::shaderrules&);
+typedef void (*rulescallback)(ogl::shaderrules&, ogl::shaderrules&, u32 rule);
 
 struct shaderdesc {
   const char *vppath, *fppath, *vp, *fp;
@@ -61,7 +61,8 @@ struct destroyregister {
   destroyregister(destroycallback cb);
 };
 struct shaderregister {
-  shaderregister(ogl::shadertype &s, const shaderdesc &r, const char *name, u32 num=1);
+  shaderregister(ogl::shadertype *s, const shaderdesc &r, const char *name, u32 num=1);
+  shaderregister(ogl::shadertype &s, const shaderdesc &r, const char *name, u32);
 };
 
 /*-------------------------------------------------------------------------
@@ -83,6 +84,7 @@ struct builder : ogl::shaderbuilder {
 #define SHADER(NAME) extern const char NAME##_vp[], NAME##_fp[];
 SHADER(fxaa);
 SHADER(fixed);
+SHADER(font);
 SHADER(forward);
 SHADER(deferred);
 SHADER(shadertoy);
@@ -92,7 +94,6 @@ SHADER(split_deferred);
 #undef SHADER
 
 extern const char noise2D[], noise3D[], noise4D[], fxaa[], hell[], sky[];
-extern const char font_fp[];
 extern const char dfrm_fp[];
 void start();
 void finish();

@@ -1,6 +1,5 @@
 //##const char fixed_fp[] = {
 #if USE_DIFFUSETEX
-uniform sampler2D u_diffuse;
 PS_IN vec2 fs_tex;
 #endif
 #if USE_COL

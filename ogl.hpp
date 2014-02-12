@@ -237,7 +237,8 @@ static const int fixedshadernum = 1<<fixedsubtypenum;
 void bindfixedshader(u32 flags);
 void bindfixedshader(u32 flags, float delta);
 void fixedflush();
-
+void fixedrules(shaderrules &vert, shaderrules &frag, u32 rule);
+#if 0
 // can be reused for similar shaders
 struct fixedshadertype : shadertype {
   fixedshadertype() : shadertype(true), rules(0) {}
@@ -255,6 +256,8 @@ struct fixedshaderbuilder : shaderbuilder {
   virtual void setfragdata(shadertype &s);
   u32 rules;
 };
+#endif
+
 } /* namespace ogl */
 } /* namespace q */
 

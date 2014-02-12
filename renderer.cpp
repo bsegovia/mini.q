@@ -100,10 +100,10 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
  -------------------------------------------------------------------------*/
 #define SPLITNUM 4
 
-static void deferredrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
+static void deferredrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32 rule) {
   sprintf_sd(str)("#define SPLITNUM %f\n", float(SPLITNUM));
-  vertrules.add(NEWSTRING(str));
-  fragrules.add(NEWSTRING(str));
+  vert.add(NEWSTRING(str));
+  frag.add(NEWSTRING(str));
 }
 
 #define RULES deferredrules
@@ -138,13 +138,13 @@ static void deferredrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrul
 #include "shaderdecl.hpp"
 #undef RULES
 
-static void shadertoyrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
+static void shadertoyrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32) {
   if (ogl::loadfromfile()) {
     auto s = sys::loadfile("data/shaders/hell.glsl");
     assert(s);
-    fragrules.add(s);
+    frag.add(s);
   } else
-    fragrules.add(NEWSTRING(shaders::hell));
+    frag.add(NEWSTRING(shaders::hell));
 }
 
 #define RULES shadertoyrules

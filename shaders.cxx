@@ -74,7 +74,6 @@ const char deferred_vp[] = {
 
 const char fixed_fp[] = {
 "#if USE_DIFFUSETEX\n"
-"uniform sampler2D u_diffuse;\n"
 "PS_IN vec2 fs_tex;\n"
 "#endif\n"
 "#if USE_COL\n"
@@ -100,19 +99,10 @@ const char fixed_fp[] = {
 };
 
 const char fixed_vp[] = {
-"uniform mat4 u_mvp;\n"
-"#if USE_KEYFRAME\n"
-"uniform float u_delta;\n"
-"VS_IN vec3 vs_pos0, vs_pos1;\n"
-"#else\n"
-"VS_IN vec3 vs_pos;\n"
-"#endif\n"
 "#if USE_COL\n"
-"VS_IN vec4 vs_col;\n"
 "VS_OUT vec4 fs_col;\n"
 "#endif\n"
 "#if USE_DIFFUSETEX\n"
-"VS_IN vec2 vs_tex;\n"
 "VS_OUT vec2 fs_tex;\n"
 "#endif\n"
 "void main() {\n"
@@ -130,13 +120,7 @@ const char fixed_vp[] = {
 };
 
 const char font_fp[] = {
-"uniform sampler2D u_diffuse;\n"
-"uniform vec2 u_fontwh;\n"
-"uniform float u_font_thickness;\n"
-"uniform float u_outline_width;\n"
-"uniform vec4 u_outline_color;\n"
 "PS_IN vec2 fs_tex;\n"
-"IF_NOT_WEBGL(out vec4 rt_col);\n"
 
 "#define RSQ2 0.7071078\n"
 
@@ -181,6 +165,27 @@ const char font_fp[] = {
 "  vec4 col = vec4(1.0-smoothstep(no-0.1, no, dist));\n"
 "  col += u_outline_color * (1.0-smoothstep(o-0.1, o, dist));\n"
 "  SWITCH_WEBGL(gl_FragColor, rt_col) = col;\n"
+"}\n"
+};
+
+const char font_vp[] = {
+"#if USE_COL\n"
+"VS_OUT vec4 fs_col;\n"
+"#endif\n"
+"#if USE_DIFFUSETEX\n"
+"VS_OUT vec2 fs_tex;\n"
+"#endif\n"
+"void main() {\n"
+"#if USE_DIFFUSETEX\n"
+"  fs_tex = vs_tex;\n"
+"#endif\n"
+"#if USE_COL\n"
+"  fs_col = vs_col;\n"
+"#endif\n"
+"#if USE_KEYFRAME\n"
+"  vec3 vs_pos = mix(vs_pos0,vs_pos1,u_delta);\n"
+"#endif\n"
+"  gl_Position = u_mvp*vec4(vs_pos,1.0);\n"
 "}\n"
 };
 

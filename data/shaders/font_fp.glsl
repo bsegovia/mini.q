@@ -1,11 +1,5 @@
 //##const char font_fp[] = {
-uniform sampler2D u_diffuse;
-uniform vec2 u_fontwh;
-uniform float u_font_thickness;
-uniform float u_outline_width;
-uniform vec4 u_outline_color;
 PS_IN vec2 fs_tex;
-IF_NOT_WEBGL(out vec4 rt_col);
 
 #define RSQ2 0.7071078
 

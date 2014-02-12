@@ -91,7 +91,7 @@ static const shaders::destroyregister destroyreg(destroy);
 static const shaders::shaderdesc rsc = {
   vppath, fppath, vp, fp, &uniform, &attrib, &fragdata, &include, RULES
 };
-static const shaders::shaderregister shaderreg(s, rsc, STRINGIFY(N));
+static const shaders::shaderregister shaderreg(s, rsc, STRINGIFY(N), SHADERVARIANT);
 } /* namespace SHADERNAMESPACE */
 
 /*-------------------------------------------------------------------------
