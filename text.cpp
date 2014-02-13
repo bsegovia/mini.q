@@ -26,31 +26,6 @@ static void buildfont() {
   textfont = id;
 }
 
-#if 0
-// all font shader parameters
-static struct fontshadertype : ogl::fixedshadertype {
-  u32 u_fontwh, u_font_thickness;
-  u32 u_outline_width, u_outline_color;
-} fontshader;
-
-struct fontshaderbuilder : ogl::fixedshaderbuilder {
-  fontshaderbuilder() :
-    fixedshaderbuilder("data/shaders/fixed_vp.glsl",
-                       "data/shaders/font_fp.glsl",
-                       shaders::fixed_vp,
-                       shaders::font_fp,
-                       ogl::FIXED_DIFFUSETEX) {}
-
-  void setuniform(ogl::shadertype &s) {
-    auto &df = static_cast<fontshadertype&>(s);
-    fixedshaderbuilder::setuniform(s);
-    OGLR(df.u_fontwh, GetUniformLocation, df.program, "u_fontwh");
-    OGLR(df.u_font_thickness, GetUniformLocation, df.program, "u_font_thickness");
-    OGLR(df.u_outline_width, GetUniformLocation, df.program, "u_outline_width");
-    OGLR(df.u_outline_color, GetUniformLocation, df.program, "u_outline_color");
-  }
-};
-#else
 static void fontrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32) {
   ogl::fixedrules(vert,frag,ogl::FIXED_DIFFUSETEX);
 }
@@ -60,7 +35,6 @@ static void fontrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32) {
 #define FRAGMENT_PROGRAM "data/shaders/font_fp.decl"
 #include "shaderdecl.hpp"
 #undef RULES
-#endif
 
 void start() {
   //if (!NEWE(fontshaderbuilder)->build(fontshader, ogl::loadfromfile()))

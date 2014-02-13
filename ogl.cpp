@@ -871,55 +871,6 @@ CMD(reloadshaders, "");
 /*--------------------------------------------------------------------------
  - fixed pipeline
  -------------------------------------------------------------------------*/
-#if 0
-fixedshaderbuilder::fixedshaderbuilder(const char *vppath, const char *fppath,
-                                       const char *vp, const char *fp,
-                                       u32 rules) :
-  shaderbuilder(vppath, fppath, vp, fp), rules(rules) {}
-
-void fixedshaderbuilder::setrules(shaderrules &vertrules, shaderrules &fragrules) {
-  sprintf_sd(str)("#define USE_COL %d\n"
-                  "#define USE_KEYFRAME %d\n"
-                  "#define USE_DIFFUSETEX %d\n",
-                  rules&FIXED_COLOR,
-                  rules&FIXED_KEYFRAME,
-                  rules&FIXED_DIFFUSETEX);
-  vertrules.add(NEWSTRING(str));
-  fragrules.add(NEWSTRING(str));
-}
-
-void fixedshaderbuilder::setuniform(shadertype &s) {
-  auto &shader = static_cast<fixedshadertype&>(s);
-  OGLR(shader.u_mvp, GetUniformLocation, shader.program, "u_mvp");
-  OGLR(shader.u_delta, GetUniformLocation, shader.program, "u_delta");
-  OGLR(shader.u_diffuse, GetUniformLocation, shader.program, "u_diffuse");
-  if (shader.u_diffuse != ~0x0u) OGL(Uniform1i, shader.u_diffuse, 0);
-}
-
-void fixedshaderbuilder::setattrib(shadertype &s) {
-  auto &shader = static_cast<fixedshadertype&>(s);
-  OGL(BindAttribLocation, shader.program, ATTRIB_POS0, "vs_pos0");
-  OGL(BindAttribLocation, shader.program, ATTRIB_POS1, "vs_pos1");
-  OGL(BindAttribLocation, shader.program, ATTRIB_POS0, "vs_pos");
-  OGL(BindAttribLocation, shader.program, ATTRIB_TEX0, "vs_tex");
-  OGL(BindAttribLocation, shader.program, ATTRIB_COL, "vs_col");
-}
-void fixedshaderbuilder::setfragdata(shadertype &s) {
-#if !defined(__WEBGL__)
-  auto &shader = static_cast<fixedshadertype&>(s);
-  OGL(BindFragDataLocation, shader.program, 0, "rt_col");
-#endif // __WEBGL__
-}
-
-static void buildfixedshaders(bool fatalerr) {
-  loopi(fixedshadernum) {
-    auto b = NEW(fixedshaderbuilder, BUILDER_ARGS(fixed), i);
-    if (!b->build(shaders[i], shaderfromfile))
-      shadererror(fatalerr, "fixed shader");
-  }
-}
-#else
-
 void fixedrules(shaderrules &vert, shaderrules &frag, u32 rule) {
   sprintf_sd(str)("#define USE_COL %d\n"
                   "#define USE_KEYFRAME %d\n"
@@ -938,8 +889,6 @@ void fixedrules(shaderrules &vert, shaderrules &frag, u32 rule) {
 #define FRAGMENT_PROGRAM "data/shaders/fixed_fp.decl"
 #include "shaderdecl.hpp"
 #undef RULES
-
-#endif
 
 // flush all the states required for the draw call
 void fixedflush() {
@@ -994,7 +943,6 @@ void start(int w, int h) {
   OGL(GetIntegerv, GL_MAX_TEXTURE_SIZE, &glmaxtexsize);
   dirty.any = ~0x0;
   loopi(fixedshadernum) fixed::s[i].fixedfunction = true;
-  // buildfixedshaders(true);
   text::start();
   imminit();
   loopi(ATTRIB_NUM) enabledattribarray[i] = 0;
@@ -1018,7 +966,6 @@ void start(int w, int h) {
 
 #if !defined(RELEASE)
 void finish() {
-  // loopi(fixedshadernum) destroyshader(shaders[i]);
   loopv(allshaders) DEL(allshaders[i].first);
   allshaders.destroy();
   rangei(TEX_CROSSHAIR, TEX_PREALLOCATED_NUM)
