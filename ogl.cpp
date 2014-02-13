@@ -887,7 +887,7 @@ void fixedrules(shaderrules &vert, shaderrules &frag, u32 rule) {
 #define SHADERVARIANT fixedshadernum
 #define VERTEX_PROGRAM "data/shaders/fixed_vp.decl"
 #define FRAGMENT_PROGRAM "data/shaders/fixed_fp.decl"
-#include "shaderdecl.hpp"
+#include "shaderdecl.hxx"
 #undef RULES
 
 // flush all the states required for the draw call

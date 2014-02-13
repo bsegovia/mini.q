@@ -33,17 +33,15 @@ static void fontrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32) {
 #define SHADERNAME font
 #define VERTEX_PROGRAM "data/shaders/fixed_vp.decl"
 #define FRAGMENT_PROGRAM "data/shaders/font_fp.decl"
-#include "shaderdecl.hpp"
+#include "shaderdecl.hxx"
 #undef RULES
 
 void start() {
-  //if (!NEWE(fontshaderbuilder)->build(fontshader, ogl::loadfromfile()))
-  //  ogl::shadererror(true, "font shader");
   buildfont();
   font::s.fixedfunction = true;
 }
 #if !defined(RELEASE)
-void finish() {}//ogl::destroyshader(fontshader);}
+void finish() {}
 #endif
 
 // font parameters

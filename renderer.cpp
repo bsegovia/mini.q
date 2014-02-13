@@ -110,32 +110,32 @@ static void deferredrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32 ru
 #define SHADERNAME split_deferred
 #define VERTEX_PROGRAM "data/shaders/split_deferred_vp.decl"
 #define FRAGMENT_PROGRAM "data/shaders/split_deferred_fp.decl"
-#include "shaderdecl.hpp"
+#include "shaderdecl.hxx"
 
 #define SHADERNAME deferred
 #define VERTEX_PROGRAM "data/shaders/deferred_vp.decl"
 #define FRAGMENT_PROGRAM "data/shaders/deferred_fp.decl"
-#include "shaderdecl.hpp"
+#include "shaderdecl.hxx"
 
 #define SHADERNAME forward
 #define VERTEX_PROGRAM "data/shaders/forward_vp.decl"
 #define FRAGMENT_PROGRAM "data/shaders/forward_fp.decl"
-#include "shaderdecl.hpp"
+#include "shaderdecl.hxx"
 
 #define SHADERNAME debugunsplit
 #define VERTEX_PROGRAM "data/shaders/debugunsplit_vp.decl"
 #define FRAGMENT_PROGRAM "data/shaders/debugunsplit_fp.decl"
-#include "shaderdecl.hpp"
+#include "shaderdecl.hxx"
 
 #define SHADERNAME simple_material
 #define VERTEX_PROGRAM "data/shaders/simple_material_vp.decl"
 #define FRAGMENT_PROGRAM "data/shaders/simple_material_fp.decl"
-#include "shaderdecl.hpp"
+#include "shaderdecl.hxx"
 
 #define SHADERNAME fxaa
 #define VERTEX_PROGRAM "data/shaders/fxaa_vp.decl"
 #define FRAGMENT_PROGRAM "data/shaders/fxaa_fp.decl"
-#include "shaderdecl.hpp"
+#include "shaderdecl.hxx"
 #undef RULES
 
 static void shadertoyrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32) {
@@ -152,7 +152,7 @@ static void shadertoyrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32) 
 #define SHADERNAME shadertoy
 #define VERTEX_PROGRAM "data/shaders/shadertoy_vp.decl"
 #define FRAGMENT_PROGRAM "data/shaders/shadertoy_fp.decl"
-#include "shaderdecl.hpp"
+#include "shaderdecl.hxx"
 
 static u32 gdethtex, gnortex, finaltex;
 static u32 gbuffer, shadedbuffer;
