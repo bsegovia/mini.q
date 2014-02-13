@@ -1,4 +1,3 @@
-//##const char font_fp[] = {
 PS_IN vec2 fs_tex;
 
 #define RSQ2 0.7071078
@@ -45,5 +44,4 @@ void main() {
   col += u_outline_color * (1.0-smoothstep(o-0.1, o, dist));
   SWITCH_WEBGL(gl_FragColor, rt_col) = col;
 }
-//##};
 

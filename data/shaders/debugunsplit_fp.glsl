@@ -1,4 +1,3 @@
-//##const char debugunsplit_fp[] = {
 #define SAMPLE(NUM, X, Y) \
   vec2 uv##NUM = uv+vec2(X,Y);\
   vec2 bufindex##NUM = mod(uv##NUM, SPLITNUM);\
@@ -36,5 +35,4 @@ void main() {
   SAMPLE(15, +2.0, -2.0);
   SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(col, 1.0);
 }
-//##};
 

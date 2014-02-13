@@ -1,4 +1,3 @@
-//##const char deferred_fp[] = {
 void main() {
   vec2 uv = gl_FragCoord.xy;
   vec3 nor = normalize(2.0*texture2DRect(u_nortex, uv).xyz-1.0);
@@ -15,5 +14,4 @@ void main() {
   }
   SWITCH_WEBGL(gl_FragColor, rt_col) = outcol;
 }
-//##};
 

@@ -10,6 +10,7 @@ HEADERS=\
   renderer.hpp\
   script.hpp\
   shaders.hpp\
+  shaders.hxx\
   sound.hpp\
   stl.hpp\
   sky.hpp\

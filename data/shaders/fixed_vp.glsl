@@ -1,4 +1,3 @@
-//##const char fixed_vp[] = {
 #if USE_COL
 VS_OUT vec4 fs_col;
 #endif
@@ -17,5 +16,4 @@ void main() {
 #endif
   gl_Position = u_mvp*vec4(vs_pos,1.0);
 }
-//##};
 

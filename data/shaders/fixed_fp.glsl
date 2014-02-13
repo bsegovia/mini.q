@@ -1,4 +1,3 @@
-//##const char fixed_fp[] = {
 #if USE_DIFFUSETEX
 PS_IN vec2 fs_tex;
 #endif
@@ -22,5 +21,4 @@ void main() {
 #endif
   SWITCH_WEBGL(gl_FragColor, rt_col) = col;
 }
-//##};
 

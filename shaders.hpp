@@ -6,6 +6,7 @@
 #include "ogl.hpp"
 #include "stl.hpp"
 #include "sys.hpp"
+#include "shaders.hxx"
 
 namespace q {
 namespace shaders {
@@ -82,20 +83,6 @@ struct builder : ogl::shaderbuilder {
 /*-------------------------------------------------------------------------
  - declare the source code for all game shaders and shader libraries
  -------------------------------------------------------------------------*/
-#define SHADER(NAME) extern const char NAME##_vp[], NAME##_fp[];
-SHADER(fxaa);
-SHADER(fixed);
-SHADER(font);
-SHADER(forward);
-SHADER(deferred);
-SHADER(shadertoy);
-SHADER(debugunsplit);
-SHADER(simple_material);
-SHADER(split_deferred);
-#undef SHADER
-
-extern const char noise2D[], noise3D[], noise4D[], fxaa[], hell[], sky[], lighting[];
-extern const char dfrm_fp[];
 void start();
 void finish();
 } /* namespace shaders */

@@ -1,4 +1,3 @@
-//##const char hell[] = {
 #if 0
 const float PI=3.14159265358979323846;
 float speed=iGlobalTime*0.2975;
@@ -95,5 +94,4 @@ vec4 entry(void) {
   //return col;
 }
 #endif
-//##};
 

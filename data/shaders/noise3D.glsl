@@ -7,7 +7,6 @@
 //##//               Distributed under the MIT License. See LICENSE file.
 //##//               https://github.com/ashima/webgl-noise
 //##//
-//##const char noise3D[] = {
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
@@ -85,5 +84,4 @@ float snoise(vec3 v) {
   m = m * m;
   return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
 }
-//##};
 

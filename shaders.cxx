@@ -40,12 +40,12 @@ const char debugunsplit_fp[] = {
 "  SAMPLE(15, +2.0, -2.0);\n"
 "  SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(col, 1.0);\n"
 "}\n"
-};
 
+};
 const char debugunsplit_vp[] = {
 "void main() {gl_Position = u_mvp*vec4(vs_pos,1.0,1.0);}\n"
-};
 
+};
 const char deferred_fp[] = {
 "void main() {\n"
 "  vec2 uv = gl_FragCoord.xy;\n"
@@ -63,12 +63,12 @@ const char deferred_fp[] = {
 "  }\n"
 "  SWITCH_WEBGL(gl_FragColor, rt_col) = outcol;\n"
 "}\n"
-};
 
+};
 const char deferred_vp[] = {
 "void main() {gl_Position = vec4(vs_pos,0.0,1.0);}\n"
-};
 
+};
 const char fixed_fp[] = {
 "#if USE_DIFFUSETEX\n"
 "PS_IN vec2 fs_tex;\n"
@@ -93,8 +93,8 @@ const char fixed_fp[] = {
 "#endif\n"
 "  SWITCH_WEBGL(gl_FragColor, rt_col) = col;\n"
 "}\n"
-};
 
+};
 const char fixed_vp[] = {
 "#if USE_COL\n"
 "VS_OUT vec4 fs_col;\n"
@@ -114,8 +114,8 @@ const char fixed_vp[] = {
 "#endif\n"
 "  gl_Position = u_mvp*vec4(vs_pos,1.0);\n"
 "}\n"
-};
 
+};
 const char font_fp[] = {
 "PS_IN vec2 fs_tex;\n"
 
@@ -163,8 +163,8 @@ const char font_fp[] = {
 "  col += u_outline_color * (1.0-smoothstep(o-0.1, o, dist));\n"
 "  SWITCH_WEBGL(gl_FragColor, rt_col) = col;\n"
 "}\n"
-};
 
+};
 const char forward_fp[] = {
 "PS_IN vec3 fs_nor;\n"
 
@@ -202,8 +202,8 @@ const char forward_fp[] = {
 "  SAMPLE(15, +2.0, -2.0);\n"
 "  SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(col, 1.0);\n"
 "}\n"
-};
 
+};
 const char forward_vp[] = {
 "VS_OUT vec3 fs_nor;\n"
 "void entry(inout vec3 fs_nor, in vec3 vs_nor) {\n"
@@ -211,8 +211,8 @@ const char forward_vp[] = {
 "  gl_Position = u_mvp*vec4(vs_pos,1.0);\n"
 "}\n"
 "void main() {entry(fs_nor, vs_nor);}\n"
-};
 
+};
 const char fxaa[] = {
 "#define FXAA_GLSL_130 1\n"
 "#define FXAA_QUALITY_PRESET 39\n"
@@ -1098,18 +1098,18 @@ const char fxaa[] = {
 "        return FxaaFloat4(FxaaTexTop(tex, posM).xyz, lumaM);\n"
 "    #endif\n"
 "}\n"
-};
 
+};
 const char fxaa_fp[] = {
 "void main() {\n"
 "  rt_col = FxaaPixelShader(gl_FragCoord.xy*u_rcptexsize, u_tex, u_rcptexsize, 0.75, 0.125, 0.0);\n"
 "}\n"
-};
 
+};
 const char fxaa_vp[] = {
 "void main() {gl_Position = vec4(vs_pos,0.0,1.0);}\n"
-};
 
+};
 const char hell[] = {
 "#if 0\n"
 "const float PI=3.14159265358979323846;\n"
@@ -1207,16 +1207,17 @@ const char hell[] = {
 "  //return col;\n"
 "}\n"
 "#endif\n"
-};
 
+};
 const char lighting[] = {
 "vec3 diffuse(vec3 pos, vec3 nor, vec3 lpos, vec3 lpow) {\n"
 "  vec3 ldir = lpos-pos;\n"
 "  float llen2 = dot(ldir,ldir);\n"
 "  return lpow * max(dot(nor,ldir),0.0) / (llen2*llen2);\n"
 "}\n"
-};
 
+};
+const char noise2D[] = {
 //
 // Description : Array and textureless GLSL 2D simplex noise function.
 //      Author : Ian McEwan, Ashima Arts.
@@ -1226,7 +1227,6 @@ const char lighting[] = {
 //               Distributed under the MIT License. See LICENSE file.
 //               https://github.com/ashima/webgl-noise
 //
-const char noise2D[] = {
 "vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }\n"
 "vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }\n"
 "vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }\n"
@@ -1276,8 +1276,9 @@ const char noise2D[] = {
 "  g.yz = a0.yz * x12.xz + h.yz * x12.yw;\n"
 "  return 130.0 * dot(m, g);\n"
 "}\n"
-};
 
+};
+const char noise3D[] = {
 //
 // Description : Array and textureless GLSL 2D simplex noise function.
 //      Author : Ian McEwan, Ashima Arts.
@@ -1287,7 +1288,6 @@ const char noise2D[] = {
 //               Distributed under the MIT License. See LICENSE file.
 //               https://github.com/ashima/webgl-noise
 //
-const char noise3D[] = {
 "vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }\n"
 "vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }\n"
 "vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }\n"
@@ -1365,8 +1365,9 @@ const char noise3D[] = {
 "  m = m * m;\n"
 "  return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));\n"
 "}\n"
-};
 
+};
+const char noise4D[] = {
 //
 // Description : Array and textureless GLSL 2D simplex noise function.
 //      Author : Ian McEwan, Ashima Arts.
@@ -1376,7 +1377,6 @@ const char noise3D[] = {
 //               Distributed under the MIT License. See LICENSE file.
 //               https://github.com/ashima/webgl-noise
 //
-const char noise4D[] = {
 "vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }\n"
 "float mod289(float x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }\n"
 "vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }\n"
@@ -1474,15 +1474,13 @@ const char noise4D[] = {
 "}\n"
 };
 const char shadertoy_fp[] = {
-"void main() {\n"
-"  SWITCH_WEBGL(gl_FragColor, rt_col) = entry();\n"
-"}\n"
-};
+"void main() { SWITCH_WEBGL(gl_FragColor, rt_col) = entry(); }\n"
 
+};
 const char shadertoy_vp[] = {
 "void main() {gl_Position = vec4(vs_pos,0.0,1.0);}\n"
-};
 
+};
 const char simple_material_fp[] = {
 "PS_IN vec3 fs_nor;\n"
 "PS_IN vec3 fs_pos;\n"
@@ -1496,8 +1494,8 @@ const char simple_material_fp[] = {
 "  vec3 n = normalize(fs_nor + dn/10.0);\n"
 "  SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(abs(n), 1.0);\n"
 "}\n"
-};
 
+};
 const char simple_material_vp[] = {
 "VS_OUT vec3 fs_pos;\n"
 "VS_OUT vec3 fs_nor;\n"
@@ -1506,8 +1504,8 @@ const char simple_material_vp[] = {
 "  fs_pos = vs_pos;\n"
 "  gl_Position = u_mvp*vec4(vs_pos,1.0);\n"
 "}\n"
-};
 
+};
 const char sky[] = {
 // License Creative Commons Attribution-NonCommercial-ShareAlike 3.0
 // Unported License.
@@ -1532,8 +1530,8 @@ const char sky[] = {
 "  vec3 col = sqrt(getsky(rd, true, sunlight, suncolour));\n"
 "  return col + suncolour*mix(0.0, 0.051, sunlight.y<0.05 ? 1.0-sunlight.y*20.0 : 0.0);\n"
 "}\n"
-};
 
+};
 const char split_deferred_fp[] = {
 "void main() {\n"
 "  vec2 uv = floor(gl_FragCoord.xy);\n"
@@ -1549,10 +1547,10 @@ const char split_deferred_fp[] = {
 "  vec3 lit = u_lightpow * max(dot(nor,ldir),0.0) / (llen2*llen2);\n"
 "  SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(lit,1.0);\n"
 "}\n"
-};
 
+};
 const char split_deferred_vp[] = {
 "void main() {gl_Position = u_mvp*vec4(vs_pos,1.0,1.0);}\n"
-};
 
+};
 

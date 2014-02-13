@@ -1,4 +1,3 @@
-//##const char fxaa[] = {
 #define FXAA_GLSL_130 1
 #define FXAA_QUALITY_PRESET 39
 #define FXAA_GREEN_AS_LUMA 1
@@ -883,5 +882,4 @@ FxaaFloat4 FxaaPixelShader(
         return FxaaFloat4(FxaaTexTop(tex, posM).xyz, lumaM);
     #endif
 }
-//##};
 

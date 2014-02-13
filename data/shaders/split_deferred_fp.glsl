@@ -1,4 +1,3 @@
-//##const char split_deferred_fp[] = {
 void main() {
   vec2 uv = floor(gl_FragCoord.xy);
   vec2 bufindex = uv * u_rcpsubbufferdim;
@@ -13,5 +12,4 @@ void main() {
   vec3 lit = u_lightpow * max(dot(nor,ldir),0.0) / (llen2*llen2);
   SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(lit,1.0);
 }
-//##};
 

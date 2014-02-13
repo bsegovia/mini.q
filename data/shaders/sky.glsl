@@ -1,4 +1,3 @@
-//##const char sky[] = {
 //##// License Creative Commons Attribution-NonCommercial-ShareAlike 3.0
 //##// Unported License.
 //##// From rolling hills by Dave Hoskins (https://www.shadertoy.com/view/Xsf3zX)
@@ -22,5 +21,4 @@ vec3 getsky(vec3 rd, vec3 sunlight) {
   vec3 col = sqrt(getsky(rd, true, sunlight, suncolour));
   return col + suncolour*mix(0.0, 0.051, sunlight.y<0.05 ? 1.0-sunlight.y*20.0 : 0.0);
 }
-//##};
 

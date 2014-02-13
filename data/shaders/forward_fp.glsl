@@ -1,4 +1,3 @@
-//##const char forward_fp[] = {
 PS_IN vec3 fs_nor;
 
 #define SAMPLE(NUM, X, Y) \
@@ -35,5 +34,4 @@ void main() {
   SAMPLE(15, +2.0, -2.0);
   SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(col, 1.0);
 }
-//##};
 
