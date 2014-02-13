@@ -62,8 +62,8 @@ struct destroyregister {
   destroyregister(destroycallback cb);
 };
 struct shaderregister {
-  shaderregister(ogl::shadertype *s, const shaderdesc &r, const char *name, u32 num=1);
-  shaderregister(ogl::shadertype &s, const shaderdesc &r, const char *name, u32);
+  shaderregister(ogl::shadertype &s, const shaderdesc &r, const char *name, u32 sz, u32);
+  shaderregister(void *s, const shaderdesc &r, const char *name, u32 sz, u32 num=1);
 };
 
 /*-------------------------------------------------------------------------
@@ -94,7 +94,7 @@ SHADER(simple_material);
 SHADER(split_deferred);
 #undef SHADER
 
-extern const char noise2D[], noise3D[], noise4D[], fxaa[], hell[], sky[];
+extern const char noise2D[], noise3D[], noise4D[], fxaa[], hell[], sky[], lighting[];
 extern const char dfrm_fp[];
 void start();
 void finish();

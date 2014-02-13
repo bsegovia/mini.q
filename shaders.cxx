@@ -55,10 +55,7 @@ const char deferred_fp[] = {
 "  if (depth != 1.0) {\n"
 "    vec4 posw = u_invmvp * vec4(uv, depth, 1.0);\n"
 "    vec3 pos = posw.xyz / posw.w;\n"
-"    vec3 ldir = u_lightpos[0]-pos;\n"
-"    float llen2 = dot(ldir,ldir);\n"
-"    outcol.xyz = u_lightpow[0] * max(dot(nor,ldir),0.0) / (llen2*llen2);\n"
-"    outcol.w = 1.0;\n"
+"    outcol = vec4(shade(pos, nor), 1.0);\n"
 "  } else {\n"
 "    vec4 rdh = u_dirinvmvp * vec4(uv, 0.0, 1.0);\n"
 "    vec3 rd = normalize(rdh.xyz/rdh.w);\n"
@@ -1210,6 +1207,14 @@ const char hell[] = {
 "  //return col;\n"
 "}\n"
 "#endif\n"
+};
+
+const char lighting[] = {
+"vec3 diffuse(vec3 pos, vec3 nor, vec3 lpos, vec3 lpow) {\n"
+"  vec3 ldir = lpos-pos;\n"
+"  float llen2 = dot(ldir,ldir);\n"
+"  return lpow * max(dot(nor,ldir),0.0) / (llen2*llen2);\n"
+"}\n"
 };
 
 //

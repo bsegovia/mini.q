@@ -39,20 +39,25 @@ struct shaderdef {
 };
 static vector<shaderdef> *allshaders = NULL;
 
-shaderregister::shaderregister(ogl::shadertype &s, const shaderdesc &desc, const char *name, u32) {
+shaderregister::shaderregister(ogl::shadertype &s, const shaderdesc &desc, const char *name, u32 sz, u32) {
   if (allshaders == NULL) allshaders = NEWE(vector<shaderdef>);
   allshaders->add({&s, &desc, name, 0u});
 }
 
-shaderregister::shaderregister(ogl::shadertype *s, const shaderdesc &desc, const char *name, u32 num) {
+shaderregister::shaderregister(void *s, const shaderdesc &desc, const char *name, u32 sz, u32 num) {
+  auto baseaddress = (char*)s;
   if (allshaders == NULL) allshaders = NEWE(vector<shaderdef>);
-  loopi(int(num)) allshaders->add({s+i, &desc, name, u32(i)});
+  loopi(int(num)) {
+    const auto shader = (ogl::shadertype*)(baseaddress+sz*i);
+    allshaders->add({shader, &desc, name, u32(i)});
+  }
 }
 
 void start() {
   if (allshaders) loopv(*allshaders) {
     const auto &def = (*allshaders)[i];
     const auto b = NEW(builder, *def.d, def.idx);
+    assert(def.s->program == 0);
     if (!b->build(*def.s, ogl::loadfromfile()))
       ogl::shadererror(true, def.n);
   }

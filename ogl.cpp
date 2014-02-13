@@ -722,8 +722,7 @@ static bool checkshader(const vector<const char*> &sources, u32 shadernumame) {
     OGL(GetShaderInfoLog, shadernumame, infologlength, NULL, buffer);
     con::out("%s", buffer);
     printf("in\n");
-    loopv(sources)
-      printf("%s", sources[i]);
+    loopv(sources) printf("%s", sources[i]);
     FREE(buffer);
   }
   return result == GL_TRUE;

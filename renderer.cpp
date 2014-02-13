@@ -101,20 +101,36 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
 #define SPLITNUM 4
 
 static void deferredrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32 rule) {
+  string str;
+  sprintf_s(str)("#define LIGHTNUM %d\n", rule+1);
+  frag.insert(0, NEWSTRING(str));
+  frag.add(NEWSTRING("vec3 shade(vec3 pos, vec3 nor) {\n"));
+  frag.add(NEWSTRING("  vec3 outcol = diffuse(pos,nor,u_lightpos[0],u_lightpow[0]);\n"));
+  loopi(int(rule)) {
+    sprintf_s(str)("  outcol += diffuse(pos,nor,u_lightpos[%d],u_lightpow[%d]);\n",i+1,i+1);
+    frag.add(NEWSTRING(str));
+  }
+  frag.add(NEWSTRING("  return outcol;\n}\n"));
+}
+
+#define SHADERVARIANT 16
+#define RULES deferredrules
+#define SHADERNAME deferred
+#define VERTEX_PROGRAM "data/shaders/deferred_vp.decl"
+#define FRAGMENT_PROGRAM "data/shaders/deferred_fp.decl"
+#include "shaderdecl.hxx"
+#undef RULES
+
+static void rules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32 rule) {
   sprintf_sd(str)("#define SPLITNUM %f\n", float(SPLITNUM));
   vert.add(NEWSTRING(str));
   frag.add(NEWSTRING(str));
 }
 
-#define RULES deferredrules
+#define RULES rules
 #define SHADERNAME split_deferred
 #define VERTEX_PROGRAM "data/shaders/split_deferred_vp.decl"
 #define FRAGMENT_PROGRAM "data/shaders/split_deferred_fp.decl"
-#include "shaderdecl.hxx"
-
-#define SHADERNAME deferred
-#define VERTEX_PROGRAM "data/shaders/deferred_vp.decl"
-#define FRAGMENT_PROGRAM "data/shaders/deferred_fp.decl"
 #include "shaderdecl.hxx"
 
 #define SHADERNAME forward
@@ -278,8 +294,9 @@ struct screenquad {
 };
 
 // XXX just to have something to display
+#define LIGHTNUM 16
 FVAR(lightscale, 0.f, 2000.f, 10000.f);
-static const vec3f lightpos[] = {
+static const vec3f lightpos[LIGHTNUM] = {
   vec3f(8.f,20.f,8.f), vec3f(10.f,20.f,8.f),
   vec3f(12.f,20.f,8.f), vec3f(14.f,20.f,8.f),
   vec3f(6.f,20.f,8.f), vec3f(16.f,20.f,4.f),
@@ -290,7 +307,7 @@ static const vec3f lightpos[] = {
   vec3f(15.f,21.f,7.f), vec3f(16.f,22.f,10.f)
 };
 
-static const vec3f lightpow[] = {
+static const vec3f lightpow[LIGHTNUM] = {
   vec3f(1.f,0.f,0.f), vec3f(0.f,1.f,0.f),
   vec3f(1.f,0.f,1.f), vec3f(1.f,1.f,1.f),
   vec3f(1.f,0.f,1.f), vec3f(0.f,1.f,1.f),
@@ -299,7 +316,6 @@ static const vec3f lightpow[] = {
   vec3f(0.f,1.f,0.f), vec3f(1.f,0.f,1.f),
   vec3f(1.f,1.f,1.f), vec3f(1.f,0.f,1.f),
   vec3f(0.f,1.f,1.f), vec3f(1.f,1.f,0.f),
-  vec3f(0.f,1.f,1.f), vec3f(0.f,1.f,1.f)
 };
 
 IVAR(linemode, 0, 0, 1);
@@ -353,18 +369,19 @@ struct context {
     const auto deferredtimer = ogl::begintimer("deferred", true);
     OGL(BindFramebuffer, GL_FRAMEBUFFER, shadedbuffer);
     ogl::disable(GL_CULL_FACE);
-    ogl::bindshader(deferred::s);
+    auto &s = deferred::s[LIGHTNUM-1];
+    ogl::bindshader(s);
     ogl::bindtexture(GL_TEXTURE_RECTANGLE, gnortex, 0);
     ogl::bindtexture(GL_TEXTURE_RECTANGLE, gdethtex, 1);
-    OGL(UniformMatrix4fv, deferred::s.u_invmvp, 1, GL_FALSE, &invmvp.vx.x);
-    OGL(UniformMatrix4fv, deferred::s.u_dirinvmvp, 1, GL_FALSE, &dirinvmvp.vx.x);
+    OGL(UniformMatrix4fv, s.u_invmvp, 1, GL_FALSE, &invmvp.vx.x);
+    OGL(UniformMatrix4fv, s.u_dirinvmvp, 1, GL_FALSE, &dirinvmvp.vx.x);
 
     const auto sundir = getsundir();
-    const auto lpow = lightscale * lightpow[0];
-    const auto lpos = lightpos[0];
-    OGL(Uniform3fv, deferred::s.u_sundir, 1, &sundir.x);
-    OGL(Uniform3fv, deferred::s.u_lightpos, 1, &lpos.x);
-    OGL(Uniform3fv, deferred::s.u_lightpow, 1, &lpow.x);
+    vec3f lpow[LIGHTNUM];
+    loopi(LIGHTNUM) lpow[i] = lightscale * lightpow[i];
+    OGL(Uniform3fv, s.u_sundir, 1, &sundir.x);
+    OGL(Uniform3fv, s.u_lightpos, LIGHTNUM, &lightpos[0].x);
+    OGL(Uniform3fv, s.u_lightpow, LIGHTNUM, &lpow[0].x);
     ogl::immdraw("Sp2", 4, screenquad::getnormalized().v);
     OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
     ogl::enable(GL_CULL_FACE);

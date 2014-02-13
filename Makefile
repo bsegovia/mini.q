@@ -54,6 +54,7 @@ SHADERS=data/shaders/fixed_vp.glsl\
         data/shaders/fxaa_fp.glsl\
         data/shaders/fxaa.glsl\
         data/shaders/hell.glsl\
+        data/shaders/lighting.glsl\
         data/shaders/noise2D.glsl\
         data/shaders/noise3D.glsl\
         data/shaders/noise4D.glsl
