@@ -1,4 +1,2 @@
-//##const char deferred_vp_decl[] = {
 VATTRIB(vec2, vs_pos, ogl::ATTRIB_POS0)
-//##};
 

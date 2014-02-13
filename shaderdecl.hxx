@@ -19,11 +19,7 @@ struct shadertype : ogl::shadertype {
 #include VERTEX_PROGRAM
 #include FRAGMENT_PROGRAM
 };
-#undef INCLUDE
-#undef UNIFORMI
-#undef UNIFORM
-#undef FRAGDATA
-#undef VATTRIB
+#include "shaderundef.hxx"
 template <u32 n> struct shadertypetrait    {typedef shadertype type[n];};
 template <>      struct shadertypetrait<1> {typedef shadertype type;};
 } /* namespace SHADERNAMESPACE */
@@ -102,9 +98,5 @@ static const shaders::shaderregister shaderreg(s, rsc, STRINGIFY(N), SHADERVARIA
 #undef SHADERNAME
 #undef VERTEX_PROGRAM
 #undef FRAGMENT_PROGRAM
-#undef FRAGDATA
-#undef PUNIFORMI
-#undef PUNIFORM
-#undef PINCLUDE
-#undef VATTRIB
+#include "shaderundef.hxx"
 
