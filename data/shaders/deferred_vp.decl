@@ -1,2 +1,3 @@
+SHADER(deferred)
 VATTRIB(vec2, vs_pos, ogl::ATTRIB_POS0)
 

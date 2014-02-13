@@ -1,3 +1,4 @@
+SHADER(simple_material)
 UNIFORM(mat4, u_mvp)
 VATTRIB(vec3, vs_pos, ogl::ATTRIB_POS0)
 VATTRIB(vec3, vs_nor, ogl::ATTRIB_COL)

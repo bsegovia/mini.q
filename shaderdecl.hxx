@@ -9,6 +9,7 @@
 #ifndef SHADERNAMESPACE
 #define SHADERNAMESPACE SHADERNAME
 #endif
+#define SHADER(N)
 #define VATTRIB(T,N,LOC)
 #define FRAGDATA(T,N,LOC)
 #define UNIFORM(T,N) u32 N;
@@ -49,15 +50,14 @@ template <>      struct shadertypetrait<1> {typedef shadertype type;};
 
 namespace SHADERNAMESPACE {
 static shadertypetrait<SHADERVARIANT>::type s;
-static const char vppath[] = "data/shaders/" STRINGIFY(SHADERNAME) "_vp.glsl";
-static const char fppath[] = "data/shaders/" STRINGIFY(SHADERNAME) "_fp.glsl";
-static const char *vp = shaders:: JOIN(SHADERNAME,_vp);
-static const char *fp = shaders:: JOIN(SHADERNAME,_fp);
 static vector<shaders::fragdatadesc> *fragdata = NULL;
 static vector<shaders::attribdesc> *attrib = NULL;
 static vector<shaders::uniformdesc> *uniform = NULL;
 static vector<shaders::includedesc> *include = NULL;
 
+#define SHADER(N)\
+static const char vppath[] = "data/shaders/" STRINGIFY(N) "_vp.glsl";\
+static const char *vp = shaders:: JOIN(N,_vp);
 #define INCLUDE(N) PINCLUDE(N,true)
 #define UNIFORM(T,N) PUNIFORM(T,N,true)
 #define UNIFORMI(T,N,X) PUNIFORMI(T,N,X,true)
@@ -65,14 +65,15 @@ static vector<shaders::includedesc> *include = NULL;
 #undef INCLUDE
 #undef UNIFORM
 #undef UNIFORMI
+#undef SHADER
 
+#define SHADER(N)\
+static const char fppath[] = "data/shaders/" STRINGIFY(N) "_fp.glsl";\
+static const char *fp = shaders:: JOIN(N,_fp);
 #define INCLUDE(N) PINCLUDE(N,false)
 #define UNIFORM(T,N) PUNIFORM(T,N,false)
 #define UNIFORMI(T,N,X) PUNIFORMI(T,N,X,false)
 #include FRAGMENT_PROGRAM
-#undef INCLUDE
-#undef UNIFORM
-#undef UNIFORMI
 
 #if !defined(RELEASE)
 static void destroy() {

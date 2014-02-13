@@ -1,3 +1,4 @@
+SHADER(forward)
 UNIFORMI(sampler2DRect, u_lighttex, 0)
 UNIFORMI(sampler2DRect, u_nortex, 1)
 UNIFORM(vec2, u_subbufferdim)

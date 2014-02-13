@@ -1,3 +1,4 @@
+SHADER(font)
 UNIFORMI(sampler2D, u_diffuse, 0)
 UNIFORM(vec2, u_fontwh)
 UNIFORM(float, u_font_thickness)

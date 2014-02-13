@@ -1,1 +1,2 @@
+SHADER(fixed)
 UNIFORMI(sampler2D, u_diffuse, 0);

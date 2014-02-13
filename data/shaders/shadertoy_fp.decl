@@ -1,3 +1,4 @@
+SHADER(shadertoy)
 INCLUDE(noise2D)
 UNIFORM(vec3, iResolution)
 UNIFORM(float, iGlobalTime)
