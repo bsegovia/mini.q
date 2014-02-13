@@ -709,7 +709,7 @@ void endframe() {
 /*--------------------------------------------------------------------------
  - shader management
  -------------------------------------------------------------------------*/
-static bool checkshader(const char *source, u32 shadernumame) {
+static bool checkshader(const vector<const char*> &sources, u32 shadernumame) {
   GLint result = GL_FALSE;
   int infologlength;
 
@@ -717,11 +717,13 @@ static bool checkshader(const char *source, u32 shadernumame) {
   OGL(GetShaderiv, shadernumame, GL_COMPILE_STATUS, &result);
   OGL(GetShaderiv, shadernumame, GL_INFO_LOG_LENGTH, &infologlength);
   if (infologlength > 1) {
-    char *buffer = (char*) MALLOC(infologlength+1);
+    auto buffer = (char*) MALLOC(infologlength+1);
     buffer[infologlength] = 0;
     OGL(GetShaderInfoLog, shadernumame, infologlength, NULL, buffer);
     con::out("%s", buffer);
-    printf("in\n%s\n", source);
+    printf("in\n");
+    loopv(sources)
+      printf("%s", sources[i]);
     FREE(buffer);
   }
   return result == GL_TRUE;
@@ -757,7 +759,7 @@ static u32 loadshader(GLenum type, const char *source, const shaderrules &rules)
   sources.add(source);
   OGL(ShaderSource, name, rules.length()+2, &sources[0], NULL);
   OGL(CompileShader, name);
-  if (!checkshader(source, name)) return 0;
+  if (!checkshader(sources, name)) return 0;
   return name;
 }
 

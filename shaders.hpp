@@ -31,7 +31,7 @@ struct uniformdesc {
   typedef vector<uniformdesc> vec;
   INLINE uniformdesc() {}
   uniformdesc(vec **v, u32 offset, const char *name, const char *type,
-              bool vertex, const char *arraysize = NULL,
+              bool vertex, const char *arraysize=NULL,
               int defaultvalue=0, bool hasdefault=false);
   u32 offset;
   const char *name, *type, *arraysize;

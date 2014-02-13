@@ -61,7 +61,7 @@ static const char *vp = shaders:: JOIN(N,_vp);
 #define INCLUDE(N) PINCLUDE(N,true)
 #define UNIFORM(T,N) PUNIFORM(T,N,true)
 #define UNIFORMI(T,N,X) PUNIFORMI(T,N,X,true)
-#define UNIFORMARRAY(T,N,X) PUNIFORMARRAY(T,N,X,true,X)
+#define UNIFORMARRAY(T,N,S) PUNIFORMARRAY(T,N,true,S)
 #include VERTEX_PROGRAM
 #include "shaderundef.hxx"
 
@@ -72,7 +72,7 @@ static const char *fp = shaders:: JOIN(N,_fp);
 #define INCLUDE(N) PINCLUDE(N,false)
 #define UNIFORM(T,N) PUNIFORM(T,N,false)
 #define UNIFORMI(T,N,X) PUNIFORMI(T,N,X,false)
-#define UNIFORMARRAY(T,N,X) PUNIFORMARRAY(T,N,X,true,X)
+#define UNIFORMARRAY(T,N,S) PUNIFORMARRAY(T,N,false,S)
 #include FRAGMENT_PROGRAM
 #include "shaderundef.hxx"
 

@@ -7,9 +7,9 @@ void main() {
   if (depth != 1.0) {
     vec4 posw = u_invmvp * vec4(uv, depth, 1.0);
     vec3 pos = posw.xyz / posw.w;
-    vec3 ldir = u_lightpos-pos;
+    vec3 ldir = u_lightpos[0]-pos;
     float llen2 = dot(ldir,ldir);
-    outcol.xyz = vec3(2000.0) * max(dot(nor,ldir),0.0) / (llen2*llen2);
+    outcol.xyz = u_lightpow[0] * max(dot(nor,ldir),0.0) / (llen2*llen2);
     outcol.w = 1.0;
   } else {
     vec4 rdh = u_dirinvmvp * vec4(uv, 0.0, 1.0);

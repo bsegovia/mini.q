@@ -71,10 +71,10 @@ void builder::setrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules)
     auto &uni = **desc.uniform;
     loopv(uni) {
       string rule;
-      //if (uni[i].arraysize == NULL)
+      if (uni[i].arraysize == NULL)
         sprintf_s(rule)("uniform %s %s;\n", uni[i].type, uni[i].name);
-      //else
-      //  sprintf_s(rule)("uni %s %s[%s];\n", uni[i].type, uni[i].name, uni[i].arraysize);
+      else
+        sprintf_s(rule)("uniform %s %s[%s];\n", uni[i].type, uni[i].name, uni[i].arraysize);
       if (uni[i].vertex)
         vertrules.add(NEWSTRING(rule));
       else
