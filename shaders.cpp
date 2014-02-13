@@ -22,8 +22,9 @@ includedesc::includedesc(includedesc::vec **v, const char *source, bool vertex)
 
 uniformdesc::uniformdesc(uniformdesc::vec **v, u32 offset,
                          const char *name, const char *type,
-                         bool vertex, int defaultvalue, bool hasdefault)
-  : offset(offset), name(name), type(type),
+                         bool vertex, const char *arraysize,
+                         int defaultvalue, bool hasdefault)
+  : offset(offset), name(name), type(type), arraysize(arraysize),
     defaultvalue(defaultvalue), hasdefault(hasdefault),
     vertex(vertex)
 {allocateappend(v, this);}
@@ -67,34 +68,38 @@ builder::builder(const shaderdesc &desc, u32 rule) :
 {}
 void builder::setrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules) {
   if (*desc.uniform) {
-    auto &uniform = **desc.uniform;
-    loopv(uniform) {
-      sprintf_sd(rule)("uniform %s %s;\n", uniform[i].type, uniform[i].name);
-      if (uniform[i].vertex)
+    auto &uni = **desc.uniform;
+    loopv(uni) {
+      string rule;
+      //if (uni[i].arraysize == NULL)
+        sprintf_s(rule)("uniform %s %s;\n", uni[i].type, uni[i].name);
+      //else
+      //  sprintf_s(rule)("uni %s %s[%s];\n", uni[i].type, uni[i].name, uni[i].arraysize);
+      if (uni[i].vertex)
         vertrules.add(NEWSTRING(rule));
       else
         fragrules.add(NEWSTRING(rule));
     }
   }
   if (*desc.attrib) {
-    auto &attrib = **desc.attrib;
-    loopv(attrib) {
-      sprintf_sd(rule)("VS_IN %s %s;\n", attrib[i].type, attrib[i].name);
+    auto &att = **desc.attrib;
+    loopv(att) {
+      sprintf_sd(rule)("VS_IN %s %s;\n", att[i].type, att[i].name);
       vertrules.add(NEWSTRING(rule));
     }
   }
 #if !defined(__WEBGL__)
   if (*desc.fragdata) {
-    auto &fragdata = **desc.fragdata;
-    loopv(fragdata) {
-      sprintf_sd(rule)("out %s %s;\n", fragdata[i].type, fragdata[i].name);
+    auto &fd = **desc.fragdata;
+    loopv(fd) {
+      sprintf_sd(rule)("out %s %s;\n", fd[i].type, fd[i].name);
       fragrules.add(NEWSTRING(rule));
     }
   }
 #endif
   if (*desc.include) {
-    auto &include = **desc.include;
-    loopv(include) fragrules.add(NEWSTRING(include[i].source));
+    auto &inc = **desc.include;
+    loopv(inc) fragrules.add(NEWSTRING(inc[i].source));
   }
   desc.rulescb(vertrules, fragrules, rule);
 }

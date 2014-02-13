@@ -11,6 +11,7 @@
 #define FRAGDATA(T,N,LOC)
 #define UNIFORM(T,N) u32 N;
 #define UNIFORMI(T,N,I) u32 N;
+#define UNIFORMARRAY(T,N,S) u32 N;
 #define INCLUDE(N)
 namespace SHADERNAME {
 struct shadertype : ogl::shadertype {
@@ -26,20 +27,20 @@ template <>      struct shadertypetrait<1> {typedef shadertype type;};
  - we instantiate the shaderdescriptor here
  -------------------------------------------------------------------------*/
 #if !defined(__WEBGL__)
-#define FRAGDATA(T,N,LOC)\
+#define PFRAGDATA(T,N,LOC)\
   static shaders::fragdatadesc N##desc(&fragdata,LOC,#N,#T);
 #else
-#define FRAGDATA(T,N,LOC)
+#define PFRAGDATA(T,N,LOC)
 #endif
 
 #define PUNIFORMI(T,N,X,V)\
-  static const shaders::uniformdesc N##desc(&uniform,offsetof(shadertype,N),#N,#T,V,X,true);
+  static const shaders::uniformdesc N##desc(&uniform,offsetof(shadertype,N),#N,#T,V,NULL,X,true);
 #define PUNIFORM(T,N,V)\
   static const shaders::uniformdesc N##desc(&uniform,offsetof(shadertype,N),#N,#T,V);
+#define PUNIFORMARRAY(T,N,V,S)\
+  static const shaders::uniformdesc N##desc(&uniform,offsetof(shadertype,N),#N,#T,V,#S);
 #define PINCLUDE(N,V)\
   static const shaders::includedesc N##include##V(&include,shaders::N,V);
-#define VATTRIB(T,N,LOC)\
-  static const shaders::attribdesc N##desc(&attrib,LOC,#N,#T);
 
 #ifndef SHADERVARIANT
 #define SHADERVARIANT 1
@@ -55,22 +56,25 @@ static vector<shaders::includedesc> *include = NULL;
 #define SHADER(N)\
 static const char vppath[] = "data/shaders/" STRINGIFY(N) "_vp.glsl";\
 static const char *vp = shaders:: JOIN(N,_vp);
+#define VATTRIB(T,N,LOC)\
+  static const shaders::attribdesc N##desc(&attrib,LOC,#N,#T);
 #define INCLUDE(N) PINCLUDE(N,true)
 #define UNIFORM(T,N) PUNIFORM(T,N,true)
 #define UNIFORMI(T,N,X) PUNIFORMI(T,N,X,true)
+#define UNIFORMARRAY(T,N,X) PUNIFORMARRAY(T,N,X,true,X)
 #include VERTEX_PROGRAM
-#undef INCLUDE
-#undef UNIFORM
-#undef UNIFORMI
-#undef SHADER
+#include "shaderundef.hxx"
 
 #define SHADER(N)\
 static const char fppath[] = "data/shaders/" STRINGIFY(N) "_fp.glsl";\
 static const char *fp = shaders:: JOIN(N,_fp);
+#define FRAGDATA(T,N,LOC) PFRAGDATA(T,N,LOC)
 #define INCLUDE(N) PINCLUDE(N,false)
 #define UNIFORM(T,N) PUNIFORM(T,N,false)
 #define UNIFORMI(T,N,X) PUNIFORMI(T,N,X,false)
+#define UNIFORMARRAY(T,N,X) PUNIFORMARRAY(T,N,X,true,X)
 #include FRAGMENT_PROGRAM
+#include "shaderundef.hxx"
 
 #if !defined(RELEASE)
 static void destroy() {
@@ -95,5 +99,9 @@ static const shaders::shaderregister shaderreg(s, rsc, STRINGIFY(N), SHADERVARIA
 #undef SHADERNAME
 #undef VERTEX_PROGRAM
 #undef FRAGMENT_PROGRAM
-#include "shaderundef.hxx"
+#undef PFRAGDATA
+#undef PUNIFORMI
+#undef PUNIFORM
+#undef PUNIFORMARRAY
+#undef PINCLUDE
 
