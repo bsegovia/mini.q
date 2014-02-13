@@ -49,7 +49,6 @@ SHADERS=data/shaders/fixed_vp.glsl\
         data/shaders/forward_fp.glsl\
         data/shaders/shadertoy_vp.glsl\
         data/shaders/shadertoy_fp.glsl\
-        data/shaders/font_vp.glsl\
         data/shaders/font_fp.glsl\
         data/shaders/fxaa_vp.glsl\
         data/shaders/fxaa_fp.glsl\
