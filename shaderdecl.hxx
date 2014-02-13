@@ -6,16 +6,13 @@
 /*-------------------------------------------------------------------------
  - first we define a shadertype with all the given uniforms
  -------------------------------------------------------------------------*/
-#ifndef SHADERNAMESPACE
-#define SHADERNAMESPACE SHADERNAME
-#endif
 #define SHADER(N)
 #define VATTRIB(T,N,LOC)
 #define FRAGDATA(T,N,LOC)
 #define UNIFORM(T,N) u32 N;
 #define UNIFORMI(T,N,I) u32 N;
 #define INCLUDE(N)
-namespace SHADERNAMESPACE {
+namespace SHADERNAME {
 struct shadertype : ogl::shadertype {
 #include VERTEX_PROGRAM
 #include FRAGMENT_PROGRAM
@@ -23,7 +20,7 @@ struct shadertype : ogl::shadertype {
 #include "shaderundef.hxx"
 template <u32 n> struct shadertypetrait    {typedef shadertype type[n];};
 template <>      struct shadertypetrait<1> {typedef shadertype type;};
-} /* namespace SHADERNAMESPACE */
+} /* namespace SHADERNAME */
 
 /*-------------------------------------------------------------------------
  - we instantiate the shaderdescriptor here
@@ -48,7 +45,7 @@ template <>      struct shadertypetrait<1> {typedef shadertype type;};
 #define SHADERVARIANT 1
 #endif
 
-namespace SHADERNAMESPACE {
+namespace SHADERNAME {
 static shadertypetrait<SHADERVARIANT>::type s;
 static vector<shaders::fragdatadesc> *fragdata = NULL;
 static vector<shaders::attribdesc> *attrib = NULL;
@@ -89,13 +86,12 @@ static const shaders::shaderdesc rsc = {
   vppath, fppath, vp, fp, &uniform, &attrib, &fragdata, &include, RULES
 };
 static const shaders::shaderregister shaderreg(s, rsc, STRINGIFY(N), SHADERVARIANT);
-} /* namespace SHADERNAMESPACE */
+} /* namespace SHADERNAME */
 
 /*-------------------------------------------------------------------------
  - finally, we clean up this definition mess
  -------------------------------------------------------------------------*/
 #undef SHADERVARIANT
-#undef SHADERNAMESPACE
 #undef SHADERNAME
 #undef VERTEX_PROGRAM
 #undef FRAGMENT_PROGRAM

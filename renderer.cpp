@@ -148,11 +148,11 @@ static void shadertoyrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32) 
 }
 
 #define RULES shadertoyrules
-#define SHADERNAMESPACE hell
-#define SHADERNAME shadertoy
+#define SHADERNAME hell
 #define VERTEX_PROGRAM "data/shaders/shadertoy_vp.decl"
 #define FRAGMENT_PROGRAM "data/shaders/shadertoy_fp.decl"
 #include "shaderdecl.hxx"
+#undef RULES
 
 static u32 gdethtex, gnortex, finaltex;
 static u32 gbuffer, shadedbuffer;
