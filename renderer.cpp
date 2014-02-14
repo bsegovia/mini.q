@@ -170,18 +170,20 @@ static void shadertoyrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32) 
 #include "shaderdecl.hxx"
 #undef RULES
 
-static u32 gdethtex, gnortex, finaltex;
+static u32 gdethtex, gnortex, gdiffusetex, finaltex;
 static u32 gbuffer, shadedbuffer;
 
 static void initdeferred() {
   // all textures
   gnortex = ogl::maketex("TB I3 D3 Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
+  gdiffusetex = ogl::maketex("TB I3 D3 Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
+  finaltex = ogl::maketex("TB I3 D3 B2 Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
   gdethtex = ogl::maketex("Tf Id Dd Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
-  finaltex = ogl::maketex("TB I3 D3 B2 Wse Wte mn Ml", NULL, sys::scrw, sys::scrh);
 
   // all frame buffer objects
   ogl::genframebuffers(1, &gbuffer);
   OGL(BindFramebuffer, GL_FRAMEBUFFER, gbuffer);
+  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_RECTANGLE, gdiffusetex, 0);
   OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, gnortex, 0);
   OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_RECTANGLE, gdethtex, 0);
   if (GL_FRAMEBUFFER_COMPLETE != ogl::CheckFramebufferStatus(GL_FRAMEBUFFER))

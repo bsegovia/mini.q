@@ -10,7 +10,7 @@
 namespace q {
 namespace sys {
 
-int scrw = 1024, scrh = 1024;
+int scrw = 1920, scrh = 1080;
 static int islittleendian_ = 1;
 void initendiancheck(void) { islittleendian_ = *((char*)&islittleendian_); }
 int islittleendian(void) { return islittleendian_; }

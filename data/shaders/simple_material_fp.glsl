@@ -7,7 +7,8 @@ void main() {
   float dy = snoise(p+vec3(0.0,0.01,0.0));
   float dz = snoise(p+vec3(0.0,0.0,0.01));
   vec3 dn = normalize(vec3(c-dx, c-dy, c-dz));
-  vec3 n = normalize(fs_nor + dn/10.0);
-  SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(abs(n), 1.0);
+  vec3 n = 0.5*normalize(fs_nor + dn/10.0)+0.5;
+  SWITCH_WEBGL(gl_FragData[0], rt_nor) = vec4(n, 1.0);
+  SWITCH_WEBGL(gl_FragData[1], rt_col) = vec4(1.0);
 }
 

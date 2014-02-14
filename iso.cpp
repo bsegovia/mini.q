@@ -313,8 +313,7 @@ struct mesh_processor {
       const auto nor = trinormalu(idx);
       loopj(3) n[unpackidx(tri[j])] += nor;
     }
-    loopi(m_vertnum) n[m_first_vert+i] = -0.5f*normalize(n[m_first_vert+i])+0.5f;
-    //loopi(m_vertnum) n[m_first_vert+i] = vec3f(1.f,0.f,0.f);
+    loopi(m_vertnum) n[m_first_vert+i] = -normalize(n[m_first_vert+i]);
   }
 
   vector<meshedge> m_edges;
@@ -700,7 +699,7 @@ struct dc_gridbuilder {
       }
       const auto pos = mass + qef::evaluate(matrix, vector, num);
       m_pos_buffer.add(vertex(xyz) + pos*float(1<<plod)*m_cellsize);
-      m_nor_buffer.add(abs(normalize(nor)));
+      m_nor_buffer.add(normalize(nor));
     }
   }
 
