@@ -62,7 +62,7 @@ static void drawhud(int w, int h, int curfps) {
 /*--------------------------------------------------------------------------
  - handle the HUD gun
  -------------------------------------------------------------------------*/
-#if 0
+#if 1
 static const char *hudgunnames[] = {
   "hudguns/fist",
   "hudguns/shotg",
@@ -199,6 +199,7 @@ static void initdeferred() {
 
 #if !defined(RELEASE)
 static void cleandeferred() {
+  ogl::deletetextures(1, &gdiffusetex);
   ogl::deletetextures(1, &gnortex);
   ogl::deletetextures(1, &gdethtex);
   ogl::deletetextures(1, &finaltex);

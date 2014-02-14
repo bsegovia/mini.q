@@ -5,6 +5,12 @@
 #include "mini.q.hpp"
 
 namespace q {
+
+#define SHADERNAME md2
+#define VERTEX_PROGRAM "data/shaders/md2_vp.decl"
+#define FRAGMENT_PROGRAM "data/shaders/md2_fp.decl"
+#include "shaderdecl.hxx"
+
 namespace md2 {
 
 struct header {

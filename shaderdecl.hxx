@@ -45,6 +45,9 @@ template <>      struct shadertypetrait<1> {typedef shadertype type;};
 #ifndef SHADERVARIANT
 #define SHADERVARIANT 1
 #endif
+#ifndef RULES
+#define RULES NULL
+#endif
 
 namespace SHADERNAME {
 static shadertypetrait<SHADERVARIANT>::type s;

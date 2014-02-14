@@ -1,2 +1,3 @@
 SHADER(fixed)
-UNIFORMI(sampler2D, u_diffuse, 0);
+UNIFORMI(sampler2D, u_diffuse, 0)
+FRAGDATA(vec4, rt_col, 0)

@@ -38,7 +38,7 @@ con.o: con.cpp $(HEADERS)
 csg.o: csg.cpp sys.hpp stl.hpp math.hpp csg.hpp
 game.o: game.cpp $(HEADERS)
 iso.o: iso.cpp iso.hpp csg.hpp math.hpp stl.hpp sys.hpp
-md2.o: md2.cpp $(HEADERS)
+md2.o: md2.cpp $(HEADERS) data/shaders/md2_vp.decl data/shaders/md2_fp.decl
 mini.q.o: mini.q.cpp $(HEADERS)
 net.o: net.cpp net.hpp stl.hpp sys.hpp
 ogl.o: ogl.cpp ogl.hxx $(HEADERS)

@@ -19,6 +19,8 @@ extern const char fxaa_fp[];
 extern const char fxaa_vp[];
 extern const char hell[];
 extern const char lighting[];
+extern const char md2_fp[];
+extern const char md2_vp[];
 extern const char noise2D[];
 extern const char noise3D[];
 extern const char noise4D[];

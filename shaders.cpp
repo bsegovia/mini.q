@@ -106,7 +106,7 @@ void builder::setrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules)
     auto &inc = **desc.include;
     loopv(inc) fragrules.add(NEWSTRING(inc[i].source));
   }
-  desc.rulescb(vertrules, fragrules, rule);
+  if (desc.rulescb) desc.rulescb(vertrules, fragrules, rule);
 }
 void builder::setuniform(ogl::shadertype &s) {
   if (*desc.uniform) {

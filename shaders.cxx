@@ -76,7 +76,6 @@ const char fixed_fp[] = {
 "#if USE_COL\n"
 "PS_IN vec4 fs_col;\n"
 "#endif\n"
-"IF_NOT_WEBGL(out vec4 rt_col);\n"
 
 "void main() {\n"
 "  vec4 col;\n"
@@ -1214,6 +1213,26 @@ const char lighting[] = {
 "  vec3 ldir = lpos-pos;\n"
 "  float llen2 = dot(ldir,ldir);\n"
 "  return lpow * max(dot(nor,ldir),0.0) / (llen2*llen2);\n"
+"}\n"
+
+};
+const char md2_fp[] = {
+"PS_IN vec2 fs_tex;\n"
+"PS_IN vec3 fs_nor;\n"
+"void main() {\n"
+"  SWITCH_WEBGL(gl_FragData[0], rt_nor) = vec4(normalize(fs_nor), 1.0);\n"
+"  SWITCH_WEBGL(gl_FragData[1], rt_col) = texture2D(u_diffuse, fs_tex);\n"
+"}\n"
+
+};
+const char md2_vp[] = {
+"VS_OUT vec2 fs_tex;\n"
+"VS_OUT vec3 fs_nor;\n"
+"void main() {\n"
+"  fs_nor = vs_nor;\n"
+"  fs_tex = vs_tex;\n"
+"  vec3 vs_pos = mix(vs_pos0,vs_pos1,u_delta);\n"
+"  gl_Position = u_mvp*vec4(vs_pos,1.0);\n"
 "}\n"
 
 };
