@@ -177,7 +177,7 @@ static void initdeferred() {
   // all textures
   gnortex = ogl::maketex("TB I3 D3 Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
   gdiffusetex = ogl::maketex("TB I3 D3 Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
-  finaltex = ogl::maketex("TB I3 D3 B2 Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
+  finaltex = ogl::maketex("TB I3 D3 B2 Wse Wte ml Ml", NULL, sys::scrw, sys::scrh);
   gdethtex = ogl::maketex("Tf Id Dd Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
 
   // all frame buffer objects
