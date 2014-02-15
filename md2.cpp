@@ -135,9 +135,9 @@ bool mdl::load(const char *name, float scale, int sn) {
   OGL(BufferData, GL_ARRAY_BUFFER, header.numframes*vboframesz, NULL, GL_STATIC_DRAW);
 
 #if 0
-  auto m = mat3x3f::rotate(90.f, vec3f(0.f,1.f,0.f));
   m *= mat3x3f::rotate(180.f, vec3f(1.f,0.f,0.f));
 #endif
+  const auto m = mat3x3f::rotate(90.f, vec3f(0.f,1.f,0.f));
 
   // insert each frame in the vbo
   loopj(header.numframes) {
@@ -154,12 +154,12 @@ bool mdl::load(const char *name, float scale, int sn) {
         const auto t = *((const float*)command++);
         const auto vn = *command++;
         const auto cv = (u8*) &cf->vertices[vn].vertex;
-        const vec3f v((snap(sn, cv[0]*cf->scale[0])+cf->translate[0])/sc,
-                      (snap(sn, cv[1]*cf->scale[1])+cf->translate[1])/sc,
-                      (snap(sn, cv[2]*cf->scale[2])+cf->translate[2])/sc);
+        const vec3f v((snap(sn,cv[0]*cf->scale[0])+cf->translate[0])/sc,
+                      -(snap(sn,cv[1]*cf->scale[1])+cf->translate[1])/sc,
+                      (snap(sn,cv[2]*cf->scale[2])+cf->translate[2])/sc);
         const auto nptr = normaltable[cf->vertices[vn].normalidx];
-        const auto n = vec3f(nptr[0],nptr[1],nptr[2]);
-        trisv.add(vertextype(s,t,n.xzy(),v.xzy()));
+        const auto n = vec3f(nptr[0],-nptr[1],nptr[2]);
+        trisv.add(vertextype(s,t,m*n.xzy(),m*v.xzy()));
       }
       loopi(n-2) { // just stolen from cube. TODO use an index buffer
         if (moden <= 0) { // fan
@@ -185,10 +185,13 @@ void mdl::render(int frame, int range, const vec3f &o,
   frame = 0;
   ogl::bindbuffer(ogl::ARRAY_BUFFER, vbo);
   ogl::pushmatrix();
+  ogl::identity();
   const vec3f tr(10.310894f, 1.800000f, 13.364042f);
-  ogl::translate(tr);
-  //ogl::rotate(90.f, vec3f(0.f,1.f,0.f));
+  auto m = mat3x3f::rotate(-ypr.x, vec3f(0.f,1.f,0.f));
+  m *= mat3x3f::rotate(-ypr.y, vec3f(1.f,0.f,0.f));
+  m *= mat3x3f::rotate(-ypr.z, vec3f(0.f,0.f,1.f));
   //ogl::rotate(180.f, vec3f(1.f,0.f,0.f));
+//  ogl::rotate(90.f, vec3f(0.f,1.f,0.f));
 #if 0
   auto m = mat3x3f::rotate(-ypr.x, vec3f(0.f,1.f,0.f));
   m *= mat3x3f::rotate(-ypr.y, vec3f(1.f,0.f,0.f));
@@ -204,7 +207,7 @@ void mdl::render(int frame, int range, const vec3f &o,
   m *= mat3x3f::rotate(-ypr.z, vec3f(0.f,0.f,1.f));
   m *= mat3x3f::rotate(90.f, vec3f(0.f,1.f,0.f));
 #else
-  auto m = mat3x3f(one);
+  //auto m = mat3x3f(one);
 #endif
  // ogl::mulmatrix(mat4x4f(m));
 
@@ -217,11 +220,12 @@ void mdl::render(int frame, int range, const vec3f &o,
   if (fr2>=frame+range) fr2 = frame;
   const auto pos0 = (const float*)(fr1*vboframesz);
   const auto pos1 = (const float*)(fr2*vboframesz);
-  OGL(VertexAttribPointer, ogl::ATTRIB_TEX0, 2, GL_FLOAT, 0, sizeof(vertextype), (void*)pos0);
-  OGL(VertexAttribPointer, ogl::ATTRIB_NOR0, 3, GL_FLOAT, 0, sizeof(vertextype), (void*)(pos0+2));
-  OGL(VertexAttribPointer, ogl::ATTRIB_NOR1, 3, GL_FLOAT, 0, sizeof(vertextype), (void*)(pos1+2));
-  OGL(VertexAttribPointer, ogl::ATTRIB_POS0, 3, GL_FLOAT, 0, sizeof(vertextype), (void*)(pos0+5));
-  OGL(VertexAttribPointer, ogl::ATTRIB_POS1, 3, GL_FLOAT, 0, sizeof(vertextype), (void*)(pos1+5));
+  OGL(CullFace, GL_FRONT);
+  OGL(VertexAttribPointer, ogl::ATTRIB_TEX0, 2, GL_FLOAT, 0, sizeof(vertextype), pos0);
+  OGL(VertexAttribPointer, ogl::ATTRIB_NOR0, 3, GL_FLOAT, 0, sizeof(vertextype), pos0+2);
+  OGL(VertexAttribPointer, ogl::ATTRIB_NOR1, 3, GL_FLOAT, 0, sizeof(vertextype), pos1+2);
+  OGL(VertexAttribPointer, ogl::ATTRIB_POS0, 3, GL_FLOAT, 0, sizeof(vertextype), pos0+5);
+  OGL(VertexAttribPointer, ogl::ATTRIB_POS1, 3, GL_FLOAT, 0, sizeof(vertextype), pos1+5);
   ogl::setattribarray()(ogl::ATTRIB_POS0, ogl::ATTRIB_POS1,
                         ogl::ATTRIB_TEX0, ogl::ATTRIB_NOR0,
                         ogl::ATTRIB_NOR1);
@@ -238,7 +242,7 @@ void mdl::render(int frame, int range, const vec3f &o,
   ogl::disableattribarray(ogl::ATTRIB_NOR1);
   ogl::bindbuffer(ogl::ARRAY_BUFFER, 0);
   ogl::popmatrix();
-  OGL(CullFace, GL_BACK); // XXX change orientation of the triangles!
+  OGL(CullFace, GL_BACK);
 }
 
 static vector<mdl*> mapmodels;

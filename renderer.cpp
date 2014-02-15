@@ -76,8 +76,8 @@ static void drawhudmodel(int start, int end, float speed, int base) {
   ogl::matrixmode(ogl::MODELVIEW);
   ogl::pushmatrix();
   //ogl::identity();
-  //md2::render(hudgunnames[game::player.gun], start, end,
-  md2::render("monster/ogro", start, end,
+  md2::render(hudgunnames[game::player.gun], start, end,
+  //md2::render("monster/ogro", start, end,
               vec3f(zero), game::player.ypr,
               // game::player.o, game::player.ypr,
               false, 1.0f, speed, 0, base);
