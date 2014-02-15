@@ -324,7 +324,9 @@ static const vec3f lightpow[LIGHTNUM] = {
 IVAR(linemode, 0, 0, 1);
 
 struct context {
-  context(float w, float h, float fovy, float aspect, float farplane) {
+  context(float w, float h, float fovy, float aspect, float farplane)
+    : fovy(fovy), aspect(aspect), farplane(farplane)
+  {
     // XXX bad code. we should invert transform instead of calling "inverse".
     ogl::matrixmode(ogl::PROJECTION);
     ogl::setperspective(fovy, aspect, 0.15f, farplane);
@@ -364,6 +366,7 @@ struct context {
       ogl::bindbuffer(ogl::ARRAY_BUFFER, 0);
       if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_FILL);
     }
+    drawhudgun(fovy, aspect, farplane);
     OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
     ogl::endtimer(gbuffertimer);
   }
@@ -405,6 +408,7 @@ struct context {
     ogl::endtimer(fxaatimer);
   }
   mat4x4f mvp, invmvp, dirinvmvp;
+  float fovy, aspect, farplane;
 };
 
 IVAR(shadertoy, 0, 0, 1);
@@ -426,11 +430,11 @@ static void doshadertoy(float fovy, float aspect, float farplane) {
 }
 
 void frame(int w, int h, int curfps) {
-  const float farplane = 100.f;
-  const float aspect = float(sys::scrw) / float(sys::scrh);
-  const float fovy = fov / aspect;
+  const auto farplane = 100.f;
+  const auto aspect = float(sys::scrw) / float(sys::scrh);
+  const auto fovy = fov / aspect;
   if (shadertoy)
-    doshadertoy(fovy, aspect, farplane);
+    doshadertoy(fovy,aspect,farplane);
   else {
     context ctx(w,h,fov,aspect,farplane);
     ctx.begin();
@@ -441,7 +445,7 @@ void frame(int w, int h, int curfps) {
   }
 
   const auto hudtimer = ogl::begintimer("hud", true);
-  // drawhudgun(fovy, aspect, farplane);
+//  drawhudgun(fovy, aspect, farplane);
   ogl::disable(GL_CULL_FACE);
   drawhud(w,h,curfps);
   ogl::enable(GL_CULL_FACE);

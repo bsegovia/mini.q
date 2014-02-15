@@ -34,7 +34,8 @@ enum {
   ATTRIB_TEX1,
   ATTRIB_TEX2,
   ATTRIB_TEX3,
-  ATTRIB_NOR,
+  ATTRIB_NOR0,
+  ATTRIB_NOR1,
   ATTRIB_COL,
   ATTRIB_NUM
 };
@@ -238,26 +239,6 @@ void bindfixedshader(u32 flags);
 void bindfixedshader(u32 flags, float delta);
 void fixedflush();
 void fixedrules(shaderrules &vert, shaderrules &frag, u32 rule);
-#if 0
-// can be reused for similar shaders
-struct fixedshadertype : shadertype {
-  fixedshadertype() : shadertype(true), rules(0) {}
-  u32 rules; // flags to enable / disable features
-  u32 u_diffuse, u_delta, u_mvp; // uniforms
-};
-
-// can be reused by other shaders reusing the same skeleton as fixed shaders
-struct fixedshaderbuilder : shaderbuilder {
-  fixedshaderbuilder(const char *vppath, const char *fppath,
-                     const char *vp, const char *fp, u32 rules);
-  virtual void setrules(shaderrules&, shaderrules&);
-  virtual void setuniform(shadertype &s);
-  virtual void setattrib(shadertype &s);
-  virtual void setfragdata(shadertype &s);
-  u32 rules;
-};
-#endif
-
 } /* namespace ogl */
 } /* namespace q */
 

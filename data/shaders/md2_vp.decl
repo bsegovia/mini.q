@@ -4,5 +4,6 @@ UNIFORM(float, u_delta)
 VATTRIB(vec3, vs_pos0, ogl::ATTRIB_POS0)
 VATTRIB(vec3, vs_pos1, ogl::ATTRIB_POS1)
 VATTRIB(vec2, vs_tex, ogl::ATTRIB_TEX0)
-VATTRIB(vec3, vs_nor, ogl::ATTRIB_COL)
+VATTRIB(vec3, vs_nor0, ogl::ATTRIB_NOR0)
+VATTRIB(vec3, vs_nor1, ogl::ATTRIB_NOR1)
 

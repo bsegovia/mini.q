@@ -24,7 +24,50 @@ struct header {
   int offsetframes, offsetglcommands, offsetend;
 };
 
-struct vertex { u8 vertex[3], lightNormalIndex; };
+struct vertex { u8 vertex[3], normalidx; };
+static const float normaltable[256][3] = {
+  {-0.525731f,  0.000000f,  0.850651f}, {-0.442863f,  0.238856f,  0.864188f}, {-0.295242f,  0.000000f,  0.955423f}, {-0.309017f,  0.500000f,  0.809017f}, 
+  {-0.162460f,  0.262866f,  0.951056f}, { 0.000000f,  0.000000f,  1.000000f}, { 0.000000f,  0.850651f,  0.525731f}, {-0.147621f,  0.716567f,  0.681718f}, 
+  { 0.147621f,  0.716567f,  0.681718f}, { 0.000000f,  0.525731f,  0.850651f}, { 0.309017f,  0.500000f,  0.809017f}, { 0.525731f,  0.000000f,  0.850651f}, 
+  { 0.295242f,  0.000000f,  0.955423f}, { 0.442863f,  0.238856f,  0.864188f}, { 0.162460f,  0.262866f,  0.951056f}, {-0.681718f,  0.147621f,  0.716567f}, 
+  {-0.809017f,  0.309017f,  0.500000f}, {-0.587785f,  0.425325f,  0.688191f}, {-0.850651f,  0.525731f,  0.000000f}, {-0.864188f,  0.442863f,  0.238856f}, 
+  {-0.716567f,  0.681718f,  0.147621f}, {-0.688191f,  0.587785f,  0.425325f}, {-0.500000f,  0.809017f,  0.309017f}, {-0.238856f,  0.864188f,  0.442863f}, 
+  {-0.425325f,  0.688191f,  0.587785f}, {-0.716567f,  0.681718f, -0.147621f}, {-0.500000f,  0.809017f, -0.309017f}, {-0.525731f,  0.850651f,  0.000000f}, 
+  { 0.000000f,  0.850651f, -0.525731f}, {-0.238856f,  0.864188f, -0.442863f}, { 0.000000f,  0.955423f, -0.295242f}, {-0.262866f,  0.951056f, -0.162460f}, 
+  { 0.000000f,  1.000000f,  0.000000f}, { 0.000000f,  0.955423f,  0.295242f}, {-0.262866f,  0.951056f,  0.162460f}, { 0.238856f,  0.864188f,  0.442863f}, 
+  { 0.262866f,  0.951056f,  0.162460f}, { 0.500000f,  0.809017f,  0.309017f}, { 0.238856f,  0.864188f, -0.442863f}, { 0.262866f,  0.951056f, -0.162460f}, 
+  { 0.500000f,  0.809017f, -0.309017f}, { 0.850651f,  0.525731f,  0.000000f}, { 0.716567f,  0.681718f,  0.147621f}, { 0.716567f,  0.681718f, -0.147621f}, 
+  { 0.525731f,  0.850651f,  0.000000f}, { 0.425325f,  0.688191f,  0.587785f}, { 0.864188f,  0.442863f,  0.238856f}, { 0.688191f,  0.587785f,  0.425325f}, 
+  { 0.809017f,  0.309017f,  0.500000f}, { 0.681718f,  0.147621f,  0.716567f}, { 0.587785f,  0.425325f,  0.688191f}, { 0.955423f,  0.295242f,  0.000000f}, 
+  { 1.000000f,  0.000000f,  0.000000f}, { 0.951056f,  0.162460f,  0.262866f}, { 0.850651f, -0.525731f,  0.000000f}, { 0.955423f, -0.295242f,  0.000000f}, 
+  { 0.864188f, -0.442863f,  0.238856f}, { 0.951056f, -0.162460f,  0.262866f}, { 0.809017f, -0.309017f,  0.500000f}, { 0.681718f, -0.147621f,  0.716567f}, 
+  { 0.850651f,  0.000000f,  0.525731f}, { 0.864188f,  0.442863f, -0.238856f}, { 0.809017f,  0.309017f, -0.500000f}, { 0.951056f,  0.162460f, -0.262866f}, 
+  { 0.525731f,  0.000000f, -0.850651f}, { 0.681718f,  0.147621f, -0.716567f}, { 0.681718f, -0.147621f, -0.716567f}, { 0.850651f,  0.000000f, -0.525731f}, 
+  { 0.809017f, -0.309017f, -0.500000f}, { 0.864188f, -0.442863f, -0.238856f}, { 0.951056f, -0.162460f, -0.262866f}, { 0.147621f,  0.716567f, -0.681718f}, 
+  { 0.309017f,  0.500000f, -0.809017f}, { 0.425325f,  0.688191f, -0.587785f}, { 0.442863f,  0.238856f, -0.864188f}, { 0.587785f,  0.425325f, -0.688191f}, 
+  { 0.688191f,  0.587785f, -0.425325f}, {-0.147621f,  0.716567f, -0.681718f}, {-0.309017f,  0.500000f, -0.809017f}, { 0.000000f,  0.525731f, -0.850651f}, 
+  {-0.525731f,  0.000000f, -0.850651f}, {-0.442863f,  0.238856f, -0.864188f}, {-0.295242f,  0.000000f, -0.955423f}, {-0.162460f,  0.262866f, -0.951056f}, 
+  { 0.000000f,  0.000000f, -1.000000f}, { 0.295242f,  0.000000f, -0.955423f}, { 0.162460f,  0.262866f, -0.951056f}, {-0.442863f, -0.238856f, -0.864188f}, 
+  {-0.309017f, -0.500000f, -0.809017f}, {-0.162460f, -0.262866f, -0.951056f}, { 0.000000f, -0.850651f, -0.525731f}, {-0.147621f, -0.716567f, -0.681718f}, 
+  { 0.147621f, -0.716567f, -0.681718f}, { 0.000000f, -0.525731f, -0.850651f}, { 0.309017f, -0.500000f, -0.809017f}, { 0.442863f, -0.238856f, -0.864188f}, 
+  { 0.162460f, -0.262866f, -0.951056f}, { 0.238856f, -0.864188f, -0.442863f}, { 0.500000f, -0.809017f, -0.309017f}, { 0.425325f, -0.688191f, -0.587785f}, 
+  { 0.716567f, -0.681718f, -0.147621f}, { 0.688191f, -0.587785f, -0.425325f}, { 0.587785f, -0.425325f, -0.688191f}, { 0.000000f, -0.955423f, -0.295242f}, 
+  { 0.000000f, -1.000000f,  0.000000f}, { 0.262866f, -0.951056f, -0.162460f}, { 0.000000f, -0.850651f,  0.525731f}, { 0.000000f, -0.955423f,  0.295242f}, 
+  { 0.238856f, -0.864188f,  0.442863f}, { 0.262866f, -0.951056f,  0.162460f}, { 0.500000f, -0.809017f,  0.309017f}, { 0.716567f, -0.681718f,  0.147621f}, 
+  { 0.525731f, -0.850651f,  0.000000f}, {-0.238856f, -0.864188f, -0.442863f}, {-0.500000f, -0.809017f, -0.309017f}, {-0.262866f, -0.951056f, -0.162460f}, 
+  {-0.850651f, -0.525731f,  0.000000f}, {-0.716567f, -0.681718f, -0.147621f}, {-0.716567f, -0.681718f,  0.147621f}, {-0.525731f, -0.850651f,  0.000000f}, 
+  {-0.500000f, -0.809017f,  0.309017f}, {-0.238856f, -0.864188f,  0.442863f}, {-0.262866f, -0.951056f,  0.162460f}, {-0.864188f, -0.442863f,  0.238856f}, 
+  {-0.809017f, -0.309017f,  0.500000f}, {-0.688191f, -0.587785f,  0.425325f}, {-0.681718f, -0.147621f,  0.716567f}, {-0.442863f, -0.238856f,  0.864188f}, 
+  {-0.587785f, -0.425325f,  0.688191f}, {-0.309017f, -0.500000f,  0.809017f}, {-0.147621f, -0.716567f,  0.681718f}, {-0.425325f, -0.688191f,  0.587785f}, 
+  {-0.162460f, -0.262866f,  0.951056f}, { 0.442863f, -0.238856f,  0.864188f}, { 0.162460f, -0.262866f,  0.951056f}, { 0.309017f, -0.500000f,  0.809017f}, 
+  { 0.147621f, -0.716567f,  0.681718f}, { 0.000000f, -0.525731f,  0.850651f}, { 0.425325f, -0.688191f,  0.587785f}, { 0.587785f, -0.425325f,  0.688191f}, 
+  { 0.688191f, -0.587785f,  0.425325f}, {-0.955423f,  0.295242f,  0.000000f}, {-0.951056f,  0.162460f,  0.262866f}, {-1.000000f,  0.000000f,  0.000000f}, 
+  {-0.850651f,  0.000000f,  0.525731f}, {-0.955423f, -0.295242f,  0.000000f}, {-0.951056f, -0.162460f,  0.262866f}, {-0.864188f,  0.442863f, -0.238856f}, 
+  {-0.951056f,  0.162460f, -0.262866f}, {-0.809017f,  0.309017f, -0.500000f}, {-0.864188f, -0.442863f, -0.238856f}, {-0.951056f, -0.162460f, -0.262866f}, 
+  {-0.809017f, -0.309017f, -0.500000f}, {-0.681718f,  0.147621f, -0.716567f}, {-0.681718f, -0.147621f, -0.716567f}, {-0.850651f,  0.000000f, -0.525731f}, 
+  {-0.688191f,  0.587785f, -0.425325f}, {-0.587785f,  0.425325f, -0.688191f}, {-0.425325f,  0.688191f, -0.587785f}, {-0.425325f, -0.688191f, -0.587785f}, 
+  {-0.587785f, -0.425325f, -0.688191f}, {-0.688191f, -0.587785f, -0.425325f}
+};
 
 struct frame {
   float scale[3];
@@ -40,7 +83,7 @@ struct mdl {
     if (tex) ogl::deletetextures(1, &tex);
     FREE(loadname);
   }
-  typedef array<float,5> tri; // x,y,z,s,t
+  typedef array<float,8> vertextype;
   bool load(const char *filename, float scale, int snap);
   void render(int frame, int range, const vec3f &o, const vec3f &ypr,
              float scale, float speed, int snap, float basetime);
@@ -84,7 +127,7 @@ bool mdl::load(const char *name, float scale, int sn) {
   // allocate one vbo for all key frames together
   for (int *command=glcommands, i=0; (*command)!=0; ++i) {
     const int n = abs(*command++);
-    vboframesz += 3*(n-2)*sizeof(tri);
+    vboframesz += 3*(n-2)*sizeof(vertextype);
     command += 3*n; // +1 for index, +2 for u,v
   }
   ogl::genbuffers(1, &vbo);
@@ -94,22 +137,23 @@ bool mdl::load(const char *name, float scale, int sn) {
   // insert each frame in the vbo
   loopj(header.numframes) {
     const auto cf = (const md2::frame*) (frames+header.framesz*j);
-    const float sc = 16.0f/scale;
+    const auto sc = 16.0f/scale;
 
-    vector<tri> tris;
+    vector<vertextype> tris;
     for (int *command = glcommands, i=0; (*command)!=0; ++i) {
       const int moden = *command++;
       const int n = abs(moden);
-      vector<tri> trisv;
+      vector<vertextype> trisv;
       loopi(n) {
-        const float s = *((const float*)command++);
-        const float t = *((const float*)command++);
-        const int vn = *command++;
-        const u8 *cv = (u8*) &cf->vertices[vn].vertex;
+        const auto s = *((const float*)command++);
+        const auto t = *((const float*)command++);
+        const auto vn = *command++;
+        const auto cv = (u8*) &cf->vertices[vn].vertex;
         const vec3f v(+(snap(sn, cv[0]*cf->scale[0])+cf->translate[0])/sc,
                       +(snap(sn, cv[1]*cf->scale[1])+cf->translate[1])/sc,
                       -(snap(sn, cv[2]*cf->scale[2])+cf->translate[2])/sc);
-        trisv.add(tri(s,t,v.x,v.z,v.y));
+        const auto n = normaltable[cf->vertices[vn].normalidx];
+        trisv.add(vertextype(s,t,n[0],n[1],n[2],v.x,v.z,v.y));
       }
       loopi(n-2) { // just stolen from sauer. TODO use an index buffer
         if (moden <= 0) { // fan
@@ -142,7 +186,7 @@ void mdl::render(int frame, int range, const vec3f &o,
 #endif
 
   OGL(CullFace, GL_FRONT); // XXX change orientation of the triangles!
-  const int n = vboframesz / sizeof(tri);
+  const int n = vboframesz / sizeof(vertextype);
   const float time = game::lastmillis-basetime;
   intptr_t fr1 = intptr_t(time/speed);
   const float frac = (time-fr1*speed)/speed;
@@ -151,14 +195,26 @@ void mdl::render(int frame, int range, const vec3f &o,
   if (fr2>=frame+range) fr2 = frame;
   auto pos0 = (const float*)(fr1*vboframesz);
   auto pos1 = (const float*)(fr2*vboframesz);
-  OGL(VertexAttribPointer, ogl::ATTRIB_TEX0, 2, GL_FLOAT, 0, sizeof(float[5]), (void*)pos0);
-  OGL(VertexAttribPointer, ogl::ATTRIB_POS0, 3, GL_FLOAT, 0, sizeof(float[5]), (void*)(pos0+2));
-  OGL(VertexAttribPointer, ogl::ATTRIB_POS1, 3, GL_FLOAT, 0, sizeof(float[5]), (void*)(pos1+2));
-  ogl::setattribarray()(ogl::ATTRIB_POS0, ogl::ATTRIB_POS1, ogl::ATTRIB_TEX0);
+  OGL(VertexAttribPointer, ogl::ATTRIB_TEX0, 2, GL_FLOAT, 0, sizeof(vertextype), (void*)pos0);
+  OGL(VertexAttribPointer, ogl::ATTRIB_NOR0, 3, GL_FLOAT, 0, sizeof(vertextype), (void*)(pos0+2));
+  OGL(VertexAttribPointer, ogl::ATTRIB_NOR1, 3, GL_FLOAT, 0, sizeof(vertextype), (void*)(pos1+2));
+  OGL(VertexAttribPointer, ogl::ATTRIB_POS0, 3, GL_FLOAT, 0, sizeof(vertextype), (void*)(pos0+5));
+  OGL(VertexAttribPointer, ogl::ATTRIB_POS1, 3, GL_FLOAT, 0, sizeof(vertextype), (void*)(pos1+5));
+  ogl::setattribarray()(ogl::ATTRIB_POS0,
+                        ogl::ATTRIB_POS1,
+                        ogl::ATTRIB_TEX0,
+                        ogl::ATTRIB_NOR0,
+                        ogl::ATTRIB_NOR1);
   ogl::bindtexture(GL_TEXTURE_2D, tex, 0);
-  ogl::bindfixedshader(ogl::FIXED_KEYFRAME|ogl::FIXED_DIFFUSETEX,frac);
-  ogl::fixedflush();
+  ogl::bindshader(s);
+  OGL(Uniform1f, s.u_delta, frac);
+  const auto &mv = ogl::matrix(ogl::MODELVIEW);
+  const auto &p = ogl::matrix(ogl::PROJECTION);
+  const auto mvp = p*mv;
+  OGL(UniformMatrix4fv, s.u_mvp, 1, GL_FALSE, &mvp.vx.x);
   ogl::drawarrays(GL_TRIANGLES, 0, n);
+  ogl::disableattribarray(ogl::ATTRIB_NOR0);
+  ogl::disableattribarray(ogl::ATTRIB_NOR1);
   ogl::bindbuffer(ogl::ARRAY_BUFFER, 0);
   ogl::popmatrix();
   OGL(CullFace, GL_BACK); // XXX change orientation of the triangles!
