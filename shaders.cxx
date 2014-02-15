@@ -55,7 +55,8 @@ const char deferred_fp[] = {
 "  if (depth != 1.0) {\n"
 "    vec4 posw = u_invmvp * vec4(uv, depth, 1.0);\n"
 "    vec3 pos = posw.xyz / posw.w;\n"
-"    outcol = vec4(shade(pos, nor), 1.0);\n"
+"    vec4 diffuse = texture2DRect(u_diffusetex, uv);\n"
+"    outcol = diffuse*vec4(shade(pos, nor), 1.0);\n"
 "  } else {\n"
 "    vec4 rdh = u_dirinvmvp * vec4(uv, 0.0, 1.0);\n"
 "    vec3 rd = normalize(rdh.xyz/rdh.w);\n"
@@ -1220,8 +1221,8 @@ const char md2_fp[] = {
 "PS_IN vec2 fs_tex;\n"
 "PS_IN vec3 fs_nor;\n"
 "void main() {\n"
-"  SWITCH_WEBGL(gl_FragData[0], rt_nor) = vec4(normalize(fs_nor), 1.0);\n"
-"  SWITCH_WEBGL(gl_FragData[1], rt_col) = texture2D(u_diffuse, fs_tex);\n"
+"  SWITCH_WEBGL(gl_FragData[0], rt_col) = texture2D(u_diffuse, fs_tex);\n"
+"  SWITCH_WEBGL(gl_FragData[1], rt_nor) = vec4(normalize(fs_nor), 1.0);\n"
 "}\n"
 
 };
@@ -1230,7 +1231,7 @@ const char md2_vp[] = {
 "VS_OUT vec3 fs_nor;\n"
 "void main() {\n"
 "  fs_tex = vs_tex;\n"
-"  fs_nor = mix(vs_nor0,vs_nor1,u_delta);\n"
+"  fs_nor = u_nortransform*mix(vs_nor0,vs_nor1,u_delta);\n"
 "  vec3 vs_pos = mix(vs_pos0,vs_pos1,u_delta);\n"
 "  gl_Position = u_mvp*vec4(vs_pos,1.0);\n"
 "}\n"
@@ -1511,8 +1512,8 @@ const char simple_material_fp[] = {
 "  float dz = snoise(p+vec3(0.0,0.0,0.01));\n"
 "  vec3 dn = normalize(vec3(c-dx, c-dy, c-dz));\n"
 "  vec3 n = 0.5*normalize(fs_nor + dn/10.0)+0.5;\n"
-"  SWITCH_WEBGL(gl_FragData[0], rt_nor) = vec4(n, 1.0);\n"
-"  SWITCH_WEBGL(gl_FragData[1], rt_col) = vec4(1.0);\n"
+"  SWITCH_WEBGL(gl_FragData[0], rt_col) = vec4(1.0);\n"
+"  SWITCH_WEBGL(gl_FragData[1], rt_nor) = vec4(n, 1.0);\n"
 "}\n"
 
 };

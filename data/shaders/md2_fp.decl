@@ -1,5 +1,5 @@
 SHADER(md2)
-FRAGDATA(vec4, rt_nor, 0)
-FRAGDATA(vec4, rt_col, 1)
+FRAGDATA(vec4, rt_col, 0)
+FRAGDATA(vec4, rt_nor, 1)
 UNIFORMI(sampler2D, u_diffuse, 0)
 

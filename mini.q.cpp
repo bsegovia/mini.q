@@ -68,7 +68,7 @@ static void playerypr(const float &x, const float &y, const float &z) {
 }
 CMD(playerpos, "fff");
 CMD(playerypr, "fff");
-IVAR(savepos, 0, 0, 1);
+IVAR(savepos, 0, 1, 1);
 
 void finish() {
   if (savepos) {

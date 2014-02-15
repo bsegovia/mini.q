@@ -254,7 +254,7 @@ void translate(const vec3f &v) {
 }
 void mulmatrix(const mat4x4f &m) {
   dirty.flags.mvp=1;
-  vp[vpmode] = m*vp[vpmode];
+  vp[vpmode] = vp[vpmode]*m;
 }
 void rotate(float angle, const vec3f &axis) {
   dirty.flags.mvp=1;

@@ -73,11 +73,15 @@ static const char *hudgunnames[] = {
 IVARP(showhudgun, 0, 1, 1);
 
 static void drawhudmodel(int start, int end, float speed, int base) {
-  md2::render(hudgunnames[game::player.gun], start, end,
-              //game::player.o+vec3f(0.f,0.f,-10.f), game::player.ypr,
-              game::player.o+vec3f(0.f,0.f,0.f), game::player.ypr+vec3f(0.f,0.f,0.f),
-              //vec3f(zero), game::player.ypr+vec3f(90.f,0.f,0.f),
+  ogl::matrixmode(ogl::MODELVIEW);
+  ogl::pushmatrix();
+  //ogl::identity();
+  //md2::render(hudgunnames[game::player.gun], start, end,
+  md2::render("monster/ogro", start, end,
+              vec3f(zero), game::player.ypr,
+              // game::player.o, game::player.ypr,
               false, 1.0f, speed, 0, base);
+  ogl::popmatrix();
 }
 
 static void drawhudgun(float fovy, float aspect, float farplane) {
@@ -170,7 +174,7 @@ static void shadertoyrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32) 
 #include "shaderdecl.hxx"
 #undef RULES
 
-static u32 gdethtex, gnortex, gdiffusetex, finaltex;
+static u32 gdepthtex, gnortex, gdiffusetex, finaltex;
 static u32 gbuffer, shadedbuffer;
 
 static void initdeferred() {
@@ -178,14 +182,14 @@ static void initdeferred() {
   gnortex = ogl::maketex("TB I3 D3 Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
   gdiffusetex = ogl::maketex("TB I3 D3 Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
   finaltex = ogl::maketex("TB I3 D3 B2 Wse Wte ml Ml", NULL, sys::scrw, sys::scrh);
-  gdethtex = ogl::maketex("Tf Id Dd Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
+  gdepthtex = ogl::maketex("Tf Id Dd Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
 
   // all frame buffer objects
   ogl::genframebuffers(1, &gbuffer);
   OGL(BindFramebuffer, GL_FRAMEBUFFER, gbuffer);
-  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_RECTANGLE, gdiffusetex, 0);
-  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, gnortex, 0);
-  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_RECTANGLE, gdethtex, 0);
+  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, gdiffusetex, 0);
+  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_RECTANGLE, gnortex, 0);
+  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_RECTANGLE, gdepthtex, 0);
   if (GL_FRAMEBUFFER_COMPLETE != ogl::CheckFramebufferStatus(GL_FRAMEBUFFER))
     sys::fatal("renderer: unable to init gbuffer framebuffer");
   OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
@@ -201,7 +205,7 @@ static void initdeferred() {
 static void cleandeferred() {
   ogl::deletetextures(1, &gdiffusetex);
   ogl::deletetextures(1, &gnortex);
-  ogl::deletetextures(1, &gdethtex);
+  ogl::deletetextures(1, &gdepthtex);
   ogl::deletetextures(1, &finaltex);
   ogl::deleteframebuffers(1, &gbuffer);
   ogl::deleteframebuffers(1, &shadedbuffer);
@@ -349,7 +353,9 @@ struct context {
 
   void dogbuffer() {
     const auto gbuffertimer = ogl::begintimer("gbuffer", true);
+    const GLenum buffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
     OGL(BindFramebuffer, GL_FRAMEBUFFER, gbuffer);
+    OGL(DrawBuffers, 2, buffers);
     OGL(Clear, GL_DEPTH_BUFFER_BIT);
     if (indexnum != 0) {
       if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_LINE);
@@ -378,7 +384,8 @@ struct context {
     auto &s = deferred::s[LIGHTNUM-1];
     ogl::bindshader(s);
     ogl::bindtexture(GL_TEXTURE_RECTANGLE, gnortex, 0);
-    ogl::bindtexture(GL_TEXTURE_RECTANGLE, gdethtex, 1);
+    ogl::bindtexture(GL_TEXTURE_RECTANGLE, gdiffusetex, 1);
+    ogl::bindtexture(GL_TEXTURE_RECTANGLE, gdepthtex, 2);
     OGL(UniformMatrix4fv, s.u_invmvp, 1, GL_FALSE, &invmvp.vx.x);
     OGL(UniformMatrix4fv, s.u_dirinvmvp, 1, GL_FALSE, &dirinvmvp.vx.x);
 
@@ -445,7 +452,6 @@ void frame(int w, int h, int curfps) {
   }
 
   const auto hudtimer = ogl::begintimer("hud", true);
-//  drawhudgun(fovy, aspect, farplane);
   ogl::disable(GL_CULL_FACE);
   drawhud(w,h,curfps);
   ogl::enable(GL_CULL_FACE);

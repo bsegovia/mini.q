@@ -112,8 +112,8 @@ static node *makescene0() {
   const auto t = vec3f(7.f, 5.f, 7.f);
   const auto s = NEW(sphere, 4.2f);
   const auto q = quat3f(deg2rad(20.0f),deg2rad(25.f),0.f);
-  const auto b0 = NEW(rotation, q, *NEW(box, vec3f(4.f)));
-//  const auto b0 = NEW(box, vec3f(4.f));
+//  const auto b0 = NEW(rotation, q, *NEW(box, vec3f(4.f)));
+  const auto b0 = NEW(box, vec3f(4.f));
   const auto d0 = NEW(translation, t, *s);
   const auto d1 = NEW(translation, t, *b0);
   node *c = NEW(D, *d1, *d0);
@@ -136,7 +136,7 @@ static node *makescene0() {
   node *cxy = NEW(cylinderxy, vec2f(zero), 2.f);
  // cxy = NEW(translation, vec3f(16.f, 4.f, 10.f), *cxy);
   node *arcade = NEW(D, *big, *cxy);
-  arcade = NEW(rotation, quat3f(20.f,0.f,0.f), *arcade);
+  //arcade = NEW(rotation, quat3f(20.f,0.f,0.f), *arcade);
   arcade = NEW(translation, vec3f(16.f,4.f,10.f), *arcade);
   loopi(7) {
     const auto pos = vec3f(16.f,3.5f,7.f+3.f*float(i));

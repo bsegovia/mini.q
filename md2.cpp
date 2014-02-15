@@ -134,6 +134,11 @@ bool mdl::load(const char *name, float scale, int sn) {
   ogl::bindbuffer(ogl::ARRAY_BUFFER, vbo);
   OGL(BufferData, GL_ARRAY_BUFFER, header.numframes*vboframesz, NULL, GL_STATIC_DRAW);
 
+#if 0
+  auto m = mat3x3f::rotate(90.f, vec3f(0.f,1.f,0.f));
+  m *= mat3x3f::rotate(180.f, vec3f(1.f,0.f,0.f));
+#endif
+
   // insert each frame in the vbo
   loopj(header.numframes) {
     const auto cf = (const md2::frame*) (frames+header.framesz*j);
@@ -149,17 +154,18 @@ bool mdl::load(const char *name, float scale, int sn) {
         const auto t = *((const float*)command++);
         const auto vn = *command++;
         const auto cv = (u8*) &cf->vertices[vn].vertex;
-        const vec3f v(+(snap(sn, cv[0]*cf->scale[0])+cf->translate[0])/sc,
-                      +(snap(sn, cv[1]*cf->scale[1])+cf->translate[1])/sc,
-                      -(snap(sn, cv[2]*cf->scale[2])+cf->translate[2])/sc);
-        const auto n = normaltable[cf->vertices[vn].normalidx];
-        trisv.add(vertextype(s,t,n[0],n[1],n[2],v.x,v.z,v.y));
+        const vec3f v((snap(sn, cv[0]*cf->scale[0])+cf->translate[0])/sc,
+                      (snap(sn, cv[1]*cf->scale[1])+cf->translate[1])/sc,
+                      (snap(sn, cv[2]*cf->scale[2])+cf->translate[2])/sc);
+        const auto nptr = normaltable[cf->vertices[vn].normalidx];
+        const auto n = vec3f(nptr[0],nptr[1],nptr[2]);
+        trisv.add(vertextype(s,t,n.xzy(),v.xzy()));
       }
-      loopi(n-2) { // just stolen from sauer. TODO use an index buffer
+      loopi(n-2) { // just stolen from cube. TODO use an index buffer
         if (moden <= 0) { // fan
           tris.add(trisv[0]);
-          tris.add(trisv[i+2]);
           tris.add(trisv[i+1]);
+          tris.add(trisv[i+2]);
         } else // strip
           loopk(3) tris.add(trisv[i&1 && k ? i+(1-(k-1))+1 : i+k]);
       }
@@ -173,37 +179,51 @@ bool mdl::load(const char *name, float scale, int sn) {
 }
 
 void mdl::render(int frame, int range, const vec3f &o,
-                const vec3f &ypr, float sc, float speed, int snap, float basetime) {
+                 const vec3f &ypr, float sc, float speed,
+                 int snap, float basetime)
+{
   frame = 0;
   ogl::bindbuffer(ogl::ARRAY_BUFFER, vbo);
-#if 1
   ogl::pushmatrix();
-  ogl::translate(o);
-  ogl::rotate(-ypr.x, vec3f(0.f,1.f,0.f));
-  ogl::rotate(-ypr.y, vec3f(1.f,0.f,0.f));
-  ogl::rotate(-ypr.z+180.f, vec3f(0.f,0.f,1.f));
-  ogl::rotate(90.f, vec3f(0.f,1.f,0.f));
+  const vec3f tr(10.310894f, 1.800000f, 13.364042f);
+  ogl::translate(tr);
+  //ogl::rotate(90.f, vec3f(0.f,1.f,0.f));
+  //ogl::rotate(180.f, vec3f(1.f,0.f,0.f));
+#if 0
+  auto m = mat3x3f::rotate(-ypr.x, vec3f(0.f,1.f,0.f));
+  m *= mat3x3f::rotate(-ypr.y, vec3f(1.f,0.f,0.f));
+  m *= mat3x3f::rotate(-ypr.z+180.f, vec3f(0.f,0.f,1.f));
+  m *= mat3x3f::rotate(90.f, vec3f(0.f,1.f,0.f));
+#elif 1
+//  ogl::identity();
+#else
 #endif
+#if 0
+  auto m = mat3x3f::rotate(-ypr.x, vec3f(0.f,1.f,0.f));
+  m *= mat3x3f::rotate(-ypr.y, vec3f(1.f,0.f,0.f));
+  m *= mat3x3f::rotate(-ypr.z, vec3f(0.f,0.f,1.f));
+  m *= mat3x3f::rotate(90.f, vec3f(0.f,1.f,0.f));
+#else
+  auto m = mat3x3f(one);
+#endif
+ // ogl::mulmatrix(mat4x4f(m));
 
-  OGL(CullFace, GL_FRONT); // XXX change orientation of the triangles!
   const int n = vboframesz / sizeof(vertextype);
-  const float time = game::lastmillis-basetime;
-  intptr_t fr1 = intptr_t(time/speed);
-  const float frac = (time-fr1*speed)/speed;
+  const auto time = game::lastmillis-basetime;
+  auto fr1 = intptr_t(time/speed);
+  const auto frac = (time-fr1*speed)/speed;
   fr1 = fr1%range+frame;
-  intptr_t fr2 = fr1+1u;
+  auto fr2 = fr1+1;
   if (fr2>=frame+range) fr2 = frame;
-  auto pos0 = (const float*)(fr1*vboframesz);
-  auto pos1 = (const float*)(fr2*vboframesz);
+  const auto pos0 = (const float*)(fr1*vboframesz);
+  const auto pos1 = (const float*)(fr2*vboframesz);
   OGL(VertexAttribPointer, ogl::ATTRIB_TEX0, 2, GL_FLOAT, 0, sizeof(vertextype), (void*)pos0);
   OGL(VertexAttribPointer, ogl::ATTRIB_NOR0, 3, GL_FLOAT, 0, sizeof(vertextype), (void*)(pos0+2));
   OGL(VertexAttribPointer, ogl::ATTRIB_NOR1, 3, GL_FLOAT, 0, sizeof(vertextype), (void*)(pos1+2));
   OGL(VertexAttribPointer, ogl::ATTRIB_POS0, 3, GL_FLOAT, 0, sizeof(vertextype), (void*)(pos0+5));
   OGL(VertexAttribPointer, ogl::ATTRIB_POS1, 3, GL_FLOAT, 0, sizeof(vertextype), (void*)(pos1+5));
-  ogl::setattribarray()(ogl::ATTRIB_POS0,
-                        ogl::ATTRIB_POS1,
-                        ogl::ATTRIB_TEX0,
-                        ogl::ATTRIB_NOR0,
+  ogl::setattribarray()(ogl::ATTRIB_POS0, ogl::ATTRIB_POS1,
+                        ogl::ATTRIB_TEX0, ogl::ATTRIB_NOR0,
                         ogl::ATTRIB_NOR1);
   ogl::bindtexture(GL_TEXTURE_2D, tex, 0);
   ogl::bindshader(s);
@@ -211,6 +231,7 @@ void mdl::render(int frame, int range, const vec3f &o,
   const auto &mv = ogl::matrix(ogl::MODELVIEW);
   const auto &p = ogl::matrix(ogl::PROJECTION);
   const auto mvp = p*mv;
+  OGL(UniformMatrix3fv, s.u_nortransform, 1, GL_FALSE, &m.vx.x);
   OGL(UniformMatrix4fv, s.u_mvp, 1, GL_FALSE, &mvp.vx.x);
   ogl::drawarrays(GL_TRIANGLES, 0, n);
   ogl::disableattribarray(ogl::ATTRIB_NOR0);

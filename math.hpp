@@ -116,10 +116,12 @@ template<typename T> struct vec4;
 #define v2 vec2<T>
 #define v3 vec3<T>
 #define v4 vec4<T>
+#define m33 mat3x3<T>
 #define m44 mat4x4<T>
 #define v2arg const vec2<T>&
 #define v3arg const vec3<T>&
 #define v4arg const vec4<T>&
+#define m33arg const mat3x3<T>&
 #define m44arg const mat4x4<T>&
 #define q3arg const quat<T>&
 #define q3 quat<T>
@@ -271,7 +273,8 @@ template<typename T> struct vec4 {
   enum { channelnum = 4 };
   T x, y, z, w;
   INLINE vec4(void) {}
-  INLINE vec4(const vec4& v) {x = v.x; y = v.y; z = v.z; w = v.w;}
+  INLINE vec4(const vec4 &v) {x = v.x; y = v.y; z = v.z; w = v.w;}
+  INLINE vec4(const vec3<T> &v, float f) {x = v.x; y = v.y; z = v.z; w = f;}
   UINLINE vec4(const vec4<U>& a) : x(T(a.x)), y(T(a.y)), z(T(a.z)), w(T(a.w)) {}
   UINLINE vec4& op= (const vec4<U>& v) {x = v.x; y = v.y; z = v.z; w = v.w; return *this;}
   INLINE explicit vec4(const T &a) : x(a), y(a), z(a), w(a) {}
@@ -336,6 +339,66 @@ INLINE bool all(const vec4<bool> &v) {return v.x&&v.y&&v.z&&v.w;}
 TINLINE bool op== (v4arg a, v4arg b) {return all(eq(a,b)); }
 TINLINE bool op!= (v4arg a, v4arg b) {return any(ne(a,b)); }
 
+template<typename T> struct mat3x3 {
+  vec3<T> vx,vy,vz;
+  mat3x3(v3arg n);
+  INLINE mat3x3(void) {}
+  INLINE mat3x3(const mat3x3 &m) {vx = m.vx; vy = m.vy; vz = m.vz;}
+  INLINE mat3x3& op= (const mat3x3 &m) {vx = m.vx; vy = m.vy; vz = m.vz; return *this;}
+  UINLINE explicit mat3x3(const mat3x3<U> &s) : vx(s.vx), vy(s.vy), vz(s.vz) {}
+  INLINE mat3x3(v3arg vx, v3arg vy, v3arg vz) : vx(vx), vy(vy), vz(vz) {}
+  INLINE mat3x3(T m00, T m01, T m02, T m10, T m11, T m12, T m20, T m21, T m22) :
+    vx(m00,m10,m20), vy(m01,m11,m21), vz(m02,m12,m22) {}
+  INLINE mat3x3(zerotype) : vx(zero),vy(zero),vz(zero) {}
+  INLINE mat3x3(onetype)  : vx(one,zero,zero),vy(zero,one,zero),vz(zero,zero,one) {}
+  INLINE mat3x3 adjoint(void) const {
+    return mat3x3(cross(vy,vz), cross(vz,vx), cross(vx,vy)).transposed();
+  }
+  INLINE mat3x3 transposed(void) const {
+    return mat3x3(vx.x,vx.y,vx.z, vy.x,vy.y,vy.z, vz.x,vz.y,vz.z);
+  }
+  INLINE mat3x3 inverse(void) const {return rcp(det())*adjoint();}
+  INLINE T det(void) const {return dot(vx,cross(vy,vz));}
+  static INLINE mat3x3 scale(v3arg s) {
+    return mat3x3(s.x,zero,zero,zero,s.y,zero,zero,zero,s.z);
+  }
+  static INLINE mat3x3 rotate(T r, v3arg _u) {
+    const v3 u = normalize(_u);
+    const T s = sin(deg2rad(r)), c = cos(deg2rad(r));
+    return mat3x3(u.x*u.x+(T(one)-u.x*u.x)*c,u.x*u.y*(T(one)-c)-u.z*s,  u.x*u.z*(T(one)-c)+u.y*s,
+                  u.x*u.y*(T(one)-c)+u.z*s,  u.y*u.y+(T(one)-u.y*u.y)*c,u.y*u.z*(T(one)-c)-u.x*s,
+                  u.x*u.z*(T(one)-c)-u.y*s,  u.y*u.z*(T(one)-c)+u.x*s,  u.z*u.z+(T(one)-u.z*u.z)*c);
+  }
+};
+
+TINLINE m33 op- (m33arg a) {return m33(-a.vx,-a.vy,-a.vz);}
+TINLINE m33 op+ (m33arg a) {return m33(+a.vx,+a.vy,+a.vz);}
+TINLINE m33 rcp (m33arg a) {return a.inverse();}
+TINLINE m33 op+ (m33arg a, m33arg b) {return m33(a.vx+b.vx,a.vy+b.vy,a.vz+b.vz);}
+TINLINE m33 op- (m33arg a, m33arg b) {return m33(a.vx-b.vx,a.vy-b.vy,a.vz-b.vz);}
+TINLINE m33 op* (m33arg a, m33arg b) {return m33(a*b.vx, a*b.vy, a*b.vz);}
+TINLINE m33 op/ (m33arg a, m33arg b) {return a*rcp(b);}
+TINLINE v3  op* (m33arg a, v3arg  b) {return b.x*a.vx + b.y*a.vy + b.z*a.vz;}
+TINLINE m33 op* (T a, m33arg b)   {return m33(a*b.vx, a*b.vy, a*b.vz);}
+TINLINE m33 op/ (m33arg a, T b)   {return a * rcp(b);}
+TINLINE m33& op/= (m33& a, T b)   {return a = a/b;}
+TINLINE m33& op*= (m33& a, T b)   {return a = a*b;}
+TINLINE m33& op*= (m33& a, m33 b) {return a = a*b;}
+TINLINE m33& op/= (m33& a, m33 b) {return a = a/b;}
+TINLINE bool op== (m33arg a, m33arg b)  {return (a.vx==b.vx) && (a.vy == b.vy) && (a.vz == b.vz);}
+TINLINE bool op!= (m33arg a, m33arg b)  {return (a.vx!=b.vx) || (a.vy != b.vy) || (a.vz != b.vz);}
+TINLINE v3 xfmpoint (m33arg s, v3arg a) {return a.x*s.vx + a.y*s.vy + a.z*s.vz;}
+TINLINE v3 xfmvector(m33arg s, v3arg a) {return a.x*s.vx + a.y*s.vy + a.z*s.vz;}
+TINLINE v3 xfmnormal(m33arg s, v3arg a) {return xfmvector(s.inverse().transposed(),a);}
+TINLINE m33 frame(v3arg N) {
+  const v3 dx0 = cross(v3(T(one),T(zero),T(zero)),N);
+  const v3 dx1 = cross(v3(T(zero),T(one),T(zero)),N);
+  const v3 dx = normalize(select(dot(dx0,dx0) > dot(dx1,dx1),dx0,dx1));
+  const v3 dy = normalize(cross(N,dx));
+  return m33(dx,dy,N);
+}
+
+
 template<typename T> struct mat4x4 {
   vec4<T> vx,vy,vz,vw;
   INLINE mat4x4(void) {}
@@ -356,6 +419,12 @@ template<typename T> struct mat4x4 {
   }
   INLINE mat4x4(v4arg c0, v4arg c1, v4arg c2, v4arg c3) :
     vx(c0), vy(c1), vz(c2), vw(c3) {}
+  INLINE mat4x4 (m33arg m) {
+    vx = v4(m.vx, zero);
+    vy = v4(m.vy, zero);
+    vz = v4(m.vz, zero);
+    vw = v4(zero, zero, zero, one);
+  }
   INLINE mat4x4(zerotype) : vx(zero),vy(zero),vz(zero),vw(zero) {}
   INLINE mat4x4(onetype) {
     vx = v4(one, zero, zero, zero);
@@ -650,6 +719,8 @@ typedef vec4<bool> vec4b;
 typedef vec4<int> vec4i;
 typedef vec4<float> vec4f;
 typedef vec4<double> vec4d;
+typedef mat3x3<float> mat3x3f;
+typedef mat3x3<double> mat3x3d;
 typedef mat4x4<float> mat4x4f;
 typedef mat4x4<double> mat4x4d;
 typedef quat<float>  quat3f;
@@ -663,11 +734,13 @@ typedef quat<double> quat3d;
 #undef v3
 #undef v4
 #undef q3
+#undef m33
 #undef m44
 #undef v2arg
 #undef v3arg
 #undef v4arg
 #undef q3arg
+#undef m33arg
 #undef m44arg
 #undef sw21
 #undef sw20
