@@ -134,9 +134,6 @@ bool mdl::load(const char *name, float scale, int sn) {
   ogl::bindbuffer(ogl::ARRAY_BUFFER, vbo);
   OGL(BufferData, GL_ARRAY_BUFFER, header.numframes*vboframesz, NULL, GL_STATIC_DRAW);
 
-#if 0
-  m *= mat3x3f::rotate(180.f, vec3f(1.f,0.f,0.f));
-#endif
   const auto m = mat3x3f::rotate(90.f, vec3f(0.f,1.f,0.f));
 
   // insert each frame in the vbo
@@ -190,26 +187,6 @@ void mdl::render(int frame, int range, const vec3f &o,
   auto m = mat3x3f::rotate(-ypr.x, vec3f(0.f,1.f,0.f));
   m *= mat3x3f::rotate(-ypr.y, vec3f(1.f,0.f,0.f));
   m *= mat3x3f::rotate(-ypr.z, vec3f(0.f,0.f,1.f));
-  //ogl::rotate(180.f, vec3f(1.f,0.f,0.f));
-//  ogl::rotate(90.f, vec3f(0.f,1.f,0.f));
-#if 0
-  auto m = mat3x3f::rotate(-ypr.x, vec3f(0.f,1.f,0.f));
-  m *= mat3x3f::rotate(-ypr.y, vec3f(1.f,0.f,0.f));
-  m *= mat3x3f::rotate(-ypr.z+180.f, vec3f(0.f,0.f,1.f));
-  m *= mat3x3f::rotate(90.f, vec3f(0.f,1.f,0.f));
-#elif 1
-//  ogl::identity();
-#else
-#endif
-#if 0
-  auto m = mat3x3f::rotate(-ypr.x, vec3f(0.f,1.f,0.f));
-  m *= mat3x3f::rotate(-ypr.y, vec3f(1.f,0.f,0.f));
-  m *= mat3x3f::rotate(-ypr.z, vec3f(0.f,0.f,1.f));
-  m *= mat3x3f::rotate(90.f, vec3f(0.f,1.f,0.f));
-#else
-  //auto m = mat3x3f(one);
-#endif
- // ogl::mulmatrix(mat4x4f(m));
 
   const int n = vboframesz / sizeof(vertextype);
   const auto time = game::lastmillis-basetime;
