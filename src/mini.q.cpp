@@ -50,6 +50,9 @@ void start(int argc, const char *argv[]) {
   sys::keyrepeat(true);
   SDL_ShowCursor(0);
 
+  con::out("init: sound");
+  sound::start();
+
   con::out("init: md2 models");
   md2::start();
   con::out("init: renderer");
@@ -57,6 +60,7 @@ void start(int argc, const char *argv[]) {
   con::out("init: isosurface module");
   iso::start();
   script::execfile("data/keymap.q");
+  script::execfile("data/sounds.q");
   script::execfile("data/autoexec.q");
 }
 
@@ -85,6 +89,7 @@ void finish() {
   md2::finish();
   shaders::finish();
   text::finish();
+  sound::finish();
   ogl::finish();
   task::finish();
   con::finish();

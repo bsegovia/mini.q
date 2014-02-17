@@ -27,9 +27,9 @@ enum {
 };
 
 // init the sound module
-void init(void);
+void start(void);
 // stop the sound module
-void clean(void);
+void finish(void);
 // play sound n at given location
 void play(int n, const vec3f *loc = NULL);
 // play sound n and send message to the server

@@ -36,7 +36,7 @@ void stop(void) {
   if (stream) stream = NULL;
 }
 
-void init(void) {
+void start(void) {
   memset(soundlocs, 0, sizeof(soundlocs));
   if (Mix_OpenAudio(SOUNDFREQ, MIX_DEFAULT_FORMAT, 2, soundbufferlen) < 0) {
     con::out("sound init failed (SDL_mixer): %s", (size_t)Mix_GetError());
@@ -66,7 +66,7 @@ static void registersound(const char *name) {
   samples.add(NULL);
 }
 
-void clean(void) {
+void finish(void) {
   if (nosound) return;
   stop();
   Mix_CloseAudio();
@@ -130,7 +130,7 @@ void play(int n, const vec3f *loc) {
   }
 
   if (!samples[n]) {
-    sprintf_sd(buf)("packages/sounds/%s.wav", snames[n]);
+    sprintf_sd(buf)("data/sounds/%s.wav", snames[n]);
     samples[n] = Mix_LoadWAV(sys::path(buf));
     if (!samples[n]) {
       con::out("failed to load sample: %s", buf);
@@ -149,7 +149,6 @@ static void sound(const int &n) { play(n, NULL); }
 CMD(music, "s");
 CMD(registersound, "s");
 CMD(sound, "i");
-
 } /* namespace sound */
 } /* namespace q */
 
