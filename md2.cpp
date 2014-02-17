@@ -134,7 +134,8 @@ bool mdl::load(const char *name, float scale, int sn) {
   ogl::bindbuffer(ogl::ARRAY_BUFFER, vbo);
   OGL(BufferData, GL_ARRAY_BUFFER, header.numframes*vboframesz, NULL, GL_STATIC_DRAW);
 
-  const auto m = mat3x3f::rotate(90.f, vec3f(0.f,1.f,0.f));
+  // put the model in the right position
+  const auto rot = mat3x3f::rotate(90.f, vec3f(0.f,1.f,0.f));
 
   // insert each frame in the vbo
   loopj(header.numframes) {
@@ -156,7 +157,7 @@ bool mdl::load(const char *name, float scale, int sn) {
                       (snap(sn,cv[2]*cf->scale[2])+cf->translate[2])/sc);
         const auto nptr = normaltable[cf->vertices[vn].normalidx];
         const auto n = vec3f(nptr[0],-nptr[1],nptr[2]);
-        trisv.add(vertextype(s,t,m*n.xzy(),m*v.xzy()));
+        trisv.add(vertextype(s,t,rot*n.xzy(),rot*v.xzy()));
       }
       loopi(n-2) { // just stolen from cube. TODO use an index buffer
         if (moden <= 0) { // fan

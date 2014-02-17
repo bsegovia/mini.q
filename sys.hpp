@@ -194,7 +194,7 @@
   for (auto sxyz = vec3i((org).x,Y,Z); sxyz.x < int((end).x); sxyz.x += int((step).x))
 
 #define ARRAY_ELEM_NUM(A) sizeof(A) / sizeof(A[0])
-#define ZERO(PTR, SIZE) memset(PTR, 0, sizeof(SIZE))
+#define ZERO(PTR) memset(PTR, 0, sizeof(*PTR))
 #define MAKE_VARIADIC(NAME)\
 INLINE void NAME##v(void) {}\
 template <typename First, typename... Rest>\

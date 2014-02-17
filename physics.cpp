@@ -111,7 +111,6 @@ void move(game::dynent &p, int moveres) {
   const auto frepeat = float(repeat), ratio = curtime/frepeat;
   loopi(repeat) move(p, moveres, i ? ratio : curtime-ratio*(frepeat-1.f));
 }
-
 } /* namespace physics */
 } /* namespace q */
 

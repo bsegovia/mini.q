@@ -6,8 +6,8 @@ CXXRELFLAGS=-fomit-frame-pointer -Os -DNDEBUG -DRELEASE
 
 #CXXFLAGS=$(FLAGS) $(CXXDEBUGFLAGS)
 #CXXFLAGS=$(CXXOPTFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags` -fsanitize=address
-#CXXFLAGS=$(FLAGS) $(CXXRELFLAGS)
-CXXFLAGS=$(FLAGS) $(CXXOPTFLAGS)
+CXXFLAGS=$(FLAGS) $(CXXRELFLAGS)
+#CXXFLAGS=$(FLAGS) $(CXXOPTFLAGS)
 #CXXFLAGS=$(CXXOPTFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags`
 LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer
 OBJS=\
