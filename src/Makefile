@@ -1,10 +1,13 @@
 #CXX=clang++
-FLAGS=-Wall -fno-exceptions -fno-unwind-tables -fvisibility=hidden -fvisibility-inlines-hidden -fno-rtti -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags`
-CXXDEBUGFLAGS=-O0 -DMEMORY_DEBUGGER -g
-CXXOPTFLAGS=-O2 -DMEMORY_DEBUGGER -g
-CXXRELFLAGS=-fomit-frame-pointer -Os -DNDEBUG -DRELEASE
+FLAGS=-Wall -fvisibility=hidden  -I./ `sdl-config --cflags` -I./
+CXXCOMMONFLAGS=-fno-exceptions -fno-unwind-tables -fno-rtti -std=c++11 -fvisibility-inlines-hidden -Wno-invalid-offsetof
+DEBUGFLAGS=-O0 -DMEMORY_DEBUGGER -g
+OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g
+RELFLAGS=-fomit-frame-pointer -Os -DNDEBUG -DRELEASE
 
-CXXFLAGS=$(FLAGS) $(CXXDEBUGFLAGS)
+CXXFLAGS= $(CXXCOMMONFLAGS) $(FLAGS) $(DEBUGFLAGS)
+CFLAGS= $(FLAGS) $(DEBUGFLAGS)
+
 #CXXFLAGS=$(CXXOPTFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags` -fsanitize=address
 #CXXFLAGS=$(FLAGS) $(CXXRELFLAGS)
 #CXXFLAGS=$(FLAGS) $(CXXOPTFLAGS)
@@ -31,7 +34,16 @@ OBJS=\
   sys.o\
   task.o\
   text.o\
-  ui.o
+  ui.o\
+  enet/callbacks.o\
+  enet/host.o\
+  enet/list.o\
+  enet/memory.o\
+  enet/packet.o\
+  enet/peer.o\
+  enet/protocol.o\
+  enet/unix.o
+
 all: mini.q compress_chars
 
 include Makefile.dep

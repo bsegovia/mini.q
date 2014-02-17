@@ -52,7 +52,6 @@ void start(int argc, const char *argv[]) {
 
   con::out("init: sound");
   sound::start();
-
   con::out("init: md2 models");
   md2::start();
   con::out("init: renderer");
