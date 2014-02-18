@@ -13,6 +13,7 @@
 
 namespace q {
 IVARF(grabmouse, 0, 0, 1, SDL_WM_GrabInput(grabmouse ? SDL_GRAB_ON : SDL_GRAB_OFF););
+IVARF(gamespeed, 10, 100, 1000, if (client::multiplayer()) gamespeed = 100);
 
 void start(int argc, const char *argv[]) {
   con::out("init: memory debugger");
@@ -64,10 +65,10 @@ void start(int argc, const char *argv[]) {
 }
 
 static void playerpos(const float &x, const float &y, const float &z) {
-  game::player.o = vec3f(x,y,z);
+  game::player1->o = vec3f(x,y,z);
 }
 static void playerypr(const float &x, const float &y, const float &z) {
-  game::player.ypr = vec3f(x,y,z);
+  game::player1->ypr = vec3f(x,y,z);
 }
 CMD(playerpos, "fff");
 CMD(playerypr, "fff");
@@ -76,8 +77,8 @@ IVAR(savepos, 0, 1, 1);
 void finish() {
   if (savepos) {
     auto f = fopen("pos.q", "wb");
-    const auto &pos = game::player.o;
-    const auto &ypr = game::player.ypr;
+    const auto &pos = game::player1->o;
+    const auto &ypr = game::player1->ypr;
     fprintf(f, "playerpos %f %f %f\n", pos.x, pos.y, pos.z);
     fprintf(f, "playerypr %f %f %f\n", ypr.x, ypr.y, ypr.z);
     fclose(f);
@@ -194,9 +195,9 @@ static void gui() {
 
 INLINE void mainloop() {
   static int frame = 0;
-  const auto millis = sys::millis()*game::speed/100.f;
+  const auto millis = sys::millis()*gamespeed/100.f;
   static float fps = 30.0f;
-  fps = (1000.0f/game::curtime+fps*50.f)/51.f;
+  fps = (1000.0f/float(game::curtime())+fps*50.f)/51.f;
   SDL_GL_SwapBuffers();
   ogl::beginframe();
 #if TEST_UI
@@ -252,7 +253,7 @@ INLINE void mainloop() {
 }
 
 static int run() {
-  game::lastmillis = sys::millis() * game::speed/100.f;
+  game::setlastmillis(sys::millis() * double(gamespeed)/100.0);
   for (;;) q::mainloop();
   return 0;
 }

@@ -227,6 +227,15 @@ INLINE void NAME##v(First first, Rest... rest) {\
 #define STATS_RATIO(X,Y)
 #endif
 
+// global variable setter / getter
+#define GLOBAL_VAR(NAME,VARNAME,TYPE)\
+TYPE NAME(void) { return VARNAME; }\
+void set##NAME(TYPE x) { VARNAME = x; }
+
+#define GLOBAL_VAR_DECL(NAME,TYPE)\
+extern TYPE NAME(void);\
+extern void set##NAME(TYPE x);
+
 namespace q {
 
 /*-------------------------------------------------------------------------

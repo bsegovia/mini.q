@@ -45,8 +45,8 @@ static void drawhud(int w, int h, int curfps) {
   con::render();
   if (showstats) {
     vec2f textpos(scr.x-400.f, scr.y-50.f);
-    const auto o = game::player.o;
-    const auto ypr = game::player.ypr;
+    const auto o = game::player1->o;
+    const auto ypr = game::player1->ypr;
     text::drawf("x: %f y: %f z: %f", textpos, o.x, o.y, o.z);
     textpos.y += fontdim.y;
     text::drawf("yaw: %f pitch: %f roll: %f", textpos, ypr.x, ypr.y, ypr.z);
@@ -76,10 +76,10 @@ static void drawhudmodel(int start, int end, float speed, int base) {
   ogl::matrixmode(ogl::MODELVIEW);
   ogl::pushmatrix();
   //ogl::identity();
-  md2::render(hudgunnames[game::player.gun], start, end,
+  md2::render(hudgunnames[game::player1->gunselect], start, end,
   //md2::render("monster/ogro", start, end,
-              vec3f(zero), game::player.ypr,
-              // game::player.o, game::player.ypr,
+              vec3f(zero), game::player1->ypr,
+              // game::player1->o, game::player1->ypr,
               false, 1.0f, speed, 0, base);
   ogl::popmatrix();
 }
@@ -88,11 +88,11 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
   if (!showhudgun) return;
 
 #if 0
-  const int rtime = game::reloadtime(game::player.gunselect);
-  if (game::player.lastaction &&
-      game::player.lastattackgun==game::player.gunselect &&
-      game::lastmillis()-game::player.lastaction<rtime)
-    drawhudmodel(7, 18, rtime/18.0f, game::player.lastaction);
+  const int rtime = game::reloadtime(game::player1->gunselect);
+  if (game::player1->lastaction &&
+      game::player1->lastattackgun==game::player1->gunselect &&
+      game::lastmillis()-game::player1->lastaction<rtime)
+    drawhudmodel(7, 18, rtime/18.0f, game::player1->lastaction);
   else
 #endif
   drawhudmodel(6, 1, 100.f, 0);
@@ -337,11 +337,11 @@ struct context {
     const auto p = ogl::matrix(ogl::PROJECTION);
     ogl::matrixmode(ogl::MODELVIEW);
     ogl::identity();
-    ogl::rotate(game::player.ypr.z, vec3f(0.f,0.f,1.f));
-    ogl::rotate(game::player.ypr.y, vec3f(1.f,0.f,0.f));
-    ogl::rotate(game::player.ypr.x, vec3f(0.f,1.f,0.f));
+    ogl::rotate(game::player1->ypr.z, vec3f(0.f,0.f,1.f));
+    ogl::rotate(game::player1->ypr.y, vec3f(1.f,0.f,0.f));
+    ogl::rotate(game::player1->ypr.x, vec3f(0.f,1.f,0.f));
     const auto dirmv = ogl::matrix(ogl::MODELVIEW);
-    ogl::translate(-game::player.o);
+    ogl::translate(-game::player1->o);
     const auto mv = ogl::matrix(ogl::MODELVIEW);
     mvp = p*mv;
     invmvp = mvp.inverse() * viewporttr(w, h);

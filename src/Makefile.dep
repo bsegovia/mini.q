@@ -3,7 +3,7 @@ HEADERS=\
   game.hpp\
   iso.hpp\
   md2.hpp\
-  net.hpp\
+  network.hpp\
   ogl.hpp\
   physics.hpp\
   qef.hpp\

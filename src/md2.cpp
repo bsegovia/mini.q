@@ -190,7 +190,7 @@ void mdl::render(int frame, int range, const vec3f &o,
   m *= mat3x3f::rotate(-ypr.z, vec3f(0.f,0.f,1.f));
 
   const int n = vboframesz / sizeof(vertextype);
-  const auto time = game::lastmillis-basetime;
+  const auto time = game::lastmillis()-basetime;
   auto fr1 = intptr_t(time/speed);
   const auto frac = (time-fr1*speed)/speed;
   fr1 = fr1%range+frame;

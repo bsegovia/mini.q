@@ -10,7 +10,7 @@
 
 namespace q {
 namespace con {
-struct cline { char *cref; float outtime; };
+struct cline { char *cref; double outtime; };
 static vector<cline> conlines;
 static const int ndraw = 5;
 static const unsigned int WORDWRAP = 80;
@@ -64,7 +64,7 @@ void finish() {
 static void line(const char *sf, bool highlight) {
   cline cl;
   cl.cref = conlines.length()>100 ? conlines.pop().cref : NEWSTRINGBUF("");
-  cl.outtime = game::lastmillis; // for how long to keep line on screen
+  cl.outtime = game::lastmillis(); // for how long to keep line on screen
   conlines.insert(0,cl);
   if (highlight) { // show line in a different colour, for chat etc.
     cl.cref[0] = '\f';
@@ -97,7 +97,7 @@ void render() {
   char *refs[ndraw];
   loopv(conlines) {
     if (conskip ? i>=conskip-1 || i>=conlines.length()-ndraw :
-       game::lastmillis-conlines[i].outtime < confadeout) {
+       game::lastmillis()-conlines[i].outtime < double(confadeout)) {
       refs[nd++] = conlines[i].cref;
       if (nd==ndraw) break;
     }

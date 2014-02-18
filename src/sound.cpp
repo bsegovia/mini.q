@@ -75,12 +75,12 @@ void finish(void) {
 static void updatechanvol(int chan, const vec3f *loc) {
   int vol = soundvol, pan = 255/2;
   if (loc) {
-    const vec3f v = game::player.o-*loc;
+    const vec3f v = game::player1->o-*loc;
     const float dist = length(v);
     vol -= (int)(dist*3*soundvol/255);  // simple mono distance attenuation
     if (stereo && (v.x != 0 || v.y != 0)) {
       // relative angle of sound along X-Y axis
-      const float yaw = -atan2(v.x,v.y)-game::player.ypr.x*float(pi)/180.0f;
+      const float yaw = -atan2(v.x,v.y)-game::player1->ypr.x*float(pi)/180.0f;
       // range is from 0 (left) to 255 (right)
       pan = int(255.9f*(0.5f*sin(yaw)+0.5f));
     }
@@ -118,11 +118,11 @@ void playc(int n) {
 void play(int n, const vec3f *loc) {
   if (nosound) return;
   if (!soundvol) return;
-  if (int(game::lastmillis)==int(lastsoundmillis))
+  if (int(game::lastmillis())==int(lastsoundmillis))
     soundsatonce++;
   else
     soundsatonce = 1;
-  lastsoundmillis = game::lastmillis;
+  lastsoundmillis = int(game::lastmillis());
   if (soundsatonce>5) return;  // avoid bursts of sounds with heavy packetloss
   if (n<0 || n>=samples.size()) {
     con::out("unregistered sound: %d", n);
