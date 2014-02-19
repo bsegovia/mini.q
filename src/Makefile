@@ -12,17 +12,19 @@ CFLAGS= $(FLAGS) $(DEBUGFLAGS)
 #CXXFLAGS=$(FLAGS) $(CXXRELFLAGS)
 #CXXFLAGS=$(FLAGS) $(CXXOPTFLAGS)
 #CXXFLAGS=$(CXXOPTFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags`
-LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer
+LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer -lz
 OBJS=\
   client.o\
   con.o\
   csg.o\
+  demo.o\
   editing.o\
   entities.o\
   game.o\
   iso.o\
   md2.o\
   math.o\
+  menu.o\
   mini.q.o\
   monster.o\
   network.o\
@@ -32,6 +34,9 @@ OBJS=\
   renderer.o\
   script.o\
   server.o\
+  serverbrowser.o\
+  serverms.o\
+  serverutil.o\
   shaders.o\
   sound.o\
   stl.o\

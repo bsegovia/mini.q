@@ -240,6 +240,9 @@ template <class T> struct vector : noncopyable {
     buf[i] = e;
     return buf[i];
   }
+  void sort(void *cf) {
+    qsort(buf, ulen, sizeof(T), (int (CDECL *)(const void *,const void *))cf);
+  }
 };
 typedef vector<char *> cvector;
 typedef vector<int> ivector;
