@@ -58,7 +58,7 @@ static void weapon(const char *a1, const char *a2, const char *a3) {
   selectgun(a1[0]?atoi(a1):-1, a2[0]?atoi(a2):-1, a3[0]?atoi(a3):-1);
 }
 
-CMD(weapon, "sss");
+CMD(weapon, ARG_3STR);
 
 // create random spread of rays for the shotgun
 void createrays(const vec3f &from, const vec3f &to) {

@@ -37,14 +37,14 @@ bool allowedittoggle(void) {
   return allow; 
 }
 
-IVARF(rate, 0, 0, 25000, 
+VARF(rate, 0, 0, 25000, 
   if (clienthost && (!rate || rate>1000))
     enet_host_bandwidth_limit (clienthost, rate, rate));
 
 static void throttle(void);
-IVARF(throttle_interval, 0, 5, 30, throttle());
-IVARF(throttle_accel, 0, 2, 32, throttle());
-IVARF(throttle_decel, 0, 2, 32, throttle());
+VARF(throttle_interval, 0, 5, 30, throttle());
+VARF(throttle_accel, 0, 2, 32, throttle());
+VARF(throttle_decel, 0, 2, 32, throttle());
 
 static void throttle(void) {
   if (!clienthost || connecting) return;
@@ -58,13 +58,13 @@ static void newname(const char *name) {
   c2sinit = false;
   strn0cpy(game::player1->name, name, 16);
 }
-CMDN(name, newname, "s");
+CMDN(name, newname, ARG_1STR);
 
 static void newteam(const char *name) {
   c2sinit = false;
   strn0cpy(game::player1->team, name, 5);
 }
-CMDN(team, newteam, "s");
+CMDN(team, newteam, ARG_1STR);
 
 void writeclientinfo(FILE *f) {
   fprintf((FILE*) f, "name \"%s\"\nteam \"%s\"\n",
@@ -93,7 +93,7 @@ void connect(const char *servername) {
     disconnect();
   }
 }
-CMD(connect, "s");
+CMD(connect, ARG_1STR);
 
 void disconnect(int onlyclean, int async) {
   if (clienthost) {
@@ -142,16 +142,16 @@ void trydisconnect(void) {
   con::out("attempting to disconnect...");
   disconnect(0, !disconnecting);
 }
-CMDN(disconnect, trydisconnect, "");
+CMDN(disconnect, trydisconnect, ARG_NONE);
 
 void toserver(const char *text) {
   con::out("%s:\f %s", game::player1->name, text);
   strn0cpy(ctext, text, 80);
 }
-// TODO COMMANDN(say, toserver, ARG_VARI);
+CMDN(say, toserver, ARG_VARI);
 
-// TODO static void echo(const char *text) { con::out("%s", text); }
-// TODO COMMAND(echo, ARG_VARI);
+static void echo(const char *text) { con::out("%s", text); }
+CMD(echo, ARG_VARI);
 
 void addmsg(int rel, int num, int type, ...) {
   if (demo::playing()) return;
@@ -180,7 +180,7 @@ void server_err(void) {
 }
 
 void password(const char *p) { strcpy_s(clientpassword, p); }
-CMD(password, "s");
+CMD(password, ARG_1STR);
 
 bool netmapstart(void) {
   senditemstoserver = true;
@@ -628,7 +628,7 @@ void gets2c(void) {
 }
 
 void changemap(const char *name) { strcpy_s(toservermap, name); }
-CMDN(map, changemap, "s");
+CMDN(map, changemap, ARG_1STR);
 } /* namespace client */
 } /* namespace q */
 

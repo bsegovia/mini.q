@@ -662,8 +662,8 @@ static void cleanuptimers() {
   timerorder.destroy();
 }
 
-IVARF(gputimers, 0, 0, 1, cleanuptimers());
-IVAR(frametimer, 0, 0, 1);
+VARF(gputimers, 0, 0, 1, cleanuptimers());
+VAR(frametimer, 0, 0, 1);
 static float framemillis = 0.f, totalmillis = 0.f;
 
 void printtimers(float conw, float conh) {
@@ -849,7 +849,7 @@ void destroyshader(shadertype &s) {
   s.program = 0;
 }
 
-IVAR(shaderfromfile, 0, 1, 1);
+VAR(shaderfromfile, 0, 1, 1);
 bool loadfromfile() { return shaderfromfile; }
 
 void shadererror(bool fatalerr, const char *msg) {
@@ -866,7 +866,7 @@ static void reloadshaders() {
     s.first->build(*s.second, shaderfromfile, false);
   }
 }
-CMD(reloadshaders, "");
+CMD(reloadshaders, ARG_NONE);
 #endif
 
 /*--------------------------------------------------------------------------

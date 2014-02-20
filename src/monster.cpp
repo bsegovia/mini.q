@@ -10,7 +10,7 @@ namespace game {
 static dvector monsters;
 static int nextmonster, spawnremain, numkilled, monstertotal, mtimestart;
 
-IVARF(skill, 1, 3, 10, con::out("skill is now %d", skill));
+VARF(skill, 1, 3, 10, con::out("skill is now %d", skill));
 
 dvector &getmonsters(void) { return monsters; };
 void restoremonsterstate(void) { // for savegames

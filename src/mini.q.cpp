@@ -13,9 +13,9 @@
 #endif
 
 namespace q {
-IVARF(grabmouse, 0, 0, 1, SDL_WM_GrabInput(grabmouse ? SDL_GRAB_ON : SDL_GRAB_OFF););
-IVARF(gamespeed, 10, 100, 1000, if (client::multiplayer()) gamespeed = 100);
-IVARP(minmillis, 0, 5, 1000);
+VARF(grabmouse, 0, 0, 1, SDL_WM_GrabInput(grabmouse ? SDL_GRAB_ON : SDL_GRAB_OFF););
+VARF(gamespeed, 10, 100, 1000, if (client::multiplayer()) gamespeed = 100);
+VARP(minmillis, 0, 5, 1000);
 
 void start(int argc, const char *argv[]) {
   con::out("init: memory debugger");
@@ -66,23 +66,19 @@ void start(int argc, const char *argv[]) {
   script::execfile("data/autoexec.q");
 }
 
-static void playerpos(const float &x, const float &y, const float &z) {
-  game::player1->o = vec3f(x,y,z);
-}
-static void playerypr(const float &x, const float &y, const float &z) {
-  game::player1->ypr = vec3f(x,y,z);
-}
-CMD(playerpos, "fff");
-CMD(playerypr, "fff");
-IVAR(savepos, 0, 1, 1);
+static void playerpos(int x, int y, int z) {game::player1->o = vec3f(vec3i(x,y,z));}
+static void playerypr(int x, int y, int z) {game::player1->ypr = vec3f(vec3i(x,y,z));}
+CMD(playerpos, ARG_3INT);
+CMD(playerypr, ARG_3INT);
+VAR(savepos, 0, 1, 1);
 
 void finish() {
   if (savepos) {
     auto f = fopen("pos.q", "wb");
-    const auto &pos = game::player1->o;
-    const auto &ypr = game::player1->ypr;
-    fprintf(f, "playerpos %f %f %f\n", pos.x, pos.y, pos.z);
-    fprintf(f, "playerypr %f %f %f\n", ypr.x, ypr.y, ypr.z);
+    const auto pos = vec3i(game::player1->o);
+    const auto ypr = vec3i(game::player1->ypr);
+    fprintf(f, "playerpos %d %d %d\n", pos.x, pos.y, pos.z);
+    fprintf(f, "playerypr %d %d %d\n", ypr.x, ypr.y, ypr.z);
     fclose(f);
   }
 #if !defined(RELEASE)

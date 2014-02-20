@@ -42,7 +42,7 @@ static void show(const char *name) {
     return;
   }
 }
-CMDN(showmenu, show, "s");
+CMDN(showmenu, show, ARG_1STR);
 
 void clean(void) {
   loopv(menus) {
@@ -111,7 +111,7 @@ void newm(const char *name) {
   menu.name = NEWSTRING(name);
   menu.menusel = 0;
 }
-CMDN(newmenu, newm, "s");
+CMDN(newmenu, newm, ARG_1STR);
 
 void manual(int m, int n, char *text) {
   if (!n) menus[m].items.setsize(0);
@@ -128,7 +128,7 @@ void item(char *text, char *action) {
   mi.action = action[0] ? NEWSTRING(action) : NEWSTRING(text);
   mi.manual = 0;
 }
-CMDN(menuitem, item, "ss");
+CMDN(menuitem, item, ARG_2STR);
 
 bool key(int code, bool isdown) {
   if (vmenu<=0) return false;

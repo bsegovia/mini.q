@@ -7,7 +7,7 @@
 namespace q {
 namespace edit {
 
-IVAR(editing,0,0,1);
+VAR(editing,0,0,1);
 static bool editmode = false;
 bool mode(void) { return editmode; }
 
@@ -29,12 +29,12 @@ void toggleedit(void) {
   // selset = false;
   editing = editmode;
 }
-CMDN(edittoggle, toggleedit, "");
+CMDN(edittoggle, toggleedit, ARG_NONE);
 
 void pruneundos(int maxremain) {}
 
 // two mode of editions: extrusion of cubes / displacement of corners
-IVARF(editcorner, 0, 0, 1, con::out("edit mode is 'edit%s", editcorner?"corner'":"cube'"));
+VARF(editcorner, 0, 0, 1, con::out("edit mode is 'edit%s", editcorner?"corner'":"cube'"));
 
 bool noteditmode(void) {
   if (!editmode)

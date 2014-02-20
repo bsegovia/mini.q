@@ -276,8 +276,8 @@ game::mapmodelinfo &getmminfo(int i) {
   return i<mapmodels.length() ? mapmodels[i]->mmi : *(game::mapmodelinfo*) NULL;
 }
 
-CMD(mapmodel, "sssss");
-CMD(mapmodelreset, "");
+CMD(mapmodel, ARG_5STR);
+CMD(mapmodelreset, ARG_NONE);
 
 void render(const char *name, int frame, int range,
             const vec3f &o, const vec3f &ypr,

@@ -31,7 +31,7 @@ static void popscreentransform() {
 /*--------------------------------------------------------------------------
  - handle the HUD (console, scores...)
  -------------------------------------------------------------------------*/
-IVAR(showstats, 0, 0, 1);
+VAR(showstats, 0, 0, 1);
 static void drawhud(int w, int h, int curfps) {
   auto cmd = con::curcmd();
   const auto scr = scrdim();
@@ -70,7 +70,7 @@ static const char *hudgunnames[] = {
   "hudguns/rocket",
   "hudguns/rifle"
 };
-IVARP(showhudgun, 0, 1, 1);
+VARP(showhudgun, 0, 1, 1);
 
 static void drawhudmodel(int start, int end, float speed, int base) {
   ogl::matrixmode(ogl::MODELVIEW);
@@ -236,7 +236,7 @@ static vec3f getsundir() {
 /*--------------------------------------------------------------------------
  - render the complete frame
  -------------------------------------------------------------------------*/
-FVARP(fov, 30.f, 90.f, 160.f);
+VARP(fov, 30, 90, 160);
 
 static u32 scenenorbo = 0u, sceneposbo = 0u, sceneibo = 0u;
 static u32 indexnum = 0u;
@@ -302,7 +302,7 @@ struct screenquad {
 
 // XXX just to have something to display
 #define LIGHTNUM 16
-FVAR(lightscale, 0.f, 2000.f, 10000.f);
+VAR(lightscale, 0, 2000, 10000);
 static const vec3f lightpos[LIGHTNUM] = {
   vec3f(8.f,20.f,8.f), vec3f(10.f,20.f,8.f),
   vec3f(12.f,20.f,8.f), vec3f(14.f,20.f,8.f),
@@ -325,7 +325,7 @@ static const vec3f lightpow[LIGHTNUM] = {
   vec3f(0.f,1.f,1.f), vec3f(1.f,1.f,0.f),
 };
 
-IVAR(linemode, 0, 0, 1);
+VAR(linemode, 0, 0, 1);
 
 struct context {
   context(float w, float h, float fovy, float aspect, float farplane)
@@ -394,7 +394,7 @@ struct context {
 
     const auto sundir = getsundir();
     vec3f lpow[LIGHTNUM];
-    loopi(LIGHTNUM) lpow[i] = lightscale * lightpow[i];
+    loopi(LIGHTNUM) lpow[i] = float(lightscale) * lightpow[i];
     OGL(Uniform3fv, s.u_sundir, 1, &sundir.x);
     OGL(Uniform3fv, s.u_lightpos, LIGHTNUM, &lightpos[0].x);
     OGL(Uniform3fv, s.u_lightpow, LIGHTNUM, &lpow[0].x);
@@ -421,7 +421,7 @@ struct context {
   float fovy, aspect, farplane;
 };
 
-IVAR(shadertoy, 0, 0, 1);
+VAR(shadertoy, 0, 0, 1);
 
 static void doshadertoy(float fovy, float aspect, float farplane) {
   const auto shadertoytimer = ogl::begintimer("shadertoy", true);
@@ -442,7 +442,7 @@ static void doshadertoy(float fovy, float aspect, float farplane) {
 void frame(int w, int h, int curfps) {
   const auto farplane = 100.f;
   const auto aspect = float(sys::scrw) / float(sys::scrh);
-  const auto fovy = fov / aspect;
+  const auto fovy = float(fov) / aspect;
   if (shadertoy)
     doshadertoy(fovy,aspect,farplane);
   else {

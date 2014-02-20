@@ -78,7 +78,7 @@ bool collide(game::dynent *d, bool spawn) {
   return true;
 }
 
-IVARP(maxroll, 0, 3, 20);
+VARP(maxroll, 0, 3, 20);
 
 static int physicsfraction = 0, physicsrepeat = 0;
 static const int MINFRAMETIME = 20; // physics simulated at 50fps or better

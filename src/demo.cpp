@@ -87,7 +87,7 @@ static void savegame(const char *name) {
   stop();
   con::out("wrote %s", fn);
 }
-CMD(savegame, "s");
+CMD(savegame, ARG_1STR);
 
 static void loadstate(char *fn) {
   stop();
@@ -114,7 +114,7 @@ static void loadgame(char *name) {
   sprintf_sd(fn)("savegames/%s.csgz", name);
   loadstate(fn);
 }
-CMD(loadgame, "s");
+CMD(loadgame, ARG_1STR);
 
 static void loadgameout(void) {
   stop();
@@ -177,7 +177,7 @@ static void record(char *name) {
   starttime = game::lastmillis();
   ddamage = bdamage = 0;
 }
-CMD(record, "s");
+CMD(record, ARG_1STR);
 
 void damage(int damage, vec3f &o) { ddamage = damage; dorig = o; }
 void blend(int damage) { bdamage = damage; }
@@ -211,7 +211,7 @@ static void demo(char *name) {
   loadstate(fn);
   demoloading = true;
 }
-CMD(demo, "s");
+CMD(demo, ARG_1STR);
 
 static void stopreset(void) {
   con::out("demo stopped (%d msec elapsed)", game::lastmillis()-starttime);
@@ -220,7 +220,7 @@ static void stopreset(void) {
   client::disconnect(0, 0);
 }
 
-IVAR(demoplaybackspeed, 10, 100, 1000);
+VAR(demoplaybackspeed, 10, 100, 1000);
 static int scaletime(int t) {
   return (int)(t*(100.0f/demoplaybackspeed))+starttime;
 }
@@ -244,7 +244,7 @@ static void start(void) {
   readdemotime();
 }
 
-IVAR(demodelaymsec, 0, 120, 500);
+VAR(demodelaymsec, 0, 120, 500);
 
 // spline interpolation
 static void catmulrom(const vec3f &z, const vec3f &a, const vec3f &b, const vec3f &c, float s, vec3f &dst) {
@@ -348,7 +348,7 @@ static void stopn(void) {
   if (demoplayback) stopreset(); else stop();
   con::out("demo stopped");
 }
-CMDN(stop, stopn, "");
+CMDN(stop, stopn, ARG_NONE);
 } /* namespace demo */
 } /* namespace q */
 

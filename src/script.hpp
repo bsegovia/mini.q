@@ -1,65 +1,79 @@
 /*-------------------------------------------------------------------------
  - mini.q - a minimalistic multiplayer FPS
- - script.hpp -> exposes embedded script / console language
+ - script.hpp -> exposes embedded script / con language
  -------------------------------------------------------------------------*/
 #pragma once
-#include "sys.hpp"
-#include "stl.hpp"
 
+// mini-scripting language implemented in q (mostly cvompatible with quake
+// script engine)
 namespace q {
 namespace script {
-typedef void (CDECL *cb)();
-int ivar(const char *n, int m, int cur, int M, int *ptr, cb fun, bool persist);
-float fvar(const char *n, float m, float cur, float M, float *ptr, cb fun, bool persist);
-bool cmd(const char *n, cb fun, const char *proto);
-void execstring(const char *str, int isdown=1);
-void execcfg(const char *path);
-bool execfile(const char *path);
-void resetcomplete(void);
-void complete(string &s);
-void setivar(const char *name, int i);
-int getivar(const char *name);
 
-// command with custom name
-#define CMDN(name, fun, proto) \
-  bool __##fun = q::script::cmd(#name, (q::script::cb) fun, proto)
-// command with automatic name
-#define CMD(name, proto) CMDN(name, name, proto)
-// float persistent variable
-#define FVARP(name, min, cur, max) \
-  float name = q::script::fvar(#name, min, cur, max, &name, NULL, true)
-// float non-persistent variable
-#define FVAR(name, min, cur, max) \
-  float name = q::script::fvar(#name, min, cur, max, &name, NULL, false)
-// float non-persistent variable with specific name
-#define FVARN(varname, name, min, cur, max) \
-  float varname = q::script::fvar(#name, min, cur, max, &varname, NULL, false)
-// float persistent variable with code to run when changed
-#define FVARPF(name, min, cur, max, body) \
-  void var_##name(); \
-  float name = q::script::fvar(#name, min, cur, max, &name, var_##name, true); \
-  void var_##name() { body; } \
-// float non-persistent variable with code to run when changed
-#define FVARF(name, min, cur, max, body) \
-  void var_##name(); \
-  float name = q::script::fvar(#name, min, cur, max, &name, var_##name, false); \
-  void var_##name() { body; }
-// int persistent variable
-#define IVARP(name, min, cur, max) \
-  int name = q::script::ivar(#name, min, cur, max, &name, NULL, true)
-// int non-persistent variable
-#define IVAR(name, min, cur, max) \
-  int name = q::script::ivar(#name, min, cur, max, &name, NULL, false)
-// int persistent variable with code to run when changed
-#define IVARPF(name, min, cur, max, body) \
-  void var_##name(); \
-  int name = q::script::ivar(#name, min, cur, max, &name, var_##name, true); \
-  void var_##name() { body; }
-// int non-persistent variable with code to run when changed
-#define IVARF(name, min, cur, max, body) \
-  void var_##name(); \
-  int name = q::script::ivar(#name, min, cur, max, &name, var_##name, false); \
-  void var_##name() { body; }
+// function signatures for script functions
+enum {
+  ARG_1INT, ARG_2INT, ARG_3INT, ARG_4INT,
+  ARG_NONE,
+  ARG_1STR, ARG_2STR, ARG_3STR, ARG_5STR,
+  ARG_DOWN, ARG_DWN1,
+  ARG_1EXP, ARG_2EXP,
+  ARG_1EST, ARG_2EST,
+  ARG_VARI
+};
+// register a console variable (done through globals)
+int variable(const char *name, int min, int cur, int max, int *storage, void (*fun)(), bool persist);
+// set the integer value for a variable
+void setvar(const char *name, int i);
+// set the value of a variable
+int getvar(const char *name);
+// says if the variable exists (i.e. is registered)
+bool identexists(const char *name);
+// register a new command
+bool addcommand(const char *name, void (*fun)(), int narg);
+// execute a given string
+int execstring(const char *p, bool down = true);
+// execute a given file and print any error
+void exec(const char *cfgfile);
+// execute a file and says if this succeeded
+bool execfile(const char *cfgfile);
+// stop completion
+void resetcomplete(void);
+// complete the given string
+void complete(string &s);
+// set an alias with given action
+void alias(const char *name, const char *action);
+// get the action string for the given variable
+char *getalias(const char *name);
+// write all commands, variables and alias to config.cfg
+void writecfg(void);
+// free all resources needed by the command system
+void clean(void);
 } /* namespace script */
 } /* namespace q */
+
+// register a command with a given name
+#define CMDN(name, fun, nargs) \
+  bool __dummy_##fun = q::script::addcommand(#name, (void (*)())fun, script::nargs)
+
+// register a command with a name given by the function name
+#define CMD(name, nargs) CMDN(name, name, nargs)
+
+// a persistent variable
+#define VARP(name, min, cur, max) \
+  int name = q::script::variable(#name, min, cur, max, &name, NULL, true)
+
+// a non-persistent variable
+#define VAR(name, min, cur, max) \
+  int name = q::script::variable(#name, min, cur, max, &name, NULL, false)
+
+// a non-persistent variable with custom code to run when changed
+#define VARF(name, min, cur, max, body) \
+  void var_##name(); \
+  int name = q::script::variable(#name, min, cur, max, &name, var_##name, false); \
+  void var_##name() { body; }
+
+// a persistent variable with custom code to run when changed
+#define VARFP(name, min, cur, max, body) \
+  void var_##name(); \
+  int name = q::script::variable(#name, min, cur, max, &name, var_##name, true); \
+  void var_##name() { body; }
 

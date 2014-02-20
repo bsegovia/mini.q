@@ -10,7 +10,7 @@
 
 namespace q {
 namespace con {
-struct cline { char *cref; double outtime; };
+struct cline { char *cref; int outtime; };
 static vector<cline> conlines;
 static const int ndraw = 5;
 static const unsigned int WORDWRAP = 80;
@@ -21,11 +21,11 @@ static cvector vhistory;
 static int histpos = 0;
 
 bool active() { return saycommandon; }
-static void setconskip(const int &n) {
+static void setconskip(int n) {
   conskip += n;
   if (conskip < 0) conskip = 0;
 }
-CMDN(conskip, setconskip, "i");
+CMDN(conskip, setconskip, ARG_1INT);
 
 // keymap is defined externally in keymap.q
 struct keym { int code; char *name; char *action; } keyms[256];
@@ -36,7 +36,7 @@ static void keymap(const char *code, const char *key, const char *action) {
   keyms[numkm].name = NEWSTRING(key);
   keyms[numkm++].action = NEWSTRINGBUF(action);
 }
-CMD(keymap, "sss");
+CMD(keymap, ARG_3STR);
 
 static void bindkey(char *key, char *action) {
   for (char *x = key; *x; x++) *x = toupper(*x);
@@ -46,7 +46,7 @@ static void bindkey(char *key, char *action) {
   }
   con::out("unknown key \"%s\"", key);
 }
-CMDN(bind, bindkey, "ss");
+CMDN(bind, bindkey, ARG_2STR);
 
 #if !defined(RELEASE)
 void finish() {
@@ -91,13 +91,13 @@ void out(const char *s, ...) {
   line(s, n!=0);
 }
 
-FVAR(confadeout, 1.f, 5000.f, 256000.f);
+VAR(confadeout, 1, 5000, 256000);
 void render() {
   int nd = 0;
   char *refs[ndraw];
   loopv(conlines) {
     if (conskip ? i>=conskip-1 || i>=conlines.length()-ndraw :
-       game::lastmillis()-conlines[i].outtime < double(confadeout)) {
+       game::lastmillis()-conlines[i].outtime < confadeout) {
       refs[nd++] = conlines[i].cref;
       if (nd==ndraw) break;
     }
@@ -119,9 +119,9 @@ static void saycommand(const char *init) {
   if (!init) init = "";
   strcpy_s(cmdbuf, init);
 }
-CMD(saycommand, "s");
+CMD(saycommand, ARG_1STR);
 
-static void history(const int &n) {
+static void history(int n) {
   static bool rec = false;
   if (!rec && n>=0 && n<vhistory.length()) {
     rec = true;
@@ -129,7 +129,7 @@ static void history(const int &n) {
     rec = false;
   }
 }
-CMD(history, "i");
+CMD(history, ARG_1INT);
 
 void keypress(int code, int isdown, int cooked) {
   if (saycommandon) { // keystrokes go to commandline

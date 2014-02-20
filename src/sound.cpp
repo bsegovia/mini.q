@@ -12,10 +12,10 @@
 namespace q {
 namespace sound {
 
-IVARP(soundvol, 0, 255, 255);
-IVARP(musicvol, 0, 128, 255);
-IVAR(soundbufferlen, 128, 1024, 4096);
-IVAR(stereo, 0, 1, 1);
+VARP(soundvol, 0, 255, 255);
+VARP(musicvol, 0, 128, 255);
+VAR(soundbufferlen, 128, 1024, 4096);
+VAR(stereo, 0, 1, 1);
 
 static bool nosound = false;
 static Mix_Music *mod = NULL;
@@ -144,11 +144,11 @@ void play(int n, const vec3f *loc) {
   updatechanvol(chan, loc);
 }
 
-static void sound(const int &n) { play(n, NULL); }
+static void sound(int n) { play(n, NULL); }
 
-CMD(music, "s");
-CMD(registersound, "s");
-CMD(sound, "i");
+CMD(music, ARG_1STR);
+CMD(registersound, ARG_1STR);
+CMD(sound, ARG_1INT);
 } /* namespace sound */
 } /* namespace q */
 

@@ -191,7 +191,7 @@ void quit(const char *msg) {
   exit(msg && strlen(msg) ? EXIT_FAILURE : EXIT_SUCCESS);
 #endif
 }
-CMD(quit, "s");
+CMD(quit, ARG_1STR);
 
 void fatal(const char *s, const char *o) {
   assert(0);

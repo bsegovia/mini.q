@@ -13,7 +13,7 @@ static int lastmillis_ = 0;
 static int nextmode_ = 0;
 static vec3f worldpos_;
 static int curtime_ = 10;
-IVAR(gamemode, 1, 0, 0);
+VAR(gamemode, 1, 0, 0);
 
 GLOBAL_VAR(worldpos, worldpos_, const vec3f&);
 GLOBAL_VAR(mode, gamemode, int);
@@ -21,12 +21,12 @@ GLOBAL_VAR(nextmode, nextmode_, int);
 GLOBAL_VAR(curtime, curtime_, double);
 GLOBAL_VAR(lastmillis, lastmillis_, double);
 
-IVARP(sensitivity, 0, 10, 10000);
-IVARP(sensitivityscale, 1, 1, 10000);
-IVARP(invmouse, 0, 0, 1);
+VARP(sensitivity, 0, 10, 10000);
+VARP(sensitivityscale, 1, 1, 10000);
+VARP(invmouse, 0, 0, 1);
 
-static void moden(const int &n) {client::addmsg(1,2,SV_GAMEMODE,nextmode_=n);}
-CMDN(mode, moden, "i");
+static void moden(int n) {client::addmsg(1,2,SV_GAMEMODE,nextmode_=n);}
+CMDN(mode, moden, ARG_1INT);
 
 static bool intermission = false;
 static string clientmap;
@@ -104,7 +104,7 @@ dynent *newdynent(void) {
   dynent *d = (dynent*) MALLOC(sizeof(dynent));
   d->o = zero;
   d->ypr = vec3f(270.f,0.f,0.f);
-  d->maxspeed = 8.f;
+  d->maxspeed = 22.f;
   d->outsidemap = false;
   d->inwater = false;
   d->radius = 0.5f;
@@ -128,7 +128,7 @@ static void respawnself(void) {
   spawnplayer(player1);
   showscores(false);
 }
-CMD(showscores, "d");
+CMD(showscores, ARG_DOWN);
 
 void arenacount(dynent *d, int &alive, int &dead, char *&lastteam, bool &oneteam) {
   if (d->state!=CS_DEAD) {
@@ -213,7 +213,7 @@ static void sleepf(const char *msec, const char *cmd) {
   sleepwait = atoi(msec)+lastmillis();
   strcpy_s(sleepcmd, cmd);
 }
-CMDN(sleep, sleepf, "ss");
+CMDN(sleep, sleepf, ARG_2STR);
 
 void updateworld(int millis) {
   if (lastmillis()) {
@@ -300,7 +300,7 @@ void name(bool isdown) { \
   player1->v = isdown ? d : (player1->os ? -(d) : 0); \
   player1->lastmove = lastmillis(); \
 }\
-CMD(name, "d");
+CMD(name, ARG_DOWN);
 DIRECTION(backward, move,   -1, k_down,  k_up);
 DIRECTION(forward,  move,    1, k_up,    k_down);
 DIRECTION(left,     strafe,  1, k_left,  k_right);
@@ -315,12 +315,12 @@ static void attack(bool on) {
   else if ((player1->attacking = on) != 0)
     respawn();
 }
-CMD(attack, "d");
+CMD(attack, ARG_DOWN);
 
 static void jumpn(bool on) {
   if (!intermission && (player1->jumpnext = on)) respawn();
 }
-CMDN(jump, jumpn, "d");
+CMDN(jump, jumpn, ARG_DOWN);
 
 void fixplayer1range(void) {
   const float MAXPITCH = 90.0f;
@@ -424,9 +424,9 @@ void startmap(const char *name) {
   resetspawns();
   strcpy_s(clientmap, name);
   if (edit::mode()) edit::toggleedit();
-  script::setivar("gamespeed", 100);
-  script::setivar("fog", 180);
-  script::setivar("fogcolour", 0x8099B3);
+  script::setvar("gamespeed", 100);
+  script::setvar("fog", 180);
+  script::setvar("fogcolour", 0x8099B3);
   showscores(false);
   intermission = false;
   con::out("game mode is %s", modestr(mode()));
