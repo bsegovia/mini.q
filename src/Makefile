@@ -1,5 +1,5 @@
 CXX=clang++
-FLAGS=-Wall -fvisibility=hidden  -I./ `sdl-config --cflags` -I./
+FLAGS=-MP -MD -Wall -fvisibility=hidden -I./ `sdl-config --cflags` -I./
 CXXCOMMONFLAGS=-fno-exceptions -fno-unwind-tables -fno-rtti -std=c++11 -fvisibility-inlines-hidden -Wno-invalid-offsetof
 DEBUGFLAGS=-O0 -DMEMORY_DEBUGGER -g
 OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g
@@ -56,8 +56,8 @@ OBJS=\
 
 all: mini.q compress_chars
 
-include Makefile.dep
-include shader.dep
+#include Makefile.dep
+-include $(OBJS:.o=.d)
 
 ## build embedded shader source
 shaders.hxx shaders.cxx: $(SHADERS)
@@ -67,12 +67,12 @@ shaders.hxx shaders.cxx: $(SHADERS)
 font.hxx: compress_chars data/font8x16.png
 	./compress_chars data/font8x16.png 8 16 0 > font.hxx
 
-mini.q: $(OBJS) $(ENET_OBJS)
-	$(CXX) $(CXXFLAGS) -o mini.q $(OBJS) $(ENET_OBJS) $(LIBS)
+mini.q: $(OBJS)
+	$(CXX) $(CXXFLAGS) -o mini.q $(OBJS) $(LIBS)
 
 compress_chars: compress_chars.o
 	$(CXX) $(CXXFLAGS) -o compress_chars compress_chars.o $(LIBS)
 
 clean:
-	rm -f $(OBJS) mini.q compress_chars compress_chars.o
+	rm -f mini.q compress_chars *.o *.d
 
