@@ -5,6 +5,11 @@
 #ifndef __ENET_LIST_H__
 #define __ENET_LIST_H__
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 #include <stdlib.h>
 
 typedef struct _ENetListNode
@@ -37,6 +42,10 @@ extern size_t enet_list_size (ENetList *);
 
 #define enet_list_front(list) ((void *) (list) -> sentinel.next)
 #define enet_list_back(list) ((void *) (list) -> sentinel.previous)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* __ENET_LIST_H__ */
 

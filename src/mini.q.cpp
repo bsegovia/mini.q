@@ -82,6 +82,7 @@ void finish() {
     fclose(f);
   }
 #if !defined(RELEASE)
+  game::zapdynent(game::player1);
   iso::finish();
   rr::finish();
   md2::finish();
@@ -91,6 +92,7 @@ void finish() {
   ogl::finish();
   task::finish();
   con::finish();
+  script::finish();
 #endif
 }
 

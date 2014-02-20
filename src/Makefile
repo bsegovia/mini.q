@@ -1,4 +1,4 @@
-#CXX=clang++
+CXX=clang++
 FLAGS=-Wall -fvisibility=hidden  -I./ `sdl-config --cflags` -I./
 CXXCOMMONFLAGS=-fno-exceptions -fno-unwind-tables -fno-rtti -std=c++11 -fvisibility-inlines-hidden -Wno-invalid-offsetof
 DEBUGFLAGS=-O0 -DMEMORY_DEBUGGER -g
@@ -49,7 +49,6 @@ OBJS=\
   enet/callbacks.o\
   enet/host.o\
   enet/list.o\
-  enet/memory.o\
   enet/packet.o\
   enet/peer.o\
   enet/protocol.o\

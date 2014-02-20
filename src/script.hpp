@@ -36,7 +36,7 @@ void exec(const char *cfgfile);
 // execute a file and says if this succeeded
 bool execfile(const char *cfgfile);
 // stop completion
-void resetcomplete(void);
+void resetcomplete();
 // complete the given string
 void complete(string &s);
 // set an alias with given action
@@ -44,9 +44,9 @@ void alias(const char *name, const char *action);
 // get the action string for the given variable
 char *getalias(const char *name);
 // write all commands, variables and alias to config.cfg
-void writecfg(void);
+void writecfg();
 // free all resources needed by the command system
-void clean(void);
+void finish();
 } /* namespace script */
 } /* namespace q */
 

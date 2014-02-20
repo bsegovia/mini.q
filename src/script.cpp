@@ -37,8 +37,9 @@ static char *exchangestr(char *o, const char *n) {
 // contains all vars/commands/aliases
 static hashtable<identifier> *idents = NULL;
 
-void clean(void) {
+void finish(void) {
   for (auto it = idents->begin(); it != idents->end(); ++it) {
+    if (it->second.type!=ID_ALIAS) continue;
     FREE((char*) it->second.name);
     FREE((char*) it->second.action);
   }
