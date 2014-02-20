@@ -50,7 +50,7 @@ INLINE aabb getaabb(vec3i xyz) {
 
 // collide with the map
 static bool mapcollide(const aabb &box) {
-  return box.pmin.y < 0.f;
+  return box.pmin.y >= 0.f;
 }
 
 // all collision happens here. spawn is a dirty side effect used in
@@ -103,17 +103,17 @@ void moveplayer(game::dynent *pl, int moveres, bool local, int curtime) {
 
   vec3f d; // vector of direction we ideally want to move in
   d.x = float(pl->move*cos(deg2rad(pl->ypr.x-90.f)));
-  d.y = float(pl->move*sin(deg2rad(pl->ypr.x-90.f)));
-  d.z = 0.f;
+  d.z = float(pl->move*sin(deg2rad(pl->ypr.x-90.f)));
+  d.y = 0.f;
 
   if (floating || water) {
     d.x *= float(cos(deg2rad(pl->ypr.y)));
-    d.y *= float(cos(deg2rad(pl->ypr.y)));
-    d.z  = float(pl->move*sin(deg2rad(pl->ypr.y)));
+    d.z *= float(cos(deg2rad(pl->ypr.y)));
+    d.y  = float(pl->move*sin(deg2rad(pl->ypr.y)));
   }
 
   d.x += float(pl->strafe*cos(deg2rad(pl->ypr.x-180.f)));
-  d.y += float(pl->strafe*sin(deg2rad(pl->ypr.x-180.f)));
+  d.z += float(pl->strafe*sin(deg2rad(pl->ypr.x-180.f)));
 
   const float speed = curtime/(water? 2000.0f : 1000.0f)*pl->maxspeed;
   const float friction = water ? 20.0f : (pl->onfloor||floating ? 6.0f : 30.0f);
@@ -133,16 +133,16 @@ void moveplayer(game::dynent *pl, int moveres, bool local, int curtime) {
     pl->o += d;
     if (pl->jumpnext) {
       pl->jumpnext = false;
-      pl->vel.z = 2.f;
+      pl->vel.y = 2.f;
     }
   } else { // apply velocity with collision
     if (pl->onfloor || water) {
       if (pl->jumpnext) {
         pl->jumpnext = false;
-        pl->vel.z = 1.7f; // physics impulse upwards
+        pl->vel.y = 1.7f; // physics impulse upwards
         if (water) { // dampen velocity change even harder, gives correct water feel
           pl->vel.x /= 8.f;
-          pl->vel.y /= 8.f;
+          pl->vel.z /= 8.f;
         }
         if (local)
           sound::playc(sound::JUMP);
@@ -169,9 +169,9 @@ void moveplayer(game::dynent *pl, int moveres, bool local, int curtime) {
 
     loopi(moveres) { // discrete steps collision detection & sliding
       // try to apply gravity
-      pl->o.z -= drop;
+      pl->o.y -= drop;
       if (!collide(pl, false)) {
-        pl->o.z += drop;
+        pl->o.y += drop;
         pl->onfloor = true;
       } else
         pl->onfloor = false;
@@ -197,12 +197,12 @@ void moveplayer(game::dynent *pl, int moveres, bool local, int curtime) {
       // try just dropping down
       pl->moving = false;
       pl->o.x -= f*d.x;
-      pl->o.y -= f*d.y;
+      pl->o.z -= f*d.z;
       if (collide(pl, false)) {
-        d.x = d.y = 0.f;
+        d.x = d.z = 0.f;
         continue;
       }
-      pl->o.z -= f*d.z;
+      pl->o.y -= f*d.y;
       break;
     }
   }
@@ -220,7 +220,7 @@ void moveplayer(game::dynent *pl, int moveres, bool local, int curtime) {
   // play sounds on water transitions
   if (!pl->inwater && water) {
     sound::play(sound::SPLASH2, &pl->o);
-    pl->vel.z = 0.f;
+    pl->vel.y = 0.f;
   } else if (pl->inwater && !water)
     sound::play(sound::SPLASH1, &pl->o);
   pl->inwater = water;

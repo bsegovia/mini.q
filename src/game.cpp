@@ -104,12 +104,12 @@ dynent *newdynent(void) {
   dynent *d = (dynent*) MALLOC(sizeof(dynent));
   d->o = zero;
   d->ypr = vec3f(270.f,0.f,0.f);
-  d->maxspeed = 22;
+  d->maxspeed = 8.f;
   d->outsidemap = false;
   d->inwater = false;
-  d->radius = 1.1f;
-  d->eyeheight = 3.2f;
-  d->aboveeye = 0.7f;
+  d->radius = 0.5f;
+  d->o.y = d->eyeheight = 1.8f;
+  d->aboveeye = 0.2f;
   d->frags = 0;
   d->plag = 0;
   d->ping = 0;

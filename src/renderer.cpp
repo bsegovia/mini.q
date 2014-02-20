@@ -348,7 +348,10 @@ struct context {
     dirinvmvp = (p*dirmv).inverse() * viewporttr(w, h);
   }
 
-  INLINE void begin() {makescene();}
+  INLINE void begin() {
+    makescene();
+    OGL(Clear, GL_DEPTH_BUFFER_BIT);
+  }
   INLINE void end() {}
 
   void dogbuffer() {

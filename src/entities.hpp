@@ -81,8 +81,8 @@ struct dynent {
 };
 
 INLINE aabb getaabb(const dynent *d) {
-  const auto fmin = d->o-vec3f(d->radius, d->radius, d->eyeheight);
-  const auto fmax = d->o+vec3f(d->radius, d->radius, d->aboveeye);
+  const auto fmin = d->o-vec3f(d->radius, d->eyeheight, d->radius);
+  const auto fmax = d->o+vec3f(d->radius, d->aboveeye, d->radius);
   return aabb(fmin, fmax);
 }
 

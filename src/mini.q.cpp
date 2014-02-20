@@ -3,6 +3,7 @@
  - mini.q.cpp -> stub to run the game
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
+#include <time.h>
 
 #define TEST_UI 0
 
@@ -14,6 +15,7 @@
 namespace q {
 IVARF(grabmouse, 0, 0, 1, SDL_WM_GrabInput(grabmouse ? SDL_GRAB_ON : SDL_GRAB_OFF););
 IVARF(gamespeed, 10, 100, 1000, if (client::multiplayer()) gamespeed = 100);
+IVARP(minmillis, 0, 5, 1000);
 
 void start(int argc, const char *argv[]) {
   con::out("init: memory debugger");
@@ -191,26 +193,15 @@ static void gui() {
   ui::drawrect(30 + sys::scrw / 5 * 2, sys::scrh - 830, 100, 100, ui::rgba(192, 32, 32,192));
   ui::draw(sys::scrw, sys::scrh);
 }
-#endif
 
 INLINE void mainloop() {
   static int frame = 0;
-  const auto millis = sys::millis()*gamespeed/100.f;
+  const auto millis = sys::millis()*double(gamespeed)/100.0;
   static float fps = 30.0f;
   fps = (1000.0f/float(game::curtime())+fps*50.f)/51.f;
   SDL_GL_SwapBuffers();
   ogl::beginframe();
-#if TEST_UI
   gui();
-#else
-  OGL(ClearColor, 0.f, 0.f, 0.f, 1.f);
-  OGL(Clear, GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  if (frame++) {
-    physics::frame();
-    game::updateworld(millis);
-  }
-  rr::frame(sys::scrw, sys::scrh, int(fps));
-#endif
   SDL_Event e;
   int lasttype = 0, lastbut = 0;
   while (SDL_PollEvent(&e)) {
@@ -222,9 +213,7 @@ INLINE void mainloop() {
         con::keypress(e.key.keysym.sym, e.key.state==SDL_PRESSED?1:0, e.key.keysym.unicode);
       break;
       case SDL_MOUSEMOTION: game::mousemove(e.motion.xrel, e.motion.yrel); break;
-      case SDL_MOUSEBUTTONDOWN:
-#if TEST_UI
-      {
+      case SDL_MOUSEBUTTONDOWN: {
         if (e.button.button == SDL_BUTTON_LEFT)
           leftbutton = 1;
         else if (e.button.button == SDL_BUTTON_RIGHT)
@@ -232,16 +221,13 @@ INLINE void mainloop() {
         else if (e.button.button == SDL_BUTTON_MIDDLE)
           middlebutton = 1;
       } break;
-#endif
       case SDL_MOUSEBUTTONUP:
-#if TEST_UI
       if (e.button.button == SDL_BUTTON_LEFT)
           leftbutton = 0;
         else if (e.button.button == SDL_BUTTON_RIGHT)
           rightbutton = 0;
         else if (e.button.button == SDL_BUTTON_MIDDLE)
           middlebutton = 0;
-#endif
         if (lasttype==e.type && lastbut==e.button.button) break;
         con::keypress(-e.button.button, e.button.state, 0);
         lasttype = e.type;
@@ -250,6 +236,54 @@ INLINE void mainloop() {
     }
   }
   ogl::endframe();
+}
+#endif
+static int ignore = 5;
+
+INLINE void mainloop() {
+  auto millis = sys::millis()*double(gamespeed)/100.0;
+  if (millis-game::lastmillis()>200.0) game::setlastmillis(millis-200.0);
+  else if (millis-game::lastmillis()<1) game::setlastmillis(millis-1.0);
+#if !defined(__JAVASCRIPT__)
+  if (millis-game::lastmillis()<double(minmillis))
+    SDL_Delay(minmillis-(int(millis)-int(game::lastmillis())));
+#endif // __JAVASCRIPT__
+  game::updateworld(millis);
+  if (!demo::playing())
+    server::slice(int(time(NULL)), 0);
+  static double fps = 30.0;
+  fps = (1000.0/game::curtime()+fps*50.0)/51.0;
+  // rr::readdepth(scr_w, scr_h);
+  SDL_GL_SwapBuffers();
+  ogl::beginframe();
+  sound::updatevol();
+  rr::frame(sys::scrw, sys::scrh, int(fps));
+  ogl::endframe();
+  SDL_Event event;
+  int lasttype = 0, lastbut = 0;
+  while (SDL_PollEvent(&event)) {
+    switch (event.type) {
+      case SDL_QUIT: sys::quit(); break;
+      case SDL_KEYDOWN: 
+      case SDL_KEYUP: 
+        con::keypress(event.key.keysym.sym, event.key.state==SDL_PRESSED, event.key.keysym.unicode);
+      break;
+      case SDL_MOUSEMOTION:
+        if (ignore) {
+          ignore--;
+          break;
+        }
+        game::mousemove(event.motion.xrel, event.motion.yrel);
+      break;
+      case SDL_MOUSEBUTTONDOWN:
+      case SDL_MOUSEBUTTONUP:
+        if (lasttype==event.type && lastbut==event.button.button) break; // why?? get event twice without it
+        con::keypress(-event.button.button, event.button.state!=0, 0);
+        lasttype = event.type;
+        lastbut = event.button.button;
+      break;
+    }
+  }
 }
 
 static int run() {
