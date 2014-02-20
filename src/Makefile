@@ -8,7 +8,7 @@ RELFLAGS=-fomit-frame-pointer -Os -DNDEBUG -DRELEASE
 CXXFLAGS= $(CXXCOMMONFLAGS) $(FLAGS) $(DEBUGFLAGS)
 CFLAGS= $(FLAGS) $(DEBUGFLAGS)
 
-#CXXFLAGS=$(CXXOPTFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags` -fsanitize=address
+#CXXFLAGS=$(CXXOPTFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags`
 #CXXFLAGS=$(FLAGS) $(CXXRELFLAGS)
 #CXXFLAGS=$(FLAGS) $(CXXOPTFLAGS)
 #CXXFLAGS=$(CXXOPTFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags`
