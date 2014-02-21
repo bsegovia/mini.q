@@ -44,7 +44,8 @@ static void show(const char *name) {
 }
 CMDN(showmenu, show, ARG_1STR);
 
-void clean(void) {
+#if !defined(RELEASE)
+void finish(void) {
   loopv(menus) {
     FREE(menus[i].name);
     loopvj(menus[i].items) if (!menus[i].items[j].manual) {
@@ -53,6 +54,8 @@ void clean(void) {
     }
   }
 }
+#endif
+
 static int compare(const mitem *a, const mitem *b) {
   const int x = atoi(a->text);
   const int y = atoi(b->text);

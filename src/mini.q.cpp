@@ -119,6 +119,7 @@ void finish() {
   shaders::finish();
   text::finish();
   sound::finish();
+  menu::finish();
   ogl::finish();
   task::finish();
   con::finish();

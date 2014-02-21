@@ -131,7 +131,7 @@ static void history(int n) {
 }
 CMD(history, ARG_1INT);
 
-void keypress(int code, int isdown, int cooked) {
+void keypress(int code, bool isdown, int cooked) {
   if (saycommandon) { // keystrokes go to commandline
     if (isdown) {
       switch (code) {
@@ -161,7 +161,7 @@ void keypress(int code, int isdown, int cooked) {
             vhistory.add(NEWSTRING(cmdbuf));  // cap this?
           histpos = vhistory.length();
           if (cmdbuf[0]=='/')
-            script::execstring(cmdbuf, isdown);
+            script::execstring(cmdbuf, true);
           /* else client::toserver(cmdbuf); */
         }
         saycommand(NULL);
