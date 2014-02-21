@@ -4,6 +4,7 @@
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
 #include <time.h>
+#include <enet/enet.h>
 
 #define TEST_UI 0
 
@@ -18,23 +19,39 @@ VARF(gamespeed, 10, 100, 1000, if (client::multiplayer()) gamespeed = 100);
 VARP(minmillis, 0, 5, 1000);
 
 void start(int argc, const char *argv[]) {
+  bool dedicated = false;
+  int fs = 0, uprate = 0, maxcl = 4;
+  const char *master = NULL;
+  const char *sdesc = "", *ip = "", *passwd = "";
+  rangei(1, argc) {
+    const char *a = &argv[i][2];
+    if (argv[i][0]=='-') switch (argv[i][1]) {
+      case 'd': dedicated = true; break;
+      case 't': fs     = 0; break;
+      case 'w': sys::scrw  = atoi(a); break;
+      case 'h': sys::scrh  = atoi(a); break;
+      case 'u': uprate = atoi(a); break;
+      case 'n': sdesc  = a; break;
+      case 'i': ip     = a; break;
+      case 'm': master = a; break;
+      case 'p': passwd = a; break;
+      case 'c': maxcl  = atoi(a); break;
+      default:  con::out("unknown commandline option");
+    } else
+      con::out("unknown commandline argument");
+  }
+  if (SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO) < 0) sys::fatal("SDL failed");
+
   con::out("init: memory debugger");
   sys::memstart();
+
   con::out("init: tasking system");
   const u32 threadnum = sys::threadnumber() - 1;
   con::out("init: tasking system: %d threads created", threadnum);
   task::start(&threadnum, 1);
-  int fs = 0;
-  rangei(1, argc) if (argv[i][0]=='-') switch (argv[i][1]) {
-    case 't': fs = 0; break;
-    case 'w': sys::scrw  = atoi(&argv[i][2]); break;
-    case 'h': sys::scrh  = atoi(&argv[i][2]); break;
-    default: con::out("unknown commandline option");
-  } else con::out("unknown commandline argument");
-  if (SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO) < 0) sys::fatal("SDL failed");
 
-  rr::VIRTH = rr::VIRTW * float(sys::scrh) / float(sys::scrw);
   con::out("init: video: sdl");
+  rr::VIRTH = rr::VIRTW * float(sys::scrh) / float(sys::scrw);
   if (SDL_InitSubSystem(SDL_INIT_VIDEO)<0) sys::fatal("SDL video failed");
   SDL_WM_GrabInput(grabmouse ? SDL_GRAB_ON : SDL_GRAB_OFF);
 
@@ -42,6 +59,14 @@ void start(int argc, const char *argv[]) {
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
   if (!SDL_SetVideoMode(sys::scrw, sys::scrh, 0, SDL_OPENGL|fs)) sys::fatal("OpenGL failed");
   sys::initendiancheck();
+
+  con::out("net: enet");
+  if (enet_initialize()<0)
+    sys::fatal("enet: unable to initialise network module");
+  con::out("net: client");
+  game::initclient();
+  con::out("net: server");
+  server::init(dedicated, uprate, sdesc, ip, master, passwd, maxcl);  // never returns if dedicated
 
   con::out("init: video: ogl");
   ogl::start(sys::scrw, sys::scrh);
@@ -64,6 +89,10 @@ void start(int argc, const char *argv[]) {
   script::execfile("data/keymap.q");
   script::execfile("data/sounds.q");
   script::execfile("data/autoexec.q");
+
+  con::out("localconnect");
+  server::localconnect();
+  client::changemap("metl3");        // if this map is changed, also change depthcorrect()
 }
 
 static void playerpos(int x, int y, int z) {game::player1->o = vec3f(vec3i(x,y,z));}
@@ -275,7 +304,8 @@ INLINE void mainloop() {
       break;
       case SDL_MOUSEBUTTONDOWN:
       case SDL_MOUSEBUTTONUP:
-        if (lasttype==event.type && lastbut==event.button.button) break; // why?? get event twice without it
+        // why?? get event twice without it
+        if (lasttype==event.type && lastbut==event.button.button) break;
         con::keypress(-event.button.button, event.button.state!=0, 0);
         lasttype = event.type;
         lastbut = event.button.button;

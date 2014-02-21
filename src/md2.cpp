@@ -241,10 +241,7 @@ static void delayedload(mdl *m, float scale, int snap) {
 void start() {}
 #if !defined(RELEASE)
 void finish() {
-  for (auto &m : mdllookup) {
-    DEL(m.second);
-    mdllookup.remove(&m);
-  }
+  for (auto &m : mdllookup) DEL(m.second);
 }
 #endif
 
