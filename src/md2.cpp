@@ -152,9 +152,9 @@ bool mdl::load(const char *name, float scale, int sn) {
         const auto t = *((const float*)command++);
         const auto vn = *command++;
         const auto cv = (u8*) &cf->vertices[vn].vertex;
-        const vec3f v((snap(sn,cv[0]*cf->scale[0])+cf->translate[0])/sc,
+        const vec3f v(+(snap(sn,cv[0]*cf->scale[0])+cf->translate[0])/sc,
                       -(snap(sn,cv[1]*cf->scale[1])+cf->translate[1])/sc,
-                      (snap(sn,cv[2]*cf->scale[2])+cf->translate[2])/sc);
+                      +(snap(sn,cv[2]*cf->scale[2])+cf->translate[2])/sc);
         const auto nptr = normaltable[cf->vertices[vn].normalidx];
         const auto n = vec3f(nptr[0],-nptr[1],nptr[2]);
         trisv.add(vertextype(s,t,rot*n.xzy(),rot*v.xzy()));

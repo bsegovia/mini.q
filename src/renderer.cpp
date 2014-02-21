@@ -62,7 +62,6 @@ static void drawhud(int w, int h, int curfps) {
 /*--------------------------------------------------------------------------
  - handle the HUD gun
  -------------------------------------------------------------------------*/
-#if 1
 static const char *hudgunnames[] = {
   "hudguns/fist",
   "hudguns/shotg",
@@ -75,11 +74,8 @@ VARP(showhudgun, 0, 1, 1);
 static void drawhudmodel(int start, int end, float speed, int base) {
   ogl::matrixmode(ogl::MODELVIEW);
   ogl::pushmatrix();
-  //ogl::identity();
   md2::render(hudgunnames[game::player1->gunselect], start, end,
-  //md2::render("monster/ogro", start, end,
               vec3f(zero), game::player1->ypr,
-              // game::player1->o, game::player1->ypr,
               false, 1.0f, speed, 0, base);
   ogl::popmatrix();
 }
@@ -87,17 +83,14 @@ static void drawhudmodel(int start, int end, float speed, int base) {
 static void drawhudgun(float fovy, float aspect, float farplane) {
   if (!showhudgun) return;
 
-#if 0
   const int rtime = game::reloadtime(game::player1->gunselect);
   if (game::player1->lastaction &&
       game::player1->lastattackgun==game::player1->gunselect &&
       game::lastmillis()-game::player1->lastaction<rtime)
     drawhudmodel(7, 18, rtime/18.0f, game::player1->lastaction);
   else
-#endif
-  drawhudmodel(6, 1, 100.f, 0);
+    drawhudmodel(6, 1, 100.f, 0);
 }
-#endif
 
 /*--------------------------------------------------------------------------
  - deferred shading stuff

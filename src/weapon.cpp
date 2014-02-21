@@ -305,7 +305,6 @@ void shoot(dynent *d, vec3f &targ) {
   d->vel += kickback;
   if (d->ypr.y<80.0f) d->ypr.y += guns[d->gunselect].kickamount*0.05f;
 
-
   if (d->gunselect==GUN_FIST || d->gunselect==GUN_BITE) {
     unitv *= 3.f; // punch range
     to = from;
@@ -334,7 +333,6 @@ void shoot(dynent *d, vec3f &targ) {
 
   if (d->monsterstate) raydamage(player1, from, to, d, -1);
 }
-
 } /* namespace game */
 } /* namespace q */
 
