@@ -543,6 +543,7 @@ static vec3i parseformat(const char *fmt) {
       case 'T': mode = GL_TRIANGLES; break;
       case 'F': mode = GL_TRIANGLE_FAN; break;
       case 'S': mode = GL_TRIANGLE_STRIP; break;
+      case 'L': mode = GL_LINE_LOOP; break;
       case 'i': type = GL_UNSIGNED_INT; break;
       case 's': type = GL_UNSIGNED_SHORT; break;
       case 'b': type = GL_UNSIGNED_BYTE; break;

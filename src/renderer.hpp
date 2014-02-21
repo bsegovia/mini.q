@@ -7,17 +7,21 @@
 
 namespace q {
 namespace rr {
-
 static const float VIRTW = 1024.f; // for scalable UI
 static const float PIXELTAB = 1.f; // tabulation size
 extern float VIRTH;                // depends on aspect ratio
+
+// simple primitives
+void line(int x1, int y1, float z1, int x2, int y2, float z2);
+void box(const vec3i &start, const vec3i &size, const vec3f &col);
+void dot(int x, int y, float z);
+void linestyle(float width, int r, int g, int b);
 
 void start();
 void finish();
 void hud(int w, int h, int curfps);
 void frame(int w, int h, int curfps);
 vec2f scrdim();
-
 } /* namespace rr */
 } /* namespace q */
 
