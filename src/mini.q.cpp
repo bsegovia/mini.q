@@ -87,6 +87,7 @@ void start(int argc, const char *argv[]) {
   con::out("init: isosurface module");
   iso::start();
   script::execfile("data/keymap.q");
+  script::execfile("data/menus.q");
   script::execfile("data/sounds.q");
   script::execfile("data/autoexec.q");
 

@@ -160,7 +160,7 @@ void addmsg(int rel, int num, int type, ...) {
       type, num, msgsizelookup(type));
     sys::fatal(s);
   }
-  if (messages.size()==128) {
+  if (messages.length()==128) {
     con::out("command flood protection (type %d)", type);
     return;
   }
@@ -341,7 +341,7 @@ void localservertoclient(u8 *buf, int len) {
       const int prot = getint(p);
       if (prot!=PROTOCOL_VERSION) {
         con::out("you are using a different game protocol (you: %d, server: %d)",
-                     PROTOCOL_VERSION, prot);
+                 PROTOCOL_VERSION, prot);
         disconnect();
         return;
       }
@@ -356,7 +356,7 @@ void localservertoclient(u8 *buf, int len) {
         return;
       }
       if (getint(p)==1)
-        con::out("server is FULL, disconnecting..");
+        con::out("server is FULL, disconnecting...");
     }
     break;
     case SV_POS: {
@@ -489,7 +489,7 @@ void localservertoclient(u8 *buf, int len) {
     case SV_ITEMSPAWN: {
       u32 i = getint(p);
       game::setspawn(i, true);
-      if (i>=u32(game::ents.size()))
+      if (i>=u32(game::ents.length()))
         break;
       const auto &e = game::ents[i];
       const vec3f v(float(e.x),float(e.y),float(e.z));
@@ -525,7 +525,7 @@ void localservertoclient(u8 *buf, int len) {
     // Coop edit of ent
     case SV_EDITENT: {
       u32 i = getint(p);
-      while (u32(game::ents.size()) <= i)
+      while (u32(game::ents.length()) <= i)
         game::ents.add().type = game::NOTUSED;
       game::ents[i].type = getint(p);
       game::ents[i].x = getint(p);

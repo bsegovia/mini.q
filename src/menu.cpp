@@ -76,7 +76,7 @@ bool render(void) {
     browser::refreshservers();
   gmenu &m = menus[vmenu];
   sprintf_sd(title)(vmenu>1 ? "[ %s menu ]" : "%s", m.name);
-  int mdisp = m.items.size();
+  int mdisp = m.items.length();
   int w = 0;
   loopi(mdisp) {
     const int x = rr::textwidth(m.items[i].text);
@@ -142,7 +142,7 @@ bool key(int code, bool isdown) {
     }
     else if (code==SDLK_UP || code==-4) menusel--;
     else if (code==SDLK_DOWN || code==-5) menusel++;
-    int n = menus[vmenu].items.size();
+    int n = menus[vmenu].items.length();
     if (menusel<0) menusel = n-1;
     else if (menusel>=n) menusel = 0;
     menus[vmenu].menusel = menusel;

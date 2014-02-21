@@ -124,7 +124,7 @@ void play(int n, const vec3f *loc) {
     soundsatonce = 1;
   lastsoundmillis = int(game::lastmillis());
   if (soundsatonce>5) return;  // avoid bursts of sounds with heavy packetloss
-  if (n<0 || n>=samples.size()) {
+  if (n<0 || n>=samples.length()) {
     con::out("unregistered sound: %d", n);
     return;
   }

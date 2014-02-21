@@ -232,7 +232,7 @@ void putitems(u8 *&p) { // puts items in network stream and also spawns them loc
 }
 
 void resetspawns(void) { loopv(ents) ents[i].spawned = false; }
-void setspawn(u32 i, bool on) { if (i<(u32)ents.size()) ents[i].spawned = on; }
+void setspawn(u32 i, bool on) { if (i<(u32)ents.length()) ents[i].spawned = on; }
 } /* namespace game */
 } /* namespace q */
 
