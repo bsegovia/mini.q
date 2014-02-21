@@ -74,5 +74,5 @@ compress_chars: compress_chars.o
 	$(CXX) $(CXXFLAGS) -o compress_chars compress_chars.o $(LIBS)
 
 clean:
-	rm -f mini.q compress_chars *.o *.d
+	rm -f mini.q compress_chars *.o *.d ./enet/*.o ./enet/*.d
 

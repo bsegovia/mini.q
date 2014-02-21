@@ -6,6 +6,8 @@
 #include "game.hpp"
 #include "script.hpp"
 #include "client.hpp"
+#include "renderer.hpp"
+#include "text.hpp"
 #include "serverbrowser.hpp"
 #include "sys.hpp"
 #include "stl.hpp"
@@ -75,9 +77,8 @@ bool render(void) {
     menustack.setsize(0);
     return false;
   }
-  if (vmenu==1)
-    browser::refreshservers();
-  gmenu &m = menus[vmenu];
+  if (vmenu==1) browser::refreshservers();
+  auto m = menus[vmenu];
   sprintf_sd(title)(vmenu>1 ? "[ %s menu ]" : "%s", m.name);
   int mdisp = m.items.length();
   int w = 0;
