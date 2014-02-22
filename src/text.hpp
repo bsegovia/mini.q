@@ -18,9 +18,11 @@ void displaywidth(float w);
 void thickness(float t);
 void outlinecolor(const vec4f &c);
 void outlinewidth(float w);
+float fontratio(); // height/width
 float width(const char *str);
 void drawf(const char *fstr, const vec2f &pos, ...);
 void draw(const char *str, const vec2f &pos);
+void drawf(const char *fstr, float x, float y, ...);
 INLINE void draw(const char *str, float x, float y) {
   draw(str, vec2i(x,y));
 }

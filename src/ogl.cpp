@@ -412,7 +412,7 @@ u32 installtex(const char *texname, bool clamp) {
   if (s->w>glmaxtexsize || s->h>glmaxtexsize)
     sys::fatal("texture dimensions are too large");
   const auto ispowerof2 = ispoweroftwo(s->w) && ispoweroftwo(s->h);
-  const auto minf = ispowerof2 ? 'l' : 'M';
+  const auto minf = ispowerof2 ? 'M' : 'n';
   const auto mm = ispowerof2 ? 'G' : ' ';
   const auto fmt = s->format->BitsPerPixel == 24 ? '3' : '4';
   const auto wrap = clamp ? 'e' : 'r';

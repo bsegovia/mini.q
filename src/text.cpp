@@ -51,7 +51,8 @@ static float displayw = float(charw), displayh = float(charh);
 
 vec2f fontdim() { return charwh; }
 vec2f displaydim() { return vec2f(displayw, displayh); }
-void displaywidth(float w) { displayw = w; displayh = w * charh / charw; }
+float fontratio() { return float(charh) / float(charw); }
+void displaywidth(float w) { displayw = w; displayh = w * fontratio(); }
 void thickness(float t) { fontthickness = t; }
 void outlinecolor(const vec4f &c) { fontoutlinecolor = c; }
 void outlinewidth(float w) { fontoutlinewidth = w; }
@@ -84,6 +85,11 @@ float width(const char *str) {
 void drawf(const char *fstr, const vec2f &pos, ...) {
   sprintf_sdlv(str, pos, fstr);
   draw(str, pos);
+}
+
+void drawf(const char *fstr, float x, float y, ...) {
+  sprintf_sdlv(str, y, fstr);
+  draw(str, x, y);
 }
 
 void draw(const char *str, const vec2f &pos) {

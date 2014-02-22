@@ -31,40 +31,21 @@ static void popscreentransform() {
 /*--------------------------------------------------------------------------
  - simple primitives
  -------------------------------------------------------------------------*/
-void line(int x1, int y1, float z1, int x2, int y2, float z2) {
+static const float ICON_SIZE = 80.f;
+void drawicon(float tx, float ty, float x, float y) {
+  const auto o = 1.f/3.f;
+  const auto s = ICON_SIZE;
+  tx /= 192.f;
+  ty /= 192.f;
   const float verts[] = {
-    float(x1), z1, float(y1),
-    float(x1), z1, float(y1)+0.01f,
-    float(x2), z2, float(y2),
-    float(x2), z2, float(y2)+0.01f
+    tx,   ty+o, x,   y,
+    tx+o, ty+o, x+s, y,
+    tx,   ty,   x,   y+s,
+    tx+o, ty,   x+s, y+s
   };
-  ogl::bindfixedshader(ogl::FIXED_COLOR);
-  ogl::immdraw("Sp3", 4, verts);
-}
-
-#if 0
-void box(const vec3i &start, const vec3i &size, const vec3f &col) {
-  const vec3f fstart(start), fsize(size);
-  vec3f v[2*ARRAY_ELEM_N(cubeedges)];
-  loopi(int(ARRAY_ELEM_N(cubeedges))) {
-    v[2*i+0] = fsize*cubefverts[cubeedges[i].x]+fstart;
-    v[2*i+1] = fsize*cubefverts[cubeedges[i].y]+fstart;
-  }
-  ogl::bindfixedshader(ogl::FIXED_COLOR);
-  OGL(VertexAttrib3fv, ogl::ATTRIB_COL, &col.x);
-  ogl::immdraw(GL_LINES, 3, 0, 0, ARRAY_ELEM_N(v), &v[0][0]);
-}
-#endif
-void dot(int x, int y, float z) {
-  const float DOF = 0.1f;
-  const float verts[] = {
-    x-DOF, float(z), y-DOF,
-    x+DOF, float(z), y-DOF,
-    x+DOF, float(z), y+DOF,
-    x-DOF, float(z), y+DOF
-  };
-  ogl::bindfixedshader(ogl::ATTRIB_COL);
-  ogl::immdraw("Lp3", 4, verts);
+  ogl::bindfixedshader(ogl::FIXED_DIFFUSETEX);
+  ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_ITEM), 0);
+  ogl::immdraw("St2p2", 4, verts);
 }
 
 void blendbox(float x1, float y1, float x2, float y2, bool border) {
@@ -116,31 +97,38 @@ static void drawhud(int w, int h, int curfps) {
     ogl::printtimers(text::fontdim().x, con::height());
   }
   menu::render();
-#if 0
+#if 1
   if (game::player1->state==CS_ALIVE) {
-    ogl::pushmatrix();
-    ogl::ortho(0, VIRTW/2, VIRTH/2, 0, -1, 1);
-    drawtextf("%d",  90, 827, game::player1->health);
-    if (game::player1->armour)
-      drawtextf("%d", 390, 827, game::player1->armour);
-    drawtextf("%d", 690, 827, game::player1->ammo[game::player1->gunselect]);
-    ogl::popmatrix();
-    ogl::pushmatrix();
-    ogl::ortho(0.f, float(VIRTW), float(VIRTH), 0.f, -1.f, 1.f);
+    const auto lifepos = vec2f(float(VIRTW) * 0.05f,ICON_SIZE*0.2f);
+    const auto armorpos = vec2f(float(VIRTW) * 0.30f, ICON_SIZE*0.2f);
+    const auto ammopos = vec2f(float(VIRTW) * 0.55f, ICON_SIZE*0.2f);
+    const auto textpos = vec2f(1.2f*ICON_SIZE, -ICON_SIZE*0.2f);
+    text::displaywidth(ICON_SIZE/text::fontratio());
+    const auto pl = game::player1;
+    ogl::pushmode(ogl::PROJECTION);
+    ogl::setortho(0.f, float(VIRTW), 0.f, float(VIRTH), -1.f, 1.f);
+    text::drawf("%d", lifepos+textpos, pl->health);
+    if (pl->armour) text::drawf("%d", armorpos+textpos, pl->armour);
+    text::drawf("%d", ammopos+textpos, pl->ammo[pl->gunselect]);
     ogl::disablev(GL_BLEND);
-    drawicon(128, 128, 20, 1650);
-    if (game::player1->armour)
-      drawicon((float)(game::player1->armourtype*64), 0, 620, 1650);
-    int g = game::player1->gunselect;
-    int r = 64;
-    if (g>2) { g -= 3; r = 128; }
-    drawicon((float)(g*64), (float)r, 1220, 1650);
+    drawicon(128, 128, lifepos.x, lifepos.y);
+    if (pl->armour)
+      drawicon(float(pl->armourtype)*64.f, 0, armorpos.x, armorpos.y);
+    auto g = float(pl->gunselect);
+    auto r = 64.f;
+    if (g>2) {
+      g -= 3.f;
+      r = 128.f;
+    }
+    drawicon(g*64.f, r, ammopos.x, ammopos.y);
     ogl::popmatrix();
+    text::resetdefaultwidth();
   }
+
+  ogl::disablev(GL_BLEND);
 #endif
 
   popscreentransform();
-  ogl::disable(GL_BLEND);
   ogl::enable(GL_DEPTH_TEST);
 }
 
