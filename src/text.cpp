@@ -104,10 +104,11 @@ void draw(const char *str, const vec2f &pos) {
     if (c==' ')  {x += displayw; continue;}
     c -= 32;
     if (c<0 || c>=95) continue;
-    const auto in_left   = (float(c%fontcol)*float(charw)-0.05f) / float(fontw);
-    const auto in_top    = (float(c/fontcol)*float(charh)-0.05f) / float(fonth);
-    const auto in_right  = in_left + (float(charw)-0.05f)/float(fontw);
-    const auto in_bottom = in_top + (float(charh)-0.05f)/float(fonth);
+    const float EPS = 1e-3f;
+    const auto in_left   = (float(c%fontcol)*float(charw)-EPS) / float(fontw);
+    const auto in_top    = (float(c/fontcol)*float(charh)-EPS) / float(fonth);
+    const auto in_right  = in_left + (float(charw)-EPS)/float(fontw);
+    const auto in_bottom = in_top + (float(charh)-EPS)/float(fonth);
 
     loopj(6) indices[index+j] = vert+twotriangles[j];
     verts[vert+0] = vec4f(in_left, in_bottom,   x,         y);
