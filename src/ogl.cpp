@@ -687,7 +687,7 @@ void printtimers(float conw, float conh) {
       t.print = t.result;
     if (t.print < 0 || (t.gpu && !(t.waiting&(1<<timercycle))))
       continue;
-    const vec2f tp(conw-20.f*dim.y, conh-dim.y*3.f/2.f-offset*9.f*dim.y/8.f);
+    const vec2f tp(conw, conh-(offset+1)*9.f*dim.y/8.f);
     text::drawf("%s%s %5.2f ms", tp, t.name, t.gpu ? "" : " (cpu)", t.print);
     ++offset;
   }

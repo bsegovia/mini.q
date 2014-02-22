@@ -9,6 +9,7 @@ namespace con {
 void finish();
 const char *curcmd();
 void out(const char *s, ...);
+float height();
 void keypress(int code, bool isdown, int cooked);
 bool active();
 void render();

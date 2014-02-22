@@ -113,7 +113,7 @@ static void drawhud(int w, int h, int curfps) {
     text::drawf("yaw: %f pitch: %f roll: %f", textpos, ypr.x, ypr.y, ypr.z);
     textpos.y += fontdim.y;
     text::drawf("%i f/s", textpos, curfps);
-    ogl::printtimers(400.f, 400.f);
+    ogl::printtimers(text::fontdim().x, con::height());
   }
   menu::render();
   popscreentransform();

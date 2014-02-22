@@ -94,25 +94,36 @@ void out(const char *s, ...) {
 }
 
 VAR(confadeout, 1, 5000, 256000);
-void render() {
+static int conlinenum(char *refs[ndraw]) {
   int nd = 0;
-  char *refs[ndraw];
   loopv(conlines) {
     if (conskip ? i>=conskip-1 || i>=conlines.length()-ndraw :
        game::lastmillis()-conlines[i].outtime < confadeout) {
-      refs[nd++] = conlines[i].cref;
-      if (nd==ndraw) break;
+      refs[nd] = conlines[i].cref;
+      if (++nd==ndraw) break;
     }
   }
+  return nd;
+}
+
+float height() {
+  char *refs[ndraw];
+  const auto cmd = curcmd();
+  const int nd = conlinenum(refs) + (cmd?1:0);
+  return float(sys::scrh)-nd*text::fontdim().y;
+}
+
+void render() {
+  char *refs[ndraw];
+  const int nd = conlinenum(refs);
+
   // console output
   const auto font = text::fontdim();
-  const auto old = text::displaydim().x;
   text::displaywidth(font.x);
   loopj(nd) text::draw(refs[j], font.x, float(sys::scrh)-font.y*(j+1));
-  text::displaywidth(old);
 
   // command line
-  const auto cmd = con::curcmd();
+  const auto cmd = curcmd();
   if (cmd) text::drawf("> %s_", vec2f(font.x, float(sys::scrh)-font.y*(nd+1)), cmd);
 }
 
