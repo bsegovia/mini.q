@@ -1,9 +1,10 @@
 PS_IN vec2 fs_tex;
+PS_IN vec4 fs_col;
 
 #define RSQ2 0.7071078
 
 void distseg(inout float dist, vec2 start, vec2 end, vec2 nor, vec2 pos) {
-  bool inside =  (dot(pos-start,end-start)>=0.0 && dot(end-pos,end-start)>=0.0);
+  bool inside = (dot(pos-start,end-start)>=0.0 && dot(end-pos,end-start)>=0.0);
   dist = inside ? min(dist, abs(dot(pos-start, nor))) : dist;
 }
 
@@ -40,8 +41,7 @@ void main() {
   }
   float no = u_font_thickness-u_outline_width;
   float o = u_font_thickness;
-  vec4 col = vec4(1.0-smoothstep(no-0.1, no, dist));
-  col += u_outline_color * (1.0-smoothstep(o-0.1, o, dist));
-  SWITCH_WEBGL(gl_FragColor, rt_col) = col;
+  float alpha = 1.0-smoothstep(no-0.1, no, dist);
+  SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(fs_col.xyz,alpha);
 }
 

@@ -5,6 +5,8 @@
 #include "con.hpp"
 #include "game.hpp"
 #include "script.hpp"
+#include "client.hpp"
+#include "menu.hpp"
 #include "text.hpp"
 #include "sys.hpp"
 
@@ -105,10 +107,7 @@ void render() {
   const auto font = text::fontdim();
   const auto old = text::displaydim().x;
   text::displaywidth(font.x);
-  loopj(nd) {
-    const vec2f pos(font.x, font.y*float(nd-j-1));
-    text::draw(refs[j], pos);
-  }
+  loopj(nd) text::draw(refs[j], font.x, font.y*float(nd-j-1));
   text::displaywidth(old);
 }
 
@@ -162,13 +161,14 @@ void keypress(int code, bool isdown, int cooked) {
           histpos = vhistory.length();
           if (cmdbuf[0]=='/')
             script::execstring(cmdbuf, true);
-          /* else client::toserver(cmdbuf); */
+          else
+            client::toserver(cmdbuf);
         }
         saycommand(NULL);
       } else if (code==SDLK_ESCAPE)
         saycommand(NULL);
     }
-  } else /* if (!menu::key(code, isdown) */ { // keystrokes go to menu
+  } else if (!menu::key(code, isdown)) { // keystrokes go to menu
     loopi(numkm) if (keyms[i].code==code) { // keystrokes go to game, lookup in keymap and execute
       script::execstring(keyms[i].action, isdown);
       return;

@@ -86,6 +86,10 @@ void start(int argc, const char *argv[]) {
   rr::start();
   con::out("init: isosurface module");
   iso::start();
+
+  con::out("script");
+  menu::newm("frags\tpj\tping\tteam\tname");
+  menu::newm("ping\tplr\tserver");
   script::execfile("data/keymap.q");
   script::execfile("data/menus.q");
   script::execfile("data/sounds.q");

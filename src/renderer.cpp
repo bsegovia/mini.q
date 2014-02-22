@@ -41,12 +41,7 @@ void line(int x1, int y1, float z1, int x2, int y2, float z2) {
   ogl::bindfixedshader(ogl::FIXED_COLOR);
   ogl::immdraw("Sp3", 4, verts);
 }
-#if 0
-void linestyle(float width, int r, int g, int b) {
-  OGL(LineWidth, width);
-  OGL(VertexAttrib3f,ogl::ATTRIB_COL,float(r)/255.f,float(g)/255.f,float(b)/255.f);
-}
-#endif
+
 #if 0
 void box(const vec3i &start, const vec3i &size, const vec3f &col) {
   const vec3f fstart(start), fsize(size);
@@ -72,7 +67,8 @@ void dot(int x, int y, float z) {
   ogl::immdraw("Lp3", 4, verts);
 }
 
-void blendbox(int x1, int y1, int x2, int y2, bool border) {
+void blendbox(float x1, float y1, float x2, float y2, bool border) {
+  ogl::enablev(GL_BLEND);
   OGL(DepthMask, GL_FALSE);
   OGL(BlendFunc, GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
   ogl::setattribarray()(ogl::ATTRIB_POS0);
@@ -81,26 +77,17 @@ void blendbox(int x1, int y1, int x2, int y2, bool border) {
     OGL(VertexAttrib3f, ogl::ATTRIB_COL, .5f, .3f, .4f);
   else
     OGL(VertexAttrib3f, ogl::ATTRIB_COL, 1.f, 1.f, 1.f);
-  const float verts0[] = {
-    float(x1), float(y1),
-    float(x2), float(y1),
-    float(x1), float(y2),
-    float(x2), float(y2)
-  };
+  const float verts0[] = {x1, y1, x2, y1, x1, y2, x2, y2};
   ogl::immdraw("Sp2", 4, verts0);
 
   ogl::disablev(GL_BLEND);
   OGL(VertexAttrib3f, ogl::ATTRIB_COL, .2f, .7f, .4f);
-  const float verts1[] = {
-    float(x1), float(y1),
-    float(x2), float(y1),
-    float(x2), float(y2),
-    float(x1), float(y2)
-  };
-  ogl::immdraw("Sp2", 4, verts1);
+  const float verts1[] = {x1, y1, x2, y1, x2, y2, x1, y2};
+  ogl::immdraw("Lp2", 4, verts1);
 
   OGL(DepthMask, GL_TRUE);
   ogl::enablev(GL_BLEND);
+  OGL(BlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
 /*--------------------------------------------------------------------------
@@ -113,9 +100,10 @@ static void drawhud(int w, int h, int curfps) {
   const auto fontdim = text::fontdim();
   ogl::enablev(GL_BLEND);
   ogl::disable(GL_DEPTH_TEST);
-  OGL(BlendFunc, GL_ONE, GL_ONE);
+  OGL(BlendFunc, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   pushscreentransform();
   text::displaywidth(text::fontdim().x);
+  OGL(VertexAttrib4f,ogl::ATTRIB_COL,1.f,1.f,1.f,1.f);
   if (cmd) text::drawf("> %s_", vec2f(8.f, scr.y-50.f), cmd);
   con::render();
   if (showstats) {
@@ -129,6 +117,7 @@ static void drawhud(int w, int h, int curfps) {
     text::drawf("%i f/s", textpos, curfps);
     ogl::printtimers(400.f, 400.f);
   }
+  menu::render();
   popscreentransform();
   ogl::disable(GL_BLEND);
   ogl::enable(GL_DEPTH_TEST);

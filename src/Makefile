@@ -6,12 +6,7 @@ OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g
 RELFLAGS=-fomit-frame-pointer -Os -DNDEBUG -DRELEASE
 
 CXXFLAGS= $(CXXCOMMONFLAGS) $(FLAGS) $(DEBUGFLAGS)
-CFLAGS= $(FLAGS) $(DEBUGFLAGS)
 
-#CXXFLAGS=$(CXXOPTFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags`
-#CXXFLAGS=$(FLAGS) $(CXXRELFLAGS)
-#CXXFLAGS=$(FLAGS) $(CXXOPTFLAGS)
-#CXXFLAGS=$(CXXOPTFLAGS) -std=c++11 -Wno-invalid-offsetof -I./ `sdl-config --cflags`
 LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer -lz
 OBJS=\
   client.o\

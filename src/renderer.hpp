@@ -15,8 +15,7 @@ extern float VIRTH;                // depends on aspect ratio
 void line(int x1, int y1, float z1, int x2, int y2, float z2);
 void box(const vec3i &start, const vec3i &size, const vec3f &col);
 void dot(int x, int y, float z);
-void blendbox(int x1, int y1, int x2, int y2, bool border);
-void linestyle(float width, int r, int g, int b);
+void blendbox(float x1, float y1, float x2, float y2, bool border);
 
 void start();
 void finish();

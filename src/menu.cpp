@@ -6,6 +6,7 @@
 #include "game.hpp"
 #include "script.hpp"
 #include "client.hpp"
+#include "ogl.hpp"
 #include "renderer.hpp"
 #include "text.hpp"
 #include "serverbrowser.hpp"
@@ -72,46 +73,44 @@ void sort(int start, int num) {
 }
 
 bool render(void) {
-#if 0 // TODO
   if (vmenu<0) {
     menustack.setsize(0);
     return false;
   }
   if (vmenu==1) browser::refreshservers();
-  auto m = menus[vmenu];
-  sprintf_sd(title)(vmenu>1 ? "[ %s menu ]" : "%s", m.name);
-  int mdisp = m.items.length();
-  int w = 0;
-  loopi(mdisp) {
-    const int x = rr::textwidth(m.items[i].text);
-    if (x>w) w = x;
-  }
+  auto &m = menus[vmenu];
+  sprintf_sd(title)(vmenu>1 ? "- %s menu -" : "%s", m.name);
+  const auto mdisp = m.items.length();
+  auto w = 0.f;
+  loopi(mdisp) w = max(w, text::width(m.items[i].text));
+  w = max(w, text::width(title));
 
-  int tw = rr::textwidth(title);
-  if (tw>w) w = tw;
-  const int fh = rr::FONTH;
-  int step = fh/4*5;
-  int h = (mdisp+2)*step;
-  int y = (rr::VIRTH-h)/2;
-  int x = (rr::VIRTW-w)/2;
-  rr::blendbox(x-fh/2*3, y-fh, x+w+fh/2*3, y+h+fh, true);
-  rr::drawtext(title, x, y,2);
-  y += fh*2;
+  const auto scr = vec2f(float(sys::scrw), float(sys::scrw));
+  const auto fh = text::fontdim().y;
+  const auto step = fh*5.f/4.f;
+  const auto h = (float(mdisp)+2.f)*step;
+  const auto x = (scr.x-w)/2.f;
+  auto y = (scr.y+h)/2.f;
+
+  rr::blendbox(x-fh/2.f*3.f, y-h, x+w+fh/2.f*3.f, y+2.f*fh, true);
+  OGL(VertexAttrib4f,ogl::ATTRIB_COL,1.f,1.f,1.f,1.f);
+  text::draw(title,x,y);
+  y -= fh*2.f;
 
   if (vmenu) {
-    int bh = y+m.menusel*step;
-    rr::blendbox(x-fh, bh-10, x+w+fh, bh+fh+10, false);
+    const auto bh = y-m.menusel*step;
+    rr::blendbox(x-fh, bh-fh*0.1f, x+w+fh, bh+fh*1.1f, false);
   }
+  OGL(VertexAttrib4f,ogl::ATTRIB_COL,1.f,1.f,1.f,1.f);
   loopj(mdisp) {
-    rr::drawtext(m.items[j].text, x, y, 2);
-    y += step;
+    text::draw(m.items[j].text, x, y);
+    y -= step;
   }
-#endif
   return true;
 }
 
 void newm(const char *name) {
-  gmenu &menu = menus.add();
+  auto &menu = menus.add();
   menu.name = NEWSTRING(name);
   menu.menusel = 0;
 }
@@ -119,15 +118,15 @@ CMDN(newmenu, newm, ARG_1STR);
 
 void manual(int m, int n, char *text) {
   if (!n) menus[m].items.setsize(0);
-  mitem &mi = menus[m].items.add();
+  auto &mi = menus[m].items.add();
   mi.text = text;
   mi.action = empty;
   mi.manual = 1;
 }
 
 void item(char *text, char *action) {
-  gmenu &menu = menus.last();
-  mitem &mi = menu.items.add();
+  auto &menu = menus.last();
+  auto &mi = menu.items.add();
   mi.text = NEWSTRING(text);
   mi.action = action[0] ? NEWSTRING(action) : NEWSTRING(text);
   mi.manual = 0;
@@ -146,7 +145,7 @@ bool key(int code, bool isdown) {
     }
     else if (code==SDLK_UP || code==-4) menusel--;
     else if (code==SDLK_DOWN || code==-5) menusel++;
-    int n = menus[vmenu].items.length();
+    const int n = menus[vmenu].items.length();
     if (menusel<0) menusel = n-1;
     else if (menusel>=n) menusel = 0;
     menus[vmenu].menusel = menusel;

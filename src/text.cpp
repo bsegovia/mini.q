@@ -27,7 +27,7 @@ static void buildfont() {
 }
 
 static void fontrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32) {
-  ogl::fixedrules(vert,frag,ogl::FIXED_DIFFUSETEX);
+  ogl::fixedrules(vert,frag,ogl::FIXED_DIFFUSETEX|ogl::FIXED_COLOR);
 }
 #define RULES fontrules
 #define SHADERNAME font
@@ -87,7 +87,6 @@ void drawf(const char *fstr, const vec2f &pos, ...) {
 
 void draw(const char *str, const vec2f &pos) {
   ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_CHARACTERS));
-  OGL(VertexAttrib3f,ogl::ATTRIB_COL,1.f,1.f,1.f);
 
   // use a triangle mesh to display the text
   const auto len = strlen(str);

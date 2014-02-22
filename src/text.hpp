@@ -20,6 +20,9 @@ void outlinewidth(float w);
 float width(const char *str);
 void drawf(const char *fstr, const vec2f &pos, ...);
 void draw(const char *str, const vec2f &pos);
+INLINE void draw(const char *str, float x, float y) {
+  draw(str, vec2i(x,y));
+}
 } /* namespace text */
 } /* namespace q */
 
