@@ -107,7 +107,7 @@ void render() {
   const auto font = text::fontdim();
   const auto old = text::displaydim().x;
   text::displaywidth(font.x);
-  loopj(nd) text::draw(refs[j], font.x, font.y*float(nd-j-1));
+  loopj(nd) text::draw(refs[j], font.x, float(sys::scrh)-font.y*(j+1));
   text::displaywidth(old);
 }
 

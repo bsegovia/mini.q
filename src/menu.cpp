@@ -90,7 +90,6 @@ bool render(void) {
   loopi(mdisp) w = max(w, text::width(m.items[i].text));
   w = max(w, text::width(title));
 
-  //const auto scr = vec2f(float(sys::scrw), float(sys::scrw));
   const auto fh = text::displaydim().y;
   const auto step = fh*5.f/4.f;
   const auto h = (float(mdisp)+2.f)*step;
