@@ -13,6 +13,7 @@ void finish();
 vec2f fontdim();
 vec2f displaydim();
 u32 oglfont();
+void resetdefaultwidth();
 void displaywidth(float w);
 void thickness(float t);
 void outlinecolor(const vec4f &c);

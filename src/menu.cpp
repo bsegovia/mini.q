@@ -77,6 +77,11 @@ bool render(void) {
     menustack.setsize(0);
     return false;
   }
+
+  // zoom in the menu
+  const auto scr = vec2f(rr::VIRTW, rr::VIRTH);
+  text::displaywidth(20.f);
+
   if (vmenu==1) browser::refreshservers();
   auto &m = menus[vmenu];
   sprintf_sd(title)(vmenu>1 ? "- %s menu -" : "%s", m.name);
@@ -85,8 +90,8 @@ bool render(void) {
   loopi(mdisp) w = max(w, text::width(m.items[i].text));
   w = max(w, text::width(title));
 
-  const auto scr = vec2f(float(sys::scrw), float(sys::scrw));
-  const auto fh = text::fontdim().y;
+  //const auto scr = vec2f(float(sys::scrw), float(sys::scrw));
+  const auto fh = text::displaydim().y;
   const auto step = fh*5.f/4.f;
   const auto h = (float(mdisp)+2.f)*step;
   const auto x = (scr.x-w)/2.f;

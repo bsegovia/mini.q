@@ -55,6 +55,7 @@ void displaywidth(float w) { displayw = w; displayh = w * charh / charw; }
 void thickness(float t) { fontthickness = t; }
 void outlinecolor(const vec4f &c) { fontoutlinecolor = c; }
 void outlinewidth(float w) { fontoutlinewidth = w; }
+void resetdefaultwidth() {displaywidth(float(charw));}
 static void bindfontshader() {
   ogl::bindshader(font::s);
   OGL(Uniform2f, font::s.u_fontwh, float(fontw), float(fonth));
