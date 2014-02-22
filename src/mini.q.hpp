@@ -28,6 +28,7 @@
 #include "task.hpp"
 #include "text.hpp"
 #include "weapon.hpp"
+#include "world.hpp"
 
 namespace q {
 void start();

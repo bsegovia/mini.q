@@ -155,9 +155,8 @@ void arenarespawn(void) {
     int alive = 0, dead = 0;
     char *lastteam = NULL;
     bool oneteam = true;
-    loopv(players)
-      if (players[i])
-        arenacount(players[i], alive, dead, lastteam, oneteam);
+    loopv(players) if (players[i])
+      arenacount(players[i], alive, dead, lastteam, oneteam);
     arenacount(player1, alive, dead, lastteam, oneteam);
     if (dead>0 && (alive<=1 || (m_teammode && oneteam))) {
       con::out("arena round is over! next round in 5 seconds...");
@@ -265,8 +264,7 @@ void entinmap(dynent *d) {
     d->o.x -= dx;
     d->o.y -= dy;
   }
-  con::out("can't find entity spawn spot! (%d, %d)",
-               (int)d->o.x, (int)d->o.y);
+  con::out("can't find entity spawn spot! (%d, %d)", int(d->o.x), int(d->o.y));
 }
 
 static int spawncycle = -1;
@@ -287,7 +285,7 @@ void spawnplayer(dynent *d) {
 #endif
   {
     d->o.x = d->o.y = 0.f;
-    d->o.z = 4;
+    d->o.z = 4.f;
   }
   entinmap(d);
   spawnstate(d);
@@ -425,8 +423,6 @@ void startmap(const char *name) {
   strcpy_s(clientmap, name);
   if (edit::mode()) edit::toggleedit();
   script::setvar("gamespeed", 100);
-  script::setvar("fog", 180);
-  script::setvar("fogcolour", 0x8099B3);
   showscores(false);
   intermission = false;
   con::out("game mode is %s", modestr(mode()));
@@ -555,7 +551,7 @@ static const char *modenames[] = {
   "instagib", "instagib team", "efficiency", "efficiency team",
   "insta arena", "insta clan arena", "tactics arena", "tactics clan arena",
 };
-const char *modestr(int n) { return (n>=-2 && n<12) ? modenames[n+2] : "unknown"; }
+const char *modestr(int n) {return (n>=-2 && n<12) ? modenames[n+2] : "unknown";}
 } /* namespace game */
 } /* namespace q */
 

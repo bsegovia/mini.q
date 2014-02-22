@@ -75,17 +75,20 @@ void finish(void) {
 static void updatechanvol(int chan, const vec3f *loc) {
   int vol = soundvol, pan = 255/2;
   if (loc) {
-    const vec3f v = game::player1->o-*loc;
-    const float dist = length(v);
-    vol -= (int)(dist*3*soundvol/255);  // simple mono distance attenuation
-    if (stereo && (v.x != 0 || v.y != 0)) {
-      // relative angle of sound along X-Y axis
-      const float yaw = -atan2(v.x,v.y)-game::player1->ypr.x*float(pi)/180.0f;
+    const auto v = game::player1->o-*loc;
+    const auto dist = length(v);
+
+    // simple mono distance attenuation
+    vol -= int(int(dist)*3*soundvol/255);
+    if (stereo && (v.x != 0.f || v.y != 0.f)) {
+      // relative angle of sound along X-Z axis
+      const auto yaw = -atan2(v.x,v.z)-game::player1->ypr.x*float(pi)/180.0f;
       // range is from 0 (left) to 255 (right)
       pan = int(255.9f*(0.5f*sin(yaw)+0.5f));
     }
   }
   vol = (vol*MAXVOL)/255;
+
 #if !defined(__JAVASCRIPT__)
   // crashed (out of bound access) happens here.
   // I do not know why unfortunately

@@ -41,6 +41,7 @@ OBJS=\
   text.o\
   ui.o\
   weapon.o\
+  world.o\
   enet/callbacks.o\
   enet/host.o\
   enet/list.o\

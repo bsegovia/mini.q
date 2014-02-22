@@ -71,7 +71,7 @@ bool collide(game::dynent *d, bool spawn) {
   if (d!=game::player1)
     if (!plcollide(box, game::player1)) return false;
   auto &v = game::getmonsters();
-  loopv(v) if (!plcollide(box, v[i])) return false;
+  loopv(v) if (v[i]!=d && !plcollide(box, v[i])) return false;
 
   // collide with map models
   if (!mmcollide(box)) return false;

@@ -320,7 +320,7 @@ static void updatepos(game::dynent *d) {
 // process forced map change from the server
 static void changemapserv(const char *name, int mode) {
   game::setmode(mode);
-  // TODO world::load(name);
+  world::load(name);
 }
 
 void localservertoclient(u8 *buf, int len) {

@@ -117,6 +117,7 @@ void finish() {
   }
 #if !defined(RELEASE)
   game::zapdynent(game::player1);
+  game::cleanmonsters();
   iso::finish();
   rr::finish();
   md2::finish();

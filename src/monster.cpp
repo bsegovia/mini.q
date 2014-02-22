@@ -42,7 +42,7 @@ dynent *basicmonster(int type, int yaw, int state, int trigger, int move) {
     con::out("warning: unknown monster in spawn: %d", type);
     type = 0;
   }
-  dynent *m = newdynent();
+  auto m = newdynent();
   const monstertype *t = &monstertypes[m->mtype = type];
   m->eyeheight = 2.0f;
   m->aboveeye = 1.9f;
@@ -52,14 +52,14 @@ dynent *basicmonster(int type, int yaw, int state, int trigger, int move) {
   m->monsterstate = state;
   if (state!=M_SLEEP) spawnplayer(m);
   m->trigger = lastmillis()+trigger;
-  m->targetyaw = m->ypr.x = (float)yaw;
+  m->targetyaw = m->ypr.x = float(yaw);
   m->move = move;
   m->enemy = player1;
   m->gunselect = t->gun;
   m->maxspeed = float(t->speed);
   m->health = t->health;
   m->armour = 0;
-  loopi(NUMGUNS) m->ammo[i] = 10000;
+  loopi(NUMGUNS) m->ammo[i] = 8192;
   m->ypr.y = 0;
   m->ypr.z = 0;
   m->state = CS_ALIVE;
@@ -70,7 +70,7 @@ dynent *basicmonster(int type, int yaw, int state, int trigger, int move) {
 }
 
 // spawn a random monster according to freq distribution in DMSP
-void spawnmonster(void) {
+static void spawnmonster(void) {
   int n = rnd(TOTMFREQ), type;
   for (int i = 0; ; i++)
     if ((n -= monstertypes[i].freq)<0) {
@@ -80,9 +80,9 @@ void spawnmonster(void) {
   basicmonster(type, rnd(360), M_SEARCH, 1000, 1);
 }
 
-void cleanmonsters(void) {
+void cleanmonsters() {
   loopv(monsters) FREE(monsters[i]);
-  monsters.setsize(0);
+  monsters.destroy();
   numkilled = 0;
   monstertotal = 0;
   spawnremain = 0;
@@ -93,12 +93,13 @@ void cleanmonsters(void) {
 void monsterclear(void) {
   cleanmonsters();
   if (m_dmsp) {
-    nextmonster = mtimestart = lastmillis()+10000;
+    // nextmonster = mtimestart = int(lastmillis())+10000;
+    nextmonster = mtimestart = int(lastmillis())+1000;
     monstertotal = spawnremain = mode()<0 ? skill*10 : 0;
   } else if (m_classicsp) {
     mtimestart = lastmillis();
     loopv(ents) if (ents[i].type==MONSTER) {
-      dynent *m = basicmonster(ents[i].attr2, ents[i].attr1, M_SLEEP, 100, 0);
+      auto m = basicmonster(ents[i].attr2, ents[i].attr1, M_SLEEP, 100, 0);
       m->o.x = ents[i].x;
       m->o.y = ents[i].y;
       m->o.z = ents[i].z;
@@ -149,20 +150,22 @@ void monsteraction(dynent *m) {
   }
 
   const float disttoenemy = distance(m->o, m->enemy->o);
-  m->ypr.y = atan2(m->enemy->o.z-m->o.z, disttoenemy)*180.f/float(pi);
+  m->ypr.y = atan2(m->enemy->o.y-m->o.y, disttoenemy)*180.f/float(pi);
 
-  if (m->blocked) { // special case: if we run into scenery
+  // special case: if we run into scenery
+  if (m->blocked) {
     m->blocked = false;
-    if (!rnd(20000/monstertypes[m->mtype].speed)) // try to jump over obstackle (rare)
+    // try to jump over obstackle (rare)
+    if (!rnd(20000/monstertypes[m->mtype].speed))
       m->jumpnext = true;
-    else if (m->trigger<lastmillis() && (m->monsterstate!=M_HOME || !rnd(5)))  // search for a way around (common)
-    {
-      m->targetyaw += 180+rnd(180); // patented "random walk" AI pathfinding (tm) ;)
+    // search for a way around (common)
+    else if (m->trigger<lastmillis() && (m->monsterstate!=M_HOME || !rnd(5))) {
+      m->targetyaw += 180.f+rnd(180); // patented "random walk" AI pathfinding (tm) ;)
       transition(m, M_SEARCH, 1, 400, 1000);
     }
   }
 
-  const float enemyyaw = -atan2(m->enemy->o.x - m->o.x, m->enemy->o.y - m->o.y)/float(pi)*180.f+180.f;
+  const auto enemyyaw = -atan2(m->enemy->o.x-m->o.x, m->enemy->o.z-m->o.z)/float(pi)*180.f+180.f;
 
   switch (m->monsterstate) {
     case M_PAIN:
@@ -170,23 +173,26 @@ void monsteraction(dynent *m) {
     case M_SEARCH:
       if (m->trigger<lastmillis()) transition(m, M_HOME, 1, 100, 200);
     break;
-    case M_SLEEP: { // state classic sp monster start in, wait for visual contact
+    // state classic sp monster start in, wait for visual contact
+    case M_SLEEP: {
       vec3f target;
-      if (edit::mode() || !enemylos(m, target)) return; // skip running physics
+      // skip running physics
+      if (edit::mode() || !enemylos(m, target)) return;
       normalise(m, enemyyaw);
       const auto angle = abs(enemyyaw-m->ypr.x);
-      if (disttoenemy<8                // the better the angle to the player
-       ||(disttoenemy<16 && angle<135) // the further the monster can
-       ||(disttoenemy<32 && angle<90)  // see/hear
-       ||(disttoenemy<64 && angle<45)
-       || angle<10) {
+      if (disttoenemy<8.f ||  // the better the angle to the player
+         (disttoenemy<16.f && angle<135.f) || // the further the monster can
+         (disttoenemy<32.f && angle<90.f) ||  // see/hear
+         (disttoenemy<64.f && angle<45.f) ||
+         angle<10) {
         transition(m, M_HOME, 1, 500, 200);
         sound::play(sound::GRUNT1+rnd(2), &m->o);
       }
     }
     break;
 
-    case M_AIMING: // this state is the delay between wanting to shoot and actually firing
+    // this state is the delay between wanting to shoot and actually firing
+    case M_AIMING:
       if (m->trigger<lastmillis()) {
         m->lastaction = 0;
         m->attacking = true;
@@ -195,11 +201,15 @@ void monsteraction(dynent *m) {
       }
     break;
 
-    case M_HOME: // monster has visual contact, heads straight for player and may want to shoot at any time
+    // monster has visual contact, heads straight for player and may want to
+    // shoot at any time
+    case M_HOME:
       m->targetyaw = enemyyaw;
       if (m->trigger<lastmillis()) {
         vec3f target;
-        if (!enemylos(m, target)) // no visual contact anymore, let monster get as close as possible then search for player
+        // no visual contact anymore, let monster get as close as possible then
+        // search for player
+        if (!enemylos(m, target))
           transition(m, M_HOME, 1, 800, 500);
         else  { // the closer the monster is the more likely he wants to shoot
           if (!rnd((int)disttoenemy/3+1) && m->enemy->state==CS_ALIVE) { // get ready to fire
@@ -230,8 +240,7 @@ void monsterpain(dynent *m, int damage, dynent *d) {
   if ((m->health -= damage)<=0) {
     m->state = CS_DEAD;
     m->lastaction = lastmillis();
-    numkilled++;
-    player1->frags = numkilled;
+    player1->frags = ++numkilled;
     sound::play(monstertypes[m->mtype].diesound, &m->o);
     int remain = monstertotal-numkilled;
     if (remain>0 && remain<=5) con::out("only %d monster(s) remaining", remain);
@@ -257,7 +266,8 @@ void monsterthink(void) {
   if (monstertotal && !spawnremain && numkilled==monstertotal)
     endsp(true);
 
-  loopv(ents) { // equivalent of player entity touch, but only teleports are used
+  // equivalent of player entity touch, but only teleports are used
+  loopv(ents) {
     entity &e = ents[i];
     if (e.type!=TELEPORT) continue;
     vec3f v(float(e.x), float(e.y), 0.f);
@@ -273,7 +283,6 @@ void monsterthink(void) {
       if (dist<4) game::teleport((int)(&e-&ents[0]), monsters[i]);
     }
   }
-
   loopv(monsters) if (monsters[i]->state==CS_ALIVE)
     monsteraction(monsters[i]);
 }
