@@ -104,11 +104,16 @@ void render() {
       if (nd==ndraw) break;
     }
   }
+  // console output
   const auto font = text::fontdim();
   const auto old = text::displaydim().x;
   text::displaywidth(font.x);
   loopj(nd) text::draw(refs[j], font.x, float(sys::scrh)-font.y*(j+1));
   text::displaywidth(old);
+
+  // command line
+  const auto cmd = con::curcmd();
+  if (cmd) text::drawf("> %s_", vec2f(font.x, float(sys::scrh)-font.y*(nd+1)), cmd);
 }
 
 // turns input to the command line on or off

@@ -95,7 +95,6 @@ void blendbox(float x1, float y1, float x2, float y2, bool border) {
  -------------------------------------------------------------------------*/
 VAR(showstats, 0, 0, 1);
 static void drawhud(int w, int h, int curfps) {
-  auto cmd = con::curcmd();
   const auto scr = scrdim();
   const auto fontdim = text::fontdim();
   ogl::enablev(GL_BLEND);
@@ -104,7 +103,6 @@ static void drawhud(int w, int h, int curfps) {
   pushscreentransform();
   text::displaywidth(text::fontdim().x);
   OGL(VertexAttrib4f,ogl::ATTRIB_COL,1.f,1.f,1.f,1.f);
-  if (cmd) text::drawf("> %s_", vec2f(8.f, scr.y-50.f), cmd);
   con::render();
   if (showstats) {
     vec2f textpos(scr.x-400.f, scr.y-50.f);
@@ -146,7 +144,6 @@ static void drawhudmodel(int start, int end, float speed, int base) {
 
 static void drawhudgun(float fovy, float aspect, float farplane) {
   if (!showhudgun) return;
-
   const int rtime = game::reloadtime(game::player1->gunselect);
   if (game::player1->lastaction &&
       game::player1->lastattackgun==game::player1->gunselect &&
