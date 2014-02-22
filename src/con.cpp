@@ -160,7 +160,8 @@ void keypress(int code, bool isdown, int cooked) {
         case SDLK_UP:
           if (histpos) strcpy_s(cmdbuf, vhistory[--histpos]); break;
         case SDLK_DOWN:
-          if (histpos<vhistory.length()) strcpy_s(cmdbuf, vhistory[histpos++]); break;
+          if (histpos<vhistory.length()) strcpy_s(cmdbuf, vhistory[histpos++]);
+        break;
         case SDLK_TAB: script::complete(cmdbuf); break;
         default:
           script::resetcomplete();

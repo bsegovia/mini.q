@@ -116,6 +116,29 @@ static void drawhud(int w, int h, int curfps) {
     ogl::printtimers(text::fontdim().x, con::height());
   }
   menu::render();
+#if 0
+  if (game::player1->state==CS_ALIVE) {
+    ogl::pushmatrix();
+    ogl::ortho(0, VIRTW/2, VIRTH/2, 0, -1, 1);
+    drawtextf("%d",  90, 827, game::player1->health);
+    if (game::player1->armour)
+      drawtextf("%d", 390, 827, game::player1->armour);
+    drawtextf("%d", 690, 827, game::player1->ammo[game::player1->gunselect]);
+    ogl::popmatrix();
+    ogl::pushmatrix();
+    ogl::ortho(0.f, float(VIRTW), float(VIRTH), 0.f, -1.f, 1.f);
+    ogl::disablev(GL_BLEND);
+    drawicon(128, 128, 20, 1650);
+    if (game::player1->armour)
+      drawicon((float)(game::player1->armourtype*64), 0, 620, 1650);
+    int g = game::player1->gunselect;
+    int r = 64;
+    if (g>2) { g -= 3; r = 128; }
+    drawicon((float)(g*64), (float)r, 1220, 1650);
+    ogl::popmatrix();
+  }
+#endif
+
   popscreentransform();
   ogl::disable(GL_BLEND);
   ogl::enable(GL_DEPTH_TEST);

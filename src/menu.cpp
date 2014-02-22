@@ -80,7 +80,9 @@ bool render(void) {
 
   // zoom in the menu
   const auto scr = vec2f(rr::VIRTW, rr::VIRTH);
-  text::displaywidth(20.f);
+  ogl::pushmode(ogl::PROJECTION);
+  ogl::setortho(0.f, scr.x, 0.f, scr.y, -1.f, 1.f);
+  text::displaywidth(10.f);
 
   if (vmenu==1) browser::refreshservers();
   auto &m = menus[vmenu];
@@ -110,6 +112,7 @@ bool render(void) {
     text::draw(m.items[j].text, x, y);
     y -= step;
   }
+  ogl::popmode(ogl::PROJECTION);
   return true;
 }
 
