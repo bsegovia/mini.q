@@ -23,7 +23,7 @@ VARF(grabmouse, 0, 0, 1, SDL_WM_GrabInput(grabmouse ? SDL_GRAB_ON : SDL_GRAB_OFF
 VARF(gamespeed, 10, 100, 1000, if (client::multiplayer()) gamespeed = 100);
 VARP(minmillis, 0, 5, 1000);
 
-static const float CELLSIZE = 0.2f;
+// static const float CELLSIZE = 0.2f;
 void start(int argc, const char *argv[]) {
 #if 0
   con::out("init: memory debugger");
@@ -39,6 +39,11 @@ void start(int argc, const char *argv[]) {
   auto m = iso::dc_mesh_mt(vec3f(zero), 2048, CELLSIZE, *node);
   const auto duration = sys::millis() - start;
   con::out("csg: elapsed %f ms ", float(duration));
+  exit(EXIT_SUCCESS);
+#elif 0
+  vector<int> heap;
+  loopi(1000) heap.addheap(rnd(1024));
+  loopi(1000) printf("%d ", heap.removeheap());
   exit(EXIT_SUCCESS);
 #else
   bool dedicated = false;

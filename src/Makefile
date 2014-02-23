@@ -1,4 +1,4 @@
-CXX=clang++
+#CXX=clang++
 FLAGS=-MP -MD -Wall -fvisibility=hidden -I./ `sdl-config --cflags` -I./
 CXXCOMMONFLAGS=-fno-exceptions -fno-unwind-tables -fno-rtti -std=c++11 -fvisibility-inlines-hidden -Wno-invalid-offsetof
 DEBUGFLAGS=-O0 -DMEMORY_DEBUGGER -g
@@ -65,8 +65,8 @@ SERVER_OBJS=\
 
 all: mini.q.server mini.q compress_chars
 
-#include Makefile.dep
--include $(OBJS:.o=.d)
+-include $(CLIENT_OBJS:.o=.d)
+-include $(SERVER_OBJS:.o=.d)
 
 ## build embedded shader source
 shaders.hxx shaders.cxx: $(SHADERS)
