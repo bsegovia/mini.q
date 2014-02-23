@@ -506,7 +506,7 @@ void renderclient(dynent *d, bool team, const char *mdlname, bool hellpig, float
   }
 
   const auto norxfm = mat3x3f::rotate(d->ypr.x, vec3f(0.f,-1.f,0.f))
-                    * mat3x3f::rotate(d->ypr.y, vec3f(1.f,0.f,0.f));
+                    * mat3x3f::rotate(d->ypr.y, vec3f(-1.f,0.f,0.f));
   const auto posxfm = ogl::matrix(ogl::MODELVIEW)
                     * mat4x4f::translate(vec3f(d->o.x, my, d->o.z))
                     * mat4x4f(norxfm);

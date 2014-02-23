@@ -8,6 +8,9 @@
 #include <enet/enet.h>
 
 namespace q {
+#if defined(STANDALONE)
+void finish() {}
+#endif
 namespace server {
 
 static string copyname;
