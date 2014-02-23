@@ -27,6 +27,9 @@ enum {
   TACTICS_CLAN_ARENA=11
 };
 
+// player matrices computed at the beginning of the frame
+extern mat4x4f mvmat, pmat, mvpmat, invmvpmat, dirinvmvpmat;
+
 #define m_noitems     (game::mode()>=4)
 #define m_noitemsrail (game::mode()<=5)
 #define m_arena       (game::mode()>=8)
@@ -64,7 +67,7 @@ void cleanentities(void);
 void cleanmonsters(void);
 void clean(void);
 void selfdamage(int damage, int actor, dynent *act);
-
+void setmatrices(float fovy, float farplane, float w, float h);
 } /* namespace game */
 } /* namespace q */
 

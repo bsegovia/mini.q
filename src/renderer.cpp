@@ -31,12 +31,12 @@ static void popscreentransform() {
 /*--------------------------------------------------------------------------
  - simple primitives
  -------------------------------------------------------------------------*/
-static const float ICON_SIZE = 80.f;
+static const float ICON_SIZE = 80.f, ICON_TEX_SIZE = 192.f;
 void drawicon(float tx, float ty, float x, float y) {
   const auto o = 1.f/3.f;
   const auto s = ICON_SIZE;
-  tx /= 192.f;
-  ty /= 192.f;
+  tx /= ICON_TEX_SIZE;
+  ty /= ICON_TEX_SIZE;
   const float verts[] = {
     tx,   ty+o, x,   y,
     tx+o, ty+o, x+s, y,
@@ -276,13 +276,6 @@ static void cleandeferred() {
 }
 #endif
 
-INLINE mat4x4f viewporttr(float w, float h) {
-  return mat4x4f(vec4f(2.f/w,0.f,  0.f,0.f),
-                 vec4f(0.f,  2.f/h,0.f,0.f),
-                 vec4f(0.f,  0.f,  2.f,0.f),
-                 vec4f(-1.f,-1.f, -1.f,1.f));
-}
-
 /*--------------------------------------------------------------------------
  - sky parameters
  -------------------------------------------------------------------------*/
@@ -300,8 +293,6 @@ static vec3f getsundir() {
 /*--------------------------------------------------------------------------
  - render the complete frame
  -------------------------------------------------------------------------*/
-VARP(fov, 30, 90, 160);
-
 static u32 scenenorbo = 0u, sceneposbo = 0u, sceneibo = 0u;
 static u32 indexnum = 0u;
 static bool initialized_m = false;
@@ -394,23 +385,7 @@ VAR(linemode, 0, 0, 1);
 struct context {
   context(float w, float h, float fovy, float aspect, float farplane)
     : fovy(fovy), aspect(aspect), farplane(farplane)
-  {
-    // XXX bad code. we should invert transform instead of calling "inverse".
-    ogl::matrixmode(ogl::PROJECTION);
-    ogl::setperspective(fovy, aspect, 0.15f, farplane);
-    const auto p = ogl::matrix(ogl::PROJECTION);
-    ogl::matrixmode(ogl::MODELVIEW);
-    ogl::identity();
-    ogl::rotate(game::player1->ypr.z, vec3f(0.f,0.f,1.f));
-    ogl::rotate(game::player1->ypr.y, vec3f(1.f,0.f,0.f));
-    ogl::rotate(game::player1->ypr.x, vec3f(0.f,1.f,0.f));
-    const auto dirmv = ogl::matrix(ogl::MODELVIEW);
-    ogl::translate(-game::player1->o);
-    const auto mv = ogl::matrix(ogl::MODELVIEW);
-    mvp = p*mv;
-    invmvp = mvp.inverse() * viewporttr(w, h);
-    dirinvmvp = (p*dirmv).inverse() * viewporttr(w, h);
-  }
+  {}
 
   INLINE void begin() {
     makescene();
@@ -427,7 +402,7 @@ struct context {
     if (indexnum != 0) {
       if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_LINE);
       ogl::bindshader(simple_material::s);
-      OGL(UniformMatrix4fv, simple_material::s.u_mvp, 1, GL_FALSE, &mvp.vx.x);
+      OGL(UniformMatrix4fv, simple_material::s.u_mvp, 1, GL_FALSE, &game::mvpmat.vx.x);
       ogl::bindbuffer(ogl::ARRAY_BUFFER, sceneposbo);
       OGL(VertexAttribPointer, ogl::ATTRIB_POS0, 3, GL_FLOAT, 0, sizeof(vec3f), NULL);
       ogl::bindbuffer(ogl::ARRAY_BUFFER, scenenorbo);
@@ -455,8 +430,8 @@ struct context {
     ogl::bindtexture(GL_TEXTURE_RECTANGLE, gnortex, 0);
     ogl::bindtexture(GL_TEXTURE_RECTANGLE, gdiffusetex, 1);
     ogl::bindtexture(GL_TEXTURE_RECTANGLE, gdepthtex, 2);
-    OGL(UniformMatrix4fv, s.u_invmvp, 1, GL_FALSE, &invmvp.vx.x);
-    OGL(UniformMatrix4fv, s.u_dirinvmvp, 1, GL_FALSE, &dirinvmvp.vx.x);
+    OGL(UniformMatrix4fv, s.u_invmvp, 1, GL_FALSE, &game::invmvpmat.vx.x);
+    OGL(UniformMatrix4fv, s.u_dirinvmvp, 1, GL_FALSE, &game::dirinvmvpmat.vx.x);
 
     const auto sundir = getsundir();
     vec3f lpow[LIGHTNUM];
@@ -483,7 +458,7 @@ struct context {
     ogl::enable(GL_CULL_FACE);
     ogl::endtimer(fxaatimer);
   }
-  mat4x4f mvp, invmvp, dirinvmvp;
+//  mat4x4f mvp, invmvp, dirinvmvp;
   float fovy, aspect, farplane;
 };
 

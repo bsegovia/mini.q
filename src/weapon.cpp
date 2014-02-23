@@ -153,7 +153,7 @@ static void radialeffect(dynent *o, const vec3f &v, int cn, int qdam, dynent *at
   dist -= 2; // account for eye distance imprecision
   if (dist<RL_DAMRAD) {
     if (dist<0) dist = 0;
-    const int damage = (int)(qdam*(1-(dist/RL_DAMRAD)));
+    const auto damage = int(qdam*(1-(dist/RL_DAMRAD)));
     hit(cn, damage, o, at);
     temp *= (RL_DAMRAD-dist)*damage/800.f;
     o->vel += temp;
@@ -200,16 +200,14 @@ void moveprojectiles(float time) {
     int qdam = guns[p->gun].damage*(p->owner->quadmillis ? 4 : 1);
     if (p->owner->monsterstate) qdam /= MONSTERDAMAGEFACTOR;
     vec3f v = p->to-p->o;
-    const float dist = length(v);
-    float dtime = dist*1000/p->speed;
+    auto dtime = length(v)*1000.f/p->speed;
     if (time>dtime) dtime = time;
     v *= time/dtime;
     v += p->o;
     if (p->local) {
       loopv(players) {
-        dynent *o = players[i];
-        if (!o) continue;
-        projdamage(o, p, v, i, -1, qdam);
+        if (!players[i]) continue;
+        projdamage(players[i], p, v, i, -1, qdam);
       }
       if (p->owner!=player1) projdamage(player1, p, v, -1, -1, qdam);
       dvector &mv = getmonsters();
@@ -242,7 +240,7 @@ void shootv(int gun, const vec3f &from, const vec3f &to, dynent *d, bool local) 
     case GUN_FIST:
       break;
     case GUN_SG:
-      loopi(SGRAYS) // TODO particle_splash(0, 5, 200, sg[i]);
+      //loopi(SGRAYS) // TODO particle_splash(0, 5, 200, sg[i]);
       break;
     case GUN_CG:
       // TODO particle_splash(0, 100, 250, to);
@@ -264,9 +262,8 @@ void shootv(int gun, const vec3f &from, const vec3f &to, dynent *d, bool local) 
 
 void hitpush(int target, int damage, dynent *d, dynent *at, vec3f &from, vec3f &to) {
   hit(target, damage, d, at);
-  const vec3f v = to-from;
-  const float dist = length(v);
-  d->vel += damage/dist/50.f*v;
+  const auto v = to-from;
+  d->vel += damage/length(v)/50.f*v;
 }
 
 void raydamage(dynent *o, vec3f &from, vec3f &to, dynent *d, int i) {
@@ -287,6 +284,7 @@ void shoot(dynent *d, vec3f &targ) {
   if (attacktime<d->gunwait) return;
   d->gunwait = 0;
   if (!d->attacking) return;
+  if (d == q::game::player1) DEBUGBREAK;
   d->lastaction = game::lastmillis();
   d->lastattackgun = d->gunselect;
   if (!d->ammo[d->gunselect]) {
@@ -296,12 +294,11 @@ void shoot(dynent *d, vec3f &targ) {
     return;
   }
   if (d->gunselect) d->ammo[d->gunselect]--;
-  vec3f from = d->o;
-  vec3f to = targ;
+  auto from = d->o, to = targ;
   from.z -= 0.2f; // below eye
 
-  vec3f unitv = normalize(to-from);
-  const vec3f kickback = -unitv*float(guns[d->gunselect].kickamount)*0.01f;
+  auto unitv = normalize(to-from);
+  const auto kickback = -unitv*float(guns[d->gunselect].kickamount)*0.01f;
   d->vel += kickback;
   if (d->ypr.y<80.0f) d->ypr.y += guns[d->gunselect].kickamount*0.05f;
 

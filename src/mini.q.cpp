@@ -274,6 +274,16 @@ INLINE void mainloop() {
 #endif
 static int ignore = 5;
 
+VARP(fov, 30, 90, 160);
+VARP(farplane, 50, 100, 1000);
+
+static void computetarget() {
+  const float w = float(sys::scrw), h = float(sys::scrh);
+  const vec4f nc(w/2,h/2,1.f,1.f);
+  const vec4f world = game::invmvpmat * nc;
+  game::setworldpos(world.xyz()/world.w);
+}
+
 INLINE void mainloop() {
   auto millis = sys::millis()*double(gamespeed)/100.0;
   if (millis-game::lastmillis()>200.0) game::setlastmillis(millis-200.0);
@@ -282,6 +292,9 @@ INLINE void mainloop() {
   if (millis-game::lastmillis()<double(minmillis))
     SDL_Delay(minmillis-(int(millis)-int(game::lastmillis())));
 #endif // __JAVASCRIPT__
+  const auto fovy = float(fov), far = float(farplane);
+  game::setmatrices(fovy, far, float(sys::scrw), float(sys::scrh));
+  computetarget();
   game::updateworld(millis);
   if (!demo::playing())
     server::slice(int(time(NULL)), 0);

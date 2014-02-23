@@ -31,6 +31,7 @@
 #include "world.hpp"
 
 namespace q {
+extern int fov, farplane;
 void start();
 void finish();
 }

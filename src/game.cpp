@@ -31,7 +31,36 @@ CMDN(mode, moden, ARG_1INT);
 static bool intermission = false;
 static string clientmap;
 
-const char *getclientmap(void) { return clientmap; }
+const char *getclientmap() { return clientmap; }
+
+INLINE mat4x4f viewportxfm(float w, float h) {
+  return mat4x4f(vec4f(2.f/w,0.f,  0.f,0.f),
+                 vec4f(0.f,  2.f/h,0.f,0.f),
+                 vec4f(0.f,  0.f,  2.f,0.f),
+                 vec4f(-1.f,-1.f, -1.f,1.f));
+}
+
+mat4x4f mvmat, pmat, mvpmat, invmvpmat, dirinvmvpmat;
+
+// compute player1 matrices
+// XXX bad code. we should invert transform instead of calling "inverse".
+void setmatrices(float fovy, float farplane, float w, float h) {
+  const auto aspect = w / h;
+  ogl::matrixmode(ogl::PROJECTION);
+  ogl::setperspective(fovy, aspect, 0.15f, farplane);
+  pmat = ogl::matrix(ogl::PROJECTION);
+  ogl::matrixmode(ogl::MODELVIEW);
+  ogl::identity();
+  ogl::rotate(player1->ypr.z, vec3f(0.f,0.f,1.f));
+  ogl::rotate(player1->ypr.y, vec3f(1.f,0.f,0.f));
+  ogl::rotate(player1->ypr.x, vec3f(0.f,1.f,0.f));
+  const auto dirmv = ogl::matrix(ogl::MODELVIEW);
+  ogl::translate(-player1->o);
+  mvmat = ogl::matrix(ogl::MODELVIEW);
+  mvpmat = pmat*mvmat;
+  invmvpmat = mvpmat.inverse() * viewportxfm(w, h);
+  dirinvmvpmat = (pmat*dirmv).inverse() * viewportxfm(w, h);
+}
 
 // creation of scoreboard pseudo-menu
 static bool scoreson = false;
@@ -100,7 +129,7 @@ static void spawnstate(dynent *d) {
     d->ammo[GUN_SG] = 5;
 }
 
-dynent *newdynent(void) {
+dynent *newdynent() {
   dynent *d = (dynent*) MALLOC(sizeof(dynent));
   d->o = zero;
   d->ypr = vec3f(270.f,0.f,0.f);
@@ -124,7 +153,7 @@ dynent *newdynent(void) {
   return d;
 }
 
-static void respawnself(void) {
+static void respawnself() {
   spawnplayer(player1);
   showscores(false);
 }
@@ -143,7 +172,7 @@ void arenacount(dynent *d, int &alive, int &dead, char *&lastteam, bool &oneteam
 static int arenarespawnwait = 0;
 static int arenadetectwait  = 0;
 
-void arenarespawn(void) {
+void arenarespawn() {
   if (arenarespawnwait) {
     if (arenarespawnwait<lastmillis()) {
       arenarespawnwait = 0;
@@ -176,7 +205,7 @@ void zapdynent(dynent *&d) {
   d = NULL;
 }
 
-static void otherplayers(void) {
+static void otherplayers() {
   loopv(players) if (players[i]) {
     const int lagtime = lastmillis()-players[i]->lastupdate;
     if (lagtime>1000 && players[i]->state==CS_ALIVE) {
@@ -190,7 +219,7 @@ static void otherplayers(void) {
   }
 }
 
-static void respawn(void) {
+static void respawn() {
   if (player1->state==CS_DEAD) {
     player1->attacking = false;
     if (m_arena) {
@@ -320,7 +349,7 @@ static void jumpn(bool on) {
 }
 CMDN(jump, jumpn, ARG_DOWN);
 
-void fixplayer1range(void) {
+void fixplayer1range() {
   const float MAXPITCH = 90.0f;
   if (player1->ypr.y>MAXPITCH) player1->ypr.y = MAXPITCH;
   if (player1->ypr.y<-MAXPITCH) player1->ypr.y = -MAXPITCH;
@@ -402,7 +431,7 @@ dynent *getclient(int cn) {
   return players[cn] ? players[cn] : (players[cn] = newdynent());
 }
 
-void initclient(void) {
+void initclient() {
   clientmap[0] = 0;
   client::initclientnet();
 }
@@ -484,7 +513,7 @@ void renderclient(dynent *d, bool team, const char *mdlname, bool hellpig, float
   md2::render(mdlname, frame[n], range[n], posxfm, norxfm, team, scale, speed, 0, basetime);
 }
 
-void renderclients(void) {
+void renderclients() {
   dynent *d;
   loopv(players)
     if ((d = players[i]) && (!demo::playing() || i!=demo::clientnum()))
@@ -519,7 +548,7 @@ static void addteamscore(dynent *d) {
   teamscore[teamsused++] = d->frags;
 }
 
-void renderscores(void) {
+void renderscores() {
   if (!scoreson) return;
   scorelines.setsize(0);
   if (!demo::playing()) renderscore(player1);
@@ -541,7 +570,7 @@ void renderscores(void) {
   }
 }
 
-void clean(void) {
+void clean() {
   cleanentities();
   cleanmonsters();
 }
