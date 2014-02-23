@@ -84,6 +84,7 @@ static void initparticles(void) {
   glparts = NEWAE(glparticle, glvertexn);
 }
 
+#if !defined(RELEASE)
 static void cleanparticles(void) {
   if (particleibo) {
     ogl::deletebuffers(1, &particleibo);
@@ -95,6 +96,7 @@ static void cleanparticles(void) {
   }
   SAFE_DELA(glparts);
 }
+#endif
 
 static void render_particles(int time) {
   if (demo::playing() && demotracking) {

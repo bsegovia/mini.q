@@ -86,5 +86,5 @@ compress_chars: compress_chars.o
 	$(CXX) $(CXXFLAGS) -o compress_chars compress_chars.o $(LIBS)
 
 clean:
-	rm -f mini.q compress_chars *.o *.d ./enet/*.o ./enet/*.d
+	rm -rf mini.q mini.q.server compress_chars *.o *.d ./enet/*.o ./enet/*.d oprofile_data
 

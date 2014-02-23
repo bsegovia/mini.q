@@ -42,7 +42,7 @@ bool noteditmode(void) {
   return !editmode;
 }
 
-static bool noselection(void) { return true; }
+// static bool noselection(void) { return true; }
 void editdrag(bool) {}
 void cursorupdate(void) {} // called every frame from hud
 

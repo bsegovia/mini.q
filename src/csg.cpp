@@ -174,7 +174,7 @@ node *makescene() {
 
 void destroyscene(node *n) { SAFE_DEL(n); }
 
-void distr(const node &n, const vec3f *pos, float * RESTRICT dist, int num, const aabb &box) {
+void distr(const node &n, const vec3f * RESTRICT pos, float * RESTRICT dist, int num, const aabb &box) {
   const auto isec = intersection(box, n.box);
   if (any(gt(isec.pmin, isec.pmax))) return;
   switch (n.type) {

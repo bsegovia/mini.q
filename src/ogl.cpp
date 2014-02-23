@@ -457,10 +457,13 @@ static void imminit() {
   initbuffer(bigibo, ELEMENT_ARRAY_BUFFER, immbuffersize);
   memset(immattribs, 0, sizeof(immattribs));
 }
+
+#if !defined(RELEASE)
 static void immdestroy() {
   ogl::deletebuffers(1, &bigibo);
   ogl::deletebuffers(1, &bigvbo);
 }
+#endif
 
 static void immattrib(int attrib, int n, int type, int offset) {
   immattribs[attrib].n = n;

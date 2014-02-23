@@ -20,10 +20,12 @@ void cleanentities(void) {
   }
 }
 
+#if 0
 static const char *entmdlnames[] = {
   "shells", "bullets", "rockets", "rrounds", "health", "boost",
   "g_armour", "y_armour", "quad",	"teleporter",
 };
+#endif
 
 static const char *entnames_[] = {
   "none?", "light", "playerstart",
