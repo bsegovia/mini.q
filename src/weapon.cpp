@@ -6,6 +6,7 @@
 #include "sound.hpp"
 #include "monster.hpp"
 #include "network.hpp"
+#include "renderer.hpp"
 #include "script.hpp"
 #include "game.hpp"
 #include "client.hpp"
@@ -24,15 +25,15 @@ static const float RL_DAMRAD = 7.f; // hack
 static vec3f sg[SGRAYS];
 
 static const guninfo guns[NUMGUNS] = {
-  {sound::PUNCH1,    250,  50, 0,   0,  1, "fist"          },
-  {sound::SG,       1400,  10, 0,   0, 20, "shotgun"       },  // *SGRAYS
-  {sound::CG,        100,  30, 0,   0,  7, "chaingun"      },
-  {sound::RLFIRE,    800, 120, 80,  0, 10, "rocketlauncher"},
-  {sound::RIFLE,    1500, 100, 0,   0, 30, "rifle"         },
-  {sound::FLAUNCH,   200,  20, 50,  4,  1, "fireball"      },
-  {sound::ICEBALL,   200,  40, 30,  6,  1, "iceball"       },
-  {sound::SLIMEBALL, 200,  30, 160, 7,  1, "slimeball"     },
-  {sound::PIGR1,     250,  50, 0,   0,  1, "bite"          }
+  {sound::PUNCH1,    250,  50, 0,   rr::PT_SPARKS,          1,"fist"          },
+  {sound::SG,       1400,  10, 0,   rr::PT_SPARKS,         20,"shotgun"       },
+  {sound::CG,        100,  30, 0,   rr::PT_SPARKS,          7,"chaingun"      },
+  {sound::RLFIRE,    800, 120, 80,  rr::PT_SPARKS,         10,"rocketlauncher"},
+  {sound::RIFLE,    1500, 100, 0,   rr::PT_SPARKS,         30,"rifle"         },
+  {sound::FLAUNCH,   200,  20, 50,  rr::PT_YELLOW_FIREBALL, 1,"fireball"      },
+  {sound::ICEBALL,   200,  40, 30,  rr::PT_BLUE_FIREBALL,   1,"iceball"       },
+  {sound::SLIMEBALL, 200,  30, 160, rr::PT_GREEN_FIREBALL,  1,"slimeball"     },
+  {sound::PIGR1,     250,  50, 0,   rr::PT_SPARKS,          1,"bite"          }
 };
 
 void selectgun(int a, int b, int c)
@@ -142,7 +143,7 @@ static void hit(int target, int damage, dynent *d, dynent *at) {
     client::addmsg(1, 4, SV_DAMAGE, target, damage, d->lifesequence);
     sound::play(sound::PAIN1+rnd(5), &d->o);
   }
-  // TODO particle_splash(3, damage, 1000, d->o);
+  rr::particle_splash(rr::PT_BLOOD_SPATS, damage, 1000, d->o);
   demo::damage(damage, d->o);
 }
 
@@ -161,7 +162,7 @@ static void radialeffect(dynent *o, const vec3f &v, int cn, int qdam, dynent *at
 }
 
 static void splash(projectile *p, const vec3f &v, const vec3f &vold, int notthisplayer, int notthismonster, int qdam) {
-  // TODO particle_splash(0, 50, 300, v);
+  rr::particle_splash(rr::PT_SPARKS, 50, 300, v);
   p->inuse = false;
   if (p->gun!=GUN_RL)
     sound::play(sound::FEXPLODE, &v);
@@ -210,7 +211,7 @@ void moveprojectiles(float time) {
         projdamage(players[i], p, v, i, -1, qdam);
       }
       if (p->owner!=player1) projdamage(player1, p, v, -1, -1, qdam);
-      dvector &mv = getmonsters();
+      auto &mv = getmonsters();
       loopv(mv) if (!rejectxy(mv[i]->o, v, 10.0f) && mv[i]!=p->owner)
         projdamage(mv[i], p, v, -1, i, qdam);
     }
@@ -218,14 +219,12 @@ void moveprojectiles(float time) {
       if (time==dtime)
         splash(p, v, p->o, -1, -1, qdam);
       else {
-#if 0 // TODO rendercode
         if (p->gun==GUN_RL)
-          // TODO particle_splash(5, 2, 200, v);
+          rr::particle_splash(rr::PT_GREY_SMOKE, 2, 200, v);
         else {
-          // TODO particle_splash(1, 1, 200, v);
-          // TODO particle_splash(guns[p->gun].part, 1, 1, v);
+          rr::particle_splash(rr::PT_SMALL_SMOKE, 1, 200, v);
+          rr::particle_splash(guns[p->gun].part, 1, 1, v);
         }
-#endif
       }
     }
     p->o = v;
@@ -240,11 +239,9 @@ void shootv(int gun, const vec3f &from, const vec3f &to, dynent *d, bool local) 
     case GUN_FIST:
       break;
     case GUN_SG:
-      //loopi(SGRAYS) // TODO particle_splash(0, 5, 200, sg[i]);
+      loopi(SGRAYS) rr::particle_splash(rr::PT_SPARKS, 5, 200, sg[i]);
       break;
-    case GUN_CG:
-      // TODO particle_splash(0, 100, 250, to);
-    break;
+    case GUN_CG: rr::particle_splash(rr::PT_SPARKS, 100, 250, to); break;
     case GUN_RL:
     case GUN_FIREBALL:
     case GUN_ICEBALL:
@@ -254,8 +251,8 @@ void shootv(int gun, const vec3f &from, const vec3f &to, dynent *d, bool local) 
       newprojectile(from, to, float(pspeed), local, d, gun);
     break;
     case GUN_RIFLE:
-      // TODO particle_splash(0, 50, 200, to);
-      // TODO particle_trail(1, 500, from, to);
+      rr::particle_splash(rr::PT_SPARKS, 50, 200, to);
+      rr::particle_trail(rr::PT_SMALL_SMOKE, 500, from, to);
     break;
   }
 }
@@ -284,7 +281,6 @@ void shoot(dynent *d, vec3f &targ) {
   if (attacktime<d->gunwait) return;
   d->gunwait = 0;
   if (!d->attacking) return;
-  if (d == q::game::player1) DEBUGBREAK;
   d->lastaction = game::lastmillis();
   d->lastattackgun = d->gunselect;
   if (!d->ammo[d->gunselect]) {

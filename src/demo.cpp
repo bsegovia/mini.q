@@ -288,11 +288,11 @@ void playbackstep(void) {
       loopi(game::NUMGUNS) target->ammo[i] = gzget();
       target->state = gzget();
       target->lastmove = playbacktime;
-      // TODO if ((bdamage = gzgeti()) != 0) rr::damageblend(bdamage);
-      // TODO if ((ddamage = gzgeti()) != 0) {
-        //gzgetv(dorig);
-        //rr::particle_splash(3, ddamage, 1000, dorig);
-      //}
+      // if ((bdamage = gzgeti()) != 0) rr::damageblend(bdamage);
+      if ((ddamage = gzgeti()) != 0) {
+        gzgetv(dorig);
+        rr::particle_splash(rr::PT_BLOOD_SPATS, ddamage, 1000, dorig);
+      }
       // FIXME: set more client state here
     }
 

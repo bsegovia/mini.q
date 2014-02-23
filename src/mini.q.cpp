@@ -300,7 +300,6 @@ INLINE void mainloop() {
     server::slice(int(time(NULL)), 0);
   static double fps = 30.0;
   fps = (1000.0/game::curtime()+fps*50.0)/51.0;
-  // rr::readdepth(scr_w, scr_h);
   SDL_GL_SwapBuffers();
   ogl::beginframe();
   sound::updatevol();
