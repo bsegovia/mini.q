@@ -23,7 +23,24 @@ VARF(grabmouse, 0, 0, 1, SDL_WM_GrabInput(grabmouse ? SDL_GRAB_ON : SDL_GRAB_OFF
 VARF(gamespeed, 10, 100, 1000, if (client::multiplayer()) gamespeed = 100);
 VARP(minmillis, 0, 5, 1000);
 
+static const float CELLSIZE = 0.2f;
 void start(int argc, const char *argv[]) {
+#if 1
+  con::out("init: memory debugger");
+  sys::memstart();
+  con::out("init: tasking system");
+  const u32 threadnum = sys::threadnumber() - 1;
+  con::out("init: tasking system: %d threads created", threadnum);
+  task::start(&threadnum, 1);
+  con::out("init: isosurface module");
+  iso::start();
+  const float start = sys::millis();
+  const auto node = csg::makescene();
+  auto m = iso::dc_mesh_mt(vec3f(zero), 2048, CELLSIZE, *node);
+  const auto duration = sys::millis() - start;
+  con::out("csg: elapsed %f ms ", float(duration));
+  exit(EXIT_SUCCESS);
+#else
   bool dedicated = false;
   int fs = 0, uprate = 0, maxcl = 4;
   const char *master = NULL;
@@ -103,6 +120,7 @@ void start(int argc, const char *argv[]) {
   con::out("localconnect");
   server::localconnect();
   client::changemap("metl3");        // if this map is changed, also change depthcorrect()
+#endif
 }
 
 static void playerpos(int x, int y, int z) {game::player1->o = vec3f(vec3i(x,y,z));}

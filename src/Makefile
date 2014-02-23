@@ -3,7 +3,7 @@ FLAGS=-MP -MD -Wall -fvisibility=hidden -I./ `sdl-config --cflags` -I./
 CXXCOMMONFLAGS=-fno-exceptions -fno-unwind-tables -fno-rtti -std=c++11 -fvisibility-inlines-hidden -Wno-invalid-offsetof
 DEBUGFLAGS=-O0 -DMEMORY_DEBUGGER -g
 OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g
-RELFLAGS=-fomit-frame-pointer -Os -DNDEBUG -DRELEASE
+RELFLAGS=-fomit-frame-pointer -O3 -DNDEBUG -DRELEASE -g
 
 CXXFLAGS= $(CXXCOMMONFLAGS) $(FLAGS) $(RELFLAGS)
 LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer -lz

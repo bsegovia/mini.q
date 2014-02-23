@@ -501,7 +501,7 @@ void finish() {
 static const float CELLSIZE = 0.2f;
 static void makescene() {
   if (initialized_m) return;
-  const float start = sys::millis();
+  const auto start = sys::millis();
   const auto node = csg::makescene();
   auto m = iso::dc_mesh_mt(vec3f(zero), 2048, CELLSIZE, *node);
   ogl::genbuffers(1, &sceneposbo);
@@ -518,7 +518,7 @@ static void makescene() {
   indexnum = m.m_indexnum;
 
   const auto duration = sys::millis() - start;
-  con::out("csg: elapsed %f ms ", duration);
+  con::out("csg: elapsed %f ms ", float(duration));
   con::out("csg: tris %i verts %i", m.m_indexnum/3, m.m_vertnum);
   initialized_m = true;
   destroyscene(node);
