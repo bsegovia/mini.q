@@ -216,8 +216,6 @@ void mdl::render(int frame, int range, const vec3f &o,
   OGL(UniformMatrix3fv, s.u_nortransform, 1, GL_FALSE, &m.vx.x);
   OGL(UniformMatrix4fv, s.u_mvp, 1, GL_FALSE, &mvp.vx.x);
   ogl::drawarrays(GL_TRIANGLES, 0, n);
-  ogl::disableattribarray(ogl::ATTRIB_NOR0);
-  ogl::disableattribarray(ogl::ATTRIB_NOR1);
   ogl::bindbuffer(ogl::ARRAY_BUFFER, 0);
   ogl::popmatrix();
   OGL(CullFace, GL_BACK);
@@ -258,7 +256,7 @@ mdl *loadmodel(const char *name) {
 
 void mapmodel(const char *rad, const char *h, const char *zoff, const char *snap, const char *name) {
   auto m = loadmodel(name);
-  m->mmi = { atoi(rad), atoi(h), atoi(zoff), atoi(snap), m->loadname };
+  m->mmi = {atoi(rad), atoi(h), atoi(zoff), atoi(snap), m->loadname};
   mapmodels.add(m);
 }
 
@@ -278,7 +276,9 @@ CMD(mapmodelreset, ARG_NONE);
 
 void render(const char *name, int frame, int range,
             const vec3f &o, const vec3f &ypr,
-            bool teammate, float scale, float speed, int snap, float basetime) {
+            bool teammate, float scale, float speed, int snap,
+            float basetime)
+{
   auto m = loadmodel(name);
   delayedload(m, scale, snap);
   ogl::bindtexture(GL_TEXTURE_2D, m->tex);

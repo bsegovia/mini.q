@@ -436,7 +436,7 @@ static const int range[] = {6,   6,   8,   28,  1,   1,   1,   1,   8,  19, 4,  
 void renderclient(dynent *d, bool team, const char *mdlname, bool hellpig, float scale) {
   int n = 3;
   float speed = 100.0f;
-  float mz = d->o.z-d->eyeheight+1.55f*scale;
+  float my = d->o.z-d->eyeheight+1.55f*scale;
   int cast = (int) (uintptr_t) d;
   int basetime = -(((int)cast)&0xFFF);
   if (d->state==CS_DEAD) {
@@ -454,10 +454,10 @@ void renderclient(dynent *d, bool team, const char *mdlname, bool hellpig, float
     if (t>(r-1)*100) {
       n += 4; if (t>(r+10)*100) {
         t -= (r+10)*100;
-        mz -= t*t/10000000000.0f*t;
+        my -= t*t/10000000000.0f*t;
       }
     }
-    if (mz<-1000) return;
+    if (my<-1000) return;
   }
   else if (d->state==CS_EDITING) n = 16;
   else if (d->state==CS_LAGGED) n = 17;
@@ -473,10 +473,11 @@ void renderclient(dynent *d, bool team, const char *mdlname, bool hellpig, float
   if (hellpig) {
     n++;
     scale *= 32;
-    mz -= 1.9f;
+    my -= 1.9f;
   }
-  // TODO rr::rendermodel(mdlname, frame[n], range[n], 0, 1.5f, vec3f(d->o.x, mz, d->o.y),
-  //  d->yaw+90.f, d->ypr.y/2, team, scale, speed, 0, basetime);
+  const vec3f pos(d->o.x, my, d->o.z);
+  const vec3f ypr(d->ypr.x+90.f, d->ypr.y/2.f, d->ypr.z);
+  md2::render(mdlname, frame[n], range[n], pos, ypr, team, scale, speed, 0, basetime);
 }
 
 void renderclients(void) {

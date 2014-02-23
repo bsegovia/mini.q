@@ -287,9 +287,10 @@ void monsterthink(void) {
     monsteraction(monsters[i]);
 }
 
-void monsterrender(void) {
+void rendermonsters() {
   loopv(monsters)
-    renderclient(monsters[i], false, monstertypes[monsters[i]->mtype].mdlname, monsters[i]->mtype==5, monstertypes[monsters[i]->mtype].mscale/10.0f);
+    renderclient(monsters[i], false, monstertypes[monsters[i]->mtype].mdlname,
+      monsters[i]->mtype==5, monstertypes[monsters[i]->mtype].mscale/10.0f);
 }
 } /* namespace game */
 } /* namespace q */

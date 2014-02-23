@@ -13,7 +13,7 @@ void cleanmonsters();
 void monsterclear();
 void restoremonsterstate();
 void monsterthink();
-void monsterrender();
+void rendermonsters();
 dvector &getmonsters();
 void monsterpain(dynent *m, int damage, dynent *d);
 void endsp(bool allkilled);

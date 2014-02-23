@@ -440,6 +440,8 @@ struct context {
       ogl::bindbuffer(ogl::ARRAY_BUFFER, 0);
       if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_FILL);
     }
+    game::renderclients();
+    game::rendermonsters();
     drawhudgun(fovy, aspect, farplane);
     OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
     ogl::endtimer(gbuffertimer);
