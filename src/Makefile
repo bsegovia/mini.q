@@ -63,6 +63,7 @@ SERVER_OBJS=\
   serverms.o\
   standalone.o
 
+SHADERS=$(shell ls data/shaders/*[glsl,decl])
 all: mini.q.server mini.q compress_chars
 
 -include $(CLIENT_OBJS:.o=.d)

@@ -118,11 +118,12 @@ const char fixed_vp[] = {
 };
 const char font_fp[] = {
 "PS_IN vec2 fs_tex;\n"
+"PS_IN vec4 fs_col;\n"
 
 "#define RSQ2 0.7071078\n"
 
 "void distseg(inout float dist, vec2 start, vec2 end, vec2 nor, vec2 pos) {\n"
-"  bool inside =  (dot(pos-start,end-start)>=0.0 && dot(end-pos,end-start)>=0.0);\n"
+"  bool inside = (dot(pos-start,end-start)>=0.0 && dot(end-pos,end-start)>=0.0);\n"
 "  dist = inside ? min(dist, abs(dot(pos-start, nor))) : dist;\n"
 "}\n"
 
@@ -159,9 +160,8 @@ const char font_fp[] = {
 "  }\n"
 "  float no = u_font_thickness-u_outline_width;\n"
 "  float o = u_font_thickness;\n"
-"  vec4 col = vec4(1.0-smoothstep(no-0.1, no, dist));\n"
-"  col += u_outline_color * (1.0-smoothstep(o-0.1, o, dist));\n"
-"  SWITCH_WEBGL(gl_FragColor, rt_col) = col;\n"
+"  float alpha = 1.0-smoothstep(no-0.1, no, dist);\n"
+"  SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(fs_col.xyz,alpha);\n"
 "}\n"
 
 };
