@@ -9,8 +9,7 @@ namespace md2 {
 void start();
 void finish();
 void render(const char *name, int frame, int range,
-            const mat4x4f &postransform,
-            const mat3x3f &nortransform,
+            const mat4x4f &posxfm, const mat3x3f &norxfm,
             bool teammate, float scale, float speed, int snap,
             float basetime);
 

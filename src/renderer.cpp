@@ -97,7 +97,7 @@ static void drawhud(int w, int h, int curfps) {
     ogl::printtimers(text::fontdim().x, con::height());
   }
   menu::render();
-#if 1
+
   if (game::player1->state==CS_ALIVE) {
     const auto lifepos = vec2f(float(VIRTW) * 0.05f,ICON_SIZE*0.2f);
     const auto armorpos = vec2f(float(VIRTW) * 0.30f, ICON_SIZE*0.2f);
@@ -107,6 +107,7 @@ static void drawhud(int w, int h, int curfps) {
     const auto pl = game::player1;
     ogl::pushmode(ogl::PROJECTION);
     ogl::setortho(0.f, float(VIRTW), 0.f, float(VIRTH), -1.f, 1.f);
+    OGL(VertexAttrib4f,ogl::ATTRIB_COL,1.f,1.f,1.f,1.f);
     text::drawf("%d", lifepos+textpos, pl->health);
     if (pl->armour) text::drawf("%d", armorpos+textpos, pl->armour);
     text::drawf("%d", ammopos+textpos, pl->ammo[pl->gunselect]);
@@ -126,8 +127,6 @@ static void drawhud(int w, int h, int curfps) {
   }
 
   ogl::disablev(GL_BLEND);
-#endif
-
   popscreentransform();
   ogl::enable(GL_DEPTH_TEST);
 }
@@ -146,12 +145,11 @@ VARP(showhudgun, 0, 1, 1);
 
 static void drawhudmodel(int start, int end, float speed, int base) {
   const auto pl = game::player1;
-  const auto nortransform = mat3x3f::rotate(-pl->ypr.x, vec3f(0.f,1.f,0.f))
-                          * mat3x3f::rotate(-pl->ypr.y, vec3f(1.f,0.f,0.f))
-                          * mat3x3f::rotate(-pl->ypr.z, vec3f(0.f,0.f,1.f));
+  const auto norxfm = mat3x3f::rotate(-pl->ypr.x, vec3f(0.f,1.f,0.f))
+                    * mat3x3f::rotate(-pl->ypr.y, vec3f(1.f,0.f,0.f))
+                    * mat3x3f::rotate(-pl->ypr.z, vec3f(0.f,0.f,1.f));
   md2::render(hudgunnames[pl->gunselect], start, end,
-              mat4x4f(one), nortransform,
-              false, 1.0f, speed, 0, base);
+              mat4x4f(one), norxfm, false, 1.0f, speed, 0, base);
 }
 
 static void drawhudgun(float fovy, float aspect, float farplane) {

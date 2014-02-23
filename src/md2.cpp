@@ -86,8 +86,8 @@ struct mdl {
   typedef array<float,8> vertextype;
   bool load(const char *filename, float scale, int snap);
   void render(int frame, int range,
-              const mat4x4f &postransform,
-              const mat3x3f &nortransform,
+              const mat4x4f &posxfm,
+              const mat3x3f &norxfm,
               float speed, float basetime);
   u32 vbo, tex;
   u32 vboframesz;
@@ -179,12 +179,12 @@ bool mdl::load(const char *name, float scale, int sn) {
 }
 
 void mdl::render(int frame, int range,
-                 const mat4x4f &postransform,
-                 const mat3x3f &nortransform,
+                 const mat4x4f &posxfm,
+                 const mat3x3f &norxfm,
                  float speed, float basetime)
 {
   ogl::bindbuffer(ogl::ARRAY_BUFFER, vbo);
-  const auto mvp = ogl::matrix(ogl::PROJECTION) * postransform;
+  const auto mvp = ogl::matrix(ogl::PROJECTION) * posxfm;
 
   const int n = vboframesz / sizeof(vertextype);
   const auto time = game::lastmillis()-basetime;
@@ -207,7 +207,7 @@ void mdl::render(int frame, int range,
   ogl::bindtexture(GL_TEXTURE_2D, tex, 0);
   ogl::bindshader(s);
   OGL(Uniform1f, s.u_delta, frac);
-  OGL(UniformMatrix3fv, s.u_nortransform, 1, GL_FALSE, &nortransform.vx.x);
+  OGL(UniformMatrix3fv, s.u_nortransform, 1, GL_FALSE, &norxfm.vx.x);
   OGL(UniformMatrix4fv, s.u_mvp, 1, GL_FALSE, &mvp.vx.x);
   ogl::drawarrays(GL_TRIANGLES, 0, n);
   ogl::bindbuffer(ogl::ARRAY_BUFFER, 0);
@@ -268,14 +268,13 @@ CMD(mapmodel, ARG_5STR);
 CMD(mapmodelreset, ARG_NONE);
 
 void render(const char *name, int frame, int range,
-            const mat4x4f &postransform,
-            const mat3x3f &nortransform,
+            const mat4x4f &posxfm, const mat3x3f &norxfm,
             bool teammate, float scale, float speed, int snap, float basetime)
 {
   auto m = loadmodel(name);
   delayedload(m, scale, snap);
   ogl::bindtexture(GL_TEXTURE_2D, m->tex);
-  m->render(frame, range, postransform, nortransform, speed, basetime);
+  m->render(frame, range, posxfm, norxfm, speed, basetime);
 }
 } /* namespace md2 */
 } /* namespace q */

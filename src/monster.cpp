@@ -93,9 +93,8 @@ void cleanmonsters() {
 void monsterclear(void) {
   cleanmonsters();
   if (m_dmsp) {
-    // nextmonster = mtimestart = int(lastmillis())+10000;
     nextmonster = mtimestart = int(lastmillis())+1000;
-    monstertotal = spawnremain = mode()<0 ? skill*10 : 0;
+    monstertotal = spawnremain = 1; // XXX mode()<0 ? skill*10 : 0;
   } else if (m_classicsp) {
     mtimestart = lastmillis();
     loopv(ents) if (ents[i].type==MONSTER) {

@@ -435,17 +435,17 @@ static const int range[] = {6,   6,   8,   28,  1,   1,   1,   1,   8,  19, 4,  
 
 void renderclient(dynent *d, bool team, const char *mdlname, bool hellpig, float scale) {
   int n = 3;
-  float speed = 100.0f;
-  float my = d->o.z-d->eyeheight+1.55f*scale;
+  auto speed = 100.0f;
+  auto my = d->o.y-d->eyeheight+1.55f*scale;
   int cast = (int) (uintptr_t) d;
-  int basetime = -(((int)cast)&0xFFF);
+  int basetime = -((int(cast))&0xFFF);
   if (d->state==CS_DEAD) {
     int r;
     if (hellpig) {
       n = 2;
       r = range[3];
     } else {
-      n = (int)cast%3;
+      n = cast%3;
       r = range[n];
     }
     basetime = d->lastaction;
@@ -475,11 +475,13 @@ void renderclient(dynent *d, bool team, const char *mdlname, bool hellpig, float
     scale *= 32;
     my -= 1.9f;
   }
-#if 0
-  const vec3f pos(d->o.x, my, d->o.z);
-  const vec3f ypr(d->ypr.x+90.f, d->ypr.y/2.f, d->ypr.z);
-  md2::render(mdlname, frame[n], range[n], pos, ypr, team, scale, speed, 0, basetime);
-#endif
+
+  const auto norxfm = mat3x3f::rotate(d->ypr.x, vec3f(0.f,-1.f,0.f))
+                    * mat3x3f::rotate(d->ypr.y, vec3f(1.f,0.f,0.f));
+  const auto posxfm = ogl::matrix(ogl::MODELVIEW)
+                    * mat4x4f::translate(vec3f(d->o.x, my, d->o.z))
+                    * mat4x4f(norxfm);
+  md2::render(mdlname, frame[n], range[n], posxfm, norxfm, team, scale, speed, 0, basetime);
 }
 
 void renderclients(void) {
