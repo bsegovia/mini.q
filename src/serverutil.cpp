@@ -2,6 +2,7 @@
  - mini.q - a minimalistic multiplayer FPS
  - serverutil.cpp -> helper functions and main entry for server
  -------------------------------------------------------------------------*/
+#include "client.hpp"
 #include "server.hpp"
 #include "network.hpp"
 #include <enet/enet.h>
@@ -38,12 +39,12 @@ ENetPacket *recvmap(int n) {
 }
 } /* namespace server */
 
-#ifdef STANDALONE
+#if defined(STANDALONE)
 void client::localservertoclient(u8 *buf, int len) {}
-void fatal(const char *s, const char *o) {
+void fatal(const char *s) {
   server::clean();
   printf("servererror: %s\n", s);
-  exit(1);
+  exit(EXIT_FAILURE);
 }
 
 static int main(int argc, char* argv[]) {
@@ -62,14 +63,15 @@ static int main(int argc, char* argv[]) {
       default: printf("WARNING: unknown commandline option\n");
     }
   }
-  if (enet_initialize()<0) fatal("Unable to initialise network module");
+  if (enet_initialize()<0)
+    fatal("unable to initialise network module");
   server::init(true, uprate, sdesc, ip, master, passwd, maxcl);
   return 0;
 }
 #endif
 } /* namespace q */
 
-#ifdef STANDALONE
+#if defined(STANDALONE)
 #include "game.cpp"
 int main(int argc, char *argv[]) { return q::main(argc,argv); }
 #endif

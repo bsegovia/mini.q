@@ -12,6 +12,11 @@
 #include "ui.hpp"
 #include <GL/gl.h>
 #endif
+namespace q {
+namespace sys {
+CMD(quit, ARG_1STR);
+} /* namespace sys */
+} /* namespace q */
 
 namespace q {
 VARF(grabmouse, 0, 0, 1, SDL_WM_GrabInput(grabmouse ? SDL_GRAB_ON : SDL_GRAB_OFF););

@@ -6,9 +6,19 @@ OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g
 RELFLAGS=-fomit-frame-pointer -Os -DNDEBUG -DRELEASE
 
 CXXFLAGS= $(CXXCOMMONFLAGS) $(FLAGS) $(DEBUGFLAGS)
-
 LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer -lz
-OBJS=\
+
+ENET_OBJS=\
+  enet/callbacks.o\
+  enet/host.o\
+  enet/list.o\
+  enet/packet.o\
+  enet/peer.o\
+  enet/protocol.o\
+  enet/unix.o
+
+CLIENT_OBJS=\
+  $(ENET_OBJS)\
   client.o\
   con.o\
   csg.o\
@@ -41,16 +51,19 @@ OBJS=\
   text.o\
   ui.o\
   weapon.o\
-  world.o\
-  enet/callbacks.o\
-  enet/host.o\
-  enet/list.o\
-  enet/packet.o\
-  enet/peer.o\
-  enet/protocol.o\
-  enet/unix.o
+  world.o
 
-all: mini.q compress_chars
+SERVER_OBJS=\
+  $(ENET_OBJS)\
+  math.o\
+  stl.o\
+  sys.o\
+  network.o\
+  server.o\
+  serverms.o\
+  standalone.o
+
+all: mini.q.server mini.q compress_chars
 
 #include Makefile.dep
 -include $(OBJS:.o=.d)
@@ -63,8 +76,11 @@ shaders.hxx shaders.cxx: $(SHADERS)
 font.hxx: compress_chars data/font8x16.png
 	./compress_chars data/font8x16.png 8 16 0 > font.hxx
 
-mini.q: $(OBJS)
-	$(CXX) $(CXXFLAGS) -o mini.q $(OBJS) $(LIBS)
+mini.q: $(CLIENT_OBJS)
+	$(CXX) $(CXXFLAGS) -o mini.q $(CLIENT_OBJS) $(LIBS)
+
+mini.q.server: $(SERVER_OBJS)
+	$(CXX) $(CXXFLAGS) -o mini.q.server $(SERVER_OBJS) $(LIBS)
 
 compress_chars: compress_chars.o
 	$(CXX) $(CXXFLAGS) -o compress_chars compress_chars.o $(LIBS)
