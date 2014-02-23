@@ -63,16 +63,18 @@ void drawsphere(void);
 
 // enable /disable vertex attribs in one shot
 struct setattribarray {
-  INLINE setattribarray(void) {
-    loopi(ATTRIB_NUM) enabled[i] = false;
-  }
+  INLINE setattribarray(void) {loopi(ATTRIB_NUM) enabled[i] = false;}
   template <typename First, typename... Rest>
   INLINE void operator() (First first, Rest... rest) {
     enabled[first] = true;
     operator() (rest...);
   }
   INLINE void operator()() {
-    loopi(ATTRIB_NUM) if (enabled[i]) enableattribarray(i); else disableattribarray(i);
+    loopi(ATTRIB_NUM)
+      if (enabled[i])
+        enableattribarray(i);
+      else
+        disableattribarray(i);
   }
   bool enabled[ATTRIB_NUM];
 };

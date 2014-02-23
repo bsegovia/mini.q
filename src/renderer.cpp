@@ -145,12 +145,13 @@ static const char *hudgunnames[] = {
 VARP(showhudgun, 0, 1, 1);
 
 static void drawhudmodel(int start, int end, float speed, int base) {
-  ogl::matrixmode(ogl::MODELVIEW);
-  ogl::pushmatrix();
-  md2::render(hudgunnames[game::player1->gunselect], start, end,
-              vec3f(zero), game::player1->ypr,
+  const auto pl = game::player1;
+  const auto nortransform = mat3x3f::rotate(-pl->ypr.x, vec3f(0.f,1.f,0.f))
+                          * mat3x3f::rotate(-pl->ypr.y, vec3f(1.f,0.f,0.f))
+                          * mat3x3f::rotate(-pl->ypr.z, vec3f(0.f,0.f,1.f));
+  md2::render(hudgunnames[pl->gunselect], start, end,
+              mat4x4f(one), nortransform,
               false, 1.0f, speed, 0, base);
-  ogl::popmatrix();
 }
 
 static void drawhudgun(float fovy, float aspect, float farplane) {

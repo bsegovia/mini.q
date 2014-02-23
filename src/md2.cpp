@@ -85,8 +85,10 @@ struct mdl {
   }
   typedef array<float,8> vertextype;
   bool load(const char *filename, float scale, int snap);
-  void render(int frame, int range, const vec3f &o, const vec3f &ypr,
-             float scale, float speed, int snap, float basetime);
+  void render(int frame, int range,
+              const mat4x4f &postransform,
+              const mat3x3f &nortransform,
+              float speed, float basetime);
   u32 vbo, tex;
   u32 vboframesz;
   game::mapmodelinfo mmi;
@@ -176,18 +178,13 @@ bool mdl::load(const char *name, float scale, int sn) {
   return true;
 }
 
-void mdl::render(int frame, int range, const vec3f &o,
-                 const vec3f &ypr, float sc, float speed,
-                 int snap, float basetime)
+void mdl::render(int frame, int range,
+                 const mat4x4f &postransform,
+                 const mat3x3f &nortransform,
+                 float speed, float basetime)
 {
-  frame = 0;
   ogl::bindbuffer(ogl::ARRAY_BUFFER, vbo);
-  ogl::pushmatrix();
-  ogl::identity();
-  const vec3f tr(10.310894f, 1.800000f, 13.364042f);
-  auto m = mat3x3f::rotate(-ypr.x, vec3f(0.f,1.f,0.f));
-  m *= mat3x3f::rotate(-ypr.y, vec3f(1.f,0.f,0.f));
-  m *= mat3x3f::rotate(-ypr.z, vec3f(0.f,0.f,1.f));
+  const auto mvp = ogl::matrix(ogl::PROJECTION) * postransform;
 
   const int n = vboframesz / sizeof(vertextype);
   const auto time = game::lastmillis()-basetime;
@@ -210,14 +207,10 @@ void mdl::render(int frame, int range, const vec3f &o,
   ogl::bindtexture(GL_TEXTURE_2D, tex, 0);
   ogl::bindshader(s);
   OGL(Uniform1f, s.u_delta, frac);
-  const auto &mv = ogl::matrix(ogl::MODELVIEW);
-  const auto &p = ogl::matrix(ogl::PROJECTION);
-  const auto mvp = p*mv;
-  OGL(UniformMatrix3fv, s.u_nortransform, 1, GL_FALSE, &m.vx.x);
+  OGL(UniformMatrix3fv, s.u_nortransform, 1, GL_FALSE, &nortransform.vx.x);
   OGL(UniformMatrix4fv, s.u_mvp, 1, GL_FALSE, &mvp.vx.x);
   ogl::drawarrays(GL_TRIANGLES, 0, n);
   ogl::bindbuffer(ogl::ARRAY_BUFFER, 0);
-  ogl::popmatrix();
   OGL(CullFace, GL_BACK);
 }
 
@@ -275,14 +268,14 @@ CMD(mapmodel, ARG_5STR);
 CMD(mapmodelreset, ARG_NONE);
 
 void render(const char *name, int frame, int range,
-            const vec3f &o, const vec3f &ypr,
-            bool teammate, float scale, float speed, int snap,
-            float basetime)
+            const mat4x4f &postransform,
+            const mat3x3f &nortransform,
+            bool teammate, float scale, float speed, int snap, float basetime)
 {
   auto m = loadmodel(name);
   delayedload(m, scale, snap);
   ogl::bindtexture(GL_TEXTURE_2D, m->tex);
-  m->render(frame, range, o, ypr, scale, speed, snap, basetime);
+  m->render(frame, range, postransform, nortransform, speed, basetime);
 }
 } /* namespace md2 */
 } /* namespace q */

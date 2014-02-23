@@ -475,9 +475,11 @@ void renderclient(dynent *d, bool team, const char *mdlname, bool hellpig, float
     scale *= 32;
     my -= 1.9f;
   }
+#if 0
   const vec3f pos(d->o.x, my, d->o.z);
   const vec3f ypr(d->ypr.x+90.f, d->ypr.y/2.f, d->ypr.z);
   md2::render(mdlname, frame[n], range[n], pos, ypr, team, scale, speed, 0, basetime);
+#endif
 }
 
 void renderclients(void) {
