@@ -33,8 +33,8 @@ struct point {
   const material *mat;
 };
 
-point dist(const node &n, const vec3f &pos, const aabb &box = aabb::all());
-void dist(const node &n, const vec3f *pos, float *d, int num, const aabb &box);
+point dist(const node *n, const vec3f &pos, const aabb &box = aabb::all());
+void dist(const node *n, const vec3f *pos, float *d, int num, const aabb &box);
 } /* namespace csg */
 } /* namespace q */
 

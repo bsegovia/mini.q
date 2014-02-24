@@ -181,73 +181,73 @@ node *makescene() {
 
 void destroyscene(node *n) { SAFE_DEL(n); }
 
-void distr(const node &n, const vec3f * RESTRICT pos, float * RESTRICT dist, int num, const aabb &box) {
-  const auto isec = intersection(box, n.box);
+void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist, int num, const aabb &box) {
+  const auto isec = intersection(box, n->box);
   if (any(gt(isec.pmin, isec.pmax))) return;
-  switch (n.type) {
+  switch (n->type) {
     case C_UNION: {
-      const auto &u = static_cast<const U&>(n);
+      const auto u = static_cast<const U*>(n);
       float tempdist[64];
-      distr(*u.left, pos, dist, num, box);
+      distr(u->left, pos, dist, num, box);
       loopi(num) tempdist[i] = FLT_MAX;
-      distr(*u.right, pos, tempdist, num, box);
+      distr(u->right, pos, tempdist, num, box);
       loopi(num) dist[i] = min(dist[i], tempdist[i]);
       return;
     }
     case C_INTERSECTION: {
-      const auto &i = static_cast<const I&>(n);
+      const auto i = static_cast<const I*>(n);
       float tempdist[64];
-      distr(*i.left, pos, dist, num, box);
+      distr(i->left, pos, dist, num, box);
       loopi(num) tempdist[i] = FLT_MAX;
-      distr(*i.right, pos, tempdist, num, box);
+      distr(i->right, pos, tempdist, num, box);
       loopi(num) dist[i] = max(dist[i], tempdist[i]);
       return;
     }
     case C_DIFFERENCE: {
-      const auto &d = static_cast<const D&>(n);
+      const auto d = static_cast<const D*>(n);
       float tempdist[64];
-      distr(*d.left, pos, dist, num, box);
+      distr(d->left, pos, dist, num, box);
       loopi(num) tempdist[i] = FLT_MAX;
-      distr(*d.right, pos, tempdist, num, box);
+      distr(d->right, pos, tempdist, num, box);
       loopi(num) dist[i] = max(dist[i], -tempdist[i]);
       return;
     }
     case C_TRANSLATION: {
-      const auto &t = static_cast<const translation&>(n);
+      const auto t = static_cast<const translation*>(n);
       vec3f tpos[64];
-      loopi(num) tpos[i] = pos[i] - t.p;
-      distr(*t.n, tpos, dist, num, aabb(box.pmin-t.p, box.pmax-t.p));
+      loopi(num) tpos[i] = pos[i] - t->p;
+      distr(t->n, tpos, dist, num, aabb(box.pmin-t->p, box.pmax-t->p));
       return;
     }
     case C_ROTATION: {
-      const auto &r = static_cast<const rotation&>(n);
+      const auto r = static_cast<const rotation*>(n);
       vec3f tpos[64];
-      loopi(num) tpos[i] = xfmpoint(conj(r.q), pos[i]);
-      distr(*r.n, tpos, dist, num, aabb::all());
+      loopi(num) tpos[i] = xfmpoint(conj(r->q), pos[i]);
+      distr(r->n, tpos, dist, num, aabb::all());
       return;
     }
     case C_PLANE: {
-      const auto &p = static_cast<const plane&>(n);
-      loopi(num) dist[i] = dot(pos[i], p.p.xyz()) + p.p.w;
+      const auto p = static_cast<const plane*>(n);
+      loopi(num) dist[i] = dot(pos[i], p->p.xyz()) + p->p.w;
       return;
     }
 
 #define CYL(NAME, COORD)\
   case C_CYLINDER##NAME: {\
-    const auto &c = static_cast<const cylinder##COORD&>(n);\
-    loopi(num) dist[i] = length(pos[i].COORD()-c.c##COORD) - c.r;\
+    const auto c = static_cast<const cylinder##COORD*>(n);\
+    loopi(num) dist[i] = length(pos[i].COORD()-c->c##COORD) - c->r;\
     return;\
   }
   CYL(XY,xy); CYL(XZ,xz); CYL(YZ,yz);
 #undef CYL
 
     case C_SPHERE: {
-      const auto &s = static_cast<const sphere&>(n);
-      loopi(num) dist[i] = length(pos[i]) - s.r;
+      const auto s = static_cast<const sphere*>(n);
+      loopi(num) dist[i] = length(pos[i]) - s->r;
       return;
     }
     case C_BOX: {
-      const auto extent = static_cast<const struct box&>(n).extent;
+      const auto extent = static_cast<const struct box*>(n)->extent;
       loopi(num) {
         const auto pd = abs(pos[i])-extent;
         dist[i] = min(max(pd.x,max(pd.y,pd.z)),0.0f) + length(max(pd,vec3f(zero)));
@@ -255,79 +255,79 @@ void distr(const node &n, const vec3f * RESTRICT pos, float * RESTRICT dist, int
       return;
     }
     case C_SIZE: {
-      const auto &s = static_cast<const size&>(n);
-      distr(*s.n, pos, dist, num, box);
+      const auto s = static_cast<const size*>(n);
+      distr(s->n, pos, dist, num, box);
       return;
     }
     default: assert("unreachable" && false);
   }
 }
 
-void dist(const node &n, const vec3f *pos, float *d, int num, const aabb &box) {
+void dist(const node *n, const vec3f *pos, float *d, int num, const aabb &box) {
   assert(num <= 64);
   loopi(num) d[i] = FLT_MAX;
   distr(n, pos, d, num, box);
 }
 
-point dist(const node &n, const vec3f &pos, const aabb &box) {
-  const auto isec = intersection(box, n.box);
+point dist(const node *n, const vec3f &pos, const aabb &box) {
+  const auto isec = intersection(box, n->box);
   if (any(gt(isec.pmin, isec.pmax))) return point(FLT_MAX,FLT_MAX);
-  switch (n.type) {
+  switch (n->type) {
     case C_UNION: {
-      const auto &u = static_cast<const U&>(n);
-      const auto pleft = dist(*u.left, pos, box);
-      const auto pright = dist(*u.right, pos, box);
+      const auto u = static_cast<const U*>(n);
+      const auto pleft = dist(u->left, pos, box);
+      const auto pright = dist(u->right, pos, box);
       return point(min(pleft.dist,pright.dist), min(pleft.size,pright.size));
     }
     case C_INTERSECTION: {
-      const auto &i = static_cast<const I&>(n);
-      const auto pleft = dist(*i.left, pos, box);
-      const auto pright = dist(*i.right, pos, box);
+      const auto i = static_cast<const I*>(n);
+      const auto pleft = dist(i->left, pos, box);
+      const auto pright = dist(i->right, pos, box);
       return point(max(pleft.dist,pright.dist), min(pleft.size,pright.size));
     }
     case C_DIFFERENCE: {
-      const auto &d = static_cast<const D&>(n);
-      const auto pleft = dist(*d.left, pos, box);
-      const auto pright = dist(*d.right, pos, box);
+      const auto d = static_cast<const D*>(n);
+      const auto pleft = dist(d->left, pos, box);
+      const auto pright = dist(d->right, pos, box);
       return point(max(pleft.dist,-pright.dist), min(pleft.size,pright.size));
     }
     case C_TRANSLATION: {
-      const auto &t = static_cast<const translation&>(n);
-      return dist(*t.n, pos-t.p, aabb(box.pmin-t.p, box.pmax-t.p));
+      const auto t = static_cast<const translation*>(n);
+      return dist(t->n, pos-t->p, aabb(box.pmin-t->p, box.pmax-t->p));
     }
     case C_ROTATION: {
-      const auto &r = static_cast<const rotation&>(n);
-      return dist(*r.n, xfmpoint(conj(r.q), pos), aabb::all());
+      const auto r = static_cast<const rotation*>(n);
+      return dist(r->n, xfmpoint(conj(r->q), pos), aabb::all());
     }
     case C_PLANE: {
-      const auto &p = static_cast<const plane&>(n);
-      return point(dot(pos, p.p.xyz()) + p.p.w);
+      const auto p = static_cast<const plane*>(n);
+      return point(dot(pos, p->p.xyz()) + p->p.w);
     }
     case C_CYLINDERXZ: {
-      const auto &c = static_cast<const cylinderxz&>(n);
-      return point(length(pos.xz()-c.cxz) - c.r);
+      const auto c = static_cast<const cylinderxz*>(n);
+      return point(length(pos.xz()-c->cxz) - c->r);
     }
     case C_CYLINDERXY: {
-      const auto &c = static_cast<const cylinderxy&>(n);
-      return point(length(pos.xy()-c.cxy) - c.r);
+      const auto c = static_cast<const cylinderxy*>(n);
+      return point(length(pos.xy()-c->cxy) - c->r);
     }
     case C_CYLINDERYZ: {
-      const auto &c = static_cast<const cylinderyz&>(n);
-      return point(length(pos.yz()-c.cyz) - c.r);
+      const auto c = static_cast<const cylinderyz*>(n);
+      return point(length(pos.yz()-c->cyz) - c->r);
     }
     case C_SPHERE: {
-      const auto &s = static_cast<const sphere&>(n);
-      return point(length(pos) - s.r);
+      const auto s = static_cast<const sphere*>(n);
+      return point(length(pos) - s->r);
     }
     case C_BOX: {
-      const auto &d = abs(pos)-static_cast<const struct box&>(n).extent;
+      const auto &d = abs(pos)-static_cast<const struct box*>(n)->extent;
       const auto dist = min(max(d.x,max(d.y,d.z)),0.0f)+length(max(d,vec3f(zero)));
       return point(dist);
     }
     case C_SIZE: {
-      const auto &s = static_cast<const size&>(n);
-      const auto pt = dist(*s.n, pos, s.box);
-      return point(pt.dist, min(pt.size, s.sz));
+      const auto s = static_cast<const size*>(n);
+      const auto pt = dist(s->n, pos, s->box);
+      return point(pt.dist, min(pt.size, s->sz));
     }
     default: assert("unreachable" && false); return FLT_MAX;
   }

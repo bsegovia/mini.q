@@ -406,37 +406,6 @@ struct dc_gridbuilder {
     bool valid;
   };
 
-  INLINE vec3f falsepos(const csg::node &node, vec3f org, vec3f p0, vec3f p1,
-                        float v0, float v1, float scale)
-  {
-    STATS_INC(iso_edge_num);
-    if (abs(v0) < TOLERANCE_DENSITY) return p0;
-    if (abs(v1) < TOLERANCE_DENSITY) return p1;
-    if (v1 < 0.f) {
-      swap(p0,p1);
-      swap(v0,v1);
-    }
-
-    vec3f p;
-    loopi(MAX_STEPS) {
-      p = p1 - v1 * (p1 - p0) / (v1 - v0);
-      const auto pt = csg::dist(node, org+m_cellsize*scale*p);
-      const auto density = pt.dist+1e-4f;
-      STATS_INC(iso_num);
-      STATS_INC(iso_falsepos_num);
-      if (abs(density) < TOLERANCE_DENSITY) break;
-      if (distance2(p0,p1) < TOLERANCE_DIST2) break;
-      if (density < 0.f) {
-        p0 = p;
-        v0 = density;
-      } else {
-        p1 = p;
-        v1 = density;
-      }
-    }
-    return p;
-  }
-
   INLINE vec3f vertex(const vec3i &p) {
     const vec3i ipos = m_iorg+(p<<(int(m_maxlevel-m_level)));
     return vec3f(ipos)*m_mincellsize;
@@ -477,7 +446,7 @@ struct dc_gridbuilder {
       int index = 0;
       loopxyz(sxyz, sxyz+4) pos[index++] = vertex(xyz);
       assert(index == 64);
-      csg::dist(*m_node, pos, distance, 64, box);
+      csg::dist(m_node, pos, distance, 64, box);
       index = 0;
       loopxyz(sxyz, sxyz+4) field(xyz) = distance[index++];
       STATS_ADD(iso_num, 64);
@@ -557,7 +526,7 @@ struct dc_gridbuilder {
     return edgetable[cubeindex];
   }
 
-  INLINE void falsepos(const csg::node &node, edgestack &stack, int num) {
+  INLINE void falsepos(const csg::node *node, edgestack &stack, int num) {
     assert(num <= 64);
     auto &it = stack.it;
     auto &pos = stack.pos, &p = stack.p;
@@ -573,7 +542,7 @@ struct dc_gridbuilder {
       }
       box.pmin -= 3.f * m_cellsize;
       box.pmax += 3.f * m_cellsize;
-      csg::dist(*m_node, &pos[0], &d[0], num, box);
+      csg::dist(m_node, &pos[0], &d[0], num, box);
       if (k != MAX_STEPS-1) {
         loopi(num) {
           if (d[i] < 0.f) {
@@ -620,7 +589,7 @@ struct dc_gridbuilder {
           swap(it[j].v0,it[j].v1);
         }
       }
-      falsepos(*m_node, *m_stack, num);
+      falsepos(m_node, *m_stack, num);
 
       // step 2 - compute normals for each point using packets of 16x4 points
       const auto dx = vec3f(DEFAULT_GRAD_STEP, 0.f, 0.f);
@@ -642,7 +611,7 @@ struct dc_gridbuilder {
         box.pmin -= 3.f * m_cellsize;
         box.pmax += 3.f * m_cellsize;
 
-        csg::dist(*m_node, p, d, 4*subnum, box);
+        csg::dist(m_node, p, d, 4*subnum, box);
         STATS_ADD(iso_num, 4*subnum);
         STATS_ADD(iso_gradient_num, 4*subnum);
 
@@ -941,7 +910,7 @@ struct mt_builder {
     const auto cellnum = int(m_dim >> level);
     const auto icenter = xyz + cellnum/2;
     const auto center = pos(icenter);
-    const auto pt = csg::dist(*m_node, center, aabb(pmin,pmax));
+    const auto pt = csg::dist(m_node, center, aabb(pmin,pmax));
     STATS_INC(iso_octree_num);
     STATS_INC(iso_num);
     if (abs(pt.dist) > sqrt(3.f) * m_cellsize * float(cellnum/2)) {
