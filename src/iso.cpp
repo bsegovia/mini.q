@@ -151,9 +151,12 @@ struct mesh_processor {
     m_first_idx = first_idx;
     m_vertnum = (p.length() - m_first_vert);
     m_trinum = (t.length() - m_first_idx) / 3;
+    m_trinormals.setsize(m_trinum);
     m_edges.setsize(6*m_trinum);
     m_edgelists.setsize(m_vertnum + 6*m_trinum);
     m_list.setsize(m_vertnum + 6*m_trinum);
+    const auto firsttri = m_first_idx / 3;
+    loopi(m_trinum) m_trinormals[i] = normalize(trinormalu(firsttri+i));
   }
 
   void append(int &edgenum, int i1, int i2, int face0, int face1) {
@@ -229,7 +232,7 @@ struct mesh_processor {
     const auto t2 = unpackidx(t[3*idx+2]);
     return cross(p[t0]-p[t2], p[t0]-p[t1]);
   }
-  INLINE vec3f trinormal(u32 idx) { return normalize(trinormalu(idx)); }
+  INLINE vec3f trinormal(u32 idx) { return m_trinormals[idx-m_first_idx/3]; }
 
   void crease(u32 edgenum) {
     auto &t = *m_idx_buffer;
@@ -317,6 +320,7 @@ struct mesh_processor {
     loopi(m_vertnum) n[m_first_vert+i] = -normalize(n[m_first_vert+i]);
   }
 
+  vector<vec3f> m_trinormals;
   vector<meshedge> m_edges;
   vector<int> m_edgelists;
   vector<pair<u32,u32>> m_list;
