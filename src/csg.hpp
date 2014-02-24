@@ -10,13 +10,27 @@ namespace csg {
 struct node *makescene();
 void destroyscene(struct node *n);
 
+enum {
+  MAT_AIR,
+  MAT_SNOISE,
+  MAT_GRID
+};
+
+struct material {
+  INLINE material(u32 type = MAT_AIR) : type(type) {}
+  u32 type;
+};
+
+// These are just pre-built material to test code
+extern const material airmat, snoisemat, gridmat;
+
 // distance, material, required tesselation size
 struct point {
-  INLINE point(float d, float s=FLT_MAX, u32 m=0) : dist(d), size(s), mat(m) {}
+  INLINE point(float d, float s=FLT_MAX, const material *mat = &airmat) :
+    dist(d), size(s), mat(mat) {}
   INLINE point() {}
-  float dist;
-  float size;
-  u32 mat;
+  float dist, size;
+  const material *mat;
 };
 
 point dist(const node &n, const vec3f &pos, const aabb &box = aabb::all());

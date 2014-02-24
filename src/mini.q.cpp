@@ -25,7 +25,7 @@ VARP(minmillis, 0, 5, 1000);
 
 // static const float CELLSIZE = 0.2f;
 void start(int argc, const char *argv[]) {
-#if 0
+#if 1
   con::out("init: memory debugger");
   sys::memstart();
   con::out("init: tasking system");

@@ -10,6 +10,13 @@ namespace q {
 namespace csg {
 
 /*--------------------------------------------------------------------------
+ - all materials
+ -------------------------------------------------------------------------*/
+const material airmat(MAT_AIR);
+const material snoisemat(MAT_SNOISE);
+const material gridmat(MAT_GRID);
+
+/*--------------------------------------------------------------------------
  - expose all basic CSG nodes
  -------------------------------------------------------------------------*/
 enum CSGOP {
