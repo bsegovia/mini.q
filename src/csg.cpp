@@ -22,14 +22,15 @@ const material gridmat(MAT_GRID);
 enum CSGOP {
   C_UNION, C_DIFFERENCE, C_INTERSECTION,
   C_SPHERE, C_BOX, C_PLANE, C_CYLINDERXZ, C_CYLINDERYZ, C_CYLINDERXY,
-  C_TRANSLATION, C_ROTATION, C_SIZE,
+  C_TRANSLATION, C_ROTATION,
   C_INVALID = 0xffffffff
 };
 struct node {
-  INLINE node(CSGOP type, const aabb &box = aabb::empty()) :
+  INLINE node(CSGOP type, const aabb &box = aabb::empty(), float size = DEFAULT_TESS_SIZE) :
     box(box), type(type) {}
   virtual ~node() {}
   aabb box;
+  float size;
   CSGOP type;
 };
 #define BINARY(NAME,TYPE,C_BOX) \
@@ -44,12 +45,6 @@ BINARY(D,C_DIFFERENCE, nleft->box)
 BINARY(I,C_INTERSECTION, intersection(nleft->box, nright->box))
 #undef BINARY
 
-struct size : node {
-  INLINE size(float sz, node *n) : node(C_SIZE, n->box), n(n), sz(sz) {}
-  virtual ~size() { SAFE_DEL(n); }
-  node *n;
-  float sz;
-};
 struct box : node {
   INLINE box(const vec3f &extent) :
     node(C_BOX, aabb(-extent,+extent)), extent(extent) {}
@@ -151,7 +146,7 @@ static node *makescene0() {
   }
 
   // add a ground box
-  const auto groundbox = NEW(size, 4.f, NEW(box, vec3f(50.f, 4.f, 50.f)));
+  const auto groundbox = NEW(box, vec3f(50.f, 4.f, 50.f));
   const auto ground = NEW(translation, vec3f(0.f,-3.f,0.f), groundbox);
 
   // just make a union of them
@@ -254,11 +249,6 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist, int
       }
       return;
     }
-    case C_SIZE: {
-      const auto s = static_cast<const size*>(n);
-      distr(s->n, pos, dist, num, box);
-      return;
-    }
     default: assert("unreachable" && false);
   }
 }
@@ -271,7 +261,7 @@ void dist(const node *n, const vec3f *pos, float *d, int num, const aabb &box) {
 
 point dist(const node *n, const vec3f &pos, const aabb &box) {
   const auto isec = intersection(box, n->box);
-  if (any(gt(isec.pmin, isec.pmax))) return point(FLT_MAX,FLT_MAX);
+  if (any(gt(isec.pmin, isec.pmax))) return point();
   switch (n->type) {
     case C_UNION: {
       const auto u = static_cast<const U*>(n);
@@ -323,11 +313,6 @@ point dist(const node *n, const vec3f &pos, const aabb &box) {
       const auto &d = abs(pos)-static_cast<const struct box*>(n)->extent;
       const auto dist = min(max(d.x,max(d.y,d.z)),0.0f)+length(max(d,vec3f(zero)));
       return point(dist);
-    }
-    case C_SIZE: {
-      const auto s = static_cast<const size*>(n);
-      const auto pt = dist(s->n, pos, s->box);
-      return point(pt.dist, min(pt.size, s->sz));
     }
     default: assert("unreachable" && false); return FLT_MAX;
   }

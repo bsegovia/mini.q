@@ -10,6 +10,11 @@ namespace csg {
 struct node *makescene();
 void destroyscene(struct node *n);
 
+// when nothing is specified by the user, this is going to be the grid cell size
+// used during DC
+static const float DEFAULT_TESS_SIZE = 0.2f;
+
+// material are identified by a unique ID
 enum {
   MAT_AIR,
   MAT_SNOISE,
@@ -26,9 +31,9 @@ extern const material airmat, snoisemat, gridmat;
 
 // distance, material, required tesselation size
 struct point {
-  INLINE point(float d, float s=FLT_MAX, const material *mat = &airmat) :
+  INLINE point(float d=FLT_MAX, float s=FLT_MAX, const material *mat = &airmat) :
     dist(d), size(s), mat(mat) {}
-  INLINE point() {}
+  INLINE bool valid() const {return mat != &airmat;}
   float dist, size;
   const material *mat;
 };
