@@ -178,7 +178,7 @@ struct mesh_processor {
     nextedge[edgenum++] = NOINDEX;
   }
 
-  int buildedges() {
+  NOINLINE int buildedges() {
     const auto &t = *m_idx_buffer;
     auto nextedge = &m_edgelists[0] + m_vertnum;
 
@@ -242,7 +242,8 @@ struct mesh_processor {
     loopi(edgenum) {
       const auto idx0 = m_edges[i].face[0], idx1 = m_edges[i].face[1];
       if (idx0 == idx1) continue;
-      const auto n0 = trinormal(firsttri+idx0), n1 = trinormal(firsttri+idx1);
+      const auto n0 = trinormal(firsttri+idx0);
+      const auto n1 = trinormal(firsttri+idx1);
       if (dot(n0, n1) > SHARP_EDGE) continue;
       loopj(2) {
         const auto idx = m_edges[i].vertex[j];
