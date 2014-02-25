@@ -910,19 +910,14 @@ struct mt_builder {
     const auto cellnum = int(m_dim >> level);
     const auto icenter = xyz + cellnum/2;
     const auto center = pos(icenter);
-    const auto pt = csg::dist(m_node, center, aabb(pmin,pmax));
+    const auto dist = csg::dist(m_node, center, aabb(pmin,pmax));
     STATS_INC(iso_octree_num);
     STATS_INC(iso_num);
-    if (abs(pt.dist) > sqrt(3.f) * m_cellsize * float(cellnum/2)) {
+    if (abs(dist) > sqrt(3.f) * m_cellsize * float(cellnum/2)) {
       node.m_isleaf = node.m_empty = 1;
       return;
     }
-#if USE_NODE_SIZE
-    //if (cellnum == SUBGRID || pt.size > len) {
-#else
-    //if (cellnum == SUBGRID || (level == 5 && xyz.x >= 32) || (level == 5 && xyz.y >= 16)) {
     if (cellnum == SUBGRID) {
-#endif
       node.m_isleaf = 1;
       return;
     } else {

@@ -26,11 +26,9 @@ enum CSGOP {
   C_INVALID = 0xffffffff
 };
 struct node {
-  INLINE node(CSGOP type, const aabb &box = aabb::empty(), float size = DEFAULT_TESS_SIZE) :
-    box(box), type(type) {}
+  INLINE node(CSGOP type, const aabb &box = aabb::empty()) : box(box), type(type) {}
   virtual ~node() {}
   aabb box;
-  float size;
   CSGOP type;
 };
 #define BINARY(NAME,TYPE,C_BOX) \
@@ -259,27 +257,27 @@ void dist(const node *n, const vec3f *pos, float *d, int num, const aabb &box) {
   distr(n, pos, d, num, box);
 }
 
-point dist(const node *n, const vec3f &pos, const aabb &box) {
+float dist(const node *n, const vec3f &pos, const aabb &box) {
   const auto isec = intersection(box, n->box);
-  if (any(gt(isec.pmin, isec.pmax))) return point();
+  if (any(gt(isec.pmin, isec.pmax))) return FLT_MAX;
   switch (n->type) {
     case C_UNION: {
       const auto u = static_cast<const U*>(n);
-      const auto pleft = dist(u->left, pos, box);
-      const auto pright = dist(u->right, pos, box);
-      return point(min(pleft.dist,pright.dist), min(pleft.size,pright.size));
+      const auto left = dist(u->left, pos, box);
+      const auto right = dist(u->right, pos, box);
+      return min(left,right);
     }
     case C_INTERSECTION: {
       const auto i = static_cast<const I*>(n);
-      const auto pleft = dist(i->left, pos, box);
-      const auto pright = dist(i->right, pos, box);
-      return point(max(pleft.dist,pright.dist), min(pleft.size,pright.size));
+      const auto left = dist(i->left, pos, box);
+      const auto right = dist(i->right, pos, box);
+      return max(left,right);
     }
     case C_DIFFERENCE: {
       const auto d = static_cast<const D*>(n);
-      const auto pleft = dist(d->left, pos, box);
-      const auto pright = dist(d->right, pos, box);
-      return point(max(pleft.dist,-pright.dist), min(pleft.size,pright.size));
+      const auto left = dist(d->left, pos, box);
+      const auto right = dist(d->right, pos, box);
+      return max(left,-right);
     }
     case C_TRANSLATION: {
       const auto t = static_cast<const translation*>(n);
@@ -291,28 +289,28 @@ point dist(const node *n, const vec3f &pos, const aabb &box) {
     }
     case C_PLANE: {
       const auto p = static_cast<const plane*>(n);
-      return point(dot(pos, p->p.xyz()) + p->p.w);
+      return dot(pos, p->p.xyz()) + p->p.w;
     }
     case C_CYLINDERXZ: {
       const auto c = static_cast<const cylinderxz*>(n);
-      return point(length(pos.xz()-c->cxz) - c->r);
+      return length(pos.xz()-c->cxz) - c->r;
     }
     case C_CYLINDERXY: {
       const auto c = static_cast<const cylinderxy*>(n);
-      return point(length(pos.xy()-c->cxy) - c->r);
+      return length(pos.xy()-c->cxy) - c->r;
     }
     case C_CYLINDERYZ: {
       const auto c = static_cast<const cylinderyz*>(n);
-      return point(length(pos.yz()-c->cyz) - c->r);
+      return length(pos.yz()-c->cyz) - c->r;
     }
     case C_SPHERE: {
       const auto s = static_cast<const sphere*>(n);
-      return point(length(pos) - s->r);
+      return length(pos) - s->r;
     }
     case C_BOX: {
       const auto &d = abs(pos)-static_cast<const struct box*>(n)->extent;
       const auto dist = min(max(d.x,max(d.y,d.z)),0.0f)+length(max(d,vec3f(zero)));
-      return point(dist);
+      return dist;
     }
     default: assert("unreachable" && false); return FLT_MAX;
   }
