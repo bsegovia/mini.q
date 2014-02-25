@@ -140,13 +140,11 @@ struct mesh_processor {
   };
 
   void set(vector<vec3f> &p, vector<vec3f> &n, vector<u32> &t,
-           vector<pair<u32,u32>> &cracks,
            int first_vert, int first_idx)
   {
     m_pos_buffer = &p;
     m_nor_buffer = &n;
     m_idx_buffer = &t;
-    m_cracks = &cracks;
     m_first_vert = first_vert;
     m_first_idx = first_idx;
     m_vertnum = (p.length() - m_first_vert);
@@ -328,7 +326,6 @@ struct mesh_processor {
   vector<vec3f> *m_pos_buffer;
   vector<vec3f> *m_nor_buffer;
   vector<u32> *m_idx_buffer;
-  vector<pair<u32,u32>> *m_cracks;
   int m_first_idx, m_first_vert;
   int m_vertnum, m_trinum;
 };
@@ -465,46 +462,6 @@ struct dc_gridbuilder {
     const vec3i org(-2), dim(QEFDIM-2);
     m_qef_index.memset(0xff);
     m_delayed_qef.setsize(0);
-  }
-
-  INLINE u8 &lod(const vec3i &xyz) { return m_lod[field_index(xyz)]; }
-  NOINLINE void initlod() {
-    m_lod.memset(0);
-    const int plod = m_maxlevel - m_level;
-
-#define LOD(NEIGHBOR, ORG, END) do {\
-  const vec3i neighbor(m_iorg + NEIGHBOR);\
-  const auto leaf = m_octree->findleaf(neighbor);\
-  if (leaf != NULL && leaf->m_level < m_level)\
-    loopxyz(ORG, END) lod(xyz) = 1;\
-} while (0)
-    const int p = SUBGRID << plod;
-    const int m = -(1<<plod);
-    const int ps = SUBGRID-2, ms = -2;
-    const int pe = FIELDDIM-2, me = 2;
-
-    // we share a face with these neighbors
-    LOD(vec3i(p,0,0), vec3i(ps,ms,ms), vec3i(pe));
-    LOD(vec3i(0,p,0), vec3i(ms,ps,ms), vec3i(pe));
-    LOD(vec3i(0,0,p), vec3i(ms,ms,ps), vec3i(pe));
-    LOD(vec3i(m,0,0), vec3i(ms), vec3i(me,pe,pe));
-    LOD(vec3i(0,m,0), vec3i(ms), vec3i(pe,me,pe));
-    LOD(vec3i(0,0,m), vec3i(ms), vec3i(pe,pe,me));
-
-    // we share an edge with these neighbors
-    LOD(vec3i(p,p,0), vec3i(ps,ps,ms), vec3i(pe));
-    LOD(vec3i(p,0,p), vec3i(ps,ms,ps), vec3i(pe));
-    LOD(vec3i(0,p,p), vec3i(ms,ps,ps), vec3i(pe));
-    LOD(vec3i(m,m,0), vec3i(ms), vec3i(me,me,pe));
-    LOD(vec3i(m,0,m), vec3i(ms), vec3i(me,pe,me));
-    LOD(vec3i(0,m,m), vec3i(ms), vec3i(pe,me,me));
-    LOD(vec3i(p,m,0), vec3i(ps,ms,ms), vec3i(pe,me,pe));
-    LOD(vec3i(m,p,0), vec3i(ms,ps,ms), vec3i(me,pe,pe));
-    LOD(vec3i(p,0,m), vec3i(ps,ms,ms), vec3i(pe,pe,me));
-    LOD(vec3i(m,0,p), vec3i(ms,ms,ps), vec3i(me,pe,pe));
-    LOD(vec3i(0,m,p), vec3i(ms,ms,ps), vec3i(pe,me,pe));
-    LOD(vec3i(0,p,m), vec3i(ms,ps,ms), vec3i(pe,pe,me));
-#undef LOD
   }
 
   int delayed_qef_vertex(const mcell &cell, const vec3i &xyz, int plod) {
@@ -690,8 +647,7 @@ struct dc_gridbuilder {
         const auto qaxis0 = axis[(i+1)%3];
         const auto qaxis1 = axis[(i+2)%3];
         const vec3i q[] = {xyz, xyz-qaxis0, xyz-qaxis0-qaxis1, xyz-qaxis1};
-        u32 edgelod = 1;
-        loopj(4) edgelod = min(edgelod, u32(lod(q[j])));
+        u32 edgelod = 0;
 
         // process the edge only when we get the properly aligned origin.
         // otherwise, we would generate the same face more than one
@@ -710,7 +666,7 @@ struct dc_gridbuilder {
         u32 quad[4];
         u32 vertnum = 0;
         loopj(4) {
-          u32 plod = lod(p[j]);
+          u32 plod = 0;
           const auto np = p[j] & vec3i(~plod);
           const auto idx = qef_index(np);
 
@@ -729,12 +685,7 @@ struct dc_gridbuilder {
         }
         const u32 msk = any(eq(xyz,vec3i(zero)))||any(gt(xyz,vec3i(SUBGRID)))?OUTSIDE:0u;
         const auto orientation = start_sign==1 ? quadtotris : quadtotris_cc;
-        if (vertnum == 4)
-          loopj(6) m_idx_buffer.add(quad[orientation[j]]|msk);
-        else if (vertnum == 3)
-          loopj(3) m_idx_buffer.add(quad[orientation[j]]|msk);
-        else if (vertnum == 2 && !isoutside(msk))
-          m_cracks.add(makepair(quad[0], quad[1]));
+        loopj(6) m_idx_buffer.add(quad[orientation[j]]|msk);
       }
     }
   }
@@ -799,11 +750,9 @@ struct dc_gridbuilder {
   void build(octree::node &node) {
     const int first_idx = m_idx_buffer.length();
     const int first_vert = m_pos_buffer.length();
-    m_cracks.setsize(0);
     initfield();
     initedge();
     initqef();
-    initlod();
     tesselate();
     finishedges();
     finishvertices();
@@ -812,7 +761,7 @@ struct dc_gridbuilder {
     if (first_vert == m_pos_buffer.length())
       return;
 
-    m_mp.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, m_cracks, first_vert, first_idx);
+    m_mp.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, first_vert, first_idx);
     const auto edgenum = m_mp.buildedges();
     m_mp.crease(edgenum);
     m_border_remap.setsize(m_pos_buffer.length());
@@ -831,7 +780,6 @@ struct dc_gridbuilder {
   vector<float> m_field;
   vector<u8> m_lod;
   vector<vec3f> m_pos_buffer, m_nor_buffer;
-  vector<pair<u32,u32>> m_cracks;
   vector<u32> m_idx_buffer;
   vector<u32> m_border_remap;
   vector<u32> m_qef_index;
