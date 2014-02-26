@@ -629,10 +629,6 @@ struct dc_gridbuilder {
 
       // look at the three edges that start on xyz
       loopi(3) {
-        // figure out the edge size
-        const auto qaxis0 = axis[(i+1)%3];
-        const auto qaxis1 = axis[(i+2)%3];
-        const vec3i q[] = {xyz, xyz-qaxis0, xyz-qaxis0-qaxis1, xyz-qaxis1};
 
         // is it an actual edge?
         const auto delta = axis[i];
