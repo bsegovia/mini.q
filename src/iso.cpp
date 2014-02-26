@@ -720,21 +720,6 @@ struct context {
 };
 static context *ctx = NULL;
 
-static const int splus = SUBGRID;
-static const int sminus = -1;
-static const vec3i nodeneighbors[] = {
-  // we share a face with these neighbors
-  vec3i(splus,0,0), vec3i(0,splus,0), vec3i(0,0,splus),
-  vec3i(sminus,0,0),vec3i(0,sminus,0),vec3i(0,0,sminus),
-
-  // we share an edge with these neighbors
-  vec3i(splus,splus,0),  vec3i(splus,0,splus),  vec3i(0,splus,splus),
-  vec3i(sminus,sminus,0),vec3i(sminus,0,sminus),vec3i(0,sminus,sminus),
-  vec3i(splus,sminus,0), vec3i(sminus,splus,0), vec3i(splus,0,sminus),
-  vec3i(sminus,0,splus), vec3i(0,sminus,splus), vec3i(0,splus,sminus)
-};
-static const int nodeneighbornum = ARRAY_ELEM_NUM(nodeneighbors);
-
 struct mt_builder {
   mt_builder(const csg::node &node, const vec3f &org, float cellsize, u32 dim) :
     m_node(&node), m_org(org),
