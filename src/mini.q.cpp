@@ -36,8 +36,9 @@ void start(int argc, const char *argv[]) {
   iso::start();
   const float start = sys::millis();
   const auto node = csg::makescene();
-  auto m = iso::dc_mesh_mt(vec3f(zero), 2048, 0.2f, *node);
+  auto m = iso::dc_mesh_mt(vec3f(zero), 2048, 0.1f, *node);
   const auto duration = sys::millis() - start;
+  con::out("csg: tris %i verts %i", m.m_indexnum/3, m.m_vertnum);
   con::out("csg: elapsed %f ms ", float(duration));
   exit(EXIT_SUCCESS);
 #elif 0

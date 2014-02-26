@@ -162,11 +162,11 @@ static node *makescene0() {
 
 node *makescene() {
   node *s0 = makescene0();
-#if 0
-  node *s1 = NEW(translation, vec3f(8.f,0.f,0.f), *makescene0());
-  node *s2 = NEW(translation, vec3f(16.f,0.f,0.f), *makescene0());
-  node *s3 = NEW(translation, vec3f(24.f,0.f,0.f), *makescene0());
-  return NEW(U, *NEW(U, *s2, *s3), *NEW(U, *s0, *s1));
+#if 1
+  node *s1 = NEW(translation, vec3f(8.f,0.f,0.f), makescene0());
+  node *s2 = NEW(translation, vec3f(16.f,0.f,0.f), makescene0());
+  node *s3 = NEW(translation, vec3f(24.f,0.f,0.f), makescene0());
+  return NEW(U, NEW(U, s2, s3), NEW(U, s0, s1));
 #else
   return s0;
 #endif

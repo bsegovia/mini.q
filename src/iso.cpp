@@ -121,7 +121,7 @@ INLINE u32 unpackmsk(u32 x) { return x & (OUTSIDE|BORDER); }
 
 struct edgeitem {
   vec3f org, p0, p1;
-  float scale, v0, v1;
+  float v0, v1;
 };
 
 struct edgestack {
@@ -372,11 +372,11 @@ struct octree {
   u32 m_dim, m_logdim;
 };
 
-INLINE pair<vec3i,int> getedge(const vec3i &start, const vec3i &end, int lod) {
+INLINE pair<vec3i,int> getedge(const vec3i &start, const vec3i &end) {
   const auto lower = select(le(start,end), start, end);
   const auto delta = select(eq(start,end), vec3i(zero), vec3i(one));
   assert(reduceadd(delta) == 1);
-  return makepair(lower, (lod?3:0)+delta.y+2*delta.z);
+  return makepair(lower, delta.y+2*delta.z);
 }
 
 /*-------------------------------------------------------------------------
@@ -386,7 +386,6 @@ struct dc_gridbuilder {
   dc_gridbuilder() :
     m_node(NULL),
     m_field(FIELDNUM),
-    m_lod(FIELDNUM),
     m_qef_index(QEFNUM),
     m_edge_index(6*FIELDNUM),
     m_stack(NEWE(edgestack)),
@@ -464,7 +463,7 @@ struct dc_gridbuilder {
     m_delayed_qef.setsize(0);
   }
 
-  int delayed_qef_vertex(const mcell &cell, const vec3i &xyz, int plod) {
+  int delayed_qef_vertex(const mcell &cell, const vec3i &xyz) {
     int cubeindex = 0;
     loopi(8) if (cell[i] < 0.0f) cubeindex |= 1<<i;
     if (edgetable[cubeindex] == 0)
@@ -473,11 +472,11 @@ struct dc_gridbuilder {
       if ((edgetable[cubeindex] & (1<<i)) == 0)
         continue;
       const auto idx0 = interptable[i][0], idx1 = interptable[i][1];
-      const auto e = getedge(icubev[idx0], icubev[idx1], plod);
+      const auto e = getedge(icubev[idx0], icubev[idx1]);
       auto &idx = m_edge_index[edge_index(xyz+e.first, e.second)];
       if (idx == NOINDEX) {
         idx = m_delayed_edges.length();
-        m_delayed_edges.add(makepair(xyz, vec3i(idx0, idx1, plod)));
+        m_delayed_edges.add(makepair(xyz, vec3i(idx0, idx1, 0)));
       }
     }
     return edgetable[cubeindex];
@@ -493,7 +492,7 @@ struct dc_gridbuilder {
       auto box = aabb::empty();
       loopi(num) {
         p[i] = it[i].p1 - it[i].v1 * (it[i].p1-it[i].p0)/(it[i].v1-it[i].v0);
-        pos[i] = it[i].org+m_cellsize*it[i].scale*p[i];
+        pos[i] = it[i].org+m_cellsize*p[i];
         box.pmin = min(pos[i], box.pmin);
         box.pmax = max(pos[i], box.pmax);
       }
@@ -532,15 +531,13 @@ struct dc_gridbuilder {
       loopj(num) {
         const auto &e = m_delayed_edges[i+j];
         const auto idx0 = e.second.x, idx1 = e.second.y;
-        const auto plod = e.second.z;
         const auto xyz = e.first;
-        const auto edge = getedge(icubev[idx0], icubev[idx1], plod);
+        const auto edge = getedge(icubev[idx0], icubev[idx1]);
         it[j].org = vertex(xyz+edge.first);
         it[j].p0 = vec3f(icubev[idx0]-edge.first);
         it[j].p1 = vec3f(icubev[idx1]-edge.first);
-        it[j].v0 = field(xyz + (icubev[idx0]<<plod));
-        it[j].v1 = field(xyz + (icubev[idx1]<<plod));
-        it[j].scale = float(1<<plod);
+        it[j].v0 = field(xyz + icubev[idx0]);
+        it[j].v1 = field(xyz + icubev[idx1]);
         if (it[j].v1 < 0.f) {
           swap(it[j].p0,it[j].p1);
           swap(it[j].v0,it[j].v1);
@@ -558,7 +555,7 @@ struct dc_gridbuilder {
         auto d = &m_stack->d[0];
         auto box = aabb::empty();
         loopk(subnum) {
-          p[4*k]   = it[j+k].org + it[j+k].p0 * it[j+k].scale * m_cellsize;
+          p[4*k]   = it[j+k].org + it[j+k].p0 * m_cellsize;
           p[4*k+1] = p[4*k]-dx;
           p[4*k+2] = p[4*k]-dy;
           p[4*k+3] = p[4*k]-dz;
@@ -590,18 +587,7 @@ struct dc_gridbuilder {
     loopv(m_delayed_qef) {
       const auto &item = m_delayed_qef[i];
       const auto xyz = item.first;
-      const auto plod = item.second.x;
       const auto edgemap = item.second.y;
-
-      // special case where there is no edge, we just put the center for now
-      // TODO use proper qef vertex
-      if (edgemap == 0) {
-        const vec3i topright = xyz + (1<<plod);
-        const vec3f pos = (vertex(xyz)+vertex(topright))*0.5f;
-        m_pos_buffer.add(pos);
-        m_nor_buffer.add(vec3f(1.f,0.f,0.f));
-        continue;
-      }
 
       // get the intersection points between the surface and the cube edges
       vec3f p[12], n[12], mass(zero);
@@ -610,7 +596,7 @@ struct dc_gridbuilder {
       loopi(12) {
         if ((edgemap & (1<<i)) == 0) continue;
         const auto idx0 = interptable[i][0], idx1 = interptable[i][1];
-        const auto e = getedge(icubev[idx0], icubev[idx1], plod);
+        const auto e = getedge(icubev[idx0], icubev[idx1]);
         const auto idx = m_edge_index[edge_index(xyz+e.first, e.second)];
         assert(idx != NOINDEX);
         p[num] = m_edges[idx].first+vec3f(e.first);
@@ -629,7 +615,7 @@ struct dc_gridbuilder {
         vector[i] = double(dot(n[i],d));
       }
       const auto pos = mass + qef::evaluate(matrix, vector, num);
-      m_pos_buffer.add(vertex(xyz) + pos*float(1<<plod)*m_cellsize);
+      m_pos_buffer.add(vertex(xyz) + pos*m_cellsize);
       m_nor_buffer.add(normalize(nor));
     }
   }
@@ -647,38 +633,31 @@ struct dc_gridbuilder {
         const auto qaxis0 = axis[(i+1)%3];
         const auto qaxis1 = axis[(i+2)%3];
         const vec3i q[] = {xyz, xyz-qaxis0, xyz-qaxis0-qaxis1, xyz-qaxis1};
-        u32 edgelod = 0;
-
-        // process the edge only when we get the properly aligned origin.
-        // otherwise, we would generate the same face more than one
-        if (any(ne(xyz&vec3i(edgelod), vec3i(zero))))
-          continue;
 
         // is it an actual edge?
-        const auto delta = axis[i] << int(edgelod);
+        const auto delta = axis[i];
         const int end_sign = field(xyz+delta) < 0.f ? 1 : 0;
         if (start_sign == end_sign) continue;
 
         // we found one edge. we output one quad for it
-        const auto axis0 = axis[(i+1)%3] << int(edgelod);
-        const auto axis1 = axis[(i+2)%3] << int(edgelod);
+        const auto axis0 = axis[(i+1)%3];
+        const auto axis1 = axis[(i+2)%3];
         vec3i p[] = {xyz, xyz-axis0, xyz-axis0-axis1, xyz-axis1};
         u32 quad[4];
         u32 vertnum = 0;
         loopj(4) {
-          u32 plod = 0;
-          const auto np = p[j] & vec3i(~plod);
+          const auto np = p[j];
           const auto idx = qef_index(np);
 
           if (m_qef_index[idx] == NOINDEX) {
             mcell cell;
-            loopk(8) cell[k] = field(np + (icubev[k]<<int(plod)));
-            const int edgemap = delayed_qef_vertex(cell, np, plod);
+            loopk(8) cell[k] = field(np + icubev[k]);
+            const int edgemap = delayed_qef_vertex(cell, np);
 
             // point is still valid. we are good to go
             m_qef_index[idx] = m_border_remap.length();
             m_border_remap.add(OUTSIDE);
-            m_delayed_qef.add(makepair(np,vec2i(plod,edgemap)));
+            m_delayed_qef.add(makepair(np,vec2i(0,edgemap)));
             STATS_INC(iso_qef_num);
           }
           quad[vertnum++] = m_qef_index[idx];
@@ -778,7 +757,6 @@ struct dc_gridbuilder {
   const csg::node *m_node;
   mesh_processor m_mp;
   vector<float> m_field;
-  vector<u8> m_lod;
   vector<vec3f> m_pos_buffer, m_nor_buffer;
   vector<u32> m_idx_buffer;
   vector<u32> m_border_remap;
@@ -878,46 +856,6 @@ struct mt_builder {
     }
   }
 
-  bool addconstraints(octree::node &node, const vec3i &xyz = vec3i(zero)) {
-    const auto lod = m_maxlevel - node.m_level;
-
-    // figure out if we need to subdivide more
-    if (node.m_isleaf && !node.m_empty) {
-      u32 neighborlevel = node.m_level;
-      loopi(nodeneighbornum) {
-        const auto neighborpos = xyz+(nodeneighbors[i]<<int(lod));
-        const auto neighbor = m_octree->findleaf(neighborpos);
-        if (neighbor != NULL && !neighbor->m_empty)
-          neighborlevel = max(neighbor->m_level, neighborlevel);
-      }
-
-      // we do not match the LOD constraints. we need to subdivide more and
-      // recurse
-      if (neighborlevel - node.m_level > 1) {
-        node.m_isleaf = 0;
-        node.m_children = NEWAE(octree::node, 8);
-        loopi(8) {
-          node.m_children[i].m_level = node.m_level+1;
-          node.m_children[i].m_isleaf = 1;
-          node.m_children[i].m_empty = 0;
-        }
-        loopi(8) {
-          const auto childxyz = xyz + int(SUBGRID<<(lod-1)) * icubev[i];
-          addconstraints(node.m_children[i], childxyz);
-        }
-        return true;
-      }
-    } else if (!node.m_isleaf) {
-      bool anychange = false;
-      loopi(8) {
-        const auto childxyz = xyz + int(SUBGRID<<(lod-1)) * icubev[i];
-        anychange = addconstraints(node.m_children[i], childxyz) || anychange;
-      }
-      return anychange;
-    }
-    return false;
-  }
-
   void preparejobs(octree::node &node, const vec3i &xyz = vec3i(zero)) {
     if (node.m_isleaf && !node.m_empty) {
       jobdata job;
@@ -940,11 +878,6 @@ struct mt_builder {
       }
       return;
     }
-  }
-
-  void addconstraints() {
-    bool anychange = true;
-    while (anychange) anychange = addconstraints(m_octree->m_root);
   }
 
   octree *m_octree;
@@ -987,7 +920,6 @@ mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &
   mt_builder r(d, org, cellsize, cellnum);
   r.setoctree(o);
   r.build(o.m_root);
-  r.addconstraints();
   r.preparejobs(o.m_root);
 
   // build the grids in parallel
