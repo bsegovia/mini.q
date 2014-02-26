@@ -149,12 +149,10 @@ struct mesh_processor {
     m_first_idx = first_idx;
     m_vertnum = (p.length() - m_first_vert);
     m_trinum = (t.length() - m_first_idx) / 3;
-    m_trinormals.setsize(m_trinum);
     m_edges.setsize(6*m_trinum);
     m_edgelists.setsize(m_vertnum + 6*m_trinum);
     m_list.setsize(m_vertnum + 6*m_trinum);
     const auto firsttri = m_first_idx / 3;
-    loopi(m_trinum) m_trinormals[i] = normalize(trinormalu(firsttri+i));
   }
 
   void append(int &edgenum, int i1, int i2, int face0, int face1) {
@@ -230,7 +228,6 @@ struct mesh_processor {
     const auto t2 = unpackidx(t[3*idx+2]);
     return cross(p[t0]-p[t2], p[t0]-p[t1]);
   }
-  INLINE vec3f trinormal(u32 idx) { return m_trinormals[idx-m_first_idx/3]; }
 
   void crease(u32 edgenum) {
     auto &t = *m_idx_buffer;
@@ -238,75 +235,6 @@ struct mesh_processor {
     auto &n = *m_nor_buffer;
     const u32 firsttri = m_first_idx / 3;
 
-    // step 1 - find sharp vertices edges they belong to
-    loopi(m_vertnum) m_list[i].first = m_list[i].second = NOINDEX;
-    loopi(edgenum) {
-      const auto idx0 = m_edges[i].face[0], idx1 = m_edges[i].face[1];
-      if (idx0 == idx1) continue;
-      const auto n0 = trinormal(firsttri+idx0);
-      const auto n1 = trinormal(firsttri+idx1);
-      if (dot(n0, n1) > SHARP_EDGE) continue;
-      loopj(2) {
-        const auto idx = m_edges[i].vertex[j];
-        m_list[idx].second = NOTRIANGLE;
-      }
-    }
-
-    // step 2 - chain triangles that contain sharp vertices
-    u32 listindex = m_vertnum;
-    loopi(m_trinum) loopj(3) {
-      const auto idx = unpackidx(t[3*(firsttri+i)+j]) - m_first_vert;
-      if (m_list[idx].second == NOINDEX) continue;
-      m_list[listindex].first = m_list[idx].first;
-      m_list[listindex].second = m_list[idx].second;
-      m_list[idx].first = listindex++;
-      m_list[idx].second = i+firsttri;
-    }
-
-    // step 3 - go over all "sharp" vertices and duplicate them as needed
-    loopi(m_vertnum) {
-      if (m_list[i].first == NOINDEX) continue;
-
-      // compute the number of new vertices we may create at most
-      auto curr = m_list[m_list[i].first];
-      u32 maxvertnum = 1;
-      while (curr.first != NOINDEX) {
-        ++maxvertnum;
-        curr = m_list[curr.first];
-      }
-      m_new_verts.setsize(maxvertnum);
-
-      // we already have a valid vertex that we can use
-      m_new_verts[0] = makepair(trinormal(m_list[i].second), u32(m_first_vert+i));
-      u32 vertnum = 1;
-
-      // go over all triangles and find best vertex for each of them
-      curr = m_list[m_list[i].first];
-      while (curr.first != NOINDEX) {
-        const auto nor = trinormal(curr.second);
-        u32 matched = 0;
-        for (; matched < vertnum; ++matched)
-          if (dot(nor, m_new_verts[matched].first) > SHARP_EDGE)
-            break;
-
-        // we need to create a new vertex for this triangle
-        if (matched == vertnum) {
-          m_new_verts[vertnum++] = makepair(nor, u32(p.length()));
-          p.add(p[m_first_vert+i]);
-          n.add(vec3f(zero));
-        }
-
-        // update the index in the triangle
-        loopj(3) {
-          const auto idx = t[3*curr.second+j];
-          if (unpackidx(idx) == u32(m_first_vert+i))
-            t[3*curr.second+j] = unpackmsk(idx) | m_new_verts[matched].second;
-        }
-        curr = m_list[curr.first];
-      }
-    }
-
-    // step 4 - recompute vertex normals (weighted by triangle areas)
     m_vertnum = p.length() - m_first_vert;
     loopi(m_vertnum) n[m_first_vert+i] = vec3f(zero);
     loopi(m_trinum) {
@@ -318,7 +246,6 @@ struct mesh_processor {
     loopi(m_vertnum) n[m_first_vert+i] = -normalize(n[m_first_vert+i]);
   }
 
-  vector<vec3f> m_trinormals;
   vector<meshedge> m_edges;
   vector<int> m_edgelists;
   vector<pair<u32,u32>> m_list;
