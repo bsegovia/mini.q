@@ -182,9 +182,10 @@ TINLINE v2 min(v2arg a, v2arg b)  {return v2(min(a.x,b.x), min(a.y,b.y));}
 TINLINE v2 max(v2arg a, v2arg b)  {return v2(max(a.x,b.x), max(a.y,b.y));}
 TINLINE v2 clamp(v2arg v, v2arg m, v2arg M)  {return v2(clamp(v.x,m.x,M.x),clamp(v.y,m.y,M.y));}
 TINLINE T dot(v2arg a, v2arg b)   {return a.x*b.x + a.y*b.y;}
+TINLINE T length2(v2arg a)      {return dot(a,a);}
 TINLINE T length(v2arg a)      {return sqrt(dot(a,a));}
 TINLINE v2 normalize(v2arg a)  {return a*rsqrt(dot(a,a));}
-TINLINE T distance (v2arg a, v2arg b) {return length(a-b);}
+TINLINE T distance(v2arg a, v2arg b) {return length(a-b);}
 TINLINE T reduceadd(v2arg a) {return a.x+a.y;}
 TINLINE T reducemul(v2arg a) {return a.x*a.y;}
 TINLINE T reducemin(v2arg a) {return min(a.x, a.y);}
@@ -241,8 +242,10 @@ OP(cos) OP(sin) OP(tan) OP(acos) OP(asin) OP(atan) OP(sinh) OP(cosh) OP(tanh)
 OP(abs) OP(rcp) OP(sqrt) OP(rsqrt) OP(floor) OP(ceil) OP(log2) OP(log10)
 #undef OP
 
-#define OP(NAME,S) TINLINE vec3<bool> NAME(v3arg a, v3arg b)\
-  {return vec3<bool>(a.x S b.x,a.y S b.y,a.z S b.z);}
+#define OP(NAME,S)\
+TINLINE vec3<bool> NAME(v3arg a, v3arg b) {return vec3<bool>(a.x S b.x,a.y S b.y,a.z S b.z);}\
+TINLINE vec3<bool> NAME(const T &a, v3arg b) {return vec3<bool>(a S b.x,a S b.y,a S b.z);}\
+TINLINE vec3<bool> NAME(v3arg a, const T &b) {return vec3<bool>(a.x S b,a.y S b,a.z S b);}
 OP(eq,==) OP(ne,!=) OP(lt,<) OP(gt,>) OP(ge,>=) OP(le,<=)
 #undef OP
 
@@ -257,6 +260,7 @@ TINLINE v3 max(v3arg a, v3arg b) {return v3(max(a.x,b.x),max(a.y,b.y),max(a.z,b.
 TINLINE v3 clamp(v3arg v, v3arg m, v3arg M)  {return v3(clamp(v.x,m.x,M.x),clamp(v.y,m.y,M.y),clamp(v.z,m.z,M.z));}
 TINLINE v3 select(bool s, v3arg t, v3arg f) { return v3(select(s,t.x,f.x), select(s,t.y,f.y), select(s,t.z,f.z)); }
 TINLINE v3 select(vec3<bool> s, v3arg t, v3arg f) { return v3(select(s.x,t.x,f.x), select(s.y,t.y,f.y), select(s.z,t.z,f.z)); }
+TINLINE T length2(v3arg a) {return dot(a,a);}
 TINLINE T length(v3arg a) {return sqrt(dot(a,a));}
 TINLINE T dot(v3arg a, v3arg b) {return a.x*b.x + a.y*b.y + a.z*b.z;}
 TINLINE T distance(v3arg a, v3arg b) {return length(a-b);}
@@ -328,6 +332,7 @@ TINLINE T reducemax(v4arg a) {return max(a.x, a.y, a.z, a.w);}
 TINLINE v4 min(v4arg a, v4arg b) {return v4(min(a.x,b.x), min(a.y,b.y), min(a.z,b.z), min(a.w,b.w));}
 TINLINE v4 max(v4arg a, v4arg b) {return v4(max(a.x,b.x), max(a.y,b.y), max(a.z,b.z), max(a.w,b.w));}
 TINLINE v4 clamp(v4arg v, v4arg m, v4arg M)  {return v4(clamp(v.x,m.x,M.x),clamp(v.y,m.y,M.y),clamp(v.z,m.z,M.z),clamp(v.w,m.w,M.w));}
+TINLINE T length2(v4arg a) {return dot(a,a);}
 TINLINE T length(v4arg a) {return sqrt(dot(a,a));}
 TINLINE T dot (v4arg a, v4arg b) {return a.x*b.x + a.y*b.y + a.z*b.z + a.w*b.w;}
 TINLINE v4 normalize(v4arg a) {return a*rsqrt(dot(a,a));}

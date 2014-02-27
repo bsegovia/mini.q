@@ -17,8 +17,8 @@ STATS(iso_octree_num);
 STATS(iso_qef_num);
 STATS(iso_falsepos);
 
-#define USE_NODE_SIZE 0
 #define NEW_VERSION 1
+#define SHARP_EDGE_DC 0
 
 #if !defined(NDEBUG)
 static void stats() {
@@ -45,7 +45,7 @@ static const auto DEFAULT_GRAD_STEP = 1e-3f;
 static const auto TOLERANCE_DENSITY = 1e-3f;
 static const auto TOLERANCE_DIST2 = 1e-8f;
 static const int MAX_STEPS = 4;
-static const int SHARP_EDGE_THRESHOLD = 0.4f;
+static const float SHARP_EDGE_THRESHOLD = 0.4f;
 
 INLINE pair<vec3i,u32> edge(vec3i start, vec3i end) {
   const auto lower = select(lt(start,end), start, end);
@@ -269,7 +269,12 @@ struct mesh_processor {
 struct octree {
   struct qefpoint {
     vec3f pos;
+#if SHARP_EDGE_DC
+    int idx:30;
+    int sharp:2;
+#else
     int idx;
+#endif
   };
   struct node {
     INLINE node() :
@@ -554,6 +559,15 @@ struct dc_gridbuilder {
       }
       mass /= float(num);
 
+#if SHARP_EDGE_DC
+      // figure out if the point is on a feature
+      const auto normean = nor / float(num);
+      vec3f var(zero);
+      loopi(num) var += (normean-n[i])*(normean-n[i]);
+      var /= float(num);
+      const bool sharp = any(gt(var,0.5f));
+#endif
+
       // compute the QEF minimizing point
       double matrix[12][3];
       double vector[12];
@@ -570,6 +584,9 @@ struct dc_gridbuilder {
         const auto idx = xyz.x+SUBGRID*(xyz.y+xyz.z*SUBGRID);
         node.qef[idx].pos = qef;
         node.qef[idx].idx = -1;
+#if SHARP_EDGE_DC
+        node.qef[idx].sharp = sharp?1:0;
+#endif
       }
 #if !NEW_VERSION
       m_pos_buffer.add(qef);
@@ -860,33 +877,42 @@ struct isotask : public task {
   }
 };
 
-mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d) {
-  octree o(cellnum);
-  ctx->m_work.setsize(0);
-  loopv(ctx->m_builders) {
-    ctx->m_builders[i]->m_pos_buffer.setsize(0);
-    ctx->m_builders[i]->m_nor_buffer.setsize(0);
-    ctx->m_builders[i]->m_idx_buffer.setsize(0);
-  }
-  mt_builder r(d, org, cellsize, cellnum);
-  r.setoctree(o);
-  r.build(o.m_root);
-  r.preparejobs(o.m_root);
+// we have to choose between this two meshes and take the convex one
+struct quadmesh { int tri[2][3]; };
+static const quadmesh qmesh[2] = {{{{0,1,2},{0,2,3}}},{{{0,1,3},{3,1,2}}}};
 
-  // build the grids in parallel
-  ref<task> job = NEW(isotask, ctx->m_work.length());
-  job->scheduled();
-  job->wait();
+// test first configuration. If ok, take it, otherwise take the other one
+#if SHARP_EDGE_DC
+INLINE const quadmesh &findbestmesh(octree::qefpoint **pt) {
+  int sharpnum = 0, sharpindex = 0;
+  loopi(4) if (pt[i]->sharp) { ++sharpnum; sharpindex = i; }
+  if (sharpnum == 0)
+    return qmesh[0];
+  else if (sharpnum == 1) {
+    if (sharpindex == 0 || sharpindex == 2) return qmesh[0];
+    return qmesh[1];
+  } else if (pt[0]->sharp && pt[2]->sharp)
+    return qmesh[0];
+  else
+    return qmesh[1];
+}
+#else
+INLINE const quadmesh &findbestmesh(octree::qefpoint **pt) {return qmesh[0];}
+#endif
 
+static mesh buildmesh(octree &o) {
   // copy back all local buffers together
   vector<vec3f> posbuf, norbuf;
   vector<u32> idxbuf;
   vector<pair<int,int>> vertlist;
-  const int tri[2][3] = {{0,1,2},{0,2,3}};
+
+  // merge all builder vertex buffers
   loopv(ctx->m_builders) {
     const auto &b = *ctx->m_builders[i];
-    // const auto old = posbuf.length();
     const auto quadlen = b.m_quad_buffer.length();
+
+    // loop over all quads. build triangle mesh on the fly merging normals when
+    // close enough
     loopj(quadlen) {
       // get four points
       const auto &q = b.m_quad_buffer[j];
@@ -898,14 +924,19 @@ mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &
         pt[k] = leaf->qef+qefidx;
       }
 
+      // get the right convex configuration
+      const auto tri = findbestmesh(pt).tri;
+
       // compute triangle normals and append points in the vertex buffer and the
       // index buffer
       loopk(2) {
         const auto t = tri[k];
-        const auto edge0 = pt[t[2]]->pos-pt[t[1]]->pos;
-        const auto edge1 = pt[t[0]]->pos-pt[t[2]]->pos;
+        const auto edge0 = pt[t[2]]->pos-pt[t[0]]->pos;
+        const auto edge1 = pt[t[2]]->pos-pt[t[1]]->pos;
         const auto dir = cross(edge0, edge1);
-        const auto nor = normalize(dir);
+        const auto len2 = length2(dir);
+        if (len2 == 0.f) continue;
+        const auto nor = dir/sqrt(len2);
         loopl(3) {
           auto qef = pt[t[l]];
           int vertidx = -1, curridx = qef->idx;
@@ -926,7 +957,7 @@ mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &
             vertidx = posbuf.length();
             vertlist.add(makepair(vertidx,head));
             posbuf.add(qef->pos);
-            norbuf.add(nor);
+            norbuf.add(dir);
           }
           // update the vertex normal
           else
@@ -943,11 +974,31 @@ mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &
   const auto p = posbuf.move();
   const auto n = norbuf.move();
   const auto idx = idxbuf.move();
-  const auto m = mesh(p.first, n.first, idx.first, p.second, idx.second);
+  return mesh(p.first, n.first, idx.first, p.second, idx.second);
+}
+
+mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d) {
+  octree o(cellnum);
+  ctx->m_work.setsize(0);
+  loopv(ctx->m_builders) {
+    ctx->m_builders[i]->m_pos_buffer.setsize(0);
+    ctx->m_builders[i]->m_nor_buffer.setsize(0);
+    ctx->m_builders[i]->m_idx_buffer.setsize(0);
+  }
+  mt_builder r(d, org, cellsize, cellnum);
+  r.setoctree(o);
+  r.build(o.m_root);
+  r.preparejobs(o.m_root);
+
+  // build the grids in parallel
+  ref<task> job = NEW(isotask, ctx->m_work.length());
+  job->scheduled();
+  job->wait();
+
 #if !defined(NDEBUG)
   stats();
 #endif
-  return m;
+  return buildmesh(o);
 }
 
 void start() { ctx = NEWE(context); }

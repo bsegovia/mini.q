@@ -523,6 +523,7 @@ FxaaFloat4 FxaaPixelShader(
     FxaaFloat fxaaQualityEdgeThresholdMin
 ) {
 /*--------------------------------------------------------------------------*/
+            return FxaaTexTop(tex, pos);
     FxaaFloat2 posM;
     posM.x = pos.x;
     posM.y = pos.y;

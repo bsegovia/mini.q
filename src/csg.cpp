@@ -111,9 +111,9 @@ node *capped_cylinder(const vec2f &cxz, const vec3f &ryminymax) {
 static node *makescene0() {
   const auto t = vec3f(7.f, 5.f, 7.f);
   const auto s = NEW(sphere, 4.2f);
-  // const auto q = quat3f(deg2rad(20.0f),deg2rad(25.f),0.f);
-  // const auto b0 = NEW(rotation, q, NEW(box, vec3f(4.f)));
-  const auto b0 = NEW(box, vec3f(4.f));
+  const auto q = quat3f(deg2rad(20.0f),deg2rad(25.f),0.f);
+  const auto b0 = NEW(rotation, q, NEW(box, vec3f(4.f)));
+  //const auto b0 = NEW(box, vec3f(4.f));
   const auto d0 = NEW(translation, t, s);
   const auto d1 = NEW(translation, t, b0);
   node *c = NEW(D, d1, d0);
