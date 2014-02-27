@@ -152,8 +152,8 @@ static node *makescene0() {
 }
 #else
 static node *makescene0() {
-  const auto b0 = NEW(size, 4.f, NEW(box, vec3f(10.f, 4.f, 10.f)));
-  const auto b1 = NEW(size, 0.2f, NEW(box, vec3f(2.f, 8.f, 2.f)));
+  const auto b0 = NEW(box, vec3f(40.f, 4.f, 40.f));
+  const auto b1 = NEW(box, vec3f(2.f, 8.f, 2.f));
   const auto t = NEW(translation, vec3f(20.f,0.f,20.f), b1);
   const auto d = NEW(translation, vec3f(0.f,-3.f,0.f), NEW(U, b0, t));
   return d;
@@ -162,7 +162,7 @@ static node *makescene0() {
 
 node *makescene() {
   node *s0 = makescene0();
-#if 1
+#if 0
   node *s1 = NEW(translation, vec3f(8.f,0.f,0.f), makescene0());
   node *s2 = NEW(translation, vec3f(16.f,0.f,0.f), makescene0());
   node *s3 = NEW(translation, vec3f(24.f,0.f,0.f), makescene0());

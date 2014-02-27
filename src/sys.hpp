@@ -172,6 +172,7 @@
 #define loopi(m) loop(i,m)
 #define loopj(m) loop(j,m)
 #define loopk(m) loop(k,m)
+#define loopl(m) loop(l,m)
 #define loopx(m) loop(x,m)
 #define loopy(m) loop(y,m)
 #define loopz(m) loop(z,m)

@@ -233,7 +233,7 @@ TINLINE v3 op S (const T &a, v3arg b)  {return v3(a S b.x, a S b.y, a S b.z);}\
 TINLINE v3 op S (v3arg a, const T &b)  {return v3(a.x S b, a.y S b, a.z S b);}\
 TINLINE v3& op S##= (v3& a, v3arg b) {a.x S##= b.x; a.y S##= b.y; a.z S##= b.z; return a;}\
 TINLINE v3& op S##= (v3& a, const T &b) {a.x S##= b; a.y S##= b; a.z S##= b; return a;}
-OP(+) OP(/) OP(*) OP(-) OP(<<) OP(>>) OP(&) OP(|) OP(^)
+OP(+) OP(/) OP(*) OP(-) OP(<<) OP(>>) OP(&) OP(|) OP(^) OP(%)
 #undef OP
 
 #define OP(S) TINLINE v3 S (v3arg a) {return v3(S(a.x),S(a.y),S(a.z));}

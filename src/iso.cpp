@@ -18,6 +18,7 @@ STATS(iso_qef_num);
 STATS(iso_falsepos);
 
 #define USE_NODE_SIZE 0
+#define NEW_VERSION 1
 
 #if !defined(NDEBUG)
 static void stats() {
@@ -44,6 +45,7 @@ static const auto DEFAULT_GRAD_STEP = 1e-3f;
 static const auto TOLERANCE_DENSITY = 1e-3f;
 static const auto TOLERANCE_DIST2 = 1e-8f;
 static const int MAX_STEPS = 4;
+static const int SHARP_EDGE_THRESHOLD = 0.4f;
 
 INLINE pair<vec3i,u32> edge(vec3i start, vec3i end) {
   const auto lower = select(lt(start,end), start, end);
@@ -56,6 +58,8 @@ typedef float mcell[8];
 static const vec3i axis[] = {vec3i(1,0,0), vec3i(0,1,0), vec3i(0,0,1)};
 static const u32 quadtotris[] = {0,1,2,0,2,3};
 static const u32 quadtotris_cc[] = {0,2,1,0,3,2};
+static const u32 quadorder[] = {0,1,2,3};
+static const u32 quadorder_cc[] = {3,2,1,0};
 static const u16 edgetable[256]= {
   0x0  , 0x109, 0x203, 0x30a, 0x406, 0x50f, 0x605, 0x70c,
   0x80c, 0x905, 0xa0f, 0xb06, 0xc0a, 0xd03, 0xe09, 0xf00,
@@ -133,6 +137,7 @@ struct edgestack {
 /*-------------------------------------------------------------------------
  - edge creaser and mesh decimation happen here
  -------------------------------------------------------------------------*/
+#if !NEW_VERSION
 struct mesh_processor {
   struct meshedge {
     u32 vertex[2];
@@ -256,18 +261,31 @@ struct mesh_processor {
   int m_first_idx, m_first_vert;
   int m_vertnum, m_trinum;
 };
+#endif
 
 /*-------------------------------------------------------------------------
  - spatial segmentation used for iso surface extraction
  -------------------------------------------------------------------------*/
 struct octree {
+  struct qefpoint {
+    vec3f pos;
+    int idx;
+  };
   struct node {
     INLINE node() :
-      m_children(NULL), m_first_idx(0), m_first_vert(0),
+      children(NULL), m_first_idx(0), m_first_vert(0),
       m_idxnum(0), m_vertnum(0), m_isleaf(0), m_empty(0), m_level(0)
     {}
-    ~node() { SAFE_DELA(m_children); }
-    node *m_children;
+    ~node() {
+      if (m_isleaf)
+        SAFE_DELA(qef);
+      else
+        SAFE_DELA(children);
+    }
+    union {
+      node *children;
+      qefpoint *qef;
+    };
     u32 m_first_idx, m_first_vert;
     u32 m_idxnum:15, m_vertnum:15;
     u32 m_isleaf:1, m_empty:1;
@@ -287,7 +305,7 @@ struct octree {
       const auto child = octreechildmap[bits.x | (bits.y<<1) | (bits.z<<2)];
       assert(all(ge(xyz, icubev[child] << logsize)));
       xyz -= icubev[child] << logsize;
-      node = node->m_children + child;
+      node = node->children + child;
       ++level;
     }
     assert("unreachable" && false);
@@ -305,6 +323,11 @@ INLINE pair<vec3i,int> getedge(const vec3i &start, const vec3i &end) {
   assert(reduceadd(delta) == 1);
   return makepair(lower, delta.y+2*delta.z);
 }
+
+// find less expensive storage for it
+struct quad {
+  vec3i index[4];
+};
 
 /*-------------------------------------------------------------------------
  - iso surface extraction is done here
@@ -378,14 +401,12 @@ struct dc_gridbuilder {
   }
 
   NOINLINE void initedge() {
-    const vec3i org(-2), dim(FIELDDIM-2);
     m_edge_index.memset(0xff);
     m_edges.setsize(0);
     m_delayed_edges.setsize(0);
   }
 
   NOINLINE void initqef() {
-    const vec3i org(-2), dim(QEFDIM-2);
     m_qef_index.memset(0xff);
     m_delayed_qef.setsize(0);
   }
@@ -510,7 +531,7 @@ struct dc_gridbuilder {
     }
   }
 
-  void finishvertices() {
+  void finishvertices(octree::node &node) {
     loopv(m_delayed_qef) {
       const auto &item = m_delayed_qef[i];
       const auto xyz = item.first;
@@ -542,8 +563,18 @@ struct dc_gridbuilder {
         vector[i] = double(dot(n[i],d));
       }
       const auto pos = mass + qef::evaluate(matrix, vector, num);
-      m_pos_buffer.add(vertex(xyz) + pos*m_cellsize);
+
+      // XXX test should go away at the end
+      const auto qef = vertex(xyz) + pos*m_cellsize;;
+      if (all(ge(xyz,vec3i(zero))) && all(lt(xyz,vec3i(SUBGRID)))) {
+        const auto idx = xyz.x+SUBGRID*(xyz.y+xyz.z*SUBGRID);
+        node.qef[idx].pos = qef;
+        node.qef[idx].idx = -1;
+      }
+#if !NEW_VERSION
+      m_pos_buffer.add(qef);
       m_nor_buffer.add(normalize(nor));
+#endif
     }
   }
 
@@ -585,13 +616,21 @@ struct dc_gridbuilder {
           }
           quad[vertnum++] = m_qef_index[idx];
         }
+
+        // XXX remove this outside crap
         const u32 msk = any(eq(xyz,vec3i(zero)))||any(gt(xyz,vec3i(SUBGRID)))?OUTSIDE:0u;
         const auto orientation = start_sign==1 ? quadtotris : quadtotris_cc;
         loopj(6) m_idx_buffer.add(quad[orientation[j]]|msk);
+
+        // we must use a more compact storage for it
+        if (isoutside(msk)) continue;
+        const auto qor = start_sign==1 ? quadorder : quadorder_cc;
+        const struct quad q = {m_iorg+p[qor[0]], m_iorg+p[qor[1]], m_iorg+p[qor[2]], m_iorg+p[qor[3]]};
+        m_quad_buffer.add(q);
       }
     }
   }
-
+#if !NEW_VERSION
   void removeborders(u32 first_idx, u32 first_vertex) {
     // find the list of vertex which is actually used. initially, they are all
     // considered outside
@@ -648,6 +687,7 @@ struct dc_gridbuilder {
     m_idx_buffer.setsize(first);
     return;
   }
+#endif
 
   void build(octree::node &node) {
     const int first_idx = m_idx_buffer.length();
@@ -657,17 +697,18 @@ struct dc_gridbuilder {
     initqef();
     tesselate();
     finishedges();
-    finishvertices();
+    finishvertices(node);
 
     // stop here if we do not create anything
     if (first_vert == m_pos_buffer.length())
       return;
-
+#if !NEW_VERSION
     m_mp.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, first_vert, first_idx);
     const auto edgenum = m_mp.buildedges();
     m_mp.crease(edgenum);
     m_border_remap.setsize(m_pos_buffer.length());
     removeborders(first_idx, first_vert);
+#endif
     assert(node.m_vertnum <= octree::MAX_ITEM_NUM);
     assert(node.m_idxnum <= octree::MAX_ITEM_NUM);
     node.m_first_vert = first_vert;
@@ -678,9 +719,12 @@ struct dc_gridbuilder {
   }
 
   const csg::node *m_node;
+#if !NEW_VERSION
   mesh_processor m_mp;
+#endif
   vector<float> m_field;
   vector<vec3f> m_pos_buffer, m_nor_buffer;
+  vector<quad> m_quad_buffer;
   vector<u32> m_idx_buffer;
   vector<u32> m_border_remap;
   vector<u32> m_qef_index;
@@ -752,15 +796,14 @@ struct mt_builder {
       return;
     }
     if (cellnum == SUBGRID) {
+      node.qef = NEWAE(octree::qefpoint, SUBGRID*SUBGRID*SUBGRID);
       node.m_isleaf = 1;
-      return;
     } else {
-      node.m_children = NEWAE(octree::node, 8);
+      node.children = NEWAE(octree::node, 8);
       loopi(8) {
         const auto childxyz = xyz+cellnum*icubev[i]/2;
-        build(node.m_children[i], childxyz, level+1);
+        build(node.children[i], childxyz, level+1);
       }
-      return;
     }
   }
 
@@ -782,7 +825,7 @@ struct mt_builder {
       loopi(8) {
         const auto cellnum = m_dim >> node.m_level;
         const auto childxyz = xyz+int(cellnum/2)*icubev[i];
-        preparejobs(node.m_children[i], childxyz);
+        preparejobs(node.children[i], childxyz);
       }
       return;
     }
@@ -838,6 +881,7 @@ mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &
   // copy back all local buffers together
   vector<vec3f> posbuf, norbuf;
   vector<u32> idxbuf;
+#if 0
   loopv(ctx->m_builders) {
     const auto &b = *ctx->m_builders[i];
     const auto old = posbuf.length();
@@ -849,6 +893,66 @@ mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &
       norbuf.add(b.m_nor_buffer[j]);
     }
   }
+#elif 1
+  vector<pair<int,int>> vertlist;
+  const int tri[2][3] = {{0,1,2},{0,2,3}};
+  const int quadidx[] = {0,1,2,0,2,3};
+  loopv(ctx->m_builders) {
+    const auto &b = *ctx->m_builders[i];
+    // const auto old = posbuf.length();
+    const auto quadlen = b.m_quad_buffer.length();
+    loopj(quadlen) {
+      // get four points
+      const auto &q = b.m_quad_buffer[j];
+      octree::qefpoint *pt[4];
+      loopk(4) {
+        const auto *leaf = o.findleaf(q.index[k]);
+        const auto idx = q.index[k] % vec3i(SUBGRID);
+        const auto qefidx = idx.x+SUBGRID*(idx.y+SUBGRID*idx.z);
+        pt[k] = leaf->qef+qefidx;
+      }
+
+      // compute triangle normals and append points in the vertex buffer and the
+      // index buffer
+      loopk(2) {
+        const auto t = tri[k];
+        const auto edge0 = pt[t[2]]->pos-pt[t[1]]->pos;
+        const auto edge1 = pt[t[0]]->pos-pt[t[2]]->pos;
+        const auto dir = cross(edge0, edge1);
+        const auto nor = normalize(dir);
+        loopl(3) {
+          auto qef = pt[t[l]];
+          int vertidx = -1, curridx = qef->idx;
+
+          // try to find a good candidate with a normal close to ours
+          while (curridx != -1) {
+            auto const curr = vertlist[curridx];
+            vertidx = curr.first;
+            auto const cosangle = dot(nor, normalize(norbuf[vertidx]));
+            if (cosangle > SHARP_EDGE_THRESHOLD) break;
+            curridx = curr.second;
+          }
+
+          // create a brand new vertex here
+          if (curridx == -1) {
+            const auto head = qef->idx;
+            qef->idx = vertlist.length();
+            vertidx = posbuf.length();
+            vertlist.add(makepair(vertidx,head));
+            posbuf.add(qef->pos);
+            norbuf.add(nor);
+          }
+          // update the vertex normal
+          else
+            norbuf[vertidx] += dir;
+          idxbuf.add(vertidx);
+        }
+      }
+    }
+  }
+#endif
+  // normalize all vertex normals now
+  loopv(norbuf) norbuf[i] = normalize(norbuf[i]);
 
   const auto p = posbuf.move();
   const auto n = norbuf.move();
