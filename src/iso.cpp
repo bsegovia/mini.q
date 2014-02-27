@@ -108,19 +108,13 @@ static const u32 octreechildmap[8] = {0, 4, 3, 7, 1, 5, 2, 6};
 
 static const float SHARP_EDGE = 0.2f;
 static const u32 SUBGRID = 16;
-static const u32 FIELDDIM = SUBGRID+8;
-static const u32 QEFDIM = SUBGRID+6;
+static const u32 FIELDDIM = SUBGRID+4;
+static const u32 QEFDIM = SUBGRID+2;
 static const u32 FIELDNUM = FIELDDIM*FIELDDIM*FIELDDIM;
 static const u32 QEFNUM = QEFDIM*QEFDIM*QEFDIM;
 static const u32 MAX_NEW_VERT = 8;
 static const u32 NOINDEX = ~0x0u;
 static const u32 NOTRIANGLE = ~0x0u-1;
-static const u32 BORDER = 0x80000000u;
-static const u32 OUTSIDE = 0x40000000u;
-INLINE u32 isborder(u32 x) { return (x & BORDER) != 0; }
-INLINE u32 isoutside(u32 x) { return (x & OUTSIDE) != 0; }
-INLINE u32 unpackidx(u32 x) { return x & ~(OUTSIDE|BORDER); }
-INLINE u32 unpackmsk(u32 x) { return x & (OUTSIDE|BORDER); }
 
 struct edgeitem {
   vec3f org, p0, p1;
@@ -147,10 +141,7 @@ struct octree {
 #endif
   };
   struct node {
-    INLINE node() :
-      children(NULL), m_first_idx(0), m_first_vert(0),
-      m_idxnum(0), m_vertnum(0), m_isleaf(0), m_empty(0), m_level(0)
-    {}
+    INLINE node() : children(NULL), m_level(0), m_isleaf(0), m_empty(0) {}
     ~node() {
       if (m_isleaf)
         SAFE_DELA(qef);
@@ -161,10 +152,8 @@ struct octree {
       node *children;
       qefpoint *qef;
     };
-    u32 m_first_idx, m_first_vert;
-    u32 m_idxnum:15, m_vertnum:15;
+    u32 m_level:30;
     u32 m_isleaf:1, m_empty:1;
-    u32 m_level;
   };
 
   INLINE octree(u32 dim) : m_dim(dim), m_logdim(ilog2(dim)) {}
@@ -199,10 +188,8 @@ INLINE pair<vec3i,int> getedge(const vec3i &start, const vec3i &end) {
   return makepair(lower, delta.y+2*delta.z);
 }
 
-// find less expensive storage for it
-struct quad {
-  vec3i index[4];
-};
+// TODO find less expensive storage for it
+struct quad {vec3i index[4];};
 
 /*-------------------------------------------------------------------------
  - iso surface extraction is done here
@@ -237,39 +224,35 @@ struct dc_gridbuilder {
   INLINE void setmincellsize(float size) { m_mincellsize = size; }
   INLINE void setnode(const csg::node *node) { m_node = node; }
   INLINE u32 qef_index(const vec3i &xyz) const {
-    const vec3i p = xyz + vec3i(2);
+    const vec3i p = xyz + 1;
     return p.x + (p.y + p.z * QEFDIM) * QEFDIM;
   }
   INLINE u32 field_index(const vec3i &xyz) {
-    const vec3i p = xyz + vec3i(2);
+    const vec3i p = xyz + 1;
     return p.x + (p.y + p.z * FIELDDIM) * FIELDDIM;
   }
   INLINE u32 edge_index(const vec3i &start, int edge) {
-    const auto p = start + 2;
+    const auto p = start + 1;
     const auto offset = p.x + (p.y + p.z * FIELDDIM) * FIELDDIM;
     return offset + edge * FIELDNUM;
   }
 
   INLINE float &field(const vec3i &xyz) { return m_field[field_index(xyz)]; }
-  void resetbuffer() {
-    m_pos_buffer.setsize(0);
-    m_nor_buffer.setsize(0);
-    m_border_remap.setsize(0);
-  }
 
   void initfield() {
-    const vec3i org(-2), dim(FIELDDIM-2);
+    const vec3i org(-1), dim(SUBGRID+3);
     stepxyz(org, dim, vec3i(4)) {
       vec3f pos[64];
       float distance[64];
       const auto p = vertex(sxyz);
       const aabb box = aabb(p-2.f*m_cellsize, p+6.f*m_cellsize);
       int index = 0;
-      loopxyz(sxyz, sxyz+4) pos[index++] = vertex(xyz);
+      const auto end = min(sxyz+4,dim);
+      loopxyz(sxyz, end) pos[index++] = vertex(xyz);
       assert(index == 64);
-      csg::dist(m_node, pos, distance, 64, box);
+      csg::dist(m_node, pos, distance, index, box);
       index = 0;
-      loopxyz(sxyz, sxyz+4) field(xyz) = distance[index++];
+      loopxyz(sxyz, end) field(xyz) = distance[index++];
       STATS_ADD(iso_num, 64);
       STATS_ADD(iso_grid_num, 64);
     }
@@ -282,6 +265,7 @@ struct dc_gridbuilder {
   }
 
   NOINLINE void initqef() {
+    m_qefnum = 0;
     m_qef_index.memset(0xff);
     m_delayed_qef.setsize(0);
   }
@@ -410,7 +394,10 @@ struct dc_gridbuilder {
     loopv(m_delayed_qef) {
       const auto &item = m_delayed_qef[i];
       const auto xyz = item.first;
-      const auto edgemap = item.second.y;
+      const auto edgemap = item.second;
+
+      // this vertex does not belong this leaf. skip it. we test all three sign
+      if ((xyz.x | xyz.y | xyz.z) >> 31) continue;
 
       // get the intersection points between the surface and the cube edges
       vec3f p[12], n[12], mass(zero);
@@ -462,11 +449,14 @@ struct dc_gridbuilder {
   }
 
   void tesselate() {
-    const vec3i org(zero), dim(SUBGRID+4);
+    const vec3i org(zero), dim(SUBGRID+1);
     loopxyz(org, dim) {
       const int start_sign = field(xyz) < 0.f ? 1 : 0;
-      if (abs(field(xyz)) > 2.f*m_cellsize)
-        continue;
+      if (abs(field(xyz)) > 2.f*m_cellsize) continue;
+
+      // some quads belong to our neighbor. we will not push them but we need to
+      // compute their vertices such that our neighbor can output these quads
+      const auto outside = any(eq(xyz,0));
 
       // look at the three edges that start on xyz
       loopi(3) {
@@ -479,79 +469,51 @@ struct dc_gridbuilder {
         // we found one edge. we output one quad for it
         const auto axis0 = axis[(i+1)%3];
         const auto axis1 = axis[(i+2)%3];
-        vec3i p[] = {xyz, xyz-axis0, xyz-axis0-axis1, xyz-axis1};
-        u32 quad[4];
-        u32 vertnum = 0;
+        const vec3i p[] = {xyz, xyz-axis0, xyz-axis0-axis1, xyz-axis1};
         loopj(4) {
           const auto np = p[j];
           const auto idx = qef_index(np);
-
           if (m_qef_index[idx] == NOINDEX) {
             mcell cell;
-            loopk(8) cell[k] = field(np + icubev[k]);
-            const int edgemap = delayed_qef_vertex(cell, np);
-
-            // point is still valid. we are good to go
-            m_qef_index[idx] = m_border_remap.length();
-            m_border_remap.add(OUTSIDE);
-            m_delayed_qef.add(makepair(np,vec2i(0,edgemap)));
+            loopk(8) cell[k] = field(np+icubev[k]);
+            m_qef_index[idx] = m_qefnum++;
+            m_delayed_qef.add(makepair(np,delayed_qef_vertex(cell, np)));
             STATS_INC(iso_qef_num);
           }
-          quad[vertnum++] = m_qef_index[idx];
         }
 
-        // XXX remove this outside crap
-        const u32 msk = any(eq(xyz,vec3i(zero)))||any(gt(xyz,vec3i(SUBGRID)))?OUTSIDE:0u;
-        const auto orientation = start_sign==1 ? quadtotris : quadtotris_cc;
-        loopj(6) m_idx_buffer.add(quad[orientation[j]]|msk);
-
         // we must use a more compact storage for it
-        if (isoutside(msk)) continue;
+        if (outside) continue;
         const auto qor = start_sign==1 ? quadorder : quadorder_cc;
-        const struct quad q = {m_iorg+p[qor[0]], m_iorg+p[qor[1]], m_iorg+p[qor[2]], m_iorg+p[qor[3]]};
+        const quad q = {m_iorg+p[qor[0]], m_iorg+p[qor[1]], m_iorg+p[qor[2]], m_iorg+p[qor[3]]};
         m_quad_buffer.add(q);
       }
     }
   }
 
   void build(octree::node &node) {
-    const int first_idx = m_idx_buffer.length();
-    const int first_vert = m_pos_buffer.length();
     initfield();
     initedge();
     initqef();
     tesselate();
     finishedges();
     finishvertices(node);
-
-    // stop here if we do not create anything
-    if (first_vert == m_pos_buffer.length())
-      return;
-    assert(node.m_vertnum <= octree::MAX_ITEM_NUM);
-    assert(node.m_idxnum <= octree::MAX_ITEM_NUM);
-    node.m_first_vert = first_vert;
-    node.m_first_idx = first_idx;
-    node.m_vertnum = m_pos_buffer.length() - first_vert;
-    node.m_idxnum = m_idx_buffer.length() - first_idx;
-    node.m_isleaf = 1;
   }
 
   const csg::node *m_node;
   vector<float> m_field;
-  vector<vec3f> m_pos_buffer, m_nor_buffer;
   vector<quad> m_quad_buffer;
-  vector<u32> m_idx_buffer;
-  vector<u32> m_border_remap;
   vector<u32> m_qef_index;
   vector<u32> m_edge_index;
   vector<pair<vec3f,vec3f>> m_edges;
   vector<pair<vec3i,vec3i>> m_delayed_edges;
-  vector<pair<vec3i,vec2i>> m_delayed_qef;
+  vector<pair<vec3i,int>> m_delayed_qef;
   edgestack *m_stack;
   const octree *m_octree;
   vec3f m_org;
   vec3i m_iorg;
   float m_cellsize, m_mincellsize;
+  u32 m_qefnum;
   u32 m_maxlevel, m_level;
 };
 
@@ -575,7 +537,7 @@ struct context {
   INLINE context() : m_mutex(SDL_CreateMutex()) {}
   SDL_mutex *m_mutex;
   vector<jobdata> m_work;
-  vector<dc_gridbuilder*> m_builders; // one per thread
+  vector<dc_gridbuilder*> m_builders;
 };
 static context *ctx = NULL;
 
@@ -699,7 +661,8 @@ INLINE const quadmesh &findbestmesh(octree::qefpoint **pt) {return qmesh[0];}
 #endif
 
 static mesh buildmesh(octree &o) {
-  // copy back all local buffers together
+
+  // build the buffers here
   vector<vec3f> posbuf, norbuf;
   vector<u32> idxbuf;
   vector<pair<int,int>> vertlist;
@@ -778,11 +741,6 @@ static mesh buildmesh(octree &o) {
 mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d) {
   octree o(cellnum);
   ctx->m_work.setsize(0);
-  loopv(ctx->m_builders) {
-    ctx->m_builders[i]->m_pos_buffer.setsize(0);
-    ctx->m_builders[i]->m_nor_buffer.setsize(0);
-    ctx->m_builders[i]->m_idx_buffer.setsize(0);
-  }
   mt_builder r(d, org, cellsize, cellnum);
   r.setoctree(o);
   r.build(o.m_root);
