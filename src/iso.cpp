@@ -881,22 +881,8 @@ mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &
   // copy back all local buffers together
   vector<vec3f> posbuf, norbuf;
   vector<u32> idxbuf;
-#if 0
-  loopv(ctx->m_builders) {
-    const auto &b = *ctx->m_builders[i];
-    const auto old = posbuf.length();
-    const auto buflen = b.m_pos_buffer.length();
-    const auto idxlen = b.m_idx_buffer.length();
-    loopj(idxlen) idxbuf.add(old+b.m_idx_buffer[j]);
-    loopj(buflen) {
-      posbuf.add(b.m_pos_buffer[j]);
-      norbuf.add(b.m_nor_buffer[j]);
-    }
-  }
-#elif 1
   vector<pair<int,int>> vertlist;
   const int tri[2][3] = {{0,1,2},{0,2,3}};
-  const int quadidx[] = {0,1,2,0,2,3};
   loopv(ctx->m_builders) {
     const auto &b = *ctx->m_builders[i];
     // const auto old = posbuf.length();
@@ -950,7 +936,7 @@ mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &
       }
     }
   }
-#endif
+
   // normalize all vertex normals now
   loopv(norbuf) norbuf[i] = normalize(norbuf[i]);
 
