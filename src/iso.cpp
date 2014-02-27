@@ -17,7 +17,6 @@ STATS(iso_octree_num);
 STATS(iso_qef_num);
 STATS(iso_falsepos);
 
-#define NEW_VERSION 1
 #define SHARP_EDGE_DC 0
 
 #if !defined(NDEBUG)
@@ -133,135 +132,6 @@ struct edgestack {
   array<vec3f,64> p, pos;
   array<float,64> d;
 };
-
-/*-------------------------------------------------------------------------
- - edge creaser and mesh decimation happen here
- -------------------------------------------------------------------------*/
-#if !NEW_VERSION
-struct mesh_processor {
-  struct meshedge {
-    u32 vertex[2];
-    u32 face[2];
-  };
-
-  void set(vector<vec3f> &p, vector<vec3f> &n, vector<u32> &t,
-           int first_vert, int first_idx)
-  {
-    m_pos_buffer = &p;
-    m_nor_buffer = &n;
-    m_idx_buffer = &t;
-    m_first_vert = first_vert;
-    m_first_idx = first_idx;
-    m_vertnum = (p.length() - m_first_vert);
-    m_trinum = (t.length() - m_first_idx) / 3;
-    m_edges.setsize(6*m_trinum);
-    m_edgelists.setsize(m_vertnum + 6*m_trinum);
-    m_list.setsize(m_vertnum + 6*m_trinum);
-    const auto firsttri = m_first_idx / 3;
-  }
-
-  void append(int &edgenum, int i1, int i2, int face0, int face1) {
-    auto &e = m_edges[edgenum];
-    auto nextedge = &m_edgelists[0] + m_vertnum;
-    e.vertex[0] = i1;
-    e.vertex[1] = i2;
-    e.face[0] = face0;
-    e.face[1] = face1;
-
-    u32 idx = m_edgelists[i1];
-    if (idx == NOINDEX)
-      m_edgelists[i1] = edgenum;
-    else for (;;) {
-      const u32 index = nextedge[idx];
-      if (index == NOINDEX) {
-        nextedge[idx] = edgenum;
-        break;
-      }
-      idx = index;
-    }
-    nextedge[edgenum++] = NOINDEX;
-  }
-
-  NOINLINE int buildedges() {
-    const auto &t = *m_idx_buffer;
-    auto nextedge = &m_edgelists[0] + m_vertnum;
-
-    loopi(m_vertnum) m_edgelists[i] = NOINDEX;
-
-    // step 1 - find all edges with first index smaller than the second one
-    int edgenum = 0;
-    loopi(m_trinum) {
-      const auto tri = &t[m_first_idx + 3*i];
-      int i1 = unpackidx(tri[2]) - m_first_vert;
-      loopj(3) {
-        int i2 = unpackidx(tri[j]) - m_first_vert;
-        if (i1 < i2) append(edgenum, i1, i2, i, i);
-        i1 = i2;
-      }
-    }
-
-    // step 2 - go over all edges with first index greater than the second one
-    loopi(m_trinum) {
-      const auto tri = &t[m_first_idx + 3*i];
-      int i1 = unpackidx(tri[2]) - m_first_vert;
-      loopj(3) {
-        int i2 = unpackidx(tri[j]) - m_first_vert;
-        if (i1 > i2) {
-          u32 idx = m_edgelists[i2];
-          for (; idx != NOINDEX; idx = nextedge[idx]) {
-            auto e = &m_edges[idx];
-            if (e->vertex[1] == u32(i1) && e->face[0] == e->face[1]) {
-              e->face[1] = i;
-              break;
-            }
-          }
-
-          // this is an edge with one triangle only. we append it now
-          if (idx == NOINDEX) append(edgenum, i2, i1, i, i);
-        }
-        i1 = i2;
-      }
-    }
-    return edgenum;
-  }
-
-  INLINE vec3f trinormalu(u32 idx) {
-    auto &t = *m_idx_buffer;
-    auto &p = *m_pos_buffer;
-    const auto t0 = unpackidx(t[3*idx+0]);
-    const auto t1 = unpackidx(t[3*idx+1]);
-    const auto t2 = unpackidx(t[3*idx+2]);
-    return cross(p[t0]-p[t2], p[t0]-p[t1]);
-  }
-
-  void crease(u32 edgenum) {
-    auto &t = *m_idx_buffer;
-    auto &p = *m_pos_buffer;
-    auto &n = *m_nor_buffer;
-    const u32 firsttri = m_first_idx / 3;
-
-    m_vertnum = p.length() - m_first_vert;
-    loopi(m_vertnum) n[m_first_vert+i] = vec3f(zero);
-    loopi(m_trinum) {
-      const auto idx = firsttri+i;
-      const auto tri = &t[3*idx];
-      const auto nor = trinormalu(idx);
-      loopj(3) n[unpackidx(tri[j])] += nor;
-    }
-    loopi(m_vertnum) n[m_first_vert+i] = -normalize(n[m_first_vert+i]);
-  }
-
-  vector<meshedge> m_edges;
-  vector<int> m_edgelists;
-  vector<pair<u32,u32>> m_list;
-  vector<pair<vec3f,u32>> m_new_verts;
-  vector<vec3f> *m_pos_buffer;
-  vector<vec3f> *m_nor_buffer;
-  vector<u32> *m_idx_buffer;
-  int m_first_idx, m_first_vert;
-  int m_vertnum, m_trinum;
-};
-#endif
 
 /*-------------------------------------------------------------------------
  - spatial segmentation used for iso surface extraction
@@ -588,10 +458,6 @@ struct dc_gridbuilder {
         node.qef[idx].sharp = sharp?1:0;
 #endif
       }
-#if !NEW_VERSION
-      m_pos_buffer.add(qef);
-      m_nor_buffer.add(normalize(nor));
-#endif
     }
   }
 
@@ -647,64 +513,6 @@ struct dc_gridbuilder {
       }
     }
   }
-#if !NEW_VERSION
-  void removeborders(u32 first_idx, u32 first_vertex) {
-    // find the list of vertex which is actually used. initially, they are all
-    // considered outside
-    const u32 len = m_idx_buffer.length();
-    rangei(first_idx, len) {
-      const u32 idx = m_idx_buffer[i];
-      if (!isoutside(idx)) m_border_remap[idx] = 0;
-    }
-
-    // compact the vertex buffers and create the remap table at the same time
-    int last = m_border_remap.length()-1, first = first_vertex;
-    for (;;) {
-      while (first <= last && isoutside(m_border_remap[last])) --last;
-      while (first <= last && !isoutside(m_border_remap[first])) {
-        m_border_remap[first] = first;
-        ++first;
-      }
-      if (first > last) break;
-      else if (first != last) {
-        m_border_remap[last] = first;
-        m_pos_buffer[first] = m_pos_buffer[last];
-        m_nor_buffer[first] = m_nor_buffer[last];
-      }
-      ++first;
-      --last;
-    }
-    const u32 vert_buf_len = first;
-
-    // compact the index buffer and remap the indices
-    last = m_idx_buffer.length()-1, first = first_idx;
-    for (;;) {
-      // skip two triangles at once (since they will be both outside anyway)
-      while (first <= last && isoutside(m_idx_buffer[last])) last -= 3;
-      while (first <= last && !isoutside(m_idx_buffer[first])) {
-        assert(m_border_remap[m_idx_buffer[first]] < vert_buf_len);
-        m_idx_buffer[first] = m_border_remap[m_idx_buffer[first]];
-        ++first;
-      }
-      if (first > last) break;
-      assert(last-first >= 3);
-      last -= 2;
-      loopi(3) {
-        assert(isoutside(m_idx_buffer[first]));
-        assert(!isoutside(m_idx_buffer[last+i]));
-        const u32 idx = unpackidx(m_idx_buffer[last+i]);
-        assert(m_border_remap[idx] < vert_buf_len);
-        m_idx_buffer[first++] = m_border_remap[idx];
-      }
-      --last;
-    }
-    m_pos_buffer.setsize(vert_buf_len);
-    m_nor_buffer.setsize(vert_buf_len);
-    m_border_remap.setsize(vert_buf_len);
-    m_idx_buffer.setsize(first);
-    return;
-  }
-#endif
 
   void build(octree::node &node) {
     const int first_idx = m_idx_buffer.length();
@@ -719,13 +527,6 @@ struct dc_gridbuilder {
     // stop here if we do not create anything
     if (first_vert == m_pos_buffer.length())
       return;
-#if !NEW_VERSION
-    m_mp.set(m_pos_buffer, m_nor_buffer, m_idx_buffer, first_vert, first_idx);
-    const auto edgenum = m_mp.buildedges();
-    m_mp.crease(edgenum);
-    m_border_remap.setsize(m_pos_buffer.length());
-    removeborders(first_idx, first_vert);
-#endif
     assert(node.m_vertnum <= octree::MAX_ITEM_NUM);
     assert(node.m_idxnum <= octree::MAX_ITEM_NUM);
     node.m_first_vert = first_vert;
@@ -736,9 +537,6 @@ struct dc_gridbuilder {
   }
 
   const csg::node *m_node;
-#if !NEW_VERSION
-  mesh_processor m_mp;
-#endif
   vector<float> m_field;
   vector<vec3f> m_pos_buffer, m_nor_buffer;
   vector<quad> m_quad_buffer;
