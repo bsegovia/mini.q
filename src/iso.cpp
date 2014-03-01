@@ -41,8 +41,6 @@ mesh::~mesh() {
 }
 
 static const auto DEFAULT_GRAD_STEP = 1e-3f;
-static const auto TOLERANCE_DENSITY = 1e-3f;
-static const auto TOLERANCE_DIST2 = 1e-8f;
 static const int MAX_STEPS = 4;
 static const float SHARP_EDGE_THRESHOLD = 0.4f;
 
@@ -55,8 +53,6 @@ INLINE pair<vec3i,u32> edge(vec3i start, vec3i end) {
 
 typedef float mcell[8];
 static const vec3i axis[] = {vec3i(1,0,0), vec3i(0,1,0), vec3i(0,0,1)};
-static const u32 quadtotris[] = {0,1,2,0,2,3};
-static const u32 quadtotris_cc[] = {0,2,1,0,3,2};
 static const u32 quadorder[] = {0,1,2,3};
 static const u32 quadorder_cc[] = {3,2,1,0};
 static const u16 edgetable[256]= {
@@ -106,15 +102,12 @@ static const int interptable[12][2] = {
 };
 static const u32 octreechildmap[8] = {0, 4, 3, 7, 1, 5, 2, 6};
 
-static const float SHARP_EDGE = 0.2f;
 static const u32 SUBGRID = 16;
 static const u32 FIELDDIM = SUBGRID+4;
 static const u32 QEFDIM = SUBGRID+2;
 static const u32 FIELDNUM = FIELDDIM*FIELDDIM*FIELDDIM;
 static const u32 QEFNUM = QEFDIM*QEFDIM*QEFDIM;
-static const u32 MAX_NEW_VERT = 8;
 static const u32 NOINDEX = ~0x0u;
-static const u32 NOTRIANGLE = ~0x0u-1;
 
 struct edgeitem {
   vec3f org, p0, p1;
@@ -485,7 +478,7 @@ struct dc_gridbuilder {
         // we must use a more compact storage for it
         if (outside) continue;
         const auto qor = start_sign==1 ? quadorder : quadorder_cc;
-        const quad q = {m_iorg+p[qor[0]], m_iorg+p[qor[1]], m_iorg+p[qor[2]], m_iorg+p[qor[3]]};
+        const quad q = {{m_iorg+p[qor[0]], m_iorg+p[qor[1]], m_iorg+p[qor[2]], m_iorg+p[qor[3]]}};
         m_quad_buffer.add(q);
       }
     }
@@ -666,6 +659,16 @@ static mesh buildmesh(octree &o) {
   vector<vec3f> posbuf, norbuf;
   vector<u32> idxbuf;
   vector<pair<int,int>> vertlist;
+#if 0
+  u32 num = 0;
+  loopv(ctx->m_builders) {
+    const auto &b = *ctx->m_builders[i];
+    const auto quadlen = b.m_quad_buffer.length();
+    num += quadlen;
+  }
+
+//  printf("num %d\n", num);
+#endif
 
   // merge all builder vertex buffers
   loopv(ctx->m_builders) {

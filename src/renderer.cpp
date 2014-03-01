@@ -505,7 +505,7 @@ static void makescene() {
   if (initialized_m) return;
   const auto start = sys::millis();
   const auto node = csg::makescene();
-  auto m = iso::dc_mesh_mt(vec3f(zero), 4096, CELLSIZE, *node);
+  auto m = iso::dc_mesh_mt(vec3f(zero), 8192*2, CELLSIZE, *node);
   ogl::genbuffers(1, &sceneposbo);
   ogl::bindbuffer(ogl::ARRAY_BUFFER, sceneposbo);
   OGL(BufferData, GL_ARRAY_BUFFER, m.m_vertnum*sizeof(vec3f), &m.m_pos[0].x, GL_STATIC_DRAW);

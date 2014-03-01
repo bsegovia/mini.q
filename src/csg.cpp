@@ -162,92 +162,117 @@ static node *makescene0() {
 
 node *makescene() {
   node *s0 = makescene0();
-#if 0
-  node *s1 = NEW(translation, vec3f(8.f,0.f,0.f), makescene0());
-  node *s2 = NEW(translation, vec3f(16.f,0.f,0.f), makescene0());
-  node *s3 = NEW(translation, vec3f(24.f,0.f,0.f), makescene0());
-  return NEW(U, NEW(U, s2, s3), NEW(U, s0, s1));
-#else
+  int k = 0, j = 0;
+  loopi(16) // loopj(2) loopk(2)
+  s0 = NEW(U, s0, NEW(translation, vec3f(float(i)*30.f,float(k)*40.f,float(j)*20.f), makescene0()));
   return s0;
-#endif
 }
 
 void destroyscene(node *n) { SAFE_DEL(n); }
 
 void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist, int num, const aabb &box) {
-  const auto isec = intersection(box, n->box);
-  if (any(gt(isec.pmin, isec.pmax))) return;
+
   switch (n->type) {
     case C_UNION: {
       const auto u = static_cast<const U*>(n);
-      float tempdist[64];
-      distr(u->left, pos, dist, num, box);
-      loopi(num) tempdist[i] = FLT_MAX;
-      distr(u->right, pos, tempdist, num, box);
-      loopi(num) dist[i] = min(dist[i], tempdist[i]);
-      return;
+      const auto isecleft = intersection(u->left->box, box);
+      const auto isecright = intersection(u->right->box, box);
+      const auto goleft = all(le(isecleft.pmin, isecleft.pmax));
+      const auto goright = all(le(isecright.pmin, isecright.pmax));
+      if (goleft && goright) {
+        float tempdist[64];
+        distr(u->left, pos, dist, num, box);
+        loopi(num) tempdist[i] = FLT_MAX;
+        distr(u->right, pos, tempdist, num, box);
+        loopi(num) dist[i] = min(dist[i], tempdist[i]);
+      } else if (goleft)
+        distr(u->left, pos, dist, num, box);
+      else if (goright)
+        distr(u->right, pos, dist, num, box);
+      break;
     }
     case C_INTERSECTION: {
       const auto i = static_cast<const I*>(n);
+      const auto isecleft = intersection(i->left->box, box);
+      if (!all(le(isecleft.pmin, isecleft.pmax))) break;
+      const auto isecright = intersection(i->right->box, box);
+      if (!all(le(isecright.pmin, isecright.pmax))) break;
       float tempdist[64];
       distr(i->left, pos, dist, num, box);
       loopi(num) tempdist[i] = FLT_MAX;
       distr(i->right, pos, tempdist, num, box);
       loopi(num) dist[i] = max(dist[i], tempdist[i]);
-      return;
+      break;
     }
     case C_DIFFERENCE: {
       const auto d = static_cast<const D*>(n);
-      float tempdist[64];
+      const auto isecleft = intersection(d->left->box, box);
+      if (!all(le(isecleft.pmin, isecleft.pmax))) break;
       distr(d->left, pos, dist, num, box);
+
+      const auto isecright = intersection(d->right->box, box);
+      if (!all(le(isecright.pmin, isecright.pmax))) break;
+      float tempdist[64];
       loopi(num) tempdist[i] = FLT_MAX;
       distr(d->right, pos, tempdist, num, box);
       loopi(num) dist[i] = max(dist[i], -tempdist[i]);
-      return;
+      break;
     }
     case C_TRANSLATION: {
+      const auto isec = intersection(n->box, box);
+      if (any(gt(isec.pmin, isec.pmax))) break;
       const auto t = static_cast<const translation*>(n);
       vec3f tpos[64];
       loopi(num) tpos[i] = pos[i] - t->p;
       distr(t->n, tpos, dist, num, aabb(box.pmin-t->p, box.pmax-t->p));
-      return;
+      break;
     }
     case C_ROTATION: {
+      const auto isec = intersection(n->box, box);
+      if (any(gt(isec.pmin, isec.pmax))) break;
       const auto r = static_cast<const rotation*>(n);
       vec3f tpos[64];
       loopi(num) tpos[i] = xfmpoint(conj(r->q), pos[i]);
       distr(r->n, tpos, dist, num, aabb::all());
-      return;
+      break;
     }
     case C_PLANE: {
+      const auto isec = intersection(n->box, box);
+      if (any(gt(isec.pmin, isec.pmax))) break;
       const auto p = static_cast<const plane*>(n);
       loopi(num) dist[i] = dot(pos[i], p->p.xyz()) + p->p.w;
-      return;
+      break;
     }
 
 #define CYL(NAME, COORD)\
   case C_CYLINDER##NAME: {\
+    const auto isec = intersection(n->box, box);\
+    if (any(gt(isec.pmin, isec.pmax))) break;\
     const auto c = static_cast<const cylinder##COORD*>(n);\
     loopi(num) dist[i] = length(pos[i].COORD()-c->c##COORD) - c->r;\
-    return;\
+    break;\
   }
   CYL(XY,xy); CYL(XZ,xz); CYL(YZ,yz);
 #undef CYL
 
     case C_SPHERE: {
+      const auto isec = intersection(n->box, box);
+      if (any(gt(isec.pmin, isec.pmax))) break;
       const auto s = static_cast<const sphere*>(n);
       loopi(num) dist[i] = length(pos[i]) - s->r;
-      return;
+      break;
     }
     case C_BOX: {
+      const auto isec = intersection(n->box, box);
+      if (any(gt(isec.pmin, isec.pmax))) break;
       const auto extent = static_cast<const struct box*>(n)->extent;
       loopi(num) {
         const auto pd = abs(pos[i])-extent;
         dist[i] = min(max(pd.x,max(pd.y,pd.z)),0.0f) + length(max(pd,vec3f(zero)));
       }
-      return;
+      break;
     }
-    default: assert("unreachable" && false);
+    case C_INVALID: assert("unreachable" && false);
   }
 }
 

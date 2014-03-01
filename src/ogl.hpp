@@ -186,7 +186,7 @@ struct shadertype {
     program(0), fixedfunction(fixedfunction) {}
   u32 program;
   bool fixedfunction;
-  u32 internal[];
+  u32 internal[0];
 };
 void destroyshader(shadertype&);
 void bindshader(shadertype&);
