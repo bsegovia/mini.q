@@ -9,13 +9,13 @@
 #include "task.hpp"
 
 STATS(iso_num);
-STATS(iso_falsepos_num);
+STATS(iso_edgepos_num);
 STATS(iso_edge_num);
 STATS(iso_gradient_num);
 STATS(iso_grid_num);
 STATS(iso_octree_num);
 STATS(iso_qef_num);
-STATS(iso_falsepos);
+STATS(iso_edgepos);
 
 #define SHARP_EDGE_DC 0
 
@@ -24,8 +24,8 @@ static void stats() {
   STATS_OUT(iso_num);
   STATS_OUT(iso_qef_num);
   STATS_OUT(iso_edge_num);
-  STATS_RATIO(iso_falsepos_num, iso_edge_num);
-  STATS_RATIO(iso_falsepos_num, iso_num);
+  STATS_RATIO(iso_edgepos_num, iso_edge_num);
+  STATS_RATIO(iso_edgepos_num, iso_num);
   STATS_RATIO(iso_gradient_num, iso_num);
   STATS_RATIO(iso_grid_num, iso_num);
   STATS_RATIO(iso_octree_num, iso_num);
@@ -41,7 +41,7 @@ mesh::~mesh() {
 }
 
 static const auto DEFAULT_GRAD_STEP = 1e-3f;
-static const int MAX_STEPS = 4;
+static const int MAX_STEPS = 8;
 static const float SHARP_EDGE_THRESHOLD = 0.4f;
 
 INLINE pair<vec3i,u32> edge(vec3i start, vec3i end) {
@@ -118,6 +118,7 @@ struct edgestack {
   array<edgeitem,64> it;
   array<vec3f,64> p, pos;
   array<float,64> d;
+  array<u32,64> m;
 };
 
 /*-------------------------------------------------------------------------
@@ -182,7 +183,7 @@ INLINE pair<vec3i,int> getedge(const vec3i &start, const vec3i &end) {
 }
 
 // TODO find less expensive storage for it
-struct quad {vec3i index[4];};
+struct quad {vec3i index[4]; u32 matindex;};
 
 /*-------------------------------------------------------------------------
  - iso surface extraction is done here
@@ -209,12 +210,11 @@ struct dc_gridbuilder {
 
   INLINE vec3f vertex(const vec3i &p) {
     const vec3i ipos = m_iorg+(p<<(int(m_maxlevel-m_level)));
-    return vec3f(ipos)*m_mincellsize;
+    return vec3f(ipos)*m_cellsize;
   }
   INLINE void setoctree(const octree &o) { m_octree = &o; }
   INLINE void setorg(const vec3f &org) { m_org = org; }
   INLINE void setcellsize(float size) { m_cellsize = size; }
-  INLINE void setmincellsize(float size) { m_mincellsize = size; }
   INLINE void setnode(const csg::node *node) { m_node = node; }
   INLINE u32 qef_index(const vec3i &xyz) const {
     const vec3i p = xyz + 1;
@@ -237,13 +237,14 @@ struct dc_gridbuilder {
     stepxyz(org, dim, vec3i(4)) {
       vec3f pos[64];
       float distance[64];
+      u32 matindex[64];
       const auto p = vertex(sxyz);
       const aabb box = aabb(p-2.f*m_cellsize, p+6.f*m_cellsize);
       int index = 0;
       const auto end = min(sxyz+4,dim);
       loopxyz(sxyz, end) pos[index++] = vertex(xyz);
       assert(index == 64);
-      csg::dist(m_node, pos, distance, index, box);
+      csg::dist(m_node, pos, distance, matindex, index, box);
       index = 0;
       loopxyz(sxyz, end) field(xyz) = distance[index++];
       STATS_ADD(iso_num, 64);
@@ -282,11 +283,12 @@ struct dc_gridbuilder {
     return edgetable[cubeindex];
   }
 
-  INLINE void falsepos(const csg::node *node, edgestack &stack, int num) {
+  INLINE void edgepos(const csg::node *node, edgestack &stack, int num) {
     assert(num <= 64);
     auto &it = stack.it;
     auto &pos = stack.pos, &p = stack.p;
     auto &d = stack.d;
+    auto &m = stack.m;
 
     loopk(MAX_STEPS) {
       auto box = aabb::empty();
@@ -298,7 +300,7 @@ struct dc_gridbuilder {
       }
       box.pmin -= 3.f * m_cellsize;
       box.pmax += 3.f * m_cellsize;
-      csg::dist(m_node, &pos[0], &d[0], num, box);
+      csg::dist(m_node, &pos[0], &d[0], &m[0], num, box);
       if (k != MAX_STEPS-1) {
         loopi(num) {
           if (d[i] < 0.f) {
@@ -312,7 +314,7 @@ struct dc_gridbuilder {
       } else
         loopi(num) it[i].p0 = p[i];
     }
-    STATS_ADD(iso_falsepos_num, num*MAX_STEPS);
+    STATS_ADD(iso_edgepos_num, num*MAX_STEPS);
     STATS_ADD(iso_num, num*MAX_STEPS);
   }
 
@@ -343,7 +345,7 @@ struct dc_gridbuilder {
           swap(it[j].v0,it[j].v1);
         }
       }
-      falsepos(m_node, *m_stack, num);
+      edgepos(m_node, *m_stack, num);
 
       // step 2 - compute normals for each point using packets of 16x4 points
       const auto dx = vec3f(DEFAULT_GRAD_STEP, 0.f, 0.f);
@@ -353,6 +355,7 @@ struct dc_gridbuilder {
         const int subnum = min(num-j, 16);
         auto p = &m_stack->p[0];
         auto d = &m_stack->d[0];
+        auto m = &m_stack->m[0];
         auto box = aabb::empty();
         loopk(subnum) {
           p[4*k]   = it[j+k].org + it[j+k].p0 * m_cellsize;
@@ -365,7 +368,7 @@ struct dc_gridbuilder {
         box.pmin -= 3.f * m_cellsize;
         box.pmax += 3.f * m_cellsize;
 
-        csg::dist(m_node, p, d, 4*subnum, box);
+        csg::dist(m_node, p, d, m, 4*subnum, box);
         STATS_ADD(iso_num, 4*subnum);
         STATS_ADD(iso_gradient_num, 4*subnum);
 
@@ -505,7 +508,7 @@ struct dc_gridbuilder {
   const octree *m_octree;
   vec3f m_org;
   vec3i m_iorg;
-  float m_cellsize, m_mincellsize;
+  float m_cellsize;
   u32 m_qefnum;
   u32 m_maxlevel, m_level;
 };
@@ -523,7 +526,6 @@ struct jobdata {
   int m_level;
   int m_maxlevel;
   float m_cellsize;
-  float m_mincellsize;
 };
 
 struct context {
@@ -587,7 +589,6 @@ struct mt_builder {
       job.m_maxlevel = m_maxlevel;
       job.m_level = node.m_level;
       job.m_cellsize = float(1<<(m_maxlevel-node.m_level)) * m_cellsize;
-      job.m_mincellsize = m_cellsize;
       job.m_org = pos(xyz);
       ctx->m_work.add(job);
       return;
@@ -623,7 +624,6 @@ struct isotask : public task {
     localbuilder->m_level = job.m_octree_node->m_level;
     localbuilder->m_maxlevel = job.m_maxlevel;
     localbuilder->setcellsize(job.m_cellsize);
-    localbuilder->setmincellsize(job.m_mincellsize);
     localbuilder->setnode(job.m_csg_node);
     localbuilder->setorg(job.m_org);
     localbuilder->build(*job.m_octree_node);
@@ -669,7 +669,7 @@ static mesh buildmesh(octree &o) {
 
 //  printf("num %d\n", num);
 #endif
-
+#if 1
   // merge all builder vertex buffers
   loopv(ctx->m_builders) {
     const auto &b = *ctx->m_builders[i];
@@ -734,7 +734,7 @@ static mesh buildmesh(octree &o) {
 
   // normalize all vertex normals now
   loopv(norbuf) norbuf[i] = normalize(norbuf[i]);
-
+#endif
   const auto p = posbuf.move();
   const auto n = norbuf.move();
   const auto idx = idxbuf.move();

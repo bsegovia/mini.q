@@ -7,26 +7,46 @@
 
 namespace q {
 namespace csg {
-struct node *makescene();
-void destroyscene(struct node *n);
 
-// material are identified by a unique ID
-enum {
-  MAT_AIR,
+/*--------------------------------------------------------------------------
+ - simple material system. each material has a type and an index
+ -------------------------------------------------------------------------*/
+enum mattype : u32 {
+  MAT_AIR = 0,
   MAT_SNOISE,
   MAT_GRID
 };
 
+static const u32 MAT_AIR_INDEX = 0;
 struct material {
-  INLINE material(u32 type = MAT_AIR) : type(type) {}
-  u32 type;
+  INLINE material(mattype type = MAT_AIR) : type(type) {}
+  mattype type;
 };
 
-// These are just pre-built material to test code
-extern const material airmat, snoisemat, gridmat;
+material *getmaterial(u32 matindex);
 
-float dist(const node *n, const vec3f &pos, const aabb &box = aabb::all());
-void dist(const node *n, const vec3f *pos, float *d, int num, const aabb &box);
+/*--------------------------------------------------------------------------
+ - all basic CSG nodes
+ -------------------------------------------------------------------------*/
+enum CSGOP {
+  C_UNION, C_DIFFERENCE, C_INTERSECTION,
+  C_SPHERE, C_BOX, C_PLANE, C_CYLINDERXZ, C_CYLINDERYZ, C_CYLINDERXY,
+  C_TRANSLATION, C_ROTATION,
+  C_INVALID = 0xffffffff
+};
+struct node {
+  INLINE node(CSGOP type, const aabb &box = aabb::empty()) :
+    box(box), type(type) {}
+  virtual ~node() {}
+  aabb box;
+  CSGOP type;
+};
+
+node *makescene();
+void destroyscene(node *n);
+
+float dist(const node*, const vec3f&, const aabb &box = aabb::all());
+void dist(const node*, const vec3f*, float *d, u32 *mat, int num, const aabb &box);
 } /* namespace csg */
 } /* namespace q */
 

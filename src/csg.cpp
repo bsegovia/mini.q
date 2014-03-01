@@ -17,20 +17,8 @@ const material snoisemat(MAT_SNOISE);
 const material gridmat(MAT_GRID);
 
 /*--------------------------------------------------------------------------
- - expose all basic CSG nodes
+ - implements all basic CSG nodes
  -------------------------------------------------------------------------*/
-enum CSGOP {
-  C_UNION, C_DIFFERENCE, C_INTERSECTION,
-  C_SPHERE, C_BOX, C_PLANE, C_CYLINDERXZ, C_CYLINDERYZ, C_CYLINDERXY,
-  C_TRANSLATION, C_ROTATION,
-  C_INVALID = 0xffffffff
-};
-struct node {
-  INLINE node(CSGOP type, const aabb &box = aabb::empty()) : box(box), type(type) {}
-  virtual ~node() {}
-  aabb box;
-  CSGOP type;
-};
 #define BINARY(NAME,TYPE,C_BOX) \
 struct NAME : node { \
   INLINE NAME(node *nleft, node *nright) :\
@@ -43,53 +31,58 @@ BINARY(D,C_DIFFERENCE, nleft->box)
 BINARY(I,C_INTERSECTION, intersection(nleft->box, nright->box))
 #undef BINARY
 
-struct box : node {
+struct materialnode : node {
+  INLINE materialnode(CSGOP type, const aabb &box = aabb::empty()) : node(type, box) {}
+  u32 matindex;
+};
+
+struct box : materialnode {
   INLINE box(const vec3f &extent) :
-    node(C_BOX, aabb(-extent,+extent)), extent(extent) {}
+    materialnode(C_BOX, aabb(-extent,+extent)), extent(extent) {}
   vec3f extent;
 };
-struct plane : node {
-  INLINE plane(const vec4f &p) : node(C_PLANE, aabb::all()), p(p) {}
+struct plane : materialnode {
+  INLINE plane(const vec4f &p) : materialnode(C_PLANE, aabb::all()), p(p) {}
   vec4f p;
 };
-struct sphere : node {
-  INLINE sphere(float r) : node(C_SPHERE, aabb(-r, r)), r(r) {}
+struct sphere : materialnode {
+  INLINE sphere(float r) : materialnode(C_SPHERE, aabb(-r, r)), r(r) {}
   float r;
 };
-struct cylinderxz : node {
+struct cylinderxz : materialnode {
   INLINE cylinderxz(const vec2f &cxz, float r) :
-    node(C_CYLINDERXZ, aabb(vec3f(-r+cxz.x,-FLT_MAX,-r+cxz.y),
-                            vec3f(+r+cxz.x,+FLT_MAX,+r+cxz.y))), cxz(cxz), r(r)
+    materialnode(C_CYLINDERXZ, aabb(vec3f(-r+cxz.x,-FLT_MAX,-r+cxz.y),
+                                    vec3f(+r+cxz.x,+FLT_MAX,+r+cxz.y))), cxz(cxz), r(r)
   {}
   vec2f cxz;
   float r;
 };
-struct cylinderxy : node {
+struct cylinderxy : materialnode {
   INLINE cylinderxy(const vec2f &cxy, float r) :
-    node(C_CYLINDERXY, aabb(vec3f(-r+cxy.x,-r+cxy.y,-FLT_MAX),
-                            vec3f(+r+cxy.x,+r+cxy.y,+FLT_MAX))), cxy(cxy), r(r)
+    materialnode(C_CYLINDERXY, aabb(vec3f(-r+cxy.x,-r+cxy.y,-FLT_MAX),
+                                    vec3f(+r+cxy.x,+r+cxy.y,+FLT_MAX))), cxy(cxy), r(r)
   {}
   vec2f cxy;
   float r;
 };
-struct cylinderyz : node {
+struct cylinderyz : materialnode {
   INLINE cylinderyz(const vec2f &cyz, float r) :
-    node(C_CYLINDERYZ, aabb(vec3f(-FLT_MAX,-r+cyz.x,-r+cyz.y),
-                            vec3f(+FLT_MAX,+r+cyz.x,+r+cyz.y))), cyz(cyz), r(r)
+    materialnode(C_CYLINDERYZ, aabb(vec3f(-FLT_MAX,-r+cyz.x,-r+cyz.y),
+                                    vec3f(+FLT_MAX,+r+cyz.x,+r+cyz.y))), cyz(cyz), r(r)
   {}
   vec2f cyz;
   float r;
 };
-struct translation : node {
+struct translation : materialnode {
   INLINE translation(const vec3f &p, node *n) :
-    node(C_TRANSLATION, aabb(p+n->box.pmin, p+n->box.pmax)), p(p), n(n) {}
+    materialnode(C_TRANSLATION, aabb(p+n->box.pmin, p+n->box.pmax)), p(p), n(n) {}
   virtual ~translation() { SAFE_DEL(n); }
   vec3f p;
   node *n;
 };
-struct rotation : node {
+struct rotation : materialnode {
   INLINE rotation(const quat3f &q, node *n) :
-    node(C_ROTATION, aabb::all()), q(q), n(n) {}
+    materialnode(C_ROTATION, aabb::all()), q(q), n(n) {}
   virtual ~rotation() { SAFE_DEL(n); }
   quat3f q;
   node *n;
@@ -111,8 +104,8 @@ node *capped_cylinder(const vec2f &cxz, const vec3f &ryminymax) {
 static node *makescene0() {
   const auto t = vec3f(7.f, 5.f, 7.f);
   const auto s = NEW(sphere, 4.2f);
-  //const auto q = quat3f(deg2rad(20.0f),deg2rad(25.f),0.f);
-  //const auto b0 = NEW(rotation, q, NEW(box, vec3f(4.f)));
+  // const auto q = quat3f(deg2rad(20.0f),deg2rad(25.f),0.f);
+  // const auto b0 = NEW(rotation, q, NEW(box, vec3f(4.f)));
   const auto b0 = NEW(box, vec3f(4.f));
   const auto d0 = NEW(translation, t, s);
   const auto d1 = NEW(translation, t, b0);
@@ -133,9 +126,9 @@ static node *makescene0() {
   node *cut = NEW(translation, vec3f(0.f,-2.f,0.f), NEW(box, vec3f(2.f, 2.f, 20.f)));
   big = NEW(D, big, cut);
   node *cxy = NEW(cylinderxy, vec2f(zero), 2.f);
- // cxy = NEW(translation, vec3f(16.f, 4.f, 10.f), *cxy);
+  // cxy = NEW(translation, vec3f(16.f, 4.f, 10.f), *cxy);
   node *arcade = NEW(D, big, cxy);
-  //arcade = NEW(rotation, quat3f(20.f,0.f,0.f), arcade);
+  // arcade = NEW(rotation, quat3f(20.f,0.f,0.f), arcade);
   arcade = NEW(translation, vec3f(16.f,4.f,10.f), arcade);
   loopi(7) {
     const auto pos = vec3f(16.f,3.5f,7.f+3.f*float(i));
@@ -170,7 +163,9 @@ node *makescene() {
 
 void destroyscene(node *n) { SAFE_DEL(n); }
 
-void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist, int num, const aabb &box) {
+void distr(const node *n, const vec3f * RESTRICT pos,
+  float * RESTRICT dist, u32 * RESTRICT matindex, int num, const aabb &box)
+{
 
   switch (n->type) {
     case C_UNION: {
@@ -181,14 +176,14 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist, int
       const auto goright = all(le(isecright.pmin, isecright.pmax));
       if (goleft && goright) {
         float tempdist[64];
-        distr(u->left, pos, dist, num, box);
+        distr(u->left, pos, dist, matindex, num, box);
         loopi(num) tempdist[i] = FLT_MAX;
-        distr(u->right, pos, tempdist, num, box);
+        distr(u->right, pos, tempdist, matindex, num, box);
         loopi(num) dist[i] = min(dist[i], tempdist[i]);
       } else if (goleft)
-        distr(u->left, pos, dist, num, box);
+        distr(u->left, pos, dist, matindex, num, box);
       else if (goright)
-        distr(u->right, pos, dist, num, box);
+        distr(u->right, pos, dist, matindex, num, box);
       break;
     }
     case C_INTERSECTION: {
@@ -198,9 +193,9 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist, int
       const auto isecright = intersection(i->right->box, box);
       if (!all(le(isecright.pmin, isecright.pmax))) break;
       float tempdist[64];
-      distr(i->left, pos, dist, num, box);
+      distr(i->left, pos, dist, matindex, num, box);
       loopi(num) tempdist[i] = FLT_MAX;
-      distr(i->right, pos, tempdist, num, box);
+      distr(i->right, pos, tempdist, matindex, num, box);
       loopi(num) dist[i] = max(dist[i], tempdist[i]);
       break;
     }
@@ -208,14 +203,17 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist, int
       const auto d = static_cast<const D*>(n);
       const auto isecleft = intersection(d->left->box, box);
       if (!all(le(isecleft.pmin, isecleft.pmax))) break;
-      distr(d->left, pos, dist, num, box);
+      distr(d->left, pos, dist, matindex, num, box);
 
       const auto isecright = intersection(d->right->box, box);
       if (!all(le(isecright.pmin, isecright.pmax))) break;
       float tempdist[64];
       loopi(num) tempdist[i] = FLT_MAX;
-      distr(d->right, pos, tempdist, num, box);
-      loopi(num) dist[i] = max(dist[i], -tempdist[i]);
+      distr(d->right, pos, tempdist, matindex, num, box);
+      loopi(num) {
+        dist[i] = max(dist[i], -tempdist[i]);
+        matindex[i] = dist[i] > 0.f ? MAT_AIR_INDEX : matindex[i];
+      }
       break;
     }
     case C_TRANSLATION: {
@@ -224,7 +222,7 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist, int
       const auto t = static_cast<const translation*>(n);
       vec3f tpos[64];
       loopi(num) tpos[i] = pos[i] - t->p;
-      distr(t->n, tpos, dist, num, aabb(box.pmin-t->p, box.pmax-t->p));
+      distr(t->n, tpos, dist, matindex, num, aabb(box.pmin-t->p, box.pmax-t->p));
       break;
     }
     case C_ROTATION: {
@@ -233,7 +231,7 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist, int
       const auto r = static_cast<const rotation*>(n);
       vec3f tpos[64];
       loopi(num) tpos[i] = xfmpoint(conj(r->q), pos[i]);
-      distr(r->n, tpos, dist, num, aabb::all());
+      distr(r->n, tpos, dist, matindex, num, aabb::all());
       break;
     }
     case C_PLANE: {
@@ -276,10 +274,10 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist, int
   }
 }
 
-void dist(const node *n, const vec3f *pos, float *d, int num, const aabb &box) {
+void dist(const node *n, const vec3f *pos, float *d, u32 *mat, int num, const aabb &box) {
   assert(num <= 64);
   loopi(num) d[i] = FLT_MAX;
-  distr(n, pos, d, num, box);
+  distr(n, pos, d, mat, num, box);
 }
 
 float dist(const node *n, const vec3f &pos, const aabb &box) {
