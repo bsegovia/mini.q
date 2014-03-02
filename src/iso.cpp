@@ -50,8 +50,14 @@ INLINE pair<vec3i,u32> edge(vec3i start, vec3i end) {
   assert(reduceadd(delta) == 1);
   return makepair(lower, u32(delta.y+2*delta.z));
 }
+struct fielditem {
+  INLINE fielditem(float d, u32 m) : d(d), m(m) {}
+  INLINE fielditem() {}
+  float d;
+  u32 m;
+};
+typedef fielditem mcell[8];
 
-typedef float mcell[8];
 static const vec3i axis[] = {vec3i(1,0,0), vec3i(0,1,0), vec3i(0,0,1)};
 static const u32 quadorder[] = {0,1,2,3};
 static const u32 quadorder_cc[] = {3,2,1,0};
@@ -230,23 +236,26 @@ struct dc_gridbuilder {
     return offset + edge * FIELDNUM;
   }
 
-  INLINE float &field(const vec3i &xyz) { return m_field[field_index(xyz)]; }
+  INLINE fielditem &field(const vec3i &xyz) {return m_field[field_index(xyz)];}
 
   void initfield() {
     const vec3i org(-1), dim(SUBGRID+3);
     stepxyz(org, dim, vec3i(4)) {
       vec3f pos[64];
-      float distance[64];
-      u32 matindex[64];
+      float d[64];
+      u32 m[64];
       const auto p = vertex(sxyz);
       const aabb box = aabb(p-2.f*m_cellsize, p+6.f*m_cellsize);
       int index = 0;
       const auto end = min(sxyz+4,dim);
       loopxyz(sxyz, end) pos[index++] = vertex(xyz);
       assert(index == 64);
-      csg::dist(m_node, pos, distance, matindex, index, box);
+      csg::dist(m_node, pos, d, m, index, box);
       index = 0;
-      loopxyz(sxyz, end) field(xyz) = distance[index++];
+      loopxyz(sxyz, end) {
+        field(xyz) = fielditem(d[index], m[index]);
+        ++index;
+      }
       STATS_ADD(iso_num, 64);
       STATS_ADD(iso_grid_num, 64);
     }
@@ -266,9 +275,8 @@ struct dc_gridbuilder {
 
   int delayed_qef_vertex(const mcell &cell, const vec3i &xyz) {
     int cubeindex = 0;
-    loopi(8) if (cell[i] < 0.0f) cubeindex |= 1<<i;
-    if (edgetable[cubeindex] == 0)
-      return 0;
+    loopi(8) if (cell[i].d < 0.0f) cubeindex |= 1<<i;
+    assert(edgetable[cubeindex] != 0);
     loopi(12) {
       if ((edgetable[cubeindex] & (1<<i)) == 0)
         continue;
@@ -338,8 +346,8 @@ struct dc_gridbuilder {
         it[j].org = vertex(xyz+edge.first);
         it[j].p0 = vec3f(icubev[idx0]-edge.first);
         it[j].p1 = vec3f(icubev[idx1]-edge.first);
-        it[j].v0 = field(xyz + icubev[idx0]);
-        it[j].v1 = field(xyz + icubev[idx1]);
+        it[j].v0 = field(xyz + icubev[idx0]).d;
+        it[j].v1 = field(xyz + icubev[idx1]).d;
         if (it[j].v1 < 0.f) {
           swap(it[j].p0,it[j].p1);
           swap(it[j].v0,it[j].v1);
@@ -447,8 +455,8 @@ struct dc_gridbuilder {
   void tesselate() {
     const vec3i org(zero), dim(SUBGRID+1);
     loopxyz(org, dim) {
-      const int start_sign = field(xyz) < 0.f ? 1 : 0;
-      if (abs(field(xyz)) > 2.f*m_cellsize) continue;
+      const int start_sign = field(xyz).d < 0.f ? 1 : 0;
+      if (abs(field(xyz).d) > 2.f*m_cellsize) continue;
 
       // some quads belong to our neighbor. we will not push them but we need to
       // compute their vertices such that our neighbor can output these quads
@@ -459,7 +467,7 @@ struct dc_gridbuilder {
 
         // is it an actual edge?
         const auto delta = axis[i];
-        const int end_sign = field(xyz+delta) < 0.f ? 1 : 0;
+        const int end_sign = field(xyz+delta).d < 0.f ? 1 : 0;
         if (start_sign == end_sign) continue;
 
         // we found one edge. we output one quad for it
@@ -497,7 +505,7 @@ struct dc_gridbuilder {
   }
 
   const csg::node *m_node;
-  vector<float> m_field;
+  vector<fielditem> m_field;
   vector<quad> m_quad_buffer;
   vector<u32> m_qef_index;
   vector<u32> m_edge_index;

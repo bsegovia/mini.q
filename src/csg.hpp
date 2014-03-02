@@ -14,10 +14,12 @@ namespace csg {
 enum mattype : u32 {
   MAT_AIR = 0,
   MAT_SNOISE,
-  MAT_GRID
+  MAT_SIMPLE
 };
 
 static const u32 MAT_AIR_INDEX = 0;
+static const u32 MAT_SNOISE_INDEX = 1;
+static const u32 MAT_SIMPLE_INDEX = 2;
 struct material {
   INLINE material(mattype type = MAT_AIR) : type(type) {}
   mattype type;

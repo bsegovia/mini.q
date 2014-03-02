@@ -12,9 +12,6 @@ namespace csg {
 /*--------------------------------------------------------------------------
  - all materials
  -------------------------------------------------------------------------*/
-const material airmat(MAT_AIR);
-const material snoisemat(MAT_SNOISE);
-const material gridmat(MAT_GRID);
 
 /*--------------------------------------------------------------------------
  - implements all basic CSG nodes
@@ -32,69 +29,81 @@ BINARY(I,C_INTERSECTION, intersection(nleft->box, nright->box))
 #undef BINARY
 
 struct materialnode : node {
-  INLINE materialnode(CSGOP type, const aabb &box = aabb::empty()) : node(type, box) {}
+  INLINE materialnode(CSGOP type, const aabb &box = aabb::empty(), u32 matindex = MAT_SIMPLE_INDEX) :
+    node(type, box), matindex(matindex) {}
   u32 matindex;
 };
 
 struct box : materialnode {
-  INLINE box(const vec3f &extent) :
-    materialnode(C_BOX, aabb(-extent,+extent)), extent(extent) {}
+  INLINE box(const vec3f &extent, u32 matindex = MAT_SIMPLE_INDEX) :
+    materialnode(C_BOX, aabb(-extent,+extent), matindex), extent(extent) {}
   vec3f extent;
 };
 struct plane : materialnode {
-  INLINE plane(const vec4f &p) : materialnode(C_PLANE, aabb::all()), p(p) {}
+  INLINE plane(const vec4f &p, u32 matindex = MAT_SIMPLE_INDEX) :
+    materialnode(C_PLANE, aabb::all(), matindex), p(p) {}
   vec4f p;
 };
 struct sphere : materialnode {
-  INLINE sphere(float r) : materialnode(C_SPHERE, aabb(-r, r)), r(r) {}
+  INLINE sphere(float r, u32 matindex = MAT_SIMPLE_INDEX) :
+    materialnode(C_SPHERE, aabb(-r, r), matindex), r(r) {}
   float r;
 };
+
+INLINE aabb cyzbox(const vec2f &cyz, float r) {
+  return aabb(vec3f(-FLT_MAX,-r+cyz.x,-r+cyz.y),
+              vec3f(+FLT_MAX,+r+cyz.x,+r+cyz.y));;
+}
+INLINE aabb cxzbox(const vec2f &cxz, float r) {
+  return aabb(vec3f(-r+cxz.x,-FLT_MAX,-r+cxz.y),
+              vec3f(+r+cxz.x,+FLT_MAX,+r+cxz.y));
+}
+INLINE aabb cxybox(const vec2f &cxy, float r) {
+  return aabb(vec3f(-r+cxy.x,-r+cxy.y,-FLT_MAX),
+              vec3f(+r+cxy.x,+r+cxy.y,+FLT_MAX));
+}
+
 struct cylinderxz : materialnode {
-  INLINE cylinderxz(const vec2f &cxz, float r) :
-    materialnode(C_CYLINDERXZ, aabb(vec3f(-r+cxz.x,-FLT_MAX,-r+cxz.y),
-                                    vec3f(+r+cxz.x,+FLT_MAX,+r+cxz.y))), cxz(cxz), r(r)
-  {}
+  INLINE cylinderxz(const vec2f &cxz, float r, u32 matindex = MAT_SIMPLE_INDEX) :
+    materialnode(C_CYLINDERXZ, cxzbox(cxz,r), matindex), cxz(cxz), r(r) {}
   vec2f cxz;
   float r;
 };
 struct cylinderxy : materialnode {
-  INLINE cylinderxy(const vec2f &cxy, float r) :
-    materialnode(C_CYLINDERXY, aabb(vec3f(-r+cxy.x,-r+cxy.y,-FLT_MAX),
-                                    vec3f(+r+cxy.x,+r+cxy.y,+FLT_MAX))), cxy(cxy), r(r)
-  {}
+  INLINE cylinderxy(const vec2f &cxy, float r, u32 matindex = MAT_SIMPLE_INDEX) :
+    materialnode(C_CYLINDERXY, cxybox(cxy,r), matindex), cxy(cxy), r(r) {}
   vec2f cxy;
   float r;
 };
 struct cylinderyz : materialnode {
-  INLINE cylinderyz(const vec2f &cyz, float r) :
-    materialnode(C_CYLINDERYZ, aabb(vec3f(-FLT_MAX,-r+cyz.x,-r+cyz.y),
-                                    vec3f(+FLT_MAX,+r+cyz.x,+r+cyz.y))), cyz(cyz), r(r)
+  INLINE cylinderyz(const vec2f &cyz, float r, u32 matindex = MAT_SIMPLE_INDEX) :
+    materialnode(C_CYLINDERYZ, cyzbox(cyz,r), matindex), cyz(cyz), r(r)
   {}
   vec2f cyz;
   float r;
 };
-struct translation : materialnode {
+struct translation : node {
   INLINE translation(const vec3f &p, node *n) :
-    materialnode(C_TRANSLATION, aabb(p+n->box.pmin, p+n->box.pmax)), p(p), n(n) {}
+    node(C_TRANSLATION, aabb(p+n->box.pmin, p+n->box.pmax)), p(p), n(n) {}
   virtual ~translation() { SAFE_DEL(n); }
   vec3f p;
   node *n;
 };
-struct rotation : materialnode {
+struct rotation : node {
   INLINE rotation(const quat3f &q, node *n) :
-    materialnode(C_ROTATION, aabb::all()), q(q), n(n) {}
+    node(C_ROTATION, aabb::all()), q(q), n(n) {}
   virtual ~rotation() { SAFE_DEL(n); }
   quat3f q;
   node *n;
 };
 
-node *capped_cylinder(const vec2f &cxz, const vec3f &ryminymax) {
+node *capped_cylinder(const vec2f &cxz, const vec3f &ryminymax, u32 matindex = MAT_SIMPLE_INDEX) {
   const auto r = ryminymax.x;
   const auto ymin = ryminymax.y;
   const auto ymax = ryminymax.z;
-  const auto cyl = NEW(cylinderxz, cxz, r);
-  const auto plane0 = NEW(plane, vec4f(0.f,1.f,0.f,-ymin));
-  const auto plane1 = NEW(plane, vec4f(0.f,-1.f,0.f,ymax));
+  const auto cyl = NEW(cylinderxz, cxz, r, matindex);
+  const auto plane0 = NEW(plane, vec4f(0.f,1.f,0.f,-ymin), matindex);
+  const auto plane1 = NEW(plane, vec4f(0.f,-1.f,0.f,ymax), matindex);
   const auto ccyl = NEW(D, NEW(D, cyl, plane0), plane1);
   ccyl->box.pmin = vec3f(cxz.x-r,ymin,cxz.y-r);
   ccyl->box.pmax = vec3f(cxz.x+r,ymax,cxz.y+r);
@@ -114,9 +123,9 @@ static node *makescene0() {
     const auto center = vec2f(2.f,2.f+2.f*float(i));
     const auto ryminymax = vec3f(1.f,1.f,2*float(i)+2.f);
     if (c == NULL)
-        c = capped_cylinder(center, ryminymax);
+        c = capped_cylinder(center, ryminymax, MAT_SNOISE_INDEX);
       else
-        c = NEW(U, c, capped_cylinder(center, ryminymax));
+        c = NEW(U, c, capped_cylinder(center, ryminymax, MAT_SNOISE_INDEX));
   }
   const auto b = NEW(box, vec3f(3.5f, 4.f, 3.5f));
   const auto scene0 = NEW(D, c, NEW(translation, vec3f(2.f,5.f,18.f), b));
@@ -156,15 +165,15 @@ static node *makescene0() {
 node *makescene() {
   node *s0 = makescene0();
   int k = 0, j = 0;
-  loopi(16) // loopj(2) loopk(2)
+  loopi(1) // loopj(2) loopk(2)
   s0 = NEW(U, s0, NEW(translation, vec3f(float(i)*30.f,float(k)*40.f,float(j)*20.f), makescene0()));
   return s0;
 }
 
 void destroyscene(node *n) { SAFE_DEL(n); }
 
-void distr(const node *n, const vec3f * RESTRICT pos,
-  float * RESTRICT dist, u32 * RESTRICT matindex, int num, const aabb &box)
+void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
+           u32 * RESTRICT matindex, int num, const aabb &box)
 {
 
   switch (n->type) {
@@ -238,7 +247,10 @@ void distr(const node *n, const vec3f * RESTRICT pos,
       const auto isec = intersection(n->box, box);
       if (any(gt(isec.pmin, isec.pmax))) break;
       const auto p = static_cast<const plane*>(n);
-      loopi(num) dist[i] = dot(pos[i], p->p.xyz()) + p->p.w;
+      loopi(num) {
+        dist[i] = dot(pos[i], p->p.xyz()) + p->p.w;
+        matindex[i] = dist[i] < 0.f ? p->matindex : matindex[i];
+      }
       break;
     }
 
@@ -247,7 +259,10 @@ void distr(const node *n, const vec3f * RESTRICT pos,
     const auto isec = intersection(n->box, box);\
     if (any(gt(isec.pmin, isec.pmax))) break;\
     const auto c = static_cast<const cylinder##COORD*>(n);\
-    loopi(num) dist[i] = length(pos[i].COORD()-c->c##COORD) - c->r;\
+    loopi(num) {\
+      dist[i] = length(pos[i].COORD()-c->c##COORD) - c->r;\
+      matindex[i] = dist[i] < 0.f ? c->matindex : matindex[i];\
+    }\
     break;\
   }
   CYL(XY,xy); CYL(XZ,xz); CYL(YZ,yz);
@@ -257,16 +272,21 @@ void distr(const node *n, const vec3f * RESTRICT pos,
       const auto isec = intersection(n->box, box);
       if (any(gt(isec.pmin, isec.pmax))) break;
       const auto s = static_cast<const sphere*>(n);
-      loopi(num) dist[i] = length(pos[i]) - s->r;
+      loopi(num) {
+        dist[i] = length(pos[i]) - s->r;
+        matindex[i] = dist[i] < 0.f ? s->matindex : matindex[i];
+      }
       break;
     }
     case C_BOX: {
       const auto isec = intersection(n->box, box);
       if (any(gt(isec.pmin, isec.pmax))) break;
-      const auto extent = static_cast<const struct box*>(n)->extent;
+      const auto b = static_cast<const struct box*>(n);
+      const auto extent = b->extent;
       loopi(num) {
         const auto pd = abs(pos[i])-extent;
         dist[i] = min(max(pd.x,max(pd.y,pd.z)),0.0f) + length(max(pd,vec3f(zero)));
+        matindex[i] = dist[i] < 0.f ? b->matindex : matindex[i];
       }
       break;
     }
@@ -277,6 +297,7 @@ void distr(const node *n, const vec3f * RESTRICT pos,
 void dist(const node *n, const vec3f *pos, float *d, u32 *mat, int num, const aabb &box) {
   assert(num <= 64);
   loopi(num) d[i] = FLT_MAX;
+  loopi(num) mat[i] = MAT_AIR_INDEX;
   distr(n, pos, d, mat, num, box);
 }
 
