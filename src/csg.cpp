@@ -165,7 +165,7 @@ static node *makescene0() {
 node *makescene() {
   node *s0 = makescene0();
   int k = 0, j = 0;
-  loopi(1) // loopj(2) loopk(2)
+  loopi(16) // loopj(2) loopk(2)
   s0 = NEW(U, s0, NEW(translation, vec3f(float(i)*30.f,float(k)*40.f,float(j)*20.f), makescene0()));
   return s0;
 }
@@ -175,7 +175,6 @@ void destroyscene(node *n) { SAFE_DEL(n); }
 void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
            u32 * RESTRICT matindex, int num, const aabb &box)
 {
-
   switch (n->type) {
     case C_UNION: {
       const auto u = static_cast<const U*>(n);
@@ -184,11 +183,18 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
       const auto goleft = all(le(isecleft.pmin, isecleft.pmax));
       const auto goright = all(le(isecright.pmin, isecright.pmax));
       if (goleft && goright) {
-        float tempdist[64];
         distr(u->left, pos, dist, matindex, num, box);
-        loopi(num) tempdist[i] = FLT_MAX;
-        distr(u->right, pos, tempdist, matindex, num, box);
-        loopi(num) dist[i] = min(dist[i], tempdist[i]);
+        float tempdist[64];
+        u32 tempmatindex[64];
+        loopi(num) {
+          tempdist[i] = FLT_MAX;
+          tempmatindex[i] = MAT_AIR_INDEX;
+        }
+        distr(u->right, pos, tempdist, tempmatindex, num, box);
+        loopi(num) {
+          dist[i] = min(dist[i], tempdist[i]);
+          matindex[i] = max(matindex[i], tempmatindex[i]);
+        }
       } else if (goleft)
         distr(u->left, pos, dist, matindex, num, box);
       else if (goright)
@@ -201,11 +207,14 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
       if (!all(le(isecleft.pmin, isecleft.pmax))) break;
       const auto isecright = intersection(i->right->box, box);
       if (!all(le(isecright.pmin, isecright.pmax))) break;
-      float tempdist[64];
       distr(i->left, pos, dist, matindex, num, box);
+      float tempdist[64];
       loopi(num) tempdist[i] = FLT_MAX;
       distr(i->right, pos, tempdist, matindex, num, box);
-      loopi(num) dist[i] = max(dist[i], tempdist[i]);
+      loopi(num) {
+        dist[i] = max(dist[i], tempdist[i]);
+        matindex[i] = dist[i] >= 0.f ? MAT_AIR_INDEX : matindex[i];
+      }
       break;
     }
     case C_DIFFERENCE: {
@@ -217,11 +226,12 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
       const auto isecright = intersection(d->right->box, box);
       if (!all(le(isecright.pmin, isecright.pmax))) break;
       float tempdist[64];
+      u32 tempmatindex[64];
       loopi(num) tempdist[i] = FLT_MAX;
-      distr(d->right, pos, tempdist, matindex, num, box);
+      distr(d->right, pos, tempdist, tempmatindex, num, box);
       loopi(num) {
         dist[i] = max(dist[i], -tempdist[i]);
-        matindex[i] = dist[i] > 0.f ? MAT_AIR_INDEX : matindex[i];
+        matindex[i] = dist[i] >= 0.f ? MAT_AIR_INDEX : matindex[i];
       }
       break;
     }
