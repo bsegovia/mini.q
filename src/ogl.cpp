@@ -162,7 +162,7 @@ union {
 } dirty;
 static u32 bindedvbo[BUFFER_NUM];
 static u32 enabledattribarray[ATTRIB_NUM];
-static struct shadertype *bindedshader = NULL;
+static const struct shadertype *bindedshader = NULL;
 
 static const u32 TEX_NUM = 8;
 static u32 bindedtexture[TEX_NUM];
@@ -840,7 +840,7 @@ bool shaderbuilder::build(shadertype &s, int fromfile, bool save) {
     return buildprogram(s, vp, fp);
 }
 
-void bindshader(shadertype &shader) {
+void bindshader(const shadertype &shader) {
   if (bindedshader != &shader) {
     bindedshader = &shader;
     dirty.any = ~0x0;
@@ -899,7 +899,7 @@ void fixedrules(shaderrules &vert, shaderrules &frag, u32 rule) {
 void fixedflush() {
   if (dirty.any == 0) return; // fast path
   if (dirty.flags.mvp) {
-    const auto s = static_cast<fixed::shadertype*>(bindedshader);
+    const auto s = static_cast<const fixed::shadertype*>(bindedshader);
     viewproj = vp[PROJECTION]*vp[MODELVIEW];
     OGL(UniformMatrix4fv, s->u_mvp, 1, GL_FALSE, &viewproj.vx.x);
     dirty.flags.mvp = 0;
@@ -909,7 +909,7 @@ void fixedflush() {
 void bindfixedshader(u32 flags) {bindshader(fixed::s[flags]);}
 void bindfixedshader(u32 flags, float delta) {
   bindfixedshader(flags);
-  OGL(Uniform1f, static_cast<fixed::shadertype*>(bindedshader)->u_delta, delta);
+  OGL(Uniform1f, static_cast<const fixed::shadertype*>(bindedshader)->u_delta, delta);
 }
 
 /*-------------------------------------------------------------------------

@@ -1494,6 +1494,23 @@ const char noise4D[] = {
 "      + dot(m1*m1, vec2(dot(p3, x3), dot(p4, x4)))) ;\n"
 "}\n"
 };
+const char noise_material_fp[] = {
+"PS_IN vec3 fs_nor;\n"
+"PS_IN vec3 fs_pos;\n"
+"void main() {\n"
+"  vec3 p = fs_pos*3.0;\n"
+"  float c = snoise(p);\n"
+"  float dx = snoise(p+vec3(0.01,0.0,0.0));\n"
+"  float dy = snoise(p+vec3(0.0,0.01,0.0));\n"
+"  float dz = snoise(p+vec3(0.0,0.0,0.01));\n"
+"  vec3 dn = normalize(vec3(c-dx, c-dy, c-dz));\n"
+"  vec3 n = 0.5*normalize(fs_nor + dn/10.0)+0.5;\n"
+"  // vec3 n = 0.5*normalize(fs_nor)+0.5;\n"
+"  SWITCH_WEBGL(gl_FragData[0], rt_col) = vec4(1.0);\n"
+"  SWITCH_WEBGL(gl_FragData[1], rt_nor) = vec4(n, 1.0);\n"
+"}\n"
+
+};
 const char shadertoy_fp[] = {
 "void main() { SWITCH_WEBGL(gl_FragColor, rt_col) = entry(); }\n"
 
@@ -1507,13 +1524,7 @@ const char simple_material_fp[] = {
 "PS_IN vec3 fs_pos;\n"
 "void main() {\n"
 "  vec3 p = fs_pos*3.0;\n"
-"  float c = snoise(p);\n"
-"  float dx = snoise(p+vec3(0.01,0.0,0.0));\n"
-"  float dy = snoise(p+vec3(0.0,0.01,0.0));\n"
-"  float dz = snoise(p+vec3(0.0,0.0,0.01));\n"
-"  vec3 dn = normalize(vec3(c-dx, c-dy, c-dz));\n"
-"  // vec3 n = 0.5*normalize(fs_nor + dn/10.0)+0.5;\n"
-"  vec3 n = 0.5*normalize(fs_nor) + 0.5;\n"
+"  vec3 n = 0.5*normalize(fs_nor)+0.5;\n"
 "  SWITCH_WEBGL(gl_FragData[0], rt_col) = vec4(1.0);\n"
 "  SWITCH_WEBGL(gl_FragData[1], rt_nor) = vec4(n, 1.0);\n"
 "}\n"

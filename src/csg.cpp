@@ -165,7 +165,7 @@ static node *makescene0() {
 node *makescene() {
   node *s0 = makescene0();
   int k = 0, j = 0;
-  loopi(16) // loopj(2) loopk(2)
+  loopi(1) // loopj(2) loopk(2)
   s0 = NEW(U, s0, NEW(translation, vec3f(float(i)*30.f,float(k)*40.f,float(j)*20.f), makescene0()));
   return s0;
 }

@@ -1,4 +1,5 @@
-SHADER(simple_material)
+SHADER(noise_material)
+INCLUDE(noise3D)
 FRAGDATA(vec4, rt_nor, 1)
 FRAGDATA(vec4, rt_col, 0)
 

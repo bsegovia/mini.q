@@ -189,7 +189,7 @@ struct shadertype {
   u32 internal[0];
 };
 void destroyshader(shadertype&);
-void bindshader(shadertype&);
+void bindshader(const shadertype&);
 
 // provides rules source when compiling a shader
 typedef vector<char*> shaderrules;

@@ -369,7 +369,7 @@ struct dc_gridbuilder {
       const auto edgemap = item.second;
 
       // this vertex does not belong this leaf. skip it. we test all three sign
-      if ((xyz.x | xyz.y | xyz.z) >> 31) continue;
+      if ((xyz.x|xyz.y|xyz.z)>>31) continue;
 
       // get the intersection points between the surface and the cube edges
       vec3f p[12], n[12], mass(zero);
@@ -423,7 +423,8 @@ struct dc_gridbuilder {
   void tesselate() {
     const vec3i org(zero), dim(SUBGRID+1);
     loopxyz(org, dim) {
-      const int start_sign = field(xyz).d < 0.f ? 1 : 0;
+      const auto startfield = field(xyz);
+      const auto startsign = startfield.d < 0.f ? 1 : 0;
       if (abs(field(xyz).d) > 2.f*m_cellsize) continue;
 
       // some quads belong to our neighbor. we will not push them but we need to
@@ -434,9 +435,10 @@ struct dc_gridbuilder {
       loopi(3) {
 
         // is it an actual edge?
-        const auto delta = axis[i];
-        const int end_sign = field(xyz+delta).d < 0.f ? 1 : 0;
-        if (start_sign == end_sign) continue;
+        const auto end = xyz+axis[i];
+        const auto endfield = field(end);
+        const int endsign = endfield.d < 0.f ? 1 : 0;
+        if (startsign == endsign) continue;
 
         // we found one edge. we output one quad for it
         const auto axis0 = axis[(i+1)%3];
@@ -456,8 +458,11 @@ struct dc_gridbuilder {
 
         // we must use a more compact storage for it
         if (outside) continue;
-        const auto qor = start_sign==1 ? quadorder : quadorder_cc;
-        const quad q = {{m_iorg+p[qor[0]], m_iorg+p[qor[1]], m_iorg+p[qor[2]], m_iorg+p[qor[3]]}};
+        const auto qor = startsign==1 ? quadorder : quadorder_cc;
+        const quad q = {
+          {m_iorg+p[qor[0]], m_iorg+p[qor[1]], m_iorg+p[qor[2]], m_iorg+p[qor[3]]},
+          max(startfield.m, endfield.m)
+        };
         m_quad_buffer.add(q);
       }
     }
@@ -634,19 +639,25 @@ static mesh buildmesh(octree &o) {
   // build the buffers here
   vector<vec3f> posbuf, norbuf;
   vector<u32> idxbuf;
+  vector<segment> seg;
   vector<pair<int,int>> vertlist;
 #if 0
-  u32 num = 0;
+  u32 num = 0, simplenum = 0, noisenum;
   loopv(ctx->m_builders) {
     const auto &b = *ctx->m_builders[i];
     const auto quadlen = b.m_quad_buffer.length();
+    loopvj(b.m_quad_buffer) {
+      if (b.m_quad_buffer[j].matindex == csg::MAT_SNOISE_INDEX) ++noisenum;
+      else if (b.m_quad_buffer[j].matindex == csg::MAT_SIMPLE_INDEX) ++simplenum;
+    }
     num += quadlen;
   }
 
-//  printf("num %d\n", num);
+  printf("num %d simplenum %d noisenum %d\n", num, simplenum, noisenum);
 #endif
 #if 1
   // merge all builder vertex buffers
+  u32 currmat = ~0x0;
   loopv(ctx->m_builders) {
     const auto &b = *ctx->m_builders[i];
     const auto quadlen = b.m_quad_buffer.length();
@@ -656,9 +667,10 @@ static mesh buildmesh(octree &o) {
     loopj(quadlen) {
       // get four points
       const auto &q = b.m_quad_buffer[j];
+      const auto quadmat = q.matindex;
       octree::qefpoint *pt[4];
       loopk(4) {
-        const auto *leaf = o.findleaf(q.index[k]);
+        const auto leaf = o.findleaf(q.index[k]);
         const auto idx = q.index[k] % vec3i(SUBGRID);
         const auto qefidx = idx.x+SUBGRID*(idx.y+SUBGRID*idx.z);
         pt[k] = leaf->qef+qefidx;
@@ -677,6 +689,11 @@ static mesh buildmesh(octree &o) {
         const auto len2 = length2(dir);
         if (len2 == 0.f) continue;
         const auto nor = dir/sqrt(len2);
+        if (quadmat != currmat) {
+          seg.add({u32(idxbuf.length()),0u,quadmat});
+          currmat = quadmat;
+        }
+        seg.last().num += 3;
         loopl(3) {
           auto qef = pt[t[l]];
           int vertidx = -1, curridx = qef->idx;
@@ -711,10 +728,13 @@ static mesh buildmesh(octree &o) {
   // normalize all vertex normals now
   loopv(norbuf) norbuf[i] = normalize(norbuf[i]);
 #endif
+
+  // printf("segment %d\n", seg.length());
   const auto p = posbuf.move();
   const auto n = norbuf.move();
   const auto idx = idxbuf.move();
-  return mesh(p.first, n.first, idx.first, p.second, idx.second);
+  const auto s = seg.move();
+  return mesh(p.first, n.first, idx.first, s.first, p.second, idx.second, s.second);
 }
 
 mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d) {

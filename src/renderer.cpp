@@ -402,6 +402,11 @@ static void rules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32 rule) {
 #define FRAGMENT_PROGRAM "data/shaders/simple_material_fp.decl"
 #include "shaderdecl.hxx"
 
+#define SHADERNAME noise_material
+#define VERTEX_PROGRAM "data/shaders/simple_material_vp.decl"
+#define FRAGMENT_PROGRAM "data/shaders/noise_material_fp.decl"
+#include "shaderdecl.hxx"
+
 #define SHADERNAME fxaa
 #define VERTEX_PROGRAM "data/shaders/fxaa_vp.decl"
 #define FRAGMENT_PROGRAM "data/shaders/fxaa_fp.decl"
@@ -483,7 +488,8 @@ static vec3f getsundir() {
 static u32 scenenorbo = 0u, sceneposbo = 0u, sceneibo = 0u;
 static u32 indexnum = 0u;
 static bool initialized_m = false;
-
+static iso::segment *segment = NULL;
+static u32 segmentnum = 0;
 void start() {
   initdeferred();
   initparticles();
@@ -494,6 +500,7 @@ void finish() {
     ogl::deletebuffers(1, &sceneposbo);
     ogl::deletebuffers(1, &scenenorbo);
     ogl::deletebuffers(1, &sceneibo);
+    SAFE_DEL(segment);
   }
   cleandeferred();
   cleanparticles();
@@ -506,6 +513,8 @@ static void makescene() {
   const auto start = sys::millis();
   const auto node = csg::makescene();
   auto m = iso::dc_mesh_mt(vec3f(zero), 8192*2, CELLSIZE, *node);
+  segment = m.m_segment;
+  segmentnum = m.m_segmentnum;
   ogl::genbuffers(1, &sceneposbo);
   ogl::bindbuffer(ogl::ARRAY_BUFFER, sceneposbo);
   OGL(BufferData, GL_ARRAY_BUFFER, m.m_vertnum*sizeof(vec3f), &m.m_pos[0].x, GL_STATIC_DRAW);
@@ -590,15 +599,24 @@ struct context {
     OGL(Clear, GL_DEPTH_BUFFER_BIT);
     if (indexnum != 0) {
       if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_LINE);
-      ogl::bindshader(simple_material::s);
-      OGL(UniformMatrix4fv, simple_material::s.u_mvp, 1, GL_FALSE, &game::mvpmat.vx.x);
       ogl::bindbuffer(ogl::ARRAY_BUFFER, sceneposbo);
       OGL(VertexAttribPointer, ogl::ATTRIB_POS0, 3, GL_FLOAT, 0, sizeof(vec3f), NULL);
       ogl::bindbuffer(ogl::ARRAY_BUFFER, scenenorbo);
       OGL(VertexAttribPointer, ogl::ATTRIB_COL, 3, GL_FLOAT, 0, sizeof(vec3f), NULL);
       ogl::setattribarray()(ogl::ATTRIB_POS0, ogl::ATTRIB_COL);
       ogl::bindbuffer(ogl::ELEMENT_ARRAY_BUFFER, sceneibo);
-      ogl::drawelements(GL_TRIANGLES, indexnum, GL_UNSIGNED_INT, NULL);
+      loopi(segmentnum) {
+        const auto seg = segment[i];
+        const ogl::shadertype simpleshader = simple_material::s;
+        const ogl::shadertype noiseshader = noise_material::s;
+        const auto simplemvp = simple_material::s.u_mvp;
+        const auto noisemvp = noise_material::s.u_mvp;
+        const auto simple = seg.mat == csg::MAT_SIMPLE_INDEX;
+        const auto u_mvp = simple ? simplemvp : noisemvp;
+        ogl::bindshader(simple ? simpleshader : noiseshader);
+        OGL(UniformMatrix4fv, u_mvp, 1, GL_FALSE, &game::mvpmat.vx.x);
+        ogl::drawelements(GL_TRIANGLES, seg.num, GL_UNSIGNED_INT, (const void*)(seg.start*sizeof(u32)));
+      }
       ogl::bindbuffer(ogl::ELEMENT_ARRAY_BUFFER, 0);
       ogl::bindbuffer(ogl::ARRAY_BUFFER, 0);
       if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_FILL);

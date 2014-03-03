@@ -24,6 +24,7 @@ extern const char md2_vp[];
 extern const char noise2D[];
 extern const char noise3D[];
 extern const char noise4D[];
+extern const char noise_material_fp[];
 extern const char shadertoy_fp[];
 extern const char shadertoy_vp[];
 extern const char simple_material_fp[];
