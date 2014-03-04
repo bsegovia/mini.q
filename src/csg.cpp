@@ -155,7 +155,7 @@ static node *makescene0() {
 
   // change the material just to see
   const auto newmat = NEW(translation, vec3f(20.f,6.f,7.f), NEW(sphere, 4.2f, MAT_SNOISE_INDEX));
-  return NEW(D, world, newmat);
+  return NEW(R, world, newmat);
 }
 #else
 static node *makescene0() {
@@ -177,8 +177,9 @@ node *makescene() {
 
 void destroyscene(node *n) { SAFE_DEL(n); }
 
-void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
-           u32 * RESTRICT matindex, int num, const aabb &box)
+void distr(const node *n, const vec3f * RESTRICT pos, const u32 RESTRICT *exclude,
+           float * RESTRICT dist, u32 * RESTRICT matindex, int num,
+           const aabb &box)
 {
   switch (n->type) {
     case C_UNION: {
@@ -188,22 +189,22 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
       const auto goleft = all(le(isecleft.pmin, isecleft.pmax));
       const auto goright = all(le(isecright.pmin, isecright.pmax));
       if (goleft && goright) {
-        distr(u->left, pos, dist, matindex, num, box);
+        distr(u->left, pos, exclude, dist, matindex, num, box);
         float tempdist[64];
         u32 tempmatindex[64];
         loopi(num) {
           tempdist[i] = FLT_MAX;
           tempmatindex[i] = MAT_AIR_INDEX;
         }
-        distr(u->right, pos, tempdist, tempmatindex, num, box);
+        distr(u->right, pos, exclude, tempdist, tempmatindex, num, box);
         loopi(num) {
           dist[i] = min(dist[i], tempdist[i]);
           matindex[i] = max(matindex[i], tempmatindex[i]);
         }
       } else if (goleft)
-        distr(u->left, pos, dist, matindex, num, box);
+        distr(u->left, pos, exclude, dist, matindex, num, box);
       else if (goright)
-        distr(u->right, pos, dist, matindex, num, box);
+        distr(u->right, pos, exclude, dist, matindex, num, box);
     }
     break;
     case C_REPLACE: {
@@ -211,7 +212,7 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
       const auto isecleft = intersection(r->left->box, box);
       const auto goleft = all(le(isecleft.pmin, isecleft.pmax));
       if (!goleft) return;
-      distr(r->left, pos, dist, matindex, num, box);
+      distr(r->left, pos, exclude, dist, matindex, num, box);
       const auto isecright = intersection(r->right->box, box);
       const auto goright = all(le(isecright.pmin, isecright.pmax));
       if (!goright) return;
@@ -221,7 +222,7 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
         tempdist[i] = FLT_MAX;
         tempmatindex[i] = MAT_AIR_INDEX;
       }
-      distr(r->right, pos, tempdist, tempmatindex, num, box);
+      distr(r->right, pos, exclude, tempdist, tempmatindex, num, box);
       loopi(num) {
         const auto insideright = tempdist[i] < 0.f && dist[i] < 0.f;
         matindex[i] = insideright ? tempmatindex[i] : matindex[i];
@@ -235,10 +236,10 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
       if (!all(le(isecleft.pmin, isecleft.pmax))) break;
       const auto isecright = intersection(i->right->box, box);
       if (!all(le(isecright.pmin, isecright.pmax))) break;
-      distr(i->left, pos, dist, matindex, num, box);
+      distr(i->left, pos, exclude, dist, matindex, num, box);
       float tempdist[64];
       loopi(num) tempdist[i] = FLT_MAX;
-      distr(i->right, pos, tempdist, matindex, num, box);
+      distr(i->right, pos, exclude, tempdist, matindex, num, box);
       loopi(num) {
         dist[i] = max(dist[i], tempdist[i]);
         matindex[i] = dist[i] >= 0.f ? MAT_AIR_INDEX : matindex[i];
@@ -249,14 +250,14 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
       const auto d = static_cast<const D*>(n);
       const auto isecleft = intersection(d->left->box, box);
       if (!all(le(isecleft.pmin, isecleft.pmax))) break;
-      distr(d->left, pos, dist, matindex, num, box);
+      distr(d->left, pos, exclude, dist, matindex, num, box);
 
       const auto isecright = intersection(d->right->box, box);
       if (!all(le(isecright.pmin, isecright.pmax))) break;
       float tempdist[64];
       u32 tempmatindex[64];
       loopi(num) tempdist[i] = FLT_MAX;
-      distr(d->right, pos, tempdist, tempmatindex, num, box);
+      distr(d->right, pos, exclude, tempdist, tempmatindex, num, box);
       loopi(num) {
         dist[i] = max(dist[i], -tempdist[i]);
         matindex[i] = dist[i] >= 0.f ? MAT_AIR_INDEX : matindex[i];
@@ -269,7 +270,8 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
       const auto t = static_cast<const translation*>(n);
       vec3f tpos[64];
       loopi(num) tpos[i] = pos[i] - t->p;
-      distr(t->n, tpos, dist, matindex, num, aabb(box.pmin-t->p, box.pmax-t->p));
+      const aabb tbox(box.pmin-t->p, box.pmax-t->p);
+      distr(t->n, tpos, exclude, dist, matindex, num, tbox);
     }
     break;
     case C_ROTATION: {
@@ -278,7 +280,7 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
       const auto r = static_cast<const rotation*>(n);
       vec3f tpos[64];
       loopi(num) tpos[i] = xfmpoint(conj(r->q), pos[i]);
-      distr(r->n, tpos, dist, matindex, num, aabb::all());
+      distr(r->n, tpos, exclude, dist, matindex, num, aabb::all());
     }
     break;
     case C_PLANE: {
@@ -332,11 +334,13 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
   }
 }
 
-void dist(const node *n, const vec3f *pos, float *d, u32 *mat, int num, const aabb &box) {
+void dist(const node *n, const vec3f *pos, const u32 *exclude,
+          float *d, u32 *mat, int num, const aabb &box)
+{
   assert(num <= 64);
   loopi(num) d[i] = FLT_MAX;
   loopi(num) mat[i] = MAT_AIR_INDEX;
-  distr(n, pos, d, mat, num, box);
+  distr(n, pos, exclude, d, mat, num, box);
 }
 
 float dist(const node *n, const vec3f &pos, const aabb &box) {
