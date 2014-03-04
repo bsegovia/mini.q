@@ -1,12 +1,12 @@
-CXX=clang++
+#CXX=clang++
 FLAGS=-MP -MD -Wall -fvisibility=hidden -I./ `sdl-config --cflags` -I./
 CXXCOMMONFLAGS=-fno-exceptions -fno-unwind-tables -fno-rtti -std=c++11 -fvisibility-inlines-hidden -Wno-invalid-offsetof
 DEBUGFLAGS=-O0 -DMEMORY_DEBUGGER -g
 OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g -fsanitize=address
 RELFLAGS=-fomit-frame-pointer -O3 -DNDEBUG -DRELEASE -g
 
-CXXFLAGS= $(CXXCOMMONFLAGS) $(FLAGS) $(OPTFLAGS)
-LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer -lz -fsanitize=address
+CXXFLAGS= $(CXXCOMMONFLAGS) $(FLAGS) $(DEBUGFLAGS)
+LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer -lz #-fsanitize=address
 
 ENET_OBJS=\
   enet/callbacks.o\

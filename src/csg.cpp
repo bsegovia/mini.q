@@ -26,6 +26,7 @@ struct NAME : node { \
 BINARY(U,C_UNION, sum(nleft->box, nright->box))
 BINARY(D,C_DIFFERENCE, nleft->box)
 BINARY(I,C_INTERSECTION, intersection(nleft->box, nright->box))
+BINARY(R,C_REPLACE, nleft->box);
 #undef BINARY
 
 struct materialnode : node {
@@ -113,9 +114,9 @@ node *capped_cylinder(const vec2f &cxz, const vec3f &ryminymax, u32 matindex = M
 static node *makescene0() {
   const auto t = vec3f(7.f, 5.f, 7.f);
   const auto s = NEW(sphere, 4.2f);
-  // const auto q = quat3f(deg2rad(20.0f),deg2rad(25.f),0.f);
-  // const auto b0 = NEW(rotation, q, NEW(box, vec3f(4.f)));
-  const auto b0 = NEW(box, vec3f(4.f));
+  const auto q = quat3f(deg2rad(0.0f),deg2rad(25.f),0.f);
+  const auto b0 = NEW(rotation, q, NEW(box, vec3f(4.f)));
+//  const auto b0 = NEW(box, vec3f(4.f));
   const auto d0 = NEW(translation, t, s);
   const auto d1 = NEW(translation, t, b0);
   node *c = NEW(D, d1, d0);
@@ -146,11 +147,15 @@ static node *makescene0() {
   }
 
   // add a ground box
-  const auto groundbox = NEW(box, vec3f(50.f, 4.f, 50.f));
+  const auto groundbox = NEW(box, vec3f(50.f, 4.f, 50.f), MAT_SIMPLE_INDEX);
   const auto ground = NEW(translation, vec3f(0.f,-3.f,0.f), groundbox);
 
   // just make a union of them
-  return NEW(U, ground, NEW(U, scene0, arcade));
+  const auto world = NEW(U, ground, NEW(U, scene0, arcade));
+
+  // change the material just to see
+  const auto newmat = NEW(translation, vec3f(20.f,6.f,7.f), NEW(sphere, 4.2f, MAT_SNOISE_INDEX));
+  return NEW(D, world, newmat);
 }
 #else
 static node *makescene0() {
@@ -199,8 +204,31 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
         distr(u->left, pos, dist, matindex, num, box);
       else if (goright)
         distr(u->right, pos, dist, matindex, num, box);
-      break;
     }
+    break;
+    case C_REPLACE: {
+      const auto r = static_cast<const R*>(n);
+      const auto isecleft = intersection(r->left->box, box);
+      const auto goleft = all(le(isecleft.pmin, isecleft.pmax));
+      if (!goleft) return;
+      distr(r->left, pos, dist, matindex, num, box);
+      const auto isecright = intersection(r->right->box, box);
+      const auto goright = all(le(isecright.pmin, isecright.pmax));
+      if (!goright) return;
+      float tempdist[64];
+      u32 tempmatindex[64];
+      loopi(num) {
+        tempdist[i] = FLT_MAX;
+        tempmatindex[i] = MAT_AIR_INDEX;
+      }
+      distr(r->right, pos, tempdist, tempmatindex, num, box);
+      loopi(num) {
+        const auto insideright = tempdist[i] < 0.f && dist[i] < 0.f;
+        matindex[i] = insideright ? tempmatindex[i] : matindex[i];
+        dist[i] = dist[i] < 0.f && abs(tempdist[i]) < 0.05f? -abs(tempdist[i]) : dist[i];
+      }
+    }
+    break;
     case C_INTERSECTION: {
       const auto i = static_cast<const I*>(n);
       const auto isecleft = intersection(i->left->box, box);
@@ -215,8 +243,8 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
         dist[i] = max(dist[i], tempdist[i]);
         matindex[i] = dist[i] >= 0.f ? MAT_AIR_INDEX : matindex[i];
       }
-      break;
     }
+    break;
     case C_DIFFERENCE: {
       const auto d = static_cast<const D*>(n);
       const auto isecleft = intersection(d->left->box, box);
@@ -233,8 +261,8 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
         dist[i] = max(dist[i], -tempdist[i]);
         matindex[i] = dist[i] >= 0.f ? MAT_AIR_INDEX : matindex[i];
       }
-      break;
     }
+    break;
     case C_TRANSLATION: {
       const auto isec = intersection(n->box, box);
       if (any(gt(isec.pmin, isec.pmax))) break;
@@ -242,8 +270,8 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
       vec3f tpos[64];
       loopi(num) tpos[i] = pos[i] - t->p;
       distr(t->n, tpos, dist, matindex, num, aabb(box.pmin-t->p, box.pmax-t->p));
-      break;
     }
+    break;
     case C_ROTATION: {
       const auto isec = intersection(n->box, box);
       if (any(gt(isec.pmin, isec.pmax))) break;
@@ -251,8 +279,8 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
       vec3f tpos[64];
       loopi(num) tpos[i] = xfmpoint(conj(r->q), pos[i]);
       distr(r->n, tpos, dist, matindex, num, aabb::all());
-      break;
     }
+    break;
     case C_PLANE: {
       const auto isec = intersection(n->box, box);
       if (any(gt(isec.pmin, isec.pmax))) break;
@@ -261,8 +289,8 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
         dist[i] = dot(pos[i], p->p.xyz()) + p->p.w;
         matindex[i] = dist[i] < 0.f ? p->matindex : matindex[i];
       }
-      break;
     }
+    break;
 
 #define CYL(NAME, COORD)\
   case C_CYLINDER##NAME: {\
@@ -273,8 +301,8 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
       dist[i] = length(pos[i].COORD()-c->c##COORD) - c->r;\
       matindex[i] = dist[i] < 0.f ? c->matindex : matindex[i];\
     }\
-    break;\
-  }
+  }\
+  break;
   CYL(XY,xy); CYL(XZ,xz); CYL(YZ,yz);
 #undef CYL
 
@@ -286,8 +314,8 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
         dist[i] = length(pos[i]) - s->r;
         matindex[i] = dist[i] < 0.f ? s->matindex : matindex[i];
       }
-      break;
     }
+    break;
     case C_BOX: {
       const auto isec = intersection(n->box, box);
       if (any(gt(isec.pmin, isec.pmax))) break;
@@ -298,8 +326,8 @@ void distr(const node *n, const vec3f * RESTRICT pos, float * RESTRICT dist,
         dist[i] = min(max(pd.x,max(pd.y,pd.z)),0.0f) + length(max(pd,vec3f(zero)));
         matindex[i] = dist[i] < 0.f ? b->matindex : matindex[i];
       }
-      break;
     }
+    break;
     case C_INVALID: assert("unreachable" && false);
   }
 }
@@ -332,6 +360,10 @@ float dist(const node *n, const vec3f &pos, const aabb &box) {
       const auto left = dist(d->left, pos, box);
       const auto right = dist(d->right, pos, box);
       return max(left,-right);
+    }
+    case C_REPLACE: {
+      const auto r = static_cast<const R*>(n);
+      return dist(r->left, pos, box);
     }
     case C_TRANSLATION: {
       const auto t = static_cast<const translation*>(n);

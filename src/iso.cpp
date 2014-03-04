@@ -41,7 +41,7 @@ mesh::~mesh() {
 }
 
 static const auto DEFAULT_GRAD_STEP = 1e-3f;
-static const int MAX_STEPS = 8;
+static const int MAX_STEPS = 4;
 static const float SHARP_EDGE_THRESHOLD = 0.4f;
 
 INLINE pair<vec3i,u32> edge(vec3i start, vec3i end) {
@@ -84,6 +84,7 @@ static const u32 NOINDEX = ~0x0u;
 struct edgeitem {
   vec3f org, p0, p1;
   float v0, v1;
+  u32 m0, m1;
 };
 
 struct edgestack {
@@ -247,12 +248,13 @@ struct dc_gridbuilder {
     int edgemap = 0;
     loopi(12) {
       const auto idx0 = interptable[i][0], idx1 = interptable[i][1];
-      if (cell[idx0].m == cell[idx1].m) continue;
+      const auto m0 = cell[idx0].m, m1 = cell[idx1].m;
+      if (m0 == m1) continue;
       const auto e = getedge(icubev[idx0], icubev[idx1]);
       auto &idx = m_edge_index[edge_index(xyz+e.first, e.second)];
       if (idx == NOINDEX) {
         idx = m_delayed_edges.length();
-        m_delayed_edges.add(makepair(xyz, vec2i(idx0, idx1)));
+        m_delayed_edges.add(makepair(xyz, vec4i(idx0, idx1, m0, m1)));
       }
       edgemap |= (1<<i);
     }
@@ -269,7 +271,11 @@ struct dc_gridbuilder {
     loopk(MAX_STEPS) {
       auto box = aabb::empty();
       loopi(num) {
-        p[i] = it[i].p1 - it[i].v1 * (it[i].p1-it[i].p0)/(it[i].v1-it[i].v0);
+        const auto samesign = it[i].v1*it[i].v0 > 0.f;
+        if (!samesign)
+          p[i] = it[i].p1 - it[i].v1 * (it[i].p1-it[i].p0)/(it[i].v1-it[i].v0);
+        else
+          p[i] = (it[i].p0 + it[i].p1) * 0.5f;
         pos[i] = it[i].org+m_cellsize*p[i];
         box.pmin = min(pos[i], box.pmin);
         box.pmax = max(pos[i], box.pmax);
@@ -279,6 +285,7 @@ struct dc_gridbuilder {
       csg::dist(m_node, &pos[0], &d[0], &m[0], num, box);
       if (k != MAX_STEPS-1) {
         loopi(num) {
+#if 0
           if (d[i] < 0.f) {
             it[i].p0 = p[i];
             it[i].v0 = d[i];
@@ -286,9 +293,23 @@ struct dc_gridbuilder {
             it[i].p1 = p[i];
             it[i].v1 = d[i];
           }
+#else
+          if (m[i] == it[i].m0) {
+            it[i].p0 = p[i];
+            it[i].v0 = d[i];
+          } else {
+            it[i].p1 = p[i];
+            it[i].v1 = d[i];
+          }
+
+#endif
         }
-      } else
-        loopi(num) it[i].p0 = p[i];
+      } else {
+        loopi(num) {
+          it[i].p0 = p[i];
+          if (isnan(p[i].x)) DEBUGBREAK;
+            }
+          }
     }
     STATS_ADD(iso_edgepos_num, num*MAX_STEPS);
     STATS_ADD(iso_num, num*MAX_STEPS);
@@ -316,9 +337,12 @@ struct dc_gridbuilder {
         it[j].p1 = vec3f(icubev[idx1]-edge.first);
         it[j].v0 = field(xyz + icubev[idx0]).d;
         it[j].v1 = field(xyz + icubev[idx1]).d;
+        it[j].m0 = e.second.z;
+        it[j].m1 = e.second.w;
         if (it[j].v1 < 0.f) {
           swap(it[j].p0,it[j].p1);
           swap(it[j].v0,it[j].v1);
+          swap(it[j].m0,it[j].m1);
         }
       }
       edgepos(m_node, *m_stack, num);
@@ -460,7 +484,7 @@ struct dc_gridbuilder {
         if (outside) continue;
         const auto qor = startsign==1 ? quadorder : quadorder_cc;
         const quad q = {
-          {m_iorg+p[qor[0]], m_iorg+p[qor[1]], m_iorg+p[qor[2]], m_iorg+p[qor[3]]},
+          {m_iorg+p[qor[0]],m_iorg+p[qor[1]],m_iorg+p[qor[2]],m_iorg+p[qor[3]]},
           max(startfield.m, endfield.m)
         };
         m_quad_buffer.add(q);
@@ -483,7 +507,7 @@ struct dc_gridbuilder {
   vector<u32> m_qef_index;
   vector<u32> m_edge_index;
   vector<pair<vec3f,vec3f>> m_edges;
-  vector<pair<vec3i,vec2i>> m_delayed_edges;
+  vector<pair<vec3i,vec4i>> m_delayed_edges;
   vector<pair<vec3i,int>> m_delayed_qef;
   edgestack *m_stack;
   const octree *m_octree;
@@ -666,11 +690,13 @@ static mesh buildmesh(octree &o) {
     // close enough
     loopj(quadlen) {
       // get four points
+//      if (i == 1 && j == 14676) DEBUGBREAK;
       const auto &q = b.m_quad_buffer[j];
       const auto quadmat = q.matindex;
       octree::qefpoint *pt[4];
       loopk(4) {
         const auto leaf = o.findleaf(q.index[k]);
+        assert(leaf != NULL && leaf->qef != NULL);
         const auto idx = q.index[k] % vec3i(SUBGRID);
         const auto qefidx = idx.x+SUBGRID*(idx.y+SUBGRID*idx.z);
         pt[k] = leaf->qef+qefidx;

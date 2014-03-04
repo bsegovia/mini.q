@@ -31,7 +31,7 @@ material *getmaterial(u32 matindex);
  - all basic CSG nodes
  -------------------------------------------------------------------------*/
 enum CSGOP {
-  C_UNION, C_DIFFERENCE, C_INTERSECTION,
+  C_UNION, C_DIFFERENCE, C_INTERSECTION, C_REPLACE,
   C_SPHERE, C_BOX, C_PLANE, C_CYLINDERXZ, C_CYLINDERYZ, C_CYLINDERXY,
   C_TRANSLATION, C_ROTATION,
   C_INVALID = 0xffffffff

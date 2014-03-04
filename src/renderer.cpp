@@ -507,12 +507,12 @@ void finish() {
 }
 #endif
 
-static const float CELLSIZE = 0.2f;
+static const float CELLSIZE = 0.1f;
 static void makescene() {
   if (initialized_m) return;
   const auto start = sys::millis();
   const auto node = csg::makescene();
-  auto m = iso::dc_mesh_mt(vec3f(zero), 8192*2, CELLSIZE, *node);
+  auto m = iso::dc_mesh_mt(vec3f(zero), 4096, CELLSIZE, *node);
   segment = m.m_segment;
   segmentnum = m.m_segmentnum;
   ogl::genbuffers(1, &sceneposbo);
