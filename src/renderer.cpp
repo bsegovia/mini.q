@@ -15,7 +15,7 @@ namespace rr {
  - particle rendering
  -------------------------------------------------------------------------*/
 static const int MAXPARTICLES = 10500;
-static const int NUMPARTCUTOFF = 20;
+// static const int NUMPARTCUTOFF = 20;
 struct particle { vec3f o, d; int fade, type; int millis; particle *next; };
 static particle particles[MAXPARTICLES], *parlist = NULL, *parempty = NULL;
 static bool parinit = false;

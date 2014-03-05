@@ -82,7 +82,7 @@ float width(const char *str) {
   return x;
 }
 
-void drawf(const char *fstr, const vec2f &pos, ...) {
+void drawf(const char *fstr, vec2f pos, ...) {
   sprintf_sdlv(str, pos, fstr);
   draw(str, pos);
 }
@@ -92,7 +92,7 @@ void drawf(const char *fstr, float x, float y, ...) {
   draw(str, x, y);
 }
 
-void draw(const char *str, const vec2f &pos) {
+void draw(const char *str, vec2f pos) {
   ogl::bindtexture(GL_TEXTURE_2D, ogl::coretex(ogl::TEX_CHARACTERS));
 
   // use a triangle mesh to display the text

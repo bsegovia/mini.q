@@ -17,7 +17,7 @@ namespace sky {
 
 static const float PI2 = 2.f*float(pi);
 // Astronomical Unit = Mean distance of the earth from the sun - Km
-static const float AU = 149597870.61;
+// static const float AU = 149597870.61;
 static const float TORAD = float(pi)/180.f;;
 
 float julianday2000(int yr, int mn, int day, int hr, int m, int s) {

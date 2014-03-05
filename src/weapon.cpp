@@ -20,7 +20,7 @@ struct guninfo { short sound, attackdelay, damage, projspeed, part, kickamount; 
 static const int MONSTERDAMAGEFACTOR = 4;
 static const int SGRAYS = 20;
 static const float SGSPREAD = 2;
-static const float RL_RADIUS = 5.f;
+// static const float RL_RADIUS = 5.f;
 static const float RL_DAMRAD = 7.f; // hack
 static vec3f sg[SGRAYS];
 
