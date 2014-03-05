@@ -10,10 +10,6 @@ namespace q {
 namespace csg {
 
 /*--------------------------------------------------------------------------
- - all materials
- -------------------------------------------------------------------------*/
-
-/*--------------------------------------------------------------------------
  - implements all basic CSG nodes
  -------------------------------------------------------------------------*/
 #define BINARY(NAME,TYPE,C_BOX) \
@@ -153,9 +149,22 @@ static node *makescene0() {
   // just make a union of them
   const auto world = NEW(U, ground, NEW(U, scene0, arcade));
 
+  // add nested cylinder
+  node *c0 = capped_cylinder(vec2f(30.f,30.f), vec3f(2.f, 0.f, 2.f), MAT_SIMPLE_INDEX);
+  node *c1 = capped_cylinder(vec2f(30.f,30.f), vec3f(1.f, 0.f, 2.f), MAT_SIMPLE_INDEX);
+  node *c2 = capped_cylinder(vec2f(30.f,30.f), vec3f(1.f, 0.f, 2.f), MAT_SNOISE_INDEX);
+  c0 = NEW(U, NEW(D, c0, c1), c2);
+
   // change the material just to see
-  const auto newmat = NEW(translation, vec3f(20.f,6.f,7.f), NEW(sphere, 4.2f, MAT_SNOISE_INDEX));
-  return NEW(R, world, newmat);
+  const auto remove = NEW(translation, vec3f(18.f,3.f,7.f), NEW(sphere, 4.2f));
+#if 0
+  node *newmat0 = NEW(translation, vec3f(30.f,3.f,7.f), NEW(cylinderxz, vec2f(zero), 4.2f, MAT_SNOISE_INDEX));
+#else
+  node *newmat0 = NEW(translation, vec3f(30.f,3.3f,7.f), NEW(sphere, 4.2f, MAT_SNOISE_INDEX));
+#endif
+  node *newmat1 = NEW(translation, vec3f(30.f,3.f,10.f), NEW(cylinderxz, vec2f(zero), 4.2f, MAT_SNOISE_INDEX));
+  // return NEW(U, c0, NEW(D, NEW(R, NEW(R, world, newmat0), newmat1), remove));
+  return NEW(U, c0, NEW(D, NEW(R, world, newmat0), remove));
 }
 #else
 static node *makescene0() {
@@ -176,8 +185,7 @@ node *makescene() {
 }
 
 void destroyscene(node *n) { SAFE_DEL(n); }
-
-void distr(const node *n, const vec3f * RESTRICT pos, const u32 RESTRICT *exclude,
+void distr(const node *n, const vec3f * RESTRICT pos, const u32 * RESTRICT exclude,
            float * RESTRICT dist, u32 * RESTRICT matindex, int num,
            const aabb &box)
 {
@@ -198,8 +206,9 @@ void distr(const node *n, const vec3f * RESTRICT pos, const u32 RESTRICT *exclud
         }
         distr(u->right, pos, exclude, tempdist, tempmatindex, num, box);
         loopi(num) {
-          dist[i] = min(dist[i], tempdist[i]);
           matindex[i] = max(matindex[i], tempmatindex[i]);
+          dist[i] = exclude[i] && abs(tempdist[i]) < 0.05f ?
+            tempdist[i] : min(dist[i], tempdist[i]);
         }
       } else if (goleft)
         distr(u->left, pos, exclude, dist, matindex, num, box);
@@ -226,7 +235,8 @@ void distr(const node *n, const vec3f * RESTRICT pos, const u32 RESTRICT *exclud
       loopi(num) {
         const auto insideright = tempdist[i] < 0.f && dist[i] < 0.f;
         matindex[i] = insideright ? tempmatindex[i] : matindex[i];
-        dist[i] = dist[i] < 0.f && abs(tempdist[i]) < 0.05f? -abs(tempdist[i]) : dist[i];
+        dist[i] = dist[i] < 0.f && exclude[i] && abs(tempdist[i]) < 0.05f ?
+          tempdist[i] : dist[i];
       }
     }
     break;
@@ -288,8 +298,9 @@ void distr(const node *n, const vec3f * RESTRICT pos, const u32 RESTRICT *exclud
       if (any(gt(isec.pmin, isec.pmax))) break;
       const auto p = static_cast<const plane*>(n);
       loopi(num) {
-        dist[i] = dot(pos[i], p->p.xyz()) + p->p.w;
-        matindex[i] = dist[i] < 0.f ? p->matindex : matindex[i];
+        const auto excluded = p->matindex == exclude[i];
+        dist[i] = excluded ? dist[i] : dot(pos[i], p->p.xyz()) + p->p.w;
+        matindex[i] = dist[i] < 0.f && !excluded ? p->matindex : matindex[i];
       }
     }
     break;
@@ -300,8 +311,9 @@ void distr(const node *n, const vec3f * RESTRICT pos, const u32 RESTRICT *exclud
     if (any(gt(isec.pmin, isec.pmax))) break;\
     const auto c = static_cast<const cylinder##COORD*>(n);\
     loopi(num) {\
-      dist[i] = length(pos[i].COORD()-c->c##COORD) - c->r;\
-      matindex[i] = dist[i] < 0.f ? c->matindex : matindex[i];\
+      const auto excluded = c->matindex == exclude[i];\
+      dist[i] = excluded ? dist[i] : length(pos[i].COORD()-c->c##COORD) - c->r;\
+      matindex[i] = dist[i] < 0.f && !excluded ? c->matindex : matindex[i];\
     }\
   }\
   break;
@@ -313,8 +325,9 @@ void distr(const node *n, const vec3f * RESTRICT pos, const u32 RESTRICT *exclud
       if (any(gt(isec.pmin, isec.pmax))) break;
       const auto s = static_cast<const sphere*>(n);
       loopi(num) {
-        dist[i] = length(pos[i]) - s->r;
-        matindex[i] = dist[i] < 0.f ? s->matindex : matindex[i];
+        const auto excluded = s->matindex == exclude[i];
+        dist[i] = excluded ? dist[i] : length(pos[i]) - s->r;
+        matindex[i] = dist[i] < 0.f && !excluded ? s->matindex : matindex[i];
       }
     }
     break;
@@ -325,8 +338,10 @@ void distr(const node *n, const vec3f * RESTRICT pos, const u32 RESTRICT *exclud
       const auto extent = b->extent;
       loopi(num) {
         const auto pd = abs(pos[i])-extent;
-        dist[i] = min(max(pd.x,max(pd.y,pd.z)),0.0f) + length(max(pd,vec3f(zero)));
-        matindex[i] = dist[i] < 0.f ? b->matindex : matindex[i];
+        const auto excluded = b->matindex == exclude[i];
+        const auto d = min(max(pd.x,max(pd.y,pd.z)),0.0f) + length(max(pd,vec3f(zero)));
+        dist[i] = excluded ? dist[i] : d;
+        matindex[i] = dist[i] < 0.f && !excluded ? b->matindex : matindex[i];
       }
     }
     break;

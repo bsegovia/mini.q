@@ -41,8 +41,9 @@ mesh::~mesh() {
 }
 
 static const auto DEFAULT_GRAD_STEP = 1e-3f;
-static const int MAX_STEPS = 4;
-static const float SHARP_EDGE_THRESHOLD = 0.4f;
+static const int MAX_STEPS = 8;
+static const float SHARP_EDGE_THRESHOLD = 0.5f;
+static const float MIN_TRIANGLE_AREA = 1e-6f;
 
 INLINE pair<vec3i,u32> edge(vec3i start, vec3i end) {
   const auto lower = select(lt(start,end), start, end);
@@ -273,7 +274,7 @@ struct dc_gridbuilder {
     loopk(MAX_STEPS) {
       auto box = aabb::empty();
       loopi(num) {
-        const auto samesign = it[i].v1*it[i].v0 > 0.f;
+        const auto samesign = it[i].v1*it[i].v0 > 0.f || it[i].v1==it[i].v0;
         if (!samesign)
           p[i] = it[i].p1 - it[i].v1 * (it[i].p1-it[i].p0)/(it[i].v1-it[i].v0);
         else
@@ -288,15 +289,7 @@ struct dc_gridbuilder {
       csg::dist(m_node, &pos[0], &e[0], &d[0], &m[0], num, box);
       if (k != MAX_STEPS-1) {
         loopi(num) {
-#if 0
-          if (d[i] < 0.f) {
-            it[i].p0 = p[i];
-            it[i].v0 = d[i];
-          } else {
-            it[i].p1 = p[i];
-            it[i].v1 = d[i];
-          }
-#else
+          assert(!isnan(d[i]));
           if (m[i] == it[i].m0) {
             it[i].p0 = p[i];
             it[i].v0 = d[i];
@@ -304,15 +297,16 @@ struct dc_gridbuilder {
             it[i].p1 = p[i];
             it[i].v1 = d[i];
           }
-
-#endif
         }
       } else {
         loopi(num) {
           it[i].p0 = p[i];
-          if (isnan(p[i].x)) DEBUGBREAK;
-            }
-          }
+#if !defined(NDEBUG)
+          assert(!isnan(p[i].x)&&!isnan(p[i].y)&&!isnan(p[i].z));
+          assert(!isinf(p[i].x)&&!isinf(p[i].y)&&!isinf(p[i].z));
+#endif
+        }
+      }
     }
     STATS_ADD(iso_edgepos_num, num*MAX_STEPS);
     STATS_ADD(iso_num, num*MAX_STEPS);
@@ -321,7 +315,6 @@ struct dc_gridbuilder {
   void finishedges() {
     const auto len = m_delayed_edges.length();
     STATS_ADD(iso_edge_num, len);
-
     for (int i = 0; i < len; i += 64) {
       auto &it = m_stack->it;
 
@@ -372,7 +365,10 @@ struct dc_gridbuilder {
         box.pmin -= 3.f * m_cellsize;
         box.pmax += 3.f * m_cellsize;
 
-        loopk(4*subnum) e[k] = csg::MAT_AIR_INDEX;
+        loopk(4*subnum) {
+          bool const solidsolid = it[j+k/4].m0 != csg::MAT_AIR_INDEX && it[j+k/4].m1 != csg::MAT_AIR_INDEX;
+          e[k] = solidsolid ? 1<<31 : 0;
+        }
         csg::dist(m_node, p, e, d, m, 4*subnum, box);
         STATS_ADD(iso_num, 4*subnum);
         STATS_ADD(iso_gradient_num, 4*subnum);
@@ -695,7 +691,6 @@ static mesh buildmesh(octree &o) {
     // close enough
     loopj(quadlen) {
       // get four points
-//      if (i == 1 && j == 14676) DEBUGBREAK;
       const auto &q = b.m_quad_buffer[j];
       const auto quadmat = q.matindex;
       octree::qefpoint *pt[4];
@@ -718,7 +713,8 @@ static mesh buildmesh(octree &o) {
         const auto edge1 = pt[t[2]]->pos-pt[t[1]]->pos;
         const auto dir = cross(edge0, edge1);
         const auto len2 = length2(dir);
-        if (len2 == 0.f) continue;
+        // if (len2 == 0.f) continue;
+        if (len2 < MIN_TRIANGLE_AREA) continue;
         const auto nor = dir/sqrt(len2);
         if (quadmat != currmat) {
           seg.add({u32(idxbuf.length()),0u,quadmat});
@@ -730,10 +726,16 @@ static mesh buildmesh(octree &o) {
           int vertidx = -1, curridx = qef->idx;
 
           // try to find a good candidate with a normal close to ours
+          float mincosangle = FLT_MAX;
+          int bestidx = -1;
           while (curridx != -1) {
             auto const curr = vertlist[curridx];
             vertidx = curr.first;
             auto const cosangle = dot(nor, normalize(norbuf[vertidx]));
+            if (cosangle < mincosangle) {
+              mincosangle = cosangle;
+              bestidx = curridx;
+            }
             if (cosangle > SHARP_EDGE_THRESHOLD) break;
             curridx = curr.second;
           }
@@ -760,7 +762,13 @@ static mesh buildmesh(octree &o) {
   loopv(norbuf) norbuf[i] = normalize(norbuf[i]);
 #endif
 
-  // printf("segment %d\n", seg.length());
+#if !defined(NDEBUG)
+  loopv(posbuf) assert(!isnan(posbuf[i].x)&&!isnan(posbuf[i].y)&&!isnan(posbuf[i].z));
+  loopv(posbuf) assert(!isinf(posbuf[i].x)&&!isinf(posbuf[i].y)&&!isinf(posbuf[i].z));
+  loopv(norbuf) assert(!isnan(norbuf[i].x)&&!isnan(norbuf[i].y)&&!isnan(norbuf[i].z));
+  loopv(norbuf) assert(!isinf(norbuf[i].x)&&!isinf(norbuf[i].y)&&!isinf(norbuf[i].z));
+#endif
+
   const auto p = posbuf.move();
   const auto n = norbuf.move();
   const auto idx = idxbuf.move();

@@ -7,7 +7,8 @@ void main() {
     vec4 posw = u_invmvp * vec4(uv, depth, 1.0);
     vec3 pos = posw.xyz / posw.w;
     vec4 diffuse = texture2DRect(u_diffusetex, uv);
-    outcol = vec4(nor, 1.0); //diffuse*vec4(shade(pos, nor), 1.0);
+    // outcol = vec4(nor, 1.0); //diffuse*vec4(shade(pos, nor), 1.0);
+    outcol = diffuse*vec4(shade(pos, nor), 1.0);
   } else {
     vec4 rdh = u_dirinvmvp * vec4(uv, 0.0, 1.0);
     vec3 rd = normalize(rdh.xyz/rdh.w);
