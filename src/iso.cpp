@@ -91,8 +91,8 @@ struct edgeitem {
 struct edgestack {
   array<edgeitem,64> it;
   array<vec3f,64> p, pos;
-  array<float,64> d;
-  array<u32,64> m, e;
+  array<float,64> d, nd;
+  array<u32,64> m;
 };
 
 /*-------------------------------------------------------------------------
@@ -212,15 +212,14 @@ struct dc_gridbuilder {
       // use edgestack here
       vec3f pos[64];
       float d[64];
-      u32 m[64], e[64];
-      loopi(64) e[i] = csg::MAT_AIR_INDEX;
+      u32 m[64];
       const auto p = vertex(sxyz);
       const aabb box = aabb(p-2.f*m_cellsize, p+6.f*m_cellsize);
       int index = 0;
       const auto end = min(sxyz+4,dim);
       loopxyz(sxyz, end) pos[index++] = vertex(xyz);
       assert(index == 64);
-      csg::dist(m_node, pos, e, d, m, index, box);
+      csg::dist(m_node, pos, NULL, d, m, index, box);
       index = 0;
 #if !defined(NDEBUG)
       loopi(64) assert(d[i] <= 0.f || m[i] == csg::MAT_AIR_INDEX);
@@ -269,7 +268,7 @@ struct dc_gridbuilder {
     auto &it = stack.it;
     auto &pos = stack.pos, &p = stack.p;
     auto &d = stack.d;
-    auto &m = stack.m, &e = stack.e;
+    auto &m = stack.m;
 
     loopk(MAX_STEPS) {
       auto box = aabb::empty();
@@ -285,8 +284,7 @@ struct dc_gridbuilder {
       }
       box.pmin -= 3.f * m_cellsize;
       box.pmax += 3.f * m_cellsize;
-      loopi(num) e[i] = csg::MAT_AIR_INDEX;
-      csg::dist(m_node, &pos[0], &e[0], &d[0], &m[0], num, box);
+      csg::dist(m_node, &pos[0], NULL, &d[0], &m[0], num, box);
       if (k != MAX_STEPS-1) {
         loopi(num) {
           assert(!isnan(d[i]));
@@ -352,7 +350,7 @@ struct dc_gridbuilder {
         auto p = &m_stack->p[0];
         auto d = &m_stack->d[0];
         auto m = &m_stack->m[0];
-        auto e = &m_stack->e[0];
+        auto nd = &m_stack->nd[0];
         auto box = aabb::empty();
         loopk(subnum) {
           p[4*k]   = it[j+k].org + it[j+k].p0 * m_cellsize;
@@ -366,10 +364,12 @@ struct dc_gridbuilder {
         box.pmax += 3.f * m_cellsize;
 
         loopk(4*subnum) {
-          bool const solidsolid = it[j+k/4].m0 != csg::MAT_AIR_INDEX && it[j+k/4].m1 != csg::MAT_AIR_INDEX;
-          e[k] = solidsolid ? 1<<31 : 0;
+          const auto m0 = it[j+k/4].m0;
+          const auto m1 = it[j+k/4].m1;
+          bool const solidsolid = m0 != csg::MAT_AIR_INDEX && m1 != csg::MAT_AIR_INDEX;
+          nd[k] = solidsolid ? m_cellsize : 0.f;
         }
-        csg::dist(m_node, p, e, d, m, 4*subnum, box);
+        csg::dist(m_node, p, nd, d, m, 4*subnum, box);
         STATS_ADD(iso_num, 4*subnum);
         STATS_ADD(iso_gradient_num, 4*subnum);
 
@@ -713,7 +713,6 @@ static mesh buildmesh(octree &o) {
         const auto edge1 = pt[t[2]]->pos-pt[t[1]]->pos;
         const auto dir = cross(edge0, edge1);
         const auto len2 = length2(dir);
-        // if (len2 == 0.f) continue;
         if (len2 < MIN_TRIANGLE_AREA) continue;
         const auto nor = dir/sqrt(len2);
         if (quadmat != currmat) {
@@ -726,16 +725,10 @@ static mesh buildmesh(octree &o) {
           int vertidx = -1, curridx = qef->idx;
 
           // try to find a good candidate with a normal close to ours
-          float mincosangle = FLT_MAX;
-          int bestidx = -1;
           while (curridx != -1) {
             auto const curr = vertlist[curridx];
             vertidx = curr.first;
             auto const cosangle = dot(nor, normalize(norbuf[vertidx]));
-            if (cosangle < mincosangle) {
-              mincosangle = cosangle;
-              bestidx = curridx;
-            }
             if (cosangle > SHARP_EDGE_THRESHOLD) break;
             curridx = curr.second;
           }

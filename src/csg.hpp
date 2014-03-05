@@ -48,7 +48,7 @@ node *makescene();
 void destroyscene(node *n);
 
 float dist(const node*, const vec3f&, const aabb &box = aabb::all());
-void dist(const node*, const vec3f*, const u32 *exclude, float *d, u32 *mat, int num, const aabb&);
+void dist(const node*, const vec3f*, const float *normaldist, float *d, u32 *mat, int num, const aabb&);
 } /* namespace csg */
 } /* namespace q */
 
