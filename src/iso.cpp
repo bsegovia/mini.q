@@ -659,12 +659,269 @@ INLINE const quadmesh &findbestmesh(octree::qefpoint **pt) {
 INLINE const quadmesh &findbestmesh(octree::qefpoint **pt) {return qmesh[0];}
 #endif
 
+struct qemmesh {
+  qemmesh(vector<vec3f> &p, vector<u32> &idx) : p(p), idx(idx) {}
+  vector<vec3f> &p;
+  vector<u32> &idx;
+};
+
+struct qem {
+  INLINE qem() {ZERO(this); next=-1;}
+  INLINE qem(vec3f v0, vec3f v1, vec3f v2) : timestamp(0), next(-1) {
+    const auto n = vec3d(normalize(cross(v0-v1,v0-v2)));
+    const auto d = -dot(n, vec3d(v0));
+    const auto a = n.x, b = n.y, c = n.z;
+    aa = a*a; bb = b*b; cc = c*c; dd = d*d;
+    ab = a*b; ac = a*c; ad = a*d;
+    bc = b*c; bd = b*d;
+    cd = c*d;
+  }
+  INLINE qem operator+= (const qem &q) {
+    aa+=q.aa; bb+=q.bb; cc+=q.cc; dd+=q.dd;
+    ab+=q.ab; ac+=q.ac; ad+=q.ad;
+    bc+=q.bc; bd+=q.bd;
+    cd+=q.cd;
+    return *this;
+  }
+  double error(const vec3f &v) const {
+    const auto x = double(v.x), y = double(v.y), z = double(v.z);
+    const auto err = x*x*aa + 2.0*x*y*ab + 2.0*x*z*ac + 2.0*x*ad +
+                     y*y*bb + 2.0*y*z*bc + 2.0*y*bd
+                            + z*z*cc     + 2.0*z*cd + dd;
+    assert(err > -1e-3);
+    return max(err,0.0);
+  }
+  double aa, bb, cc, dd;
+  double ab, ac, ad;
+  double bc, bd;
+  double cd;
+  int timestamp, next;
+};
+
+INLINE qem operator+ (const qem &q0, const qem &q1) {
+  qem q = q0;
+  q += q1;
+  return q;
+}
+
+struct qemedge {
+  INLINE qemedge() {}
+  INLINE qemedge(int i0, int i1, int mat) : mat(mat), best(0) {
+    idx[0] = i0;
+    idx[1] = i1;
+    timestamp[0] = timestamp[1] = 0;
+  }
+  int idx[2];
+  int timestamp[2];
+  int mat;
+  int best;
+};
+
+struct qemheapitem {
+  double cost;
+  int idx;
+};
+} /* namespace iso */
+template <>
+struct heapscore<iso::qemheapitem> {
+  static INLINE double get(const iso::qemheapitem &n) {return n.cost;}
+};
+
+namespace iso {
+static void buildedges(const mesh &m, vector<qemedge> &e) {
+
+  // maintain a list of edges per triangle
+  vector<int> vlist(m.m_indexnum);
+  loopi(m.m_vertnum) vlist[i] = -1;
+  int firstedge = m.m_vertnum;
+
+  // first append all edges with i0 < i1
+  loopk(m.m_segmentnum) {
+    const auto mat = m.m_segment[k].mat;
+    const auto begin = m.m_segment[k].start/3;
+    const auto end = begin + m.m_segment[k].num/3;
+    rangei(begin, end) {
+      const auto t = &m.m_index[3*i];
+      int i0 = t[2];
+      loopj(3) {
+        const int i1 = t[j];
+        if (i0 < i1) {
+          vlist[firstedge++] = vlist[i0];
+          vlist[i0] = e.length();
+          e.add(qemedge(i0,i1,mat));
+        }
+        i0 = i1;
+      }
+    }
+  }
+
+  // with i1 < i0, we now handle border and multi-material edges
+  auto nextedge = &vlist[0] + m.m_vertnum;
+  loopk(m.m_segmentnum) {
+    const auto mat = m.m_segment[k].mat;
+    const auto begin = m.m_segment[k].start/3;
+    const auto end = begin + m.m_segment[k].num/3;
+    rangei(begin, end) {
+      const auto t = &m.m_index[3*i];
+      int i0 = t[2];
+      loopj(3) {
+        const int i1 = t[j];
+        if (i0 > i1) {
+          int idx = vlist[i1];
+          for (; idx != -1; idx = nextedge[idx]) {
+            const auto &edge = e[idx];
+            if (edge.idx[1] == i0) break;
+          }
+
+          // border edge
+          if (idx == -1) {
+            vlist[firstedge++] = vlist[i1];
+            vlist[i1] = e.length();
+            e.add(qemedge(i1,i0,mat));
+            continue;
+          }
+          // is it a multi-material edge?
+          const auto &edge = e[idx];
+          if (edge.mat != mat) {
+            // TODO add a new plan
+          }
+        }
+        i0 = i1;
+      }
+    }
+  }
+}
+
+INLINE pair<double,int>
+findbest(const qem &q0, const qem &q1, const vec3f &p0, const vec3f &p1) {
+  const auto q = q0 + q1;
+  const auto error0 = q.error(p0), error1 = q.error(p1);
+  return error0 < error1 ? makepair(error0, 0) : makepair(error1, 1);
+}
+
+static void buildheap(const vec3f *p,
+                      const vector<qem> &v,
+                      vector<qemedge> &e,
+                      vector<qemheapitem> &h)
+{
+  loopv(e) {
+    const auto idx0 = e[i].idx[0], idx1 = e[i].idx[1];
+    const auto &p0 = p[idx0], &p1 = p[idx1];
+    const auto &q0 = v[idx0], &q1 = v[idx1];
+    const auto best = findbest(q0,q1,p0,p1);
+    e[i].best = best.second;
+    h[i].cost = best.first;
+    h[i].idx = i;
+  }
+  h.buildheap();
+}
+
+INLINE int uncollapsedidx(const vector<qem> &v, int idx) {
+  while (v[idx].next != -1) idx = v[idx].next;
+  return idx;
+}
+
+static void decimatemesh(mesh &m,
+                         vector<qemheapitem> &heap,
+                         vector<qem> &vqem,
+                         vector<qemedge> &eqem,
+                         int toremove)
+{
+  vector<pair<int,int>> collapses;
+  assert(toremove <= eqem.length());
+
+  // stop when we got enough collapses
+  while (toremove) {
+    const auto item = heap.removeheap();
+    auto &edge = eqem[item.idx];
+    const auto idx0 = uncollapsedidx(vqem, edge.idx[0]);
+    const auto idx1 = uncollapsedidx(vqem, edge.idx[1]);
+
+    // already removed. we ignore it
+    if (idx0 == idx1) {
+      --toremove;
+      continue;
+    }
+
+    // try to remove it. the cost function needs to be properly updated
+    const auto &p0 = m.m_pos[idx0], &p1 = m.m_pos[idx1];
+    auto &q0 = vqem[idx0], &q1 = vqem[idx1];
+    assert(q0.timestamp >= edge.timestamp[0]);
+    assert(q1.timestamp >= edge.timestamp[1]);
+
+    // edge is upto date. we can safely remove it
+    const auto timestamp0 = q0.timestamp, timestamp1 = q1.timestamp;
+    if (timestamp0 == edge.timestamp[0] && timestamp1 == edge.timestamp[1]) {
+      const auto q = q0+q1;
+      const auto newstamp = max(timestamp0, timestamp1);
+      if (edge.best == 0) {
+        q0 = q;
+        q1.next = idx0;
+        collapses.add(makepair(idx1, idx0));
+      } else {
+        q1 = q;
+        q0.next = idx1;
+        collapses.add(makepair(idx0, idx1));
+      }
+      q0.timestamp = q1.timestamp = newstamp+1;
+      --toremove;
+      continue;
+    }
+
+    // edge is too old. we need to update its cost and reinsert it
+    const auto best = findbest(q0,q1,p0,p1);
+    const qemheapitem newitem = {best.first, item.idx};
+    edge.best = best.second;
+    edge.timestamp[0] = timestamp0;
+    edge.timestamp[1] = timestamp1;
+    edge.idx[0] = idx0;
+    edge.idx[1] = idx1;
+    heap.addheap(newitem);
+  }
+
+  // now we play the collapse sequence to get the proper vertex mapping
+  vector<int> mapping(m.m_vertnum);
+  loopv(mapping) mapping[i] = i;
+  loopvrev(collapses) mapping[collapses[i].first] = mapping[collapses[i].second];
+
+  // update triangles indices
+  loopi(m.m_indexnum) m.m_index[i] = mapping[m.m_index[i]];
+}
+
+static void decimatemesh(mesh &m) {
+  // we go over all triangles and build all vertex qem
+  vector<qem> vqem(m.m_vertnum);
+  loopi(m.m_indexnum/3) {
+    const auto i0 = m.m_index[3*i+0];
+    const auto i1 = m.m_index[3*i+1];
+    const auto i2 = m.m_index[3*i+2];
+    const auto v0 = m.m_pos[i0];
+    const auto v1 = m.m_pos[i1];
+    const auto v2 = m.m_pos[i2];
+    const qem q(v0,v1,v2);
+    vqem[i0] += q;
+    vqem[i1] += q;
+    vqem[i2] += q;
+  }
+
+  // build the list of edges
+  vector<qemedge> eqem;
+  buildedges(m, eqem);
+
+  // evaluate the cost for each edge and build the heap
+  vector<qemheapitem> heap(eqem.length());
+  buildheap(m.m_pos, vqem, eqem, heap);
+
+  // decimate the mesh using quadric error functions
+  decimatemesh(m, heap, vqem, eqem, eqem.length()*1/10);
+}
+
 static mesh buildmesh(octree &o) {
 
   // build the buffers here
   vector<vec3f> posbuf, norbuf;
   vector<u32> idxbuf;
-  vector<segment> seg;
+  vector<u32> mat;
   vector<pair<int,int>> vertlist;
 #if 0
   u32 num = 0, simplenum = 0, noisenum;
@@ -682,7 +939,6 @@ static mesh buildmesh(octree &o) {
 #endif
 #if 1
   // merge all builder vertex buffers
-  u32 currmat = ~0x0;
   loopv(ctx->m_builders) {
     const auto &b = *ctx->m_builders[i];
     const auto quadlen = b.m_quad_buffer.length();
@@ -715,11 +971,7 @@ static mesh buildmesh(octree &o) {
         const auto len2 = length2(dir);
         if (len2 < MIN_TRIANGLE_AREA) continue;
         const auto nor = dir/sqrt(len2);
-        if (quadmat != currmat) {
-          seg.add({u32(idxbuf.length()),0u,quadmat});
-          currmat = quadmat;
-        }
-        seg.last().num += 3;
+        mat.add(quadmat);
         loopl(3) {
           auto qef = pt[t[l]];
           int vertidx = -1, curridx = qef->idx;
@@ -751,6 +1003,17 @@ static mesh buildmesh(octree &o) {
     }
   }
 
+  // build the segment list
+  vector<segment> seg;
+  u32 currmat = ~0x0;
+  loopv(mat) {
+    if (mat[i] != currmat) {
+      seg.add({3u*i,0u,mat[i]});
+      currmat = mat[i];
+    }
+    seg.last().num += 3;
+  }
+
   // normalize all vertex normals now
   loopv(norbuf) norbuf[i] = normalize(norbuf[i]);
 #endif
@@ -766,7 +1029,9 @@ static mesh buildmesh(octree &o) {
   const auto n = norbuf.move();
   const auto idx = idxbuf.move();
   const auto s = seg.move();
-  return mesh(p.first, n.first, idx.first, s.first, p.second, idx.second, s.second);
+  mesh m(p.first, n.first, idx.first, s.first, p.second, idx.second, s.second);
+  // decimatemesh(m);
+  return m;
 }
 
 mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d) {

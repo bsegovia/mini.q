@@ -165,6 +165,14 @@ static node *makescene0() {
   node *newmat1 = NEW(translation, vec3f(30.f,3.f,10.f), NEW(cylinderxz, vec2f(zero), 4.2f, MAT_SNOISE_INDEX));
   return NEW(U, c0, NEW(D, NEW(R, NEW(R, world, newmat0), newmat1), remove));
 }
+#elif 1
+static node *makescene0() {
+  const auto groundbox = NEW(box, vec3f(50.f, 4.f, 50.f), MAT_SIMPLE_INDEX);
+  const auto ground = NEW(translation, vec3f(0.f,-3.f,0.f), groundbox);
+  const auto small = NEW(box, vec3f(5.f, 2.f, 5.f), MAT_SIMPLE_INDEX);
+  //return NEW(U, NEW(translation, vec3f(10.f, 0.f, 10.f), small), ground);
+  return NEW(translation, vec3f(10.f, 5.f, 10.f), small);
+}
 #else
 static node *makescene0() {
   const auto b0 = NEW(box, vec3f(40.f, 4.f, 40.f));

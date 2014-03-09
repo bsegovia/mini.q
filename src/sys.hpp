@@ -178,6 +178,7 @@
 #define loopz(m) loop(z,m)
 #define loopv(v)    for (int i = 0; i<(v).length(); ++i)
 #define loopvj(v)    for (int j = 0; j<(v).length(); ++j)
+#define looprev(n) for (int i = n-1; i>=0; --i)
 #define loopvrev(v) for (int i = (v).length()-1; i>=0; --i)
 #define range(v,m,M) for (int v = int(m); v < int(M); ++v)
 #define rangei(m,M) range(i,m,M)
