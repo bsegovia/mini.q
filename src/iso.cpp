@@ -43,6 +43,7 @@ mesh::~mesh() {
 static const auto DEFAULT_GRAD_STEP = 1e-3f;
 static const int MAX_STEPS = 8;
 static const float SHARP_EDGE_THRESHOLD = 0.5f;
+static const float MIN_EDGE_FACTOR = 1.f/8.f;
 static const float MIN_TRIANGLE_AREA = 1e-6f;
 
 INLINE pair<vec3i,u32> edge(vec3i start, vec3i end) {
@@ -667,13 +668,22 @@ struct qemmesh {
 struct qem {
   INLINE qem() {ZERO(this); next=-1;}
   INLINE qem(vec3f v0, vec3f v1, vec3f v2) : timestamp(0), next(-1) {
-    const auto n = vec3d(normalize(cross(v0-v1,v0-v2)));
-    const auto d = -dot(n, vec3d(v0));
-    const auto a = n.x, b = n.y, c = n.z;
-    aa = a*a; bb = b*b; cc = c*c; dd = d*d;
-    ab = a*b; ac = a*c; ad = a*d;
-    bc = b*c; bd = b*d;
-    cd = c*d;
+    const auto d = cross(v0-v1,v0-v2);
+    const auto len = length(d);
+    if (len != 0.f) {
+      const auto n = vec3d(d/len);
+      const auto d = -dot(n, vec3d(v0));
+      const auto a = n.x, b = n.y, c = n.z;
+      aa = a*a; bb = b*b; cc = c*c; dd = d*d;
+      ab = a*b; ac = a*c; ad = a*d;
+      bc = b*c; bd = b*d;
+      cd = c*d;
+    } else {
+      aa = bb = cc = dd = 0.0;
+      ab = ac = ad = 0.0;
+      bc = bd = 0.0;
+      cd = 0.0;
+    }
   }
   INLINE qem operator+= (const qem &q) {
     aa+=q.aa; bb+=q.bb; cc+=q.cc; dd+=q.dd;
@@ -820,15 +830,49 @@ INLINE int uncollapsedidx(const vector<qem> &v, int idx) {
   return idx;
 }
 
+typedef vector<pair<int,int>> collapselist;
+
+INLINE void merge(const qemedge &edge, collapselist &collapses,
+                  int idx0, int idx1, qem &q0, qem &q1)
+{
+  const auto timestamp0 = q0.timestamp, timestamp1 = q1.timestamp;
+  if (timestamp0 == edge.timestamp[0] && timestamp1 == edge.timestamp[1]) {
+    const auto q = q0+q1;
+    const auto newstamp = max(timestamp0, timestamp1);
+    if (edge.best == 0) {
+      q0 = q;
+      q1.next = idx0;
+      collapses.add(makepair(idx1, idx0));
+    } else {
+      q1 = q;
+      q0.next = idx1;
+      collapses.add(makepair(idx0, idx1));
+    }
+    q0.timestamp = q1.timestamp = newstamp+1;
+  }
+}
+
 static void decimatemesh(mesh &m,
                          vector<qemheapitem> &heap,
                          vector<qem> &vqem,
                          vector<qemedge> &eqem,
-                         int toremove)
+                         int toremove,
+                         float edgeminlen)
 {
-  vector<pair<int,int>> collapses;
+  collapselist collapses;
   assert(toremove <= eqem.length());
 
+  // first we just remove all edges smaller than the given threshold
+  loopv(eqem) {
+    auto &edge = eqem[i];
+    const auto idx0 = uncollapsedidx(vqem, edge.idx[0]);
+    const auto idx1 = uncollapsedidx(vqem, edge.idx[1]);
+    const auto p0 = m.m_pos[idx0];
+    const auto p1 = m.m_pos[idx1];
+    if (distance(p0,p1) < edgeminlen)
+      merge(edge, collapses, idx0, idx1, vqem[idx0], vqem[idx1]);
+  }
+#if 0
   // stop when we got enough collapses
   while (toremove) {
     const auto item = heap.removeheap();
@@ -851,6 +895,8 @@ static void decimatemesh(mesh &m,
     // edge is upto date. we can safely remove it
     const auto timestamp0 = q0.timestamp, timestamp1 = q1.timestamp;
     if (timestamp0 == edge.timestamp[0] && timestamp1 == edge.timestamp[1]) {
+      merge(edge, collapses, idx0, idx1, q0, q1);
+#if 0
       const auto q = q0+q1;
       const auto newstamp = max(timestamp0, timestamp1);
       if (edge.best == 0) {
@@ -863,6 +909,7 @@ static void decimatemesh(mesh &m,
         collapses.add(makepair(idx0, idx1));
       }
       q0.timestamp = q1.timestamp = newstamp+1;
+#endif
       --toremove;
       continue;
     }
@@ -877,7 +924,7 @@ static void decimatemesh(mesh &m,
     edge.idx[1] = idx1;
     heap.addheap(newitem);
   }
-
+#endif
   // now we play the collapse sequence to get the proper vertex mapping
   vector<int> mapping(m.m_vertnum);
   loopv(mapping) mapping[i] = i;
@@ -887,7 +934,7 @@ static void decimatemesh(mesh &m,
   loopi(m.m_indexnum) m.m_index[i] = mapping[m.m_index[i]];
 }
 
-static void decimatemesh(mesh &m) {
+static void decimatemesh(mesh &m, float cellsize) {
 
   // we go over all triangles and build all vertex qem
   vector<qem> vqem(m.m_vertnum);
@@ -913,11 +960,10 @@ static void decimatemesh(mesh &m) {
   buildheap(m.m_pos, vqem, eqem, heap);
 
   // decimate the mesh using quadric error functions
-  decimatemesh(m, heap, vqem, eqem, eqem.length()*5/10);
+  decimatemesh(m, heap, vqem, eqem, eqem.length()*5/10, cellsize*MIN_EDGE_FACTOR);
 }
 
 static void buildmesh(const octree &o, qemmesh &m) {
-  vector<pair<int,int>> vertlist;
 
   // merge all builder vertex buffers
   loopv(ctx->m_builders) {
@@ -926,6 +972,7 @@ static void buildmesh(const octree &o, qemmesh &m) {
 
     // loop over all quads and build triangle mesh
     loopj(quadlen) {
+
       // get four points
       const auto &q = b.m_quad_buffer[j];
       const auto quadmat = q.matindex;
@@ -946,23 +993,15 @@ static void buildmesh(const octree &o, qemmesh &m) {
         const auto t = tri[k];
         const auto edge0 = pt[t[2]]->pos-pt[t[0]]->pos;
         const auto edge1 = pt[t[2]]->pos-pt[t[1]]->pos;
-        const auto dir = cross(edge0, edge1);
-        const auto len2 = length2(dir);
-        if (len2 < MIN_TRIANGLE_AREA) continue;
+        // if (length2(cross(edge0, edge1)) == 0.f) continue;
         m.mat.add(quadmat);
         loopl(3) {
-          auto qef = pt[t[l]];
-          auto curridx = qef->idx, vertidx = -1;
-          if (curridx != -1)
-            vertidx = vertlist[curridx].first;
-          else {
-            const auto head = qef->idx;
-            qef->idx = vertlist.length();
-            vertidx = m.pos.length();
-            vertlist.add(makepair(vertidx,head));
+          const auto qef = pt[t[l]];
+          if (qef->idx == -1) {
+            qef->idx = m.pos.length();
             m.pos.add(qef->pos);
           }
-          m.idx.add(vertidx);
+          m.idx.add(qef->idx);
         }
       }
     }
@@ -1017,7 +1056,7 @@ static void creasemesh(qemmesh &m) {
   newidx.moveto(m.idx);
 }
 
-static mesh buildmesh(octree &o) {
+static mesh buildmesh(octree &o, float cellsize) {
 #if 0
   // build the buffers here
   vector<vec3f> posbuf, norbuf;
@@ -1044,7 +1083,7 @@ static mesh buildmesh(octree &o) {
   buildmesh(o, qm);
 
   // crease edges
-  creasemesh(qm);
+  // creasemesh(qm);
 
   // build the segment list
   vector<segment> seg;
@@ -1069,8 +1108,22 @@ static mesh buildmesh(octree &o) {
   const auto n = qm.nor.move();
   const auto idx = qm.idx.move();
   const auto s = seg.move();
-  return mesh(p.first, n.first, idx.first, s.first, p.second, idx.second, s.second);
-//  decimatemesh(m);
+  auto m = mesh(p.first, n.first, idx.first, s.first, p.second, idx.second, s.second);
+  decimatemesh(m, cellsize);
+
+  m.m_nor = (vec3f*) MALLOC(sizeof(vec3f) * m.m_vertnum);
+  loopi(m.m_vertnum) m.m_nor[i] = vec3f(zero);
+  loopi(m.m_indexnum/3) {
+    const auto t = &m.m_index[3*i];
+    const auto edge0 = m.m_pos[t[2]]-m.m_pos[t[0]];
+    const auto edge1 = m.m_pos[t[2]]-m.m_pos[t[1]];
+    const auto dir = cross(edge0, edge1);
+    m.m_nor[t[0]] += dir;
+    m.m_nor[t[1]] += dir;
+    m.m_nor[t[2]] += dir;
+  }
+  loopi(m.m_vertnum) m.m_nor[i] = normalize(m.m_nor[i]);
+  return m;
 }
 
 mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d) {
@@ -1089,7 +1142,7 @@ mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &
 #if !defined(NDEBUG)
   stats();
 #endif
-  return buildmesh(o);
+  return buildmesh(o, cellsize);
 }
 
 void start() { ctx = NEWE(context); }
