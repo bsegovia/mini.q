@@ -507,7 +507,7 @@ void finish() {
 }
 #endif
 
-static const float CELLSIZE = 0.1f;
+static const float CELLSIZE = 0.2f;
 static void makescene() {
   if (initialized_m) return;
   const auto start = sys::millis();
@@ -597,7 +597,6 @@ struct context {
     OGL(BindFramebuffer, GL_FRAMEBUFFER, gbuffer);
     OGL(DrawBuffers, 2, buffers);
     OGL(Clear, GL_DEPTH_BUFFER_BIT);
-    ogl::disablev(GL_CULL_FACE);
     if (indexnum != 0) {
       if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_LINE);
       ogl::bindbuffer(ogl::ARRAY_BUFFER, sceneposbo);
@@ -622,7 +621,6 @@ struct context {
       ogl::bindbuffer(ogl::ARRAY_BUFFER, 0);
       if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_FILL);
     }
-    ogl::enable(GL_CULL_FACE);
     game::renderclients();
     game::rendermonsters();
     drawhudgun(fovy, aspect, farplane);

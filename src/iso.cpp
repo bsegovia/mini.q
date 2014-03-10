@@ -660,9 +660,8 @@ INLINE const quadmesh &findbestmesh(octree::qefpoint **pt) {return qmesh[0];}
 #endif
 
 struct qemmesh {
-  qemmesh(vector<vec3f> &p, vector<u32> &idx) : p(p), idx(idx) {}
-  vector<vec3f> &p;
-  vector<u32> &idx;
+  vector<vec3f> pos, nor;
+  vector<u32> idx, mat;
 };
 
 struct qem {
@@ -782,8 +781,8 @@ static void buildedges(const mesh &m, vector<qemedge> &e) {
           }
           // is it a multi-material edge?
           const auto &edge = e[idx];
-          if (edge.mat != mat) {
-            // TODO add a new plan
+          if (u32(edge.mat) != mat) {
+            // TODO add a new plane
           }
         }
         i0 = i1;
@@ -889,6 +888,7 @@ static void decimatemesh(mesh &m,
 }
 
 static void decimatemesh(mesh &m) {
+
   // we go over all triangles and build all vertex qem
   vector<qem> vqem(m.m_vertnum);
   loopi(m.m_indexnum/3) {
@@ -913,38 +913,18 @@ static void decimatemesh(mesh &m) {
   buildheap(m.m_pos, vqem, eqem, heap);
 
   // decimate the mesh using quadric error functions
-  decimatemesh(m, heap, vqem, eqem, eqem.length()*1/10);
+  decimatemesh(m, heap, vqem, eqem, eqem.length()*5/10);
 }
 
-static mesh buildmesh(octree &o) {
-
-  // build the buffers here
-  vector<vec3f> posbuf, norbuf;
-  vector<u32> idxbuf;
-  vector<u32> mat;
+static void buildmesh(const octree &o, qemmesh &m) {
   vector<pair<int,int>> vertlist;
-#if 0
-  u32 num = 0, simplenum = 0, noisenum;
-  loopv(ctx->m_builders) {
-    const auto &b = *ctx->m_builders[i];
-    const auto quadlen = b.m_quad_buffer.length();
-    loopvj(b.m_quad_buffer) {
-      if (b.m_quad_buffer[j].matindex == csg::MAT_SNOISE_INDEX) ++noisenum;
-      else if (b.m_quad_buffer[j].matindex == csg::MAT_SIMPLE_INDEX) ++simplenum;
-    }
-    num += quadlen;
-  }
 
-  printf("num %d simplenum %d noisenum %d\n", num, simplenum, noisenum);
-#endif
-#if 1
   // merge all builder vertex buffers
   loopv(ctx->m_builders) {
     const auto &b = *ctx->m_builders[i];
     const auto quadlen = b.m_quad_buffer.length();
 
-    // loop over all quads. build triangle mesh on the fly merging normals when
-    // close enough
+    // loop over all quads and build triangle mesh
     loopj(quadlen) {
       // get four points
       const auto &q = b.m_quad_buffer[j];
@@ -961,8 +941,7 @@ static mesh buildmesh(octree &o) {
       // get the right convex configuration
       const auto tri = findbestmesh(pt).tri;
 
-      // compute triangle normals and append points in the vertex buffer and the
-      // index buffer
+      // append positions in the vertex buffer and the index buffer
       loopk(2) {
         const auto t = tri[k];
         const auto edge0 = pt[t[2]]->pos-pt[t[0]]->pos;
@@ -970,68 +949,128 @@ static mesh buildmesh(octree &o) {
         const auto dir = cross(edge0, edge1);
         const auto len2 = length2(dir);
         if (len2 < MIN_TRIANGLE_AREA) continue;
-        const auto nor = dir/sqrt(len2);
-        mat.add(quadmat);
+        m.mat.add(quadmat);
         loopl(3) {
           auto qef = pt[t[l]];
-          int vertidx = -1, curridx = qef->idx;
-
-          // try to find a good candidate with a normal close to ours
-          while (curridx != -1) {
-            auto const curr = vertlist[curridx];
-            vertidx = curr.first;
-            auto const cosangle = dot(nor, normalize(norbuf[vertidx]));
-            if (cosangle > SHARP_EDGE_THRESHOLD) break;
-            curridx = curr.second;
-          }
-
-          // create a brand new vertex here
-          if (curridx == -1) {
+          auto curridx = qef->idx, vertidx = -1;
+          if (curridx != -1)
+            vertidx = vertlist[curridx].first;
+          else {
             const auto head = qef->idx;
             qef->idx = vertlist.length();
-            vertidx = posbuf.length();
+            vertidx = m.pos.length();
             vertlist.add(makepair(vertidx,head));
-            posbuf.add(qef->pos);
-            norbuf.add(dir);
+            m.pos.add(qef->pos);
           }
-          // update the vertex normal
-          else
-            norbuf[vertidx] += dir;
-          idxbuf.add(vertidx);
+          m.idx.add(vertidx);
         }
       }
     }
   }
+}
+
+static void creasemesh(qemmesh &m) {
+  const auto trinum = m.idx.length()/3;
+  vector<int> vertlist(m.pos.length());
+  vector<vec3f> newnor(m.pos.length());
+  vector<u32> newidx;
+
+  // init the chain list
+  loopv(vertlist) vertlist[i] = i;
+
+  // go over all triangles and initialize vertex normals
+  loopi(trinum) {
+    const auto t = &m.idx[3*i];
+    const auto edge0 = m.pos[t[2]]-m.pos[t[0]];
+    const auto edge1 = m.pos[t[2]]-m.pos[t[1]];
+    const auto dir = cross(edge0, edge1);
+    const auto nor = normalize(dir);
+    loopj(3) {
+      auto idx = int(t[j]);
+      if (vertlist[idx] == idx) {
+        vertlist[idx] = -1;
+        newnor[idx] = dir;
+      } else {
+        while (idx != -1) {
+          const auto cosangle = dot(nor, normalize(newnor[idx]));
+          if (cosangle > SHARP_EDGE_THRESHOLD) break;
+          idx = vertlist[idx];
+        }
+        if (idx != -1)
+          newnor[idx] += dir;
+        else {
+          const auto old = vertlist[t[j]];
+          idx = newnor.length();
+          vertlist[t[j]] = newnor.length();
+          vertlist.add(old);
+          m.pos.add(m.pos[t[j]]);
+          newnor.add(dir);
+        }
+      }
+      newidx.add(idx);
+    }
+  }
+
+  // renormalize all normals
+  loopv(newnor) newnor[i] = normalize(newnor[i]);
+  newnor.moveto(m.nor);
+  newidx.moveto(m.idx);
+}
+
+static mesh buildmesh(octree &o) {
+#if 0
+  // build the buffers here
+  vector<vec3f> posbuf, norbuf;
+  vector<u32> idxbuf;
+  vector<u32> mat;
+
+  u32 num = 0, simplenum = 0, noisenum;
+  loopv(ctx->m_builders) {
+    const auto &b = *ctx->m_builders[i];
+    const auto quadlen = b.m_quad_buffer.length();
+    loopvj(b.m_quad_buffer) {
+      if (b.m_quad_buffer[j].matindex == csg::MAT_SNOISE_INDEX) ++noisenum;
+      else if (b.m_quad_buffer[j].matindex == csg::MAT_SIMPLE_INDEX) ++simplenum;
+    }
+    num += quadlen;
+  }
+
+  printf("num %d simplenum %d noisenum %d\n", num, simplenum, noisenum);
+#endif
+#if 1
+
+  // build the mesh
+  qemmesh qm;
+  buildmesh(o, qm);
+
+  // crease edges
+  creasemesh(qm);
 
   // build the segment list
   vector<segment> seg;
   u32 currmat = ~0x0;
-  loopv(mat) {
-    if (mat[i] != currmat) {
-      seg.add({3u*i,0u,mat[i]});
-      currmat = mat[i];
+  loopv(qm.mat) {
+    if (qm.mat[i] != currmat) {
+      seg.add({3u*i,0u,qm.mat[i]});
+      currmat = qm.mat[i];
     }
     seg.last().num += 3;
   }
-
-  // normalize all vertex normals now
-  loopv(norbuf) norbuf[i] = normalize(norbuf[i]);
 #endif
 
 #if !defined(NDEBUG)
-  loopv(posbuf) assert(!isnan(posbuf[i].x)&&!isnan(posbuf[i].y)&&!isnan(posbuf[i].z));
-  loopv(posbuf) assert(!isinf(posbuf[i].x)&&!isinf(posbuf[i].y)&&!isinf(posbuf[i].z));
-  loopv(norbuf) assert(!isnan(norbuf[i].x)&&!isnan(norbuf[i].y)&&!isnan(norbuf[i].z));
-  loopv(norbuf) assert(!isinf(norbuf[i].x)&&!isinf(norbuf[i].y)&&!isinf(norbuf[i].z));
+  loopv(qm.pos) assert(!isnan(qm.pos[i].x)&&!isnan(qm.pos[i].y)&&!isnan(qm.pos[i].z));
+  loopv(qm.pos) assert(!isinf(qm.pos[i].x)&&!isinf(qm.pos[i].y)&&!isinf(qm.pos[i].z));
+  loopv(qm.nor) assert(!isnan(qm.nor[i].x)&&!isnan(qm.nor[i].y)&&!isnan(qm.nor[i].z));
+  loopv(qm.nor) assert(!isinf(qm.nor[i].x)&&!isinf(qm.nor[i].y)&&!isinf(qm.nor[i].z));
 #endif
 
-  const auto p = posbuf.move();
-  const auto n = norbuf.move();
-  const auto idx = idxbuf.move();
+  const auto p = qm.pos.move();
+  const auto n = qm.nor.move();
+  const auto idx = qm.idx.move();
   const auto s = seg.move();
-  mesh m(p.first, n.first, idx.first, s.first, p.second, idx.second, s.second);
-  // decimatemesh(m);
-  return m;
+  return mesh(p.first, n.first, idx.first, s.first, p.second, idx.second, s.second);
+//  decimatemesh(m);
 }
 
 mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d) {
