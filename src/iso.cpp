@@ -660,11 +660,59 @@ INLINE const quadmesh &findbestmesh(octree::qefpoint **pt) {
 INLINE const quadmesh &findbestmesh(octree::qefpoint **pt) {return qmesh[0];}
 #endif
 
-struct qemmesh {
+/*-------------------------------------------------------------------------
+ - build a regular "to-process" mesh from the qef points and quads
+ -------------------------------------------------------------------------*/
+struct procmesh {
   vector<vec3f> pos, nor;
   vector<u32> idx, mat;
 };
 
+static void buildmesh(const octree &o, procmesh &m) {
+
+  // merge all builder vertex buffers
+  loopv(ctx->m_builders) {
+    const auto &b = *ctx->m_builders[i];
+    const auto quadlen = b.m_quad_buffer.length();
+
+    // loop over all quads and build triangle mesh
+    loopj(quadlen) {
+
+      // get four points
+      const auto &q = b.m_quad_buffer[j];
+      const auto quadmat = q.matindex;
+      octree::qefpoint *pt[4];
+      loopk(4) {
+        const auto leaf = o.findleaf(q.index[k]);
+        assert(leaf != NULL && leaf->qef != NULL);
+        const auto idx = q.index[k] % vec3i(SUBGRID);
+        const auto qefidx = idx.x+SUBGRID*(idx.y+SUBGRID*idx.z);
+        pt[k] = leaf->qef+qefidx;
+      }
+
+      // get the right convex configuration
+      const auto tri = findbestmesh(pt).tri;
+
+      // append positions in the vertex buffer and the index buffer
+      loopk(2) {
+        const auto t = tri[k];
+        m.mat.add(quadmat);
+        loopl(3) {
+          const auto qef = pt[t[l]];
+          if (qef->idx == -1) {
+            qef->idx = m.pos.length();
+            m.pos.add(qef->pos);
+          }
+          m.idx.add(qef->idx);
+        }
+      }
+    }
+  }
+}
+
+/*-------------------------------------------------------------------------
+ - run mesh decimation on a regular "to-process" mesh
+ -------------------------------------------------------------------------*/
 struct qem {
   INLINE qem() {ZERO(this); next=-1;}
   INLINE qem(vec3f v0, vec3f v1, vec3f v2) : timestamp(0), next(-1) {
@@ -737,66 +785,59 @@ struct heapscore<iso::qemheapitem> {
 };
 
 namespace iso {
-static void buildedges(const mesh &m, vector<qemedge> &e) {
+static void buildedges(const procmesh &pm, vector<qemedge> &e) {
 
   // maintain a list of edges per triangle
-  vector<int> vlist(m.m_indexnum);
-  loopi(m.m_vertnum) vlist[i] = -1;
-  int firstedge = m.m_vertnum;
+  const auto vertnum = pm.pos.length(), trinum = pm.idx.length()/3;
+  vector<int> vlist(pm.idx.length());
+  loopi(vertnum) vlist[i] = -1;
+  int firstedge = vertnum;
 
   // first append all edges with i0 < i1
-  loopk(m.m_segmentnum) {
-    const auto mat = m.m_segment[k].mat;
-    const auto begin = m.m_segment[k].start/3;
-    const auto end = begin + m.m_segment[k].num/3;
-    rangei(begin, end) {
-      const auto t = &m.m_index[3*i];
-      int i0 = t[2];
-      loopj(3) {
-        const int i1 = t[j];
-        if (i0 < i1) {
-          vlist[firstedge++] = vlist[i0];
-          vlist[i0] = e.length();
-          e.add(qemedge(i0,i1,mat));
-        }
-        i0 = i1;
+  loopi(trinum) {
+    const auto mat = pm.mat[i];
+    const auto t = &pm.idx[3*i];
+    int i0 = t[2];
+    loopj(3) {
+      const int i1 = t[j];
+      if (i0 < i1) {
+        vlist[firstedge++] = vlist[i0];
+        vlist[i0] = e.length();
+        e.add(qemedge(i0,i1,mat));
       }
+      i0 = i1;
     }
   }
 
   // with i1 < i0, we now handle border and multi-material edges
-  auto nextedge = &vlist[0] + m.m_vertnum;
-  loopk(m.m_segmentnum) {
-    const auto mat = m.m_segment[k].mat;
-    const auto begin = m.m_segment[k].start/3;
-    const auto end = begin + m.m_segment[k].num/3;
-    rangei(begin, end) {
-      const auto t = &m.m_index[3*i];
-      int i0 = t[2];
-      loopj(3) {
-        const int i1 = t[j];
-        if (i0 > i1) {
-          int idx = vlist[i1];
-          for (; idx != -1; idx = nextedge[idx]) {
-            const auto &edge = e[idx];
-            if (edge.idx[1] == i0) break;
-          }
-
-          // border edge
-          if (idx == -1) {
-            vlist[firstedge++] = vlist[i1];
-            vlist[i1] = e.length();
-            e.add(qemedge(i1,i0,mat));
-            continue;
-          }
-          // is it a multi-material edge?
+  auto nextedge = &vlist[0] + vertnum;
+  loopi(trinum) {
+    const auto mat = pm.mat[i];
+    const auto t = &pm.idx[3*i];
+    int i0 = t[2];
+    loopj(3) {
+      const int i1 = t[j];
+      if (i0 > i1) {
+        int idx = vlist[i1];
+        for (; idx != -1; idx = nextedge[idx]) {
           const auto &edge = e[idx];
-          if (u32(edge.mat) != mat) {
-            // TODO add a new plane
-          }
+          if (edge.idx[1] == i0) break;
         }
-        i0 = i1;
+
+        // border edge
+        if (idx == -1) {
+          vlist[firstedge++] = vlist[i1];
+          vlist[i1] = e.length();
+          e.add(qemedge(i1,i0,mat));
+          continue;
+        }
+        // is it a multi-material edge?
+        const auto &edge = e[idx];
+        if (u32(edge.mat) != mat) {
+          // TODO add a new plane
+        }
       }
+      i0 = i1;
     }
   }
 }
@@ -808,7 +849,7 @@ findbest(const qem &q0, const qem &q1, const vec3f &p0, const vec3f &p1) {
   return error0 < error1 ? makepair(error0, 0) : makepair(error1, 1);
 }
 
-static void buildheap(const vec3f *p,
+static void buildheap(const vector<vec3f> &p,
                       const vector<qem> &v,
                       vector<qemedge> &e,
                       vector<qemheapitem> &h)
@@ -836,23 +877,22 @@ INLINE void merge(const qemedge &edge, collapselist &collapses,
                   int idx0, int idx1, qem &q0, qem &q1)
 {
   const auto timestamp0 = q0.timestamp, timestamp1 = q1.timestamp;
-  if (timestamp0 == edge.timestamp[0] && timestamp1 == edge.timestamp[1]) {
-    const auto q = q0+q1;
-    const auto newstamp = max(timestamp0, timestamp1);
-    if (edge.best == 0) {
-      q0 = q;
-      q1.next = idx0;
-      collapses.add(makepair(idx1, idx0));
-    } else {
-      q1 = q;
-      q0.next = idx1;
-      collapses.add(makepair(idx0, idx1));
-    }
-    q0.timestamp = q1.timestamp = newstamp+1;
+  const auto q = q0+q1;
+  const auto newstamp = max(timestamp0, timestamp1);
+  assert(timestamp0==edge.timestamp[0] && timestamp1==edge.timestamp[1]);
+  if (edge.best == 0) {
+    q0 = q;
+    q1.next = idx0;
+    collapses.add(makepair(idx1, idx0));
+  } else {
+    q1 = q;
+    q0.next = idx1;
+    collapses.add(makepair(idx0, idx1));
   }
+  q0.timestamp = q1.timestamp = newstamp+1;
 }
 
-static void decimatemesh(mesh &m,
+static void decimatemesh(procmesh &pm,
                          vector<qemheapitem> &heap,
                          vector<qem> &vqem,
                          vector<qemedge> &eqem,
@@ -861,20 +901,40 @@ static void decimatemesh(mesh &m,
 {
   collapselist collapses;
   assert(toremove <= eqem.length());
+  bool anychange = true;
 
-  // first we just remove all edges smaller than the given threshold
-  loopv(eqem) {
-    auto &edge = eqem[i];
-    const auto idx0 = uncollapsedidx(vqem, edge.idx[0]);
-    const auto idx1 = uncollapsedidx(vqem, edge.idx[1]);
-    const auto p0 = m.m_pos[idx0];
-    const auto p1 = m.m_pos[idx1];
-    if (distance(p0,p1) < edgeminlen)
+  // first we just remove all edges smaller than the given threshold. we iterate
+  // until there is nothing left to remove
+  while (anychange) {
+    anychange = false;
+    loopv(eqem) {
+      auto &edge = eqem[i];
+      const auto idx0 = uncollapsedidx(vqem, edge.idx[0]);
+      const auto idx1 = uncollapsedidx(vqem, edge.idx[1]);
+      const auto &p0 = pm.pos[idx0];
+      const auto &p1 = pm.pos[idx1];
+
+      // we do not care about this edge if already folded or too big
+      if (idx0 == idx1 || distance(p0,p1) >= edgeminlen) continue;
+
+      // need to update it properly here
+      auto &q0 = vqem[idx0], &q1 = vqem[idx1];
+      if (q0.timestamp != edge.timestamp[0] || q1.timestamp != edge.timestamp[1]) {
+        edge.best = findbest(q0,q1,p0,p1).second;
+        edge.timestamp[0] = q0.timestamp;
+        edge.timestamp[1] = q1.timestamp;
+      }
+
+      // now we can safely merge it
       merge(edge, collapses, idx0, idx1, vqem[idx0], vqem[idx1]);
+      --toremove;
+      anychange = true;
+    }
   }
+
 #if 0
   // stop when we got enough collapses
-  while (toremove) {
+  while (toremove > 0) {
     const auto item = heap.removeheap();
     auto &edge = eqem[item.idx];
     const auto idx0 = uncollapsedidx(vqem, edge.idx[0]);
@@ -887,7 +947,7 @@ static void decimatemesh(mesh &m,
     }
 
     // try to remove it. the cost function needs to be properly updated
-    const auto &p0 = m.m_pos[idx0], &p1 = m.m_pos[idx1];
+    const auto &p0 = pm.pos[idx0], &p1 = pm.pos[idx1];
     auto &q0 = vqem[idx0], &q1 = vqem[idx1];
     assert(q0.timestamp >= edge.timestamp[0]);
     assert(q1.timestamp >= edge.timestamp[1]);
@@ -925,26 +985,54 @@ static void decimatemesh(mesh &m,
     heap.addheap(newitem);
   }
 #endif
-  // now we play the collapse sequence to get the proper vertex mapping
-  vector<int> mapping(m.m_vertnum);
+
+  // we play the collapse sequence to get the proper vertex mapping
+  vector<int> mapping(pm.pos.length());
   loopv(mapping) mapping[i] = i;
   loopvrev(collapses) mapping[collapses[i].first] = mapping[collapses[i].second];
 
   // update triangles indices
-  loopi(m.m_indexnum) m.m_index[i] = mapping[m.m_index[i]];
+  loopv(pm.idx) pm.idx[i] = mapping[pm.idx[i]];
+
+  // now, we remove unused vertices and degenerated triangles
+  loopv(mapping) mapping[i] = -1;
+  vector<u32> newidx, newmat;
+  const auto trinum = pm.idx.length()/3;
+  auto vertnum = 0;
+  loopi(trinum) {
+    const auto i0 = pm.idx[3*i+0];
+    const auto i1 = pm.idx[3*i+1];
+    const auto i2 = pm.idx[3*i+2];
+    if (i0 == i1 || i1 == i2 || i2 == i0)
+      continue;
+    if (mapping[i0] == -1) mapping[i0] = vertnum++;
+    if (mapping[i1] == -1) mapping[i1] = vertnum++;
+    if (mapping[i2] == -1) mapping[i2] = vertnum++;
+    newmat.add(pm.mat[i]);
+    newidx.add(mapping[i0]);
+    newidx.add(mapping[i1]);
+    newidx.add(mapping[i2]);
+  }
+  newidx.moveto(pm.idx);
+  newmat.moveto(pm.mat);
+
+  // compact vertex buffer
+  vector<vec3f> newpos(vertnum);
+  loopv(mapping) if (mapping[i] != -1) newpos[mapping[i]] = pm.pos[i];
+  newpos.moveto(pm.pos);
 }
 
-static void decimatemesh(mesh &m, float cellsize) {
+static void decimatemesh(procmesh &pm, float cellsize) {
 
   // we go over all triangles and build all vertex qem
-  vector<qem> vqem(m.m_vertnum);
-  loopi(m.m_indexnum/3) {
-    const auto i0 = m.m_index[3*i+0];
-    const auto i1 = m.m_index[3*i+1];
-    const auto i2 = m.m_index[3*i+2];
-    const auto v0 = m.m_pos[i0];
-    const auto v1 = m.m_pos[i1];
-    const auto v2 = m.m_pos[i2];
+  vector<qem> vqem(pm.pos.length());
+  loopi(pm.idx.length()/3) {
+    const auto i0 = pm.idx[3*i+0];
+    const auto i1 = pm.idx[3*i+1];
+    const auto i2 = pm.idx[3*i+2];
+    const auto v0 = pm.pos[i0];
+    const auto v1 = pm.pos[i1];
+    const auto v2 = pm.pos[i2];
     const qem q(v0,v1,v2);
     vqem[i0] += q;
     vqem[i1] += q;
@@ -953,109 +1041,98 @@ static void decimatemesh(mesh &m, float cellsize) {
 
   // build the list of edges
   vector<qemedge> eqem;
-  buildedges(m, eqem);
+  buildedges(pm, eqem);
 
   // evaluate the cost for each edge and build the heap
   vector<qemheapitem> heap(eqem.length());
-  buildheap(m.m_pos, vqem, eqem, heap);
+  buildheap(pm.pos, vqem, eqem, heap);
 
   // decimate the mesh using quadric error functions
-  decimatemesh(m, heap, vqem, eqem, eqem.length()*5/10, cellsize*MIN_EDGE_FACTOR);
+  const auto minlen = cellsize*MIN_EDGE_FACTOR;;
+  decimatemesh(pm, heap, vqem, eqem, eqem.length()*5/10, minlen);
 }
 
-static void buildmesh(const octree &o, qemmesh &m) {
-
-  // merge all builder vertex buffers
-  loopv(ctx->m_builders) {
-    const auto &b = *ctx->m_builders[i];
-    const auto quadlen = b.m_quad_buffer.length();
-
-    // loop over all quads and build triangle mesh
-    loopj(quadlen) {
-
-      // get four points
-      const auto &q = b.m_quad_buffer[j];
-      const auto quadmat = q.matindex;
-      octree::qefpoint *pt[4];
-      loopk(4) {
-        const auto leaf = o.findleaf(q.index[k]);
-        assert(leaf != NULL && leaf->qef != NULL);
-        const auto idx = q.index[k] % vec3i(SUBGRID);
-        const auto qefidx = idx.x+SUBGRID*(idx.y+SUBGRID*idx.z);
-        pt[k] = leaf->qef+qefidx;
-      }
-
-      // get the right convex configuration
-      const auto tri = findbestmesh(pt).tri;
-
-      // append positions in the vertex buffer and the index buffer
-      loopk(2) {
-        const auto t = tri[k];
-        const auto edge0 = pt[t[2]]->pos-pt[t[0]]->pos;
-        const auto edge1 = pt[t[2]]->pos-pt[t[1]]->pos;
-        // if (length2(cross(edge0, edge1)) == 0.f) continue;
-        m.mat.add(quadmat);
-        loopl(3) {
-          const auto qef = pt[t[l]];
-          if (qef->idx == -1) {
-            qef->idx = m.pos.length();
-            m.pos.add(qef->pos);
-          }
-          m.idx.add(qef->idx);
-        }
-      }
-    }
-  }
-}
-
-static void creasemesh(qemmesh &m) {
-  const auto trinum = m.idx.length()/3;
-  vector<int> vertlist(m.pos.length());
-  vector<vec3f> newnor(m.pos.length());
-  vector<u32> newidx;
+/*-------------------------------------------------------------------------
+ - sharpen mesh i.e. duplicate sharp points and compute vertex normals
+ -------------------------------------------------------------------------*/
+static void sharpenmesh(procmesh &pm) {
+  const auto trinum = pm.idx.length()/3;
+  vector<int> vertlist(pm.pos.length());
+  vector<vec3f> newnor(pm.pos.length());
+  vector<u32> newidx, newmat;
 
   // init the chain list
   loopv(vertlist) vertlist[i] = i;
 
+#if !defined(NDEBUG)
+  loopv(newnor) newnor[i] = vec3f(zero);
+#endif
+
   // go over all triangles and initialize vertex normals
   loopi(trinum) {
-    const auto t = &m.idx[3*i];
-    const auto edge0 = m.pos[t[2]]-m.pos[t[0]];
-    const auto edge1 = m.pos[t[2]]-m.pos[t[1]];
+    const auto t = &pm.idx[3*i];
+    const auto edge0 = pm.pos[t[2]]-pm.pos[t[0]];
+    const auto edge1 = pm.pos[t[2]]-pm.pos[t[1]];
+
+    // zero sized edge are not possible since we got rid of them...
+    assert(length(edge0) != 0.f && length(edge1) != 0.f);
+
+    // ...but colinear edges are still possible
     const auto dir = cross(edge0, edge1);
-    const auto nor = normalize(dir);
+    const auto len2 = length2(dir);
+    if (len2 < MIN_TRIANGLE_AREA) continue;
+    const auto nor = dir*rsqrt(len2);
     loopj(3) {
       auto idx = int(t[j]);
       if (vertlist[idx] == idx) {
         vertlist[idx] = -1;
         newnor[idx] = dir;
+        assert(any(ge(abs(dir),1e-6f)));
       } else {
         while (idx != -1) {
           const auto cosangle = dot(nor, normalize(newnor[idx]));
           if (cosangle > SHARP_EDGE_THRESHOLD) break;
           idx = vertlist[idx];
         }
-        if (idx != -1)
+        if (idx != -1) {
           newnor[idx] += dir;
+          assert(any(ge(abs(newnor[idx]),1e-6f)));
+          if (isinf(newnor[idx].x)) DEBUGBREAK;
+        }
         else {
           const auto old = vertlist[t[j]];
           idx = newnor.length();
           vertlist[t[j]] = newnor.length();
           vertlist.add(old);
-          m.pos.add(m.pos[t[j]]);
+          pm.pos.add(pm.pos[t[j]]);
           newnor.add(dir);
+          assert(any(ge(abs(newnor[idx]),1e-6f)));
         }
       }
       newidx.add(idx);
     }
+    newmat.add(pm.mat[i]);
   }
 
   // renormalize all normals
-  loopv(newnor) newnor[i] = normalize(newnor[i]);
-  newnor.moveto(m.nor);
-  newidx.moveto(m.idx);
+  loopv(newnor) {
+    assert(any(ne(newnor[i], vec3f(zero))));
+    //if (isinf(newnor[i].x)) DEBUGBREAK;
+    //newnor[i] = normalize(newnor[i]);
+    const auto n = normalize(newnor[i]);
+    if (isinf(n.x)) {
+      DEBUGBREAK;
+      printf("DDD");
+    }
+  }
+  newnor.moveto(pm.nor);
+  newidx.moveto(pm.idx);
+  newmat.moveto(pm.mat);
 }
 
+/*-------------------------------------------------------------------------
+ - build a final mesh from the qef points and quads stored in the octree
+ -------------------------------------------------------------------------*/
 static mesh buildmesh(octree &o, float cellsize) {
 #if 0
   // build the buffers here
@@ -1079,38 +1156,40 @@ static mesh buildmesh(octree &o, float cellsize) {
 #if 1
 
   // build the mesh
-  qemmesh qm;
-  buildmesh(o, qm);
+  procmesh pm;
+  buildmesh(o, pm);
 
-  // crease edges
-  // creasemesh(qm);
+  // decimate the edges and remove degenrate triangles
+  decimatemesh(pm, cellsize);
+
+  // handle sharp edges
+  sharpenmesh(pm);
 
   // build the segment list
   vector<segment> seg;
   u32 currmat = ~0x0;
-  loopv(qm.mat) {
-    if (qm.mat[i] != currmat) {
-      seg.add({3u*i,0u,qm.mat[i]});
-      currmat = qm.mat[i];
+  loopv(pm.mat) {
+    if (pm.mat[i] != currmat) {
+      seg.add({3u*i,0u,pm.mat[i]});
+      currmat = pm.mat[i];
     }
     seg.last().num += 3;
   }
 #endif
 
 #if !defined(NDEBUG)
-  loopv(qm.pos) assert(!isnan(qm.pos[i].x)&&!isnan(qm.pos[i].y)&&!isnan(qm.pos[i].z));
-  loopv(qm.pos) assert(!isinf(qm.pos[i].x)&&!isinf(qm.pos[i].y)&&!isinf(qm.pos[i].z));
-  loopv(qm.nor) assert(!isnan(qm.nor[i].x)&&!isnan(qm.nor[i].y)&&!isnan(qm.nor[i].z));
-  loopv(qm.nor) assert(!isinf(qm.nor[i].x)&&!isinf(qm.nor[i].y)&&!isinf(qm.nor[i].z));
+  loopv(pm.pos) assert(!isnan(pm.pos[i].x)&&!isnan(pm.pos[i].y)&&!isnan(pm.pos[i].z));
+  loopv(pm.pos) assert(!isinf(pm.pos[i].x)&&!isinf(pm.pos[i].y)&&!isinf(pm.pos[i].z));
+  loopv(pm.nor) assert(!isnan(pm.nor[i].x)&&!isnan(pm.nor[i].y)&&!isnan(pm.nor[i].z));
+  loopv(pm.nor) assert(!isinf(pm.nor[i].x)&&!isinf(pm.nor[i].y)&&!isinf(pm.nor[i].z));
 #endif
 
-  const auto p = qm.pos.move();
-  const auto n = qm.nor.move();
-  const auto idx = qm.idx.move();
+  const auto p = pm.pos.move();
+  const auto n = pm.nor.move();
+  const auto idx = pm.idx.move();
   const auto s = seg.move();
   auto m = mesh(p.first, n.first, idx.first, s.first, p.second, idx.second, s.second);
-  decimatemesh(m, cellsize);
-
+#if 1
   m.m_nor = (vec3f*) MALLOC(sizeof(vec3f) * m.m_vertnum);
   loopi(m.m_vertnum) m.m_nor[i] = vec3f(zero);
   loopi(m.m_indexnum/3) {
@@ -1123,6 +1202,7 @@ static mesh buildmesh(octree &o, float cellsize) {
     m.m_nor[t[2]] += dir;
   }
   loopi(m.m_vertnum) m.m_nor[i] = normalize(m.m_nor[i]);
+#endif
   return m;
 }
 
