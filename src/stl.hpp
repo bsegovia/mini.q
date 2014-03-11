@@ -136,12 +136,6 @@ INLINE bool operator==(const pair<T,U> &x0, const pair<T,U> &x1) {
 template <typename T, typename U>
 INLINE pair<T,U> makepair(const T &t, const U &u){return pair<T,U>(t,u);}
 
-template <typename T>
-struct heapscore {
-  typedef T type;
-  static INLINE type get(const T &n) {return n;}
-};
-
 // very simple fixed size hash table (linear probing)
 template <typename T, u32 max_n=1024> struct hashtable : noncopyable {
   hashtable() : n(0) {}
@@ -268,10 +262,10 @@ template <class T> struct vector : noncopyable {
   void buildheap() { for(int i = ulen/2; i >= 0; i--) downheap(i); }
 
   int upheap(int i) {
-    auto score = heapscore<T>::get(buf[i]);
+    auto score = buf[i];
     while (i > 0) {
       int pi = heapparent(i);
-      if (score >= heapscore<T>::get(buf[pi])) break;
+      if (!(score < buf[pi])) break;
       swap(buf[i], buf[pi]);
       i = pi;
     }
@@ -284,20 +278,20 @@ template <class T> struct vector : noncopyable {
   }
 
   int downheap(int i) {
-    auto score = heapscore<T>::get(buf[i]);
+    auto score = buf[i];
     for (;;) {
       int ci = heapchild(i);
       if (ci >= ulen) break;
-      auto cscore = heapscore<T>::get(buf[ci]);
-      if (score > cscore) {
-        if (ci+1 < ulen && heapscore<T>::get(buf[ci+1]) < cscore) {
+      auto cscore = buf[ci];
+      if (cscore < score) {
+        if (ci+1 < ulen && buf[ci+1] < cscore) {
           swap(buf[ci+1], buf[i]);
           i = ci+1;
         } else {
           swap(buf[ci], buf[i]);
           i = ci;
         }
-      } else if (ci+1 < ulen && heapscore<T>::get(buf[ci+1]) < score) {
+      } else if (ci+1 < ulen && buf[ci+1] < score) {
         swap(buf[ci+1], buf[i]);
         i = ci+1;
       } else

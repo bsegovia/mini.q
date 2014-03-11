@@ -45,6 +45,7 @@ static const int MAX_STEPS = 8;
 static const float SHARP_EDGE_THRESHOLD = 0.5f;
 static const float MIN_EDGE_FACTOR = 1.f/8.f;
 static const float MIN_TRIANGLE_AREA = 1e-6f;
+static const double QEM_MIN_ERROR = 1e-10;
 
 INLINE pair<vec3i,u32> edge(vec3i start, vec3i end) {
   const auto lower = select(lt(start,end), start, end);
@@ -716,25 +717,35 @@ static void buildmesh(const octree &o, procmesh &m) {
 struct qem {
   INLINE qem() {ZERO(this); next=-1;}
   INLINE qem(vec3f v0, vec3f v1, vec3f v2) : timestamp(0), next(-1) {
-    build(cross(v0-v1,v0-v2), v0);
+    init(cross(v0-v1,v0-v2), v0);
   }
-  INLINE qem(vec3f d, vec3f p) : timestamp(0), next(-1) { build(d,p); }
-  INLINE void build(const vec3f &d, const vec3f &p) {
-    const auto len = length(d);
-    if (len != 0.f) {
-      const auto n = vec3d(d/len);
-      const auto d = -dot(n, vec3d(p));
+  INLINE qem(vec3f d, vec3f p) : timestamp(0), next(-1) { init(d,p); }
+  INLINE void init(const vec3f &d, const vec3f &p) {
+    const auto len = double(length(d));
+    if (len != 0.) {
+      // slightly bias the error to make the error function returning very small
+      // negative value. this will be cleanly clamped to zero. zero errors are
+      // useful since they will map to fully flat surface that we can then
+      // handle specifically.
+      const auto dp = vec3d(p);
+      const auto n = vec3d(d)/len;
+      const auto d = -dot(n, dp);
       const auto a = n.x, b = n.y, c = n.z;
-      aa = a*a; bb = b*b; cc = c*c; dd = d*d;
-      ab = a*b; ac = a*c; ad = a*d;
-      bc = b*c; bd = b*d;
-      cd = c*d;
-    } else {
-      aa = bb = cc = dd = 0.0;
-      ab = ac = ad = 0.0;
-      bc = bd = 0.0;
-      cd = 0.0;
-    }
+
+      // weight the qem with the triangle area given by the length of
+      // unormalized normal vector
+      aa = a*a*len; bb = b*b*len; cc = c*c*len; dd = d*d*len;
+      ab = a*b*len; ac = a*c*len; ad = a*d*len;
+      bc = b*c*len; bd = b*d*len;
+      cd = c*d*len;
+    } else
+      init(zero);
+  }
+  INLINE void init(zerotype) {
+    aa = bb = cc = dd = 0.0;
+    ab = ac = ad = 0.0;
+    bc = bd = 0.0;
+    cd = 0.0;
   }
   INLINE qem operator+= (const qem &q) {
     aa+=q.aa; bb+=q.bb; cc+=q.cc; dd+=q.dd;
@@ -748,8 +759,7 @@ struct qem {
     const auto err = x*x*aa + 2.0*x*y*ab + 2.0*x*z*ac + 2.0*x*ad +
                      y*y*bb + 2.0*y*z*bc + 2.0*y*bd
                             + z*z*cc     + 2.0*z*cd + dd;
-    assert(err > -1e-3);
-    return max(err,0.0);
+    return err < QEM_MIN_ERROR ? 0.0 : err;
   }
   double aa, bb, cc, dd;
   double ab, ac, ad;
@@ -780,15 +790,15 @@ struct qemedge {
 
 struct qemheapitem {
   double cost;
+  float len2;
   int idx;
 };
-} /* namespace iso */
-template <>
-struct heapscore<iso::qemheapitem> {
-  static INLINE double get(const iso::qemheapitem &n) {return n.cost;}
-};
-
-namespace iso {
+INLINE bool operator< (const qemheapitem &i0, const qemheapitem &i1) {
+  if (i0.cost == 0.0 && i1.cost == 0.0)
+    return i0.len2 < i1.len2;
+  else
+    return i0.cost < i1.cost;
+}
 
 static void extraplane(const procmesh &pm, const qemedge &edge, int tri, qem &q0, qem &q1) {
   // need to find which vertex is the third one
@@ -801,10 +811,13 @@ static void extraplane(const procmesh &pm, const qemedge &edge, int tri, qem &q0
   // triangle normal
   const auto &p = pm.pos;
   const auto n0 = cross(p[i2]-p[i0], p[i1]-p[i0]);
-  const auto d = normalize(cross(n0, p[i1]-p[i0]));
-  const auto q = qem(d,p[i0]);
-  q0 += q;
-  q1 += q;
+  const auto d = cross(n0, p[i1]-p[i0]);
+  const auto len2 = length2(d);
+  if (len2 != 0.f) {
+    const auto q = qem(d*rsqrt(len2),p[i0]);
+    q0 += q;
+    q1 += q;
+  }
 }
 
 static void buildedges(const procmesh &pm, vector<qemedge> &e, vector<qem> &v) {
@@ -852,14 +865,13 @@ static void buildedges(const procmesh &pm, vector<qemedge> &e, vector<qem> &v) {
           vlist[i1] = e.length();
           e.add(qemedge(i1,i0,mat));
           extraplane(pm, e.last(), i, v[i0], v[i1]);
-        }
-        else {
+        } else {
           auto &edge = e[idx];
-          edge.num += 1;
+          ++edge.num;
 
           // is it a multi-material edge? if so, add a plane to separate both
           // materials
-          if (u32(edge.mat) != mat) extraplane(pm, e.last(), i, v[i0], v[i1]);
+          if (u32(edge.mat) != mat) extraplane(pm, edge, i, v[i0], v[i1]);
         }
       }
       i0 = i1;
@@ -873,13 +885,13 @@ static void buildedges(const procmesh &pm, vector<qemedge> &e, vector<qem> &v) {
     loopj(3) {
       const int i1 = t[j];
       if (i0 < i1) {
-        int idx = vlist[i1];
+        int idx = vlist[i0];
         for (; idx != -1; idx = nextedge[idx]) {
           const auto &edge = e[idx];
-          if (edge.idx[1] == i0) break;
+          if (edge.idx[1] == i1) break;
         }
-        assert(e[idx].num >= 1);
-        if (e[idx].num == 1) extraplane(pm, e.last(), i, v[i0], v[i1]);
+        assert(idx != -1 && e[idx].num >= 1);
+        if (e[idx].num == 1) extraplane(pm, e[idx], i, v[i0], v[i1]);
       }
       i0 = i1;
     }
@@ -905,6 +917,7 @@ static void buildheap(const vector<vec3f> &p,
     const auto best = findbest(q0,q1,p0,p1);
     e[i].best = best.second;
     h[i].cost = best.first;
+    h[i].len2 = distance2(p0,p1);
     h[i].idx = i;
   }
   h.buildheap();
@@ -976,9 +989,10 @@ static void decimatemesh(procmesh &pm,
     }
   }
 
-#if 0
-  // stop when we got enough collapses
-  while (toremove > 0) {
+
+  // we remove zero cost edges
+  for (;;) {
+  // while (toremove > 0) {
     const auto item = heap.removeheap();
     auto &edge = eqem[item.idx];
     const auto idx0 = uncollapsedidx(vqem, edge.idx[0]);
@@ -999,28 +1013,16 @@ static void decimatemesh(procmesh &pm,
     // edge is upto date. we can safely remove it
     const auto timestamp0 = q0.timestamp, timestamp1 = q1.timestamp;
     if (timestamp0 == edge.timestamp[0] && timestamp1 == edge.timestamp[1]) {
+      if (item.cost > QEM_MIN_ERROR)
+        break;
       merge(edge, collapses, idx0, idx1, q0, q1);
-#if 0
-      const auto q = q0+q1;
-      const auto newstamp = max(timestamp0, timestamp1);
-      if (edge.best == 0) {
-        q0 = q;
-        q1.next = idx0;
-        collapses.add(makepair(idx1, idx0));
-      } else {
-        q1 = q;
-        q0.next = idx1;
-        collapses.add(makepair(idx0, idx1));
-      }
-      q0.timestamp = q1.timestamp = newstamp+1;
-#endif
       --toremove;
       continue;
     }
 
     // edge is too old. we need to update its cost and reinsert it
     const auto best = findbest(q0,q1,p0,p1);
-    const qemheapitem newitem = {best.first, item.idx};
+    const qemheapitem newitem = {best.first, distance2(p0,p1), item.idx};
     edge.best = best.second;
     edge.timestamp[0] = timestamp0;
     edge.timestamp[1] = timestamp1;
@@ -1028,7 +1030,6 @@ static void decimatemesh(procmesh &pm,
     edge.idx[1] = idx1;
     heap.addheap(newitem);
   }
-#endif
 
   // we play the collapse sequence to get the proper vertex mapping
   vector<int> mapping(pm.pos.length());
@@ -1097,8 +1098,8 @@ static void decimatemesh(procmesh &pm, float cellsize) {
   buildheap(pm.pos, vqem, eqem, heap);
 
   // decimate the mesh using quadric error functions
-  const auto minlen = cellsize*MIN_EDGE_FACTOR;;
-  decimatemesh(pm, heap, vqem, eqem, eqem.length()*5/10, minlen);
+  const auto minlen = cellsize*MIN_EDGE_FACTOR;
+  decimatemesh(pm, heap, vqem, eqem, eqem.length()*7.3/10, minlen);
 }
 
 /*-------------------------------------------------------------------------
@@ -1113,7 +1114,7 @@ static void sharpenmesh(procmesh &pm) {
   // init the chain list
   loopv(vertlist) vertlist[i] = i;
 
-#if !defined(NDEBUG)
+#if 1 //!defined(NDEBUG)
   loopv(newnor) newnor[i] = vec3f(zero);
 #endif
 
@@ -1160,8 +1161,8 @@ static void sharpenmesh(procmesh &pm) {
 
   // renormalize all normals
   loopv(newnor) {
-    assert(any(ne(newnor[i], vec3f(zero))));
-    newnor[i] = normalize(newnor[i]);
+    const auto len2 = length2(newnor[i]);
+    if (len2 != 0.f) newnor[i] = newnor[i]*rsqrt(len2);
   }
   newnor.moveto(pm.nor);
   newidx.moveto(pm.idx);

@@ -507,7 +507,7 @@ void finish() {
 }
 #endif
 
-static const float CELLSIZE = 0.2f;
+static const float CELLSIZE = 0.1f;
 static void makescene() {
   if (initialized_m) return;
   const auto start = sys::millis();
