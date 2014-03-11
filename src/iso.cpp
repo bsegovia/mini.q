@@ -716,11 +716,14 @@ static void buildmesh(const octree &o, procmesh &m) {
 struct qem {
   INLINE qem() {ZERO(this); next=-1;}
   INLINE qem(vec3f v0, vec3f v1, vec3f v2) : timestamp(0), next(-1) {
-    const auto d = cross(v0-v1,v0-v2);
+    build(cross(v0-v1,v0-v2), v0);
+  }
+  INLINE qem(vec3f d, vec3f p) : timestamp(0), next(-1) { build(d,p); }
+  INLINE void build(const vec3f &d, const vec3f &p) {
     const auto len = length(d);
     if (len != 0.f) {
       const auto n = vec3d(d/len);
-      const auto d = -dot(n, vec3d(v0));
+      const auto d = -dot(n, vec3d(p));
       const auto a = n.x, b = n.y, c = n.z;
       aa = a*a; bb = b*b; cc = c*c; dd = d*d;
       ab = a*b; ac = a*c; ad = a*d;
@@ -763,7 +766,7 @@ INLINE qem operator+ (const qem &q0, const qem &q1) {
 
 struct qemedge {
   INLINE qemedge() {}
-  INLINE qemedge(int i0, int i1, int mat) : mat(mat), best(0) {
+  INLINE qemedge(int i0, int i1, int mat) : mat(mat), best(0), num(1) {
     idx[0] = i0;
     idx[1] = i1;
     timestamp[0] = timestamp[1] = 0;
@@ -771,7 +774,8 @@ struct qemedge {
   int idx[2];
   int timestamp[2];
   int mat;
-  int best;
+  int best:1;
+  int num:31;
 };
 
 struct qemheapitem {
@@ -785,7 +789,25 @@ struct heapscore<iso::qemheapitem> {
 };
 
 namespace iso {
-static void buildedges(const procmesh &pm, vector<qemedge> &e) {
+
+static void extraplane(const procmesh &pm, const qemedge &edge, int tri, qem &q0, qem &q1) {
+  // need to find which vertex is the third one
+  const auto t = &pm.idx[3*tri];
+  const auto i0 = edge.idx[0], i1 = edge.idx[1];
+  int i2 = t[2];
+  loopi(2) if (int(t[i])!=i0 && int(t[i])!=i1) i2=t[i];
+
+  // now we build plane that contains the edge and that is perpendicular to the
+  // triangle normal
+  const auto &p = pm.pos;
+  const auto n0 = cross(p[i2]-p[i0], p[i1]-p[i0]);
+  const auto d = normalize(cross(n0, p[i1]-p[i0]));
+  const auto q = qem(d,p[i0]);
+  q0 += q;
+  q1 += q;
+}
+
+static void buildedges(const procmesh &pm, vector<qemedge> &e, vector<qem> &v) {
 
   // maintain a list of edges per triangle
   const auto vertnum = pm.pos.length(), trinum = pm.idx.length()/3;
@@ -829,13 +851,35 @@ static void buildedges(const procmesh &pm, vector<qemedge> &e) {
           vlist[firstedge++] = vlist[i1];
           vlist[i1] = e.length();
           e.add(qemedge(i1,i0,mat));
-          continue;
+          extraplane(pm, e.last(), i, v[i0], v[i1]);
         }
-        // is it a multi-material edge?
-        const auto &edge = e[idx];
-        if (u32(edge.mat) != mat) {
-          // TODO add a new plane
+        else {
+          auto &edge = e[idx];
+          edge.num += 1;
+
+          // is it a multi-material edge? if so, add a plane to separate both
+          // materials
+          if (u32(edge.mat) != mat) extraplane(pm, e.last(), i, v[i0], v[i1]);
         }
+      }
+      i0 = i1;
+    }
+  }
+
+  // loop again over all triangles and add planes for border edges with i0 < i1
+  loopi(trinum) {
+    const auto t = &pm.idx[3*i];
+    int i0 = t[2];
+    loopj(3) {
+      const int i1 = t[j];
+      if (i0 < i1) {
+        int idx = vlist[i1];
+        for (; idx != -1; idx = nextedge[idx]) {
+          const auto &edge = e[idx];
+          if (edge.idx[1] == i0) break;
+        }
+        assert(e[idx].num >= 1);
+        if (e[idx].num == 1) extraplane(pm, e.last(), i, v[i0], v[i1]);
       }
       i0 = i1;
     }
@@ -1022,10 +1066,7 @@ static void decimatemesh(procmesh &pm,
   newpos.moveto(pm.pos);
 }
 
-static void decimatemesh(procmesh &pm, float cellsize) {
-
-  // we go over all triangles and build all vertex qem
-  vector<qem> vqem(pm.pos.length());
+static void buildqem(procmesh &pm, vector<qem> &v) {
   loopi(pm.idx.length()/3) {
     const auto i0 = pm.idx[3*i+0];
     const auto i1 = pm.idx[3*i+1];
@@ -1034,14 +1075,22 @@ static void decimatemesh(procmesh &pm, float cellsize) {
     const auto v1 = pm.pos[i1];
     const auto v2 = pm.pos[i2];
     const qem q(v0,v1,v2);
-    vqem[i0] += q;
-    vqem[i1] += q;
-    vqem[i2] += q;
+    v[i0] += q;
+    v[i1] += q;
+    v[i2] += q;
   }
+}
 
-  // build the list of edges
+static void decimatemesh(procmesh &pm, float cellsize) {
+
+  // we go over all triangles and build all vertex qem
+  vector<qem> vqem(pm.pos.length());
+  buildqem(pm, vqem);
+
+  // build the list of edges. append extra planes when needed (border and
+  // multi-material edges)
   vector<qemedge> eqem;
-  buildedges(pm, eqem);
+  buildedges(pm, eqem, vqem);
 
   // evaluate the cost for each edge and build the heap
   vector<qemheapitem> heap(eqem.length());
@@ -1087,18 +1136,14 @@ static void sharpenmesh(procmesh &pm) {
       if (vertlist[idx] == idx) {
         vertlist[idx] = -1;
         newnor[idx] = dir;
-        assert(any(ge(abs(dir),1e-6f)));
       } else {
         while (idx != -1) {
           const auto cosangle = dot(nor, normalize(newnor[idx]));
           if (cosangle > SHARP_EDGE_THRESHOLD) break;
           idx = vertlist[idx];
         }
-        if (idx != -1) {
+        if (idx != -1)
           newnor[idx] += dir;
-          assert(any(ge(abs(newnor[idx]),1e-6f)));
-          if (isinf(newnor[idx].x)) DEBUGBREAK;
-        }
         else {
           const auto old = vertlist[t[j]];
           idx = newnor.length();
@@ -1106,7 +1151,6 @@ static void sharpenmesh(procmesh &pm) {
           vertlist.add(old);
           pm.pos.add(pm.pos[t[j]]);
           newnor.add(dir);
-          assert(any(ge(abs(newnor[idx]),1e-6f)));
         }
       }
       newidx.add(idx);
@@ -1117,13 +1161,7 @@ static void sharpenmesh(procmesh &pm) {
   // renormalize all normals
   loopv(newnor) {
     assert(any(ne(newnor[i], vec3f(zero))));
-    //if (isinf(newnor[i].x)) DEBUGBREAK;
-    //newnor[i] = normalize(newnor[i]);
-    const auto n = normalize(newnor[i]);
-    if (isinf(n.x)) {
-      DEBUGBREAK;
-      printf("DDD");
-    }
+    newnor[i] = normalize(newnor[i]);
   }
   newnor.moveto(pm.nor);
   newidx.moveto(pm.idx);
@@ -1189,7 +1227,7 @@ static mesh buildmesh(octree &o, float cellsize) {
   const auto idx = pm.idx.move();
   const auto s = seg.move();
   auto m = mesh(p.first, n.first, idx.first, s.first, p.second, idx.second, s.second);
-#if 1
+#if 0
   m.m_nor = (vec3f*) MALLOC(sizeof(vec3f) * m.m_vertnum);
   loopi(m.m_vertnum) m.m_nor[i] = vec3f(zero);
   loopi(m.m_indexnum/3) {
