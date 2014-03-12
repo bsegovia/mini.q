@@ -42,7 +42,7 @@ mesh::~mesh() {
 
 static const auto DEFAULT_GRAD_STEP = 1e-3f;
 static const int MAX_STEPS = 8;
-static const float SHARP_EDGE_THRESHOLD = 0.5f;
+static const float SHARP_EDGE_THRESHOLD = 0.2f;
 static const float MIN_EDGE_FACTOR = 1.f/8.f;
 static const float MIN_TRIANGLE_AREA = 1e-6f;
 static const double QEM_MIN_ERROR = 1e-10;
@@ -275,11 +275,7 @@ struct dc_gridbuilder {
     loopk(MAX_STEPS) {
       auto box = aabb::empty();
       loopi(num) {
-        const auto samesign = it[i].v1*it[i].v0 > 0.f || it[i].v1==it[i].v0;
-        if (!samesign)
-          p[i] = it[i].p1 - it[i].v1 * (it[i].p1-it[i].p0)/(it[i].v1-it[i].v0);
-        else
-          p[i] = (it[i].p0 + it[i].p1) * 0.5f;
+        p[i] = (it[i].p0 + it[i].p1) * 0.5f;
         pos[i] = it[i].org+m_cellsize*p[i];
         box.pmin = min(pos[i], box.pmin);
         box.pmax = max(pos[i], box.pmax);
@@ -992,7 +988,7 @@ static void decimatemesh(procmesh &pm,
 
   // we remove zero cost edges
   for (;;) {
-  // while (toremove > 0) {
+  //while (0) {
     const auto item = heap.removeheap();
     auto &edge = eqem[item.idx];
     const auto idx0 = uncollapsedidx(vqem, edge.idx[0]);
