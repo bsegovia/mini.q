@@ -684,27 +684,6 @@ static void buildmesh(const octree &o, procmesh &pm) {
       }
     }
   }
-
-  // now build the per-vertex triangle list
-  pm.vtri.setsize(pm.pos.length());
-  pm.vidx.setsize(pm.idx.length());
-
-  // first initialize tri lists
-  loopv(pm.vtri) pm.vtri[i].first = pm.vtri[i].second = 0;
-  loopv(pm.idx) ++pm.vtri[pm.idx[i]].first;
-  auto accum = 0;
-  loopv(pm.vtri) {
-    pm.vtri[i].second = accum;
-    accum += pm.vtri[i].first;
-    pm.vtri[i].first = 0;
-  }
-  assert(accum == pm.idx.length());
-
-  // then, fill them
-  loopv(pm.idx) {
-    auto &vtri = pm.vtri[pm.idx[i]];
-    pm.vidx[vtri.first+vtri.second++] = i/3;
-  }
 }
 
 /*-------------------------------------------------------------------------
@@ -796,7 +775,17 @@ INLINE bool operator< (const qemheapitem &i0, const qemheapitem &i1) {
     return i0.cost < i1.cost;
 }
 
+struct qemcontext {
+  vector<int> vidx;
+  vector<pair<int,int>> vtri;
+  vector<qem> vqem;
+  vector<qemedge> eqem;
+  vector<qemheapitem> heap;
+  vector<pair<int,int>> collapses;
+};
+
 static void extraplane(const procmesh &pm, const qemedge &edge, int tri, qem &q0, qem &q1) {
+
   // need to find which vertex is the third one
   const auto t = &pm.idx[3*tri];
   const auto i0 = edge.idx[0], i1 = edge.idx[1];
@@ -816,7 +805,9 @@ static void extraplane(const procmesh &pm, const qemedge &edge, int tri, qem &q0
   }
 }
 
-static void buildedges(const procmesh &pm, vector<qemedge> &e, vector<qem> &v) {
+static void buildedges(qemcontext &ctx, const procmesh &pm) {
+  auto &e = ctx.eqem;
+  auto &v = ctx.vqem;
 
   // maintain a list of edges per triangle
   const auto vertnum = pm.pos.length(), trinum = pm.trinum();
@@ -901,11 +892,12 @@ findbest(const qem &q0, const qem &q1, const vec3f &p0, const vec3f &p1) {
   return error0 < error1 ? makepair(error0, 0) : makepair(error1, 1);
 }
 
-static void buildheap(const vector<vec3f> &p,
-                      const vector<qem> &v,
-                      vector<qemedge> &e,
-                      vector<qemheapitem> &h)
-{
+static void buildheap(qemcontext &ctx, procmesh &pm) {
+  auto &h = ctx.heap;
+  auto &e = ctx.eqem;
+  auto &v = ctx.vqem;
+  auto &p = pm.pos;
+  h.setsize(e.length());
   loopv(e) {
     const auto idx0 = e[i].idx[0], idx1 = e[i].idx[1];
     const auto &p0 = p[idx0], &p1 = p[idx1];
@@ -924,11 +916,13 @@ INLINE int uncollapsedidx(const vector<qem> &v, int idx) {
   return idx;
 }
 
-typedef vector<pair<int,int>> collapselist;
-
-INLINE void merge(const qemedge &edge, collapselist &collapses,
-                  int idx0, int idx1, qem &q0, qem &q1)
+static bool merge(procmesh &pm,
+  const qemedge &edge,
+  vector<pair<int,int>> &collapses,
+  int idx0, int idx1,
+  vector<qem> &vqem)
 {
+  auto &q0 = vqem[idx0], &q1 = vqem[idx1];
   const auto timestamp0 = q0.timestamp, timestamp1 = q1.timestamp;
   const auto q = q0+q1;
   const auto newstamp = max(timestamp0, timestamp1);
@@ -943,15 +937,14 @@ INLINE void merge(const qemedge &edge, collapselist &collapses,
     collapses.add(makepair(idx0, idx1));
   }
   q0.timestamp = q1.timestamp = newstamp+1;
+  return true;
 }
 
-static void decimatemesh(procmesh &pm,
-                         vector<qemheapitem> &heap,
-                         vector<qem> &vqem,
-                         vector<qemedge> &eqem,
-                         float edgeminlen)
-{
-  collapselist collapses;
+static void decimatemesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
+  auto &heap = ctx.heap;
+  auto &vqem = ctx.vqem;
+  auto &eqem = ctx.eqem;
+  auto &collapses = ctx.collapses;
   bool anychange = true;
 
   // first we just remove all edges smaller than the given threshold. we iterate
@@ -977,8 +970,7 @@ static void decimatemesh(procmesh &pm,
       }
 
       // now we can safely merge it
-      merge(edge, collapses, idx0, idx1, vqem[idx0], vqem[idx1]);
-      anychange = true;
+      anychange = merge(pm, edge, collapses, idx0, idx1, vqem) || anychange;
     }
   }
 
@@ -1002,9 +994,8 @@ static void decimatemesh(procmesh &pm,
     // edge is upto date. we can safely remove it
     const auto timestamp0 = q0.timestamp, timestamp1 = q1.timestamp;
     if (timestamp0 == edge.timestamp[0] && timestamp1 == edge.timestamp[1]) {
-      if (item.cost > QEM_MIN_ERROR)
-        break;
-      merge(edge, collapses, idx0, idx1, q0, q1);
+      if (item.cost > QEM_MIN_ERROR) break;
+      merge(pm, edge, collapses, idx0, idx1, vqem);
       continue;
     }
 
@@ -1033,18 +1024,14 @@ static void decimatemesh(procmesh &pm,
   const auto trinum = pm.trinum();
   auto vertnum = 0;
   loopi(trinum) {
-    const auto i0 = pm.idx[3*i+0];
-    const auto i1 = pm.idx[3*i+1];
-    const auto i2 = pm.idx[3*i+2];
-    if (i0 == i1 || i1 == i2 || i2 == i0)
+    const u32 idx[] = {pm.idx[3*i+0], pm.idx[3*i+1], pm.idx[3*i+2]};
+    if (idx[0] == idx[1] || idx[1] == idx[2] || idx[2] == idx[0])
       continue;
-    if (mapping[i0] == -1) mapping[i0] = vertnum++;
-    if (mapping[i1] == -1) mapping[i1] = vertnum++;
-    if (mapping[i2] == -1) mapping[i2] = vertnum++;
     newmat.add(pm.mat[i]);
-    newidx.add(mapping[i0]);
-    newidx.add(mapping[i1]);
-    newidx.add(mapping[i2]);
+    loopj(3) {
+      if (mapping[idx[j]] == -1) mapping[idx[j]] = vertnum++;
+      newidx.add(mapping[idx[j]]);
+    }
   }
   newidx.moveto(pm.idx);
   newmat.moveto(pm.mat);
@@ -1055,7 +1042,9 @@ static void decimatemesh(procmesh &pm,
   newpos.moveto(pm.pos);
 }
 
-static void buildqem(procmesh &pm, vector<qem> &v) {
+static void buildqem(qemcontext &ctx, procmesh &pm) {
+  auto &v = ctx.vqem;
+  v.setsize(pm.pos.length());
   loopi(pm.trinum()) {
     const auto i0 = pm.idx[3*i+0];
     const auto i1 = pm.idx[3*i+1];
@@ -1070,24 +1059,49 @@ static void buildqem(procmesh &pm, vector<qem> &v) {
   }
 }
 
+static void buildtrianglelists(qemcontext &ctx, const procmesh &pm) {
+  auto &vtri = ctx.vtri;
+  auto &vidx = ctx.vidx;
+  vtri.setsize(pm.pos.length());
+  vidx.setsize(pm.idx.length());
+
+  // first initialize tri lists
+  loopv(vtri) vtri[i].first = vtri[i].second = 0;
+  loopv(pm.idx) ++vtri[pm.idx[i]].first;
+  auto accum = 0;
+  loopv(vtri) {
+    vtri[i].second = accum;
+    accum += vtri[i].first;
+    vtri[i].first = 0;
+  }
+  assert(accum == pm.idx.length());
+
+  // then, fill them
+  loopv(pm.idx) {
+    auto &v = vtri[pm.idx[i]];
+    vidx[v.first+v.second++] = i/3;
+  }
+}
+
 static void decimatemesh(procmesh &pm, float cellsize) {
+  qemcontext ctx;
 
   // we go over all triangles and build all vertex qem
-  vector<qem> vqem(pm.pos.length());
-  buildqem(pm, vqem);
+  buildqem(ctx, pm);
 
   // build the list of edges. append extra planes when needed (border and
   // multi-material edges)
-  vector<qemedge> eqem;
-  buildedges(pm, eqem, vqem);
+  buildedges(ctx, pm);
 
   // evaluate the cost for each edge and build the heap
-  vector<qemheapitem> heap(eqem.length());
-  buildheap(pm.pos, vqem, eqem, heap);
+  buildheap(ctx, pm);
+
+  // generate the lists of triangles per-vertex
+  buildtrianglelists(ctx, pm);
 
   // decimate the mesh using quadric error functions
   const auto minlen = cellsize*MIN_EDGE_FACTOR;
-  decimatemesh(pm, heap, vqem, eqem, minlen);
+  decimatemesh(ctx, pm, minlen);
 }
 
 /*-------------------------------------------------------------------------
