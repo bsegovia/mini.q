@@ -103,12 +103,7 @@ struct edgestack {
 struct octree {
   struct qefpoint {
     vec3f pos;
-#if SHARP_EDGE_DC
-    int idx:30;
-    int sharp:2;
-#else
     int idx;
-#endif
   };
   struct node {
     INLINE node() : children(NULL), m_level(0), m_isleaf(0), m_empty(0) {}
@@ -411,15 +406,6 @@ struct dc_gridbuilder {
       }
       mass /= float(num);
 
-#if SHARP_EDGE_DC
-      // figure out if the point is on a feature
-      const auto normean = nor / float(num);
-      vec3f var(zero);
-      loopi(num) var += (normean-n[i])*(normean-n[i]);
-      var /= float(num);
-      const bool sharp = any(gt(var,0.5f));
-#endif
-
       // compute the QEF minimizing point
       double matrix[12][3];
       double vector[12];
@@ -436,9 +422,6 @@ struct dc_gridbuilder {
         const auto idx = xyz.x+SUBGRID*(xyz.y+xyz.z*SUBGRID);
         node.qef[idx].pos = qef;
         node.qef[idx].idx = -1;
-#if SHARP_EDGE_DC
-        node.qef[idx].sharp = sharp?1:0;
-#endif
       }
     }
   }
@@ -639,8 +622,9 @@ struct quadmesh { int tri[2][3]; };
 static const quadmesh qmesh[2] = {{{{0,1,2},{0,2,3}}},{{{0,1,3},{3,1,2}}}};
 
 // test first configuration. If ok, take it, otherwise take the other one
-#if SHARP_EDGE_DC
+#if 1
 INLINE const quadmesh &findbestmesh(octree::qefpoint **pt) {
+#if 0
   int sharpnum = 0, sharpindex = 0;
   loopi(4) if (pt[i]->sharp) { ++sharpnum; sharpindex = i; }
   if (sharpnum == 0)
@@ -652,6 +636,16 @@ INLINE const quadmesh &findbestmesh(octree::qefpoint **pt) {
     return qmesh[0];
   else
     return qmesh[1];
+#else
+  const auto qm0 = qmesh[0].tri;
+  const auto e00 = pt[qm0[0][0]]->pos-pt[qm0[0][1]]->pos;
+  const auto e01 = pt[qm0[0][0]]->pos-pt[qm0[0][2]]->pos;
+  const auto n0 = cross(e00,e01);
+  const auto e10 = pt[qm0[1][0]]->pos-pt[qm0[1][1]]->pos;
+  const auto e11 = pt[qm0[1][0]]->pos-pt[qm0[1][2]]->pos;
+  const auto n1 = cross(e10,e11);
+  return dot(n0,n1)>0.f ? qmesh[0] : qmesh[1];
+#endif
 }
 #else
 INLINE const quadmesh &findbestmesh(octree::qefpoint **pt) {return qmesh[0];}
@@ -663,9 +657,12 @@ INLINE const quadmesh &findbestmesh(octree::qefpoint **pt) {return qmesh[0];}
 struct procmesh {
   vector<vec3f> pos, nor;
   vector<u32> idx, mat;
+  vector<int> vidx;
+  vector<pair<int,int>> vtri;
+  INLINE int trinum() const {return idx.length()/3;}
 };
 
-static void buildmesh(const octree &o, procmesh &m) {
+static void buildmesh(const octree &o, procmesh &pm) {
 
   // merge all builder vertex buffers
   loopv(ctx->m_builders) {
@@ -693,17 +690,38 @@ static void buildmesh(const octree &o, procmesh &m) {
       // append positions in the vertex buffer and the index buffer
       loopk(2) {
         const auto t = tri[k];
-        m.mat.add(quadmat);
+        pm.mat.add(quadmat);
         loopl(3) {
           const auto qef = pt[t[l]];
           if (qef->idx == -1) {
-            qef->idx = m.pos.length();
-            m.pos.add(qef->pos);
+            qef->idx = pm.pos.length();
+            pm.pos.add(qef->pos);
           }
-          m.idx.add(qef->idx);
+          pm.idx.add(qef->idx);
         }
       }
     }
+  }
+
+  // now build the per-vertex triangle list
+  pm.vtri.setsize(pm.pos.length());
+  pm.vidx.setsize(pm.idx.length());
+
+  // first initialize tri lists
+  loopv(pm.vtri) pm.vtri[i].first = pm.vtri[i].second = 0;
+  loopv(pm.idx) ++pm.vtri[pm.idx[i]].first;
+  auto accum = 0;
+  loopv(pm.vtri) {
+    pm.vtri[i].second = accum;
+    accum += pm.vtri[i].first;
+    pm.vtri[i].first = 0;
+  }
+  assert(accum == pm.idx.length());
+
+  // then, fill them
+  loopv(pm.idx) {
+    auto &vtri = pm.vtri[pm.idx[i]];
+    pm.vidx[vtri.first+vtri.second++] = i/3;
   }
 }
 
@@ -819,7 +837,7 @@ static void extraplane(const procmesh &pm, const qemedge &edge, int tri, qem &q0
 static void buildedges(const procmesh &pm, vector<qemedge> &e, vector<qem> &v) {
 
   // maintain a list of edges per triangle
-  const auto vertnum = pm.pos.length(), trinum = pm.idx.length()/3;
+  const auto vertnum = pm.pos.length(), trinum = pm.trinum();
   vector<int> vlist(pm.idx.length());
   loopi(vertnum) vlist[i] = -1;
   int firstedge = vertnum;
@@ -949,11 +967,9 @@ static void decimatemesh(procmesh &pm,
                          vector<qemheapitem> &heap,
                          vector<qem> &vqem,
                          vector<qemedge> &eqem,
-                         int toremove,
                          float edgeminlen)
 {
   collapselist collapses;
-  assert(toremove <= eqem.length());
   bool anychange = true;
 
   // first we just remove all edges smaller than the given threshold. we iterate
@@ -980,11 +996,9 @@ static void decimatemesh(procmesh &pm,
 
       // now we can safely merge it
       merge(edge, collapses, idx0, idx1, vqem[idx0], vqem[idx1]);
-      --toremove;
       anychange = true;
     }
   }
-
 
   // we remove zero cost edges
   for (;;) {
@@ -995,10 +1009,7 @@ static void decimatemesh(procmesh &pm,
     const auto idx1 = uncollapsedidx(vqem, edge.idx[1]);
 
     // already removed. we ignore it
-    if (idx0 == idx1) {
-      --toremove;
-      continue;
-    }
+    if (idx0 == idx1) continue;
 
     // try to remove it. the cost function needs to be properly updated
     const auto &p0 = pm.pos[idx0], &p1 = pm.pos[idx1];
@@ -1012,7 +1023,6 @@ static void decimatemesh(procmesh &pm,
       if (item.cost > QEM_MIN_ERROR)
         break;
       merge(edge, collapses, idx0, idx1, q0, q1);
-      --toremove;
       continue;
     }
 
@@ -1038,7 +1048,7 @@ static void decimatemesh(procmesh &pm,
   // now, we remove unused vertices and degenerated triangles
   loopv(mapping) mapping[i] = -1;
   vector<u32> newidx, newmat;
-  const auto trinum = pm.idx.length()/3;
+  const auto trinum = pm.trinum();
   auto vertnum = 0;
   loopi(trinum) {
     const auto i0 = pm.idx[3*i+0];
@@ -1064,7 +1074,7 @@ static void decimatemesh(procmesh &pm,
 }
 
 static void buildqem(procmesh &pm, vector<qem> &v) {
-  loopi(pm.idx.length()/3) {
+  loopi(pm.trinum()) {
     const auto i0 = pm.idx[3*i+0];
     const auto i1 = pm.idx[3*i+1];
     const auto i2 = pm.idx[3*i+2];
@@ -1095,14 +1105,14 @@ static void decimatemesh(procmesh &pm, float cellsize) {
 
   // decimate the mesh using quadric error functions
   const auto minlen = cellsize*MIN_EDGE_FACTOR;
-  decimatemesh(pm, heap, vqem, eqem, eqem.length()*7.3/10, minlen);
+  decimatemesh(pm, heap, vqem, eqem, minlen);
 }
 
 /*-------------------------------------------------------------------------
  - sharpen mesh i.e. duplicate sharp points and compute vertex normals
  -------------------------------------------------------------------------*/
 static void sharpenmesh(procmesh &pm) {
-  const auto trinum = pm.idx.length()/3;
+  const auto trinum = pm.trinum();
   vector<int> vertlist(pm.pos.length());
   vector<vec3f> newnor(pm.pos.length());
   vector<u32> newidx, newmat;
@@ -1223,22 +1233,7 @@ static mesh buildmesh(octree &o, float cellsize) {
   const auto n = pm.nor.move();
   const auto idx = pm.idx.move();
   const auto s = seg.move();
-  auto m = mesh(p.first, n.first, idx.first, s.first, p.second, idx.second, s.second);
-#if 0
-  m.m_nor = (vec3f*) MALLOC(sizeof(vec3f) * m.m_vertnum);
-  loopi(m.m_vertnum) m.m_nor[i] = vec3f(zero);
-  loopi(m.m_indexnum/3) {
-    const auto t = &m.m_index[3*i];
-    const auto edge0 = m.m_pos[t[2]]-m.m_pos[t[0]];
-    const auto edge1 = m.m_pos[t[2]]-m.m_pos[t[1]];
-    const auto dir = cross(edge0, edge1);
-    m.m_nor[t[0]] += dir;
-    m.m_nor[t[1]] += dir;
-    m.m_nor[t[2]] += dir;
-  }
-  loopi(m.m_vertnum) m.m_nor[i] = normalize(m.m_nor[i]);
-#endif
-  return m;
+  return mesh(p.first, n.first, idx.first, s.first, p.second, idx.second, s.second);
 }
 
 mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d) {

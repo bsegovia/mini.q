@@ -147,8 +147,8 @@ static node *makescene0() {
   const auto ground = NEW(translation, vec3f(0.f,-3.f,0.f), groundbox);
 
   // just make a union of them
-  const auto world = NEW(U, ground, NEW(U, scene0, arcade));
-  //const auto world = ground;
+  //const auto world = NEW(U, ground, NEW(U, scene0, arcade));
+  const auto world = ground;
 
   // add nested cylinder
   node *c0 = capped_cylinder(vec2f(30.f,30.f), vec3f(2.f, 0.f, 2.f), MAT_SIMPLE_INDEX);

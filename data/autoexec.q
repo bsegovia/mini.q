@@ -4,4 +4,4 @@ soundvol 10
 editing 1
 // grabmouse 1
 exec pos.q
-linemode 1
+//linemode 1
