@@ -622,21 +622,7 @@ struct quadmesh { int tri[2][3]; };
 static const quadmesh qmesh[2] = {{{{0,1,2},{0,2,3}}},{{{0,1,3},{3,1,2}}}};
 
 // test first configuration. If ok, take it, otherwise take the other one
-#if 1
 INLINE const quadmesh &findbestmesh(octree::qefpoint **pt) {
-#if 0
-  int sharpnum = 0, sharpindex = 0;
-  loopi(4) if (pt[i]->sharp) { ++sharpnum; sharpindex = i; }
-  if (sharpnum == 0)
-    return qmesh[0];
-  else if (sharpnum == 1) {
-    if (sharpindex == 0 || sharpindex == 2) return qmesh[0];
-    return qmesh[1];
-  } else if (pt[0]->sharp && pt[2]->sharp)
-    return qmesh[0];
-  else
-    return qmesh[1];
-#else
   const auto qm0 = qmesh[0].tri;
   const auto e00 = pt[qm0[0][0]]->pos-pt[qm0[0][1]]->pos;
   const auto e01 = pt[qm0[0][0]]->pos-pt[qm0[0][2]]->pos;
@@ -645,11 +631,7 @@ INLINE const quadmesh &findbestmesh(octree::qefpoint **pt) {
   const auto e11 = pt[qm0[1][0]]->pos-pt[qm0[1][2]]->pos;
   const auto n1 = cross(e10,e11);
   return dot(n0,n1)>0.f ? qmesh[0] : qmesh[1];
-#endif
 }
-#else
-INLINE const quadmesh &findbestmesh(octree::qefpoint **pt) {return qmesh[0];}
-#endif
 
 /*-------------------------------------------------------------------------
  - build a regular "to-process" mesh from the qef points and quads
