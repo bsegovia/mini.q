@@ -793,7 +793,7 @@ static void extraplane(const procmesh &pm, const qemedge &edge, int tri, qem &q0
   loopi(2) if (int(t[i])!=i0 && int(t[i])!=i1) i2=t[i];
 
   // now we build plane that contains the edge and that is perpendicular to the
-  // triangle normal
+  // triangle
   const auto &p = pm.pos;
   const auto n0 = cross(p[i2]-p[i0], p[i1]-p[i0]);
   const auto d = cross(n0, p[i1]-p[i0]);
@@ -916,13 +916,8 @@ INLINE int uncollapsedidx(const vector<qem> &v, int idx) {
   return idx;
 }
 
-static bool merge(procmesh &pm,
-  const qemedge &edge,
-  vector<pair<int,int>> &collapses,
-  int idx0, int idx1,
-  vector<qem> &vqem)
-{
-  auto &q0 = vqem[idx0], &q1 = vqem[idx1];
+static bool merge(qemcontext &ctx, procmesh &pm, const qemedge &edge, int idx0, int idx1) {
+  auto &q0 = ctx.vqem[idx0], &q1 = ctx.vqem[idx1];
   const auto timestamp0 = q0.timestamp, timestamp1 = q1.timestamp;
   const auto q = q0+q1;
   const auto newstamp = max(timestamp0, timestamp1);
@@ -930,11 +925,11 @@ static bool merge(procmesh &pm,
   if (edge.best == 0) {
     q0 = q;
     q1.next = idx0;
-    collapses.add(makepair(idx1, idx0));
+    ctx.collapses.add(makepair(idx1, idx0));
   } else {
     q1 = q;
     q0.next = idx1;
-    collapses.add(makepair(idx0, idx1));
+    ctx.collapses.add(makepair(idx0, idx1));
   }
   q0.timestamp = q1.timestamp = newstamp+1;
   return true;
@@ -970,7 +965,7 @@ static void decimatemesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
       }
 
       // now we can safely merge it
-      anychange = merge(pm, edge, collapses, idx0, idx1, vqem) || anychange;
+      anychange = merge(ctx, pm, edge, idx0, idx1) || anychange;
     }
   }
 
@@ -995,7 +990,7 @@ static void decimatemesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
     const auto timestamp0 = q0.timestamp, timestamp1 = q1.timestamp;
     if (timestamp0 == edge.timestamp[0] && timestamp1 == edge.timestamp[1]) {
       if (item.cost > QEM_MIN_ERROR) break;
-      merge(pm, edge, collapses, idx0, idx1, vqem);
+      merge(ctx, pm, edge, idx0, idx1);
       continue;
     }
 
