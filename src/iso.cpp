@@ -776,12 +776,13 @@ INLINE bool operator< (const qemheapitem &i0, const qemheapitem &i1) {
 }
 
 struct qemcontext {
-  vector<int> vidx;
-  vector<pair<int,int>> vtri;
-  vector<qem> vqem;
-  vector<qemedge> eqem;
-  vector<qemheapitem> heap;
-  vector<pair<int,int>> collapses;
+  vector<int> vidx; // list of triangle per vertex
+  vector<pair<int,int>> vtri; // <trinum, firstidx> triangle list per vertex
+  vector<qem> vqem; // qem per vertex
+  vector<qemedge> eqem; // qem information per edge
+  vector<qemheapitem> heap; // heap to decimate the mesh
+  vector<pair<int,int>> collapses; // sequence of collapses
+  vector<int> mergelist; // temporary structure when merging triangle lists
 };
 
 static void extraplane(const procmesh &pm, const qemedge &edge, int tri, qem &q0, qem &q1) {
@@ -917,6 +918,66 @@ INLINE int uncollapsedidx(const vector<qem> &v, int idx) {
 }
 
 static bool merge(qemcontext &ctx, procmesh &pm, const qemedge &edge, int idx0, int idx1) {
+#if 0
+  // first we gather non degenerated triangles from both vertex triangle lists
+  ctx.mergelist.setsize(0);
+  const int idx[] = {idx0,idx1}, other[] = {idx1,idx0};
+  int pivot;
+  loopi(2) {
+    const auto first = ctx.vtri[idx[i]].first;
+    const auto n = ctx.vtri[idx[i]].second;
+    pivot = ctx.mergelist.length();
+    loopj(n) {
+      const auto tri = ctx.vidx[first+j];
+      const auto i0 = pm.idx[3*tri], i1 = pm.idx[3*tri+1], i2 = pm.idx[3*tri+2];
+      if (int(i0) == other[i] || int(i1) == other[i] || int(i2) == other[i])
+        continue;
+      ctx.mergelist.add(tri);
+    }
+  }
+
+  // now we need to know if this is going to flip normals. if so, the merge is
+  // invalid
+  const auto from = edge.best == 0 ? idx1 : idx0;
+  const auto to = edge.best == 0 ? idx0 : idx1;
+  const auto begin = edge.best == 0 ? pivot : 0;
+  const auto end = edge.best == 0 ? ctx.mergelist.length() : pivot;
+  rangei(begin,end) {
+    const auto &p = pm.pos;
+    const auto t = &pm.idx[3*ctx.mergelist[i]];
+    auto i0 = int(t[0]), i1 = int(t[1]), i2 = int(t[2]);
+    const vec3f initial(cross(p[i0]-p[i1],p[i0]-p[i2]));
+    i0 = i0 == from ? to : i0;
+    i1 = i1 == from ? to : i1;
+    i2 = i2 == from ? to : i2;
+    const vec3f target(cross(p[i0]-p[i1],p[i0]-p[i2]));
+    if (dot(initial,target) < 0.f) return false;
+  }
+
+  // we are good to go. first, we replace each 'from' by 'to in the index buffer
+  rangei(begin,end) {
+    const auto t = &pm.idx[3*ctx.mergelist[i]];
+    loopj(3) if (int(t[j]) == from) t[j] = to;
+  }
+
+  // we now commit the merged triangle list. we try to see if we can reuse one
+  // of both lists. if not, we just linear allocate a new range
+  int first = -1;
+  loopi(2)
+    if (ctx.vtri[idx[i]].second >= ctx.mergelist.length()) {
+      first = ctx.vtri[idx[i]].first;
+      break;
+    }
+  if (first == -1) {
+    first = ctx.vidx.length();
+    ctx.vidx.setsize(first+ctx.mergelist.length());
+  }
+  loopv(ctx.mergelist) ctx.vidx[first+i] = ctx.mergelist[i];
+  ctx.vtri[to].first = first;
+  ctx.vtri[to].second = ctx.mergelist.length();
+#endif
+
+  // add both qems
   auto &q0 = ctx.vqem[idx0], &q1 = ctx.vqem[idx1];
   const auto timestamp0 = q0.timestamp, timestamp1 = q1.timestamp;
   const auto q = q0+q1;
@@ -1007,11 +1068,13 @@ static void decimatemesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
 
   // we play the collapse sequence to get the proper vertex mapping
   vector<int> mapping(pm.pos.length());
+#if 1
   loopv(mapping) mapping[i] = i;
   loopvrev(collapses) mapping[collapses[i].first] = mapping[collapses[i].second];
 
   // update triangles indices
   loopv(pm.idx) pm.idx[i] = mapping[pm.idx[i]];
+#endif
 
   // now, we remove unused vertices and degenerated triangles
   loopv(mapping) mapping[i] = -1;
@@ -1062,12 +1125,12 @@ static void buildtrianglelists(qemcontext &ctx, const procmesh &pm) {
 
   // first initialize tri lists
   loopv(vtri) vtri[i].first = vtri[i].second = 0;
-  loopv(pm.idx) ++vtri[pm.idx[i]].first;
+  loopv(pm.idx) ++vtri[pm.idx[i]].second;
   auto accum = 0;
   loopv(vtri) {
-    vtri[i].second = accum;
-    accum += vtri[i].first;
-    vtri[i].first = 0;
+    vtri[i].first = accum;
+    accum += vtri[i].second;
+    vtri[i].second = 0;
   }
   assert(accum == pm.idx.length());
 
@@ -1079,6 +1142,7 @@ static void buildtrianglelists(qemcontext &ctx, const procmesh &pm) {
 }
 
 static void decimatemesh(procmesh &pm, float cellsize) {
+  if (pm.idx.length() == 0) return;
   qemcontext ctx;
 
   // we go over all triangles and build all vertex qem
@@ -1103,6 +1167,7 @@ static void decimatemesh(procmesh &pm, float cellsize) {
  - sharpen mesh i.e. duplicate sharp points and compute vertex normals
  -------------------------------------------------------------------------*/
 static void sharpenmesh(procmesh &pm) {
+  if (pm.idx.length() == 0) return;
   const auto trinum = pm.trinum();
   vector<int> vertlist(pm.pos.length());
   vector<vec3f> newnor(pm.pos.length());
