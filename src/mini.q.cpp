@@ -29,7 +29,7 @@ void start(int argc, const char *argv[]) {
   con::out("init: memory debugger");
   sys::memstart();
   con::out("init: tasking system");
-  const u32 threadnum = sys::threadnumber() - 1;
+  const u32 threadnum = 0;//sys::threadnumber() - 1;
   con::out("init: tasking system: %d threads created", threadnum);
   task::start(&threadnum, 1);
   con::out("init: isosurface module");

@@ -45,7 +45,7 @@ static const int MAX_STEPS = 8;
 static const float SHARP_EDGE_THRESHOLD = 0.2f;
 static const float MIN_EDGE_FACTOR = 1.f/8.f;
 static const float MIN_TRIANGLE_AREA = 1e-6f;
-static const double QEM_MIN_ERROR = 1e-10;
+static const double QEM_MIN_ERROR = 1e-8;
 
 INLINE pair<vec3i,u32> edge(vec3i start, vec3i end) {
   const auto lower = select(lt(start,end), start, end);
@@ -781,7 +781,6 @@ struct qemcontext {
   vector<qem> vqem; // qem per vertex
   vector<qemedge> eqem; // qem information per edge
   vector<qemheapitem> heap; // heap to decimate the mesh
-  vector<pair<int,int>> collapses; // sequence of collapses
   vector<int> mergelist; // temporary structure when merging triangle lists
 };
 
@@ -912,13 +911,13 @@ static void buildheap(qemcontext &ctx, procmesh &pm) {
   h.buildheap();
 }
 
-INLINE int uncollapsedidx(const vector<qem> &v, int idx) {
+INLINE int uncollapsedidx(vector<qem> &v, int idx) {
   while (v[idx].next != -1) idx = v[idx].next;
   return idx;
 }
 
 static bool merge(qemcontext &ctx, procmesh &pm, const qemedge &edge, int idx0, int idx1) {
-#if 0
+
   // first we gather non degenerated triangles from both vertex triangle lists
   ctx.mergelist.setsize(0);
   const int idx[] = {idx0,idx1}, other[] = {idx1,idx0};
@@ -951,13 +950,22 @@ static bool merge(qemcontext &ctx, procmesh &pm, const qemedge &edge, int idx0, 
     i1 = i1 == from ? to : i1;
     i2 = i2 == from ? to : i2;
     const vec3f target(cross(p[i0]-p[i1],p[i0]-p[i2]));
-    if (dot(initial,target) < 0.f) return false;
+    if (dot(initial,target) < 0.f) {
+     // static int pp = 0;
+    //  ++pp;printf("BOUM %d\n", pp);
+      return false;
+    }
   }
 
-  // we are good to go. first, we replace each 'from' by 'to in the index buffer
-  rangei(begin,end) {
-    const auto t = &pm.idx[3*ctx.mergelist[i]];
-    loopj(3) if (int(t[j]) == from) t[j] = to;
+  // we are good to go. we replace each 'from' by 'to' in the index buffer
+  loopi(2) {
+    const auto first = ctx.vtri[idx[i]].first;
+    const auto n = ctx.vtri[idx[i]].second;
+    loopj(n) {
+      const auto tri = ctx.vidx[first+j];
+      const auto t = &pm.idx[3*tri];
+      loopk(3) if (int(t[k]) == from) t[k] = to;
+    }
   }
 
   // we now commit the merged triangle list. we try to see if we can reuse one
@@ -975,7 +983,6 @@ static bool merge(qemcontext &ctx, procmesh &pm, const qemedge &edge, int idx0, 
   loopv(ctx.mergelist) ctx.vidx[first+i] = ctx.mergelist[i];
   ctx.vtri[to].first = first;
   ctx.vtri[to].second = ctx.mergelist.length();
-#endif
 
   // add both qems
   auto &q0 = ctx.vqem[idx0], &q1 = ctx.vqem[idx1];
@@ -986,11 +993,9 @@ static bool merge(qemcontext &ctx, procmesh &pm, const qemedge &edge, int idx0, 
   if (edge.best == 0) {
     q0 = q;
     q1.next = idx0;
-    ctx.collapses.add(makepair(idx1, idx0));
   } else {
     q1 = q;
     q0.next = idx1;
-    ctx.collapses.add(makepair(idx0, idx1));
   }
   q0.timestamp = q1.timestamp = newstamp+1;
   return true;
@@ -1000,7 +1005,6 @@ static void decimatemesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
   auto &heap = ctx.heap;
   auto &vqem = ctx.vqem;
   auto &eqem = ctx.eqem;
-  auto &collapses = ctx.collapses;
   bool anychange = true;
 
   // first we just remove all edges smaller than the given threshold. we iterate
@@ -1066,17 +1070,8 @@ static void decimatemesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
     heap.addheap(newitem);
   }
 
-  // we play the collapse sequence to get the proper vertex mapping
-  vector<int> mapping(pm.pos.length());
-#if 1
-  loopv(mapping) mapping[i] = i;
-  loopvrev(collapses) mapping[collapses[i].first] = mapping[collapses[i].second];
-
-  // update triangles indices
-  loopv(pm.idx) pm.idx[i] = mapping[pm.idx[i]];
-#endif
-
   // now, we remove unused vertices and degenerated triangles
+  vector<int> mapping(pm.pos.length());
   loopv(mapping) mapping[i] = -1;
   vector<u32> newidx, newmat;
   const auto trinum = pm.trinum();
@@ -1235,32 +1230,13 @@ static void sharpenmesh(procmesh &pm) {
  - build a final mesh from the qef points and quads stored in the octree
  -------------------------------------------------------------------------*/
 static mesh buildmesh(octree &o, float cellsize) {
-#if 0
-  // build the buffers here
-  vector<vec3f> posbuf, norbuf;
-  vector<u32> idxbuf;
-  vector<u32> mat;
-
-  u32 num = 0, simplenum = 0, noisenum;
-  loopv(ctx->m_builders) {
-    const auto &b = *ctx->m_builders[i];
-    const auto quadlen = b.m_quad_buffer.length();
-    loopvj(b.m_quad_buffer) {
-      if (b.m_quad_buffer[j].matindex == csg::MAT_SNOISE_INDEX) ++noisenum;
-      else if (b.m_quad_buffer[j].matindex == csg::MAT_SIMPLE_INDEX) ++simplenum;
-    }
-    num += quadlen;
-  }
-
-  printf("num %d simplenum %d noisenum %d\n", num, simplenum, noisenum);
-#endif
-#if 1
 
   // build the mesh
   procmesh pm;
   buildmesh(o, pm);
 
   // decimate the edges and remove degenrate triangles
+  decimatemesh(pm, cellsize);
   decimatemesh(pm, cellsize);
 
   // handle sharp edges
@@ -1276,7 +1252,6 @@ static mesh buildmesh(octree &o, float cellsize) {
     }
     seg.last().num += 3;
   }
-#endif
 
 #if !defined(NDEBUG)
   loopv(pm.pos) assert(!isnan(pm.pos[i].x)&&!isnan(pm.pos[i].y)&&!isnan(pm.pos[i].z));
