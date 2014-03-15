@@ -156,7 +156,6 @@ static node *makescene0() {
   node *c1 = capped_cylinder(vec2f(30.f,30.f), vec3f(1.f, 0.f, 2.f), MAT_SIMPLE_INDEX);
   node *c2 = capped_cylinder(vec2f(30.f,30.f), vec3f(1.f, 0.f, 2.f), MAT_SNOISE_INDEX);
   c0 = NEW(U, NEW(D, c0, c1), c2);
-
   // change the material just to see
   const auto remove = NEW(translation, vec3f(18.f,3.f,7.f), NEW(sphere, 4.2f));
 #if 1
@@ -187,8 +186,7 @@ static node *makescene0() {
 
 node *makescene() {
   node *s0 = makescene0();
-  int k = 0, j = 0;
-  loopi(1) // loopj(2) loopk(2)
+  loopi(1) loopj(1) loopk(1)
   s0 = NEW(U, s0, NEW(translation, vec3f(float(i)*30.f,float(k)*40.f,float(j)*20.f), makescene0()));
   return s0;
 }

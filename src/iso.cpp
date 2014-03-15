@@ -44,7 +44,6 @@ static const auto DEFAULT_GRAD_STEP = 1e-3f;
 static const int MAX_STEPS = 8;
 static const float SHARP_EDGE_THRESHOLD = 0.2f;
 static const float MIN_EDGE_FACTOR = 1.f/8.f;
-static const float MIN_TRIANGLE_AREA = 1e-6f;
 static const double QEM_MIN_ERROR = 1e-8;
 
 INLINE pair<vec3i,u32> edge(vec3i start, vec3i end) {
@@ -630,7 +629,7 @@ INLINE const quadmesh &findbestmesh(octree::qefpoint **pt) {
   const auto e10 = pt[qm0[1][0]]->pos-pt[qm0[1][1]]->pos;
   const auto e11 = pt[qm0[1][0]]->pos-pt[qm0[1][2]]->pos;
   const auto n1 = cross(e10,e11);
-  return dot(n0,n1)>0.f ? qmesh[0] : qmesh[1];
+  return dot(n0,n1) > 0.f ? qmesh[0] : qmesh[1];
 }
 
 /*-------------------------------------------------------------------------
@@ -768,6 +767,19 @@ struct qemheapitem {
   float len2;
   int idx;
 };
+
+INLINE float compactness(vec3f v0, vec3f v1, vec3f v2) {
+  const auto edge20 = v2-v0;
+  const auto edge10 = v1-v0;
+  const auto edge21 = v2-v1;
+  const auto area = length(cross(edge20,edge10));
+  const auto l0 = length2(edge10);
+  const auto l1 = length2(edge21);
+  const auto l2 = length2(edge20);
+  const auto compactness = 4.f*sqrtf(3.f)*area/(l0+l1+l2);
+  return compactness;
+}
+
 INLINE bool operator< (const qemheapitem &i0, const qemheapitem &i1) {
   if (i0.cost == 0.0 && i1.cost == 0.0)
     return i0.len2 < i1.len2;
@@ -949,12 +961,12 @@ static bool merge(qemcontext &ctx, procmesh &pm, const qemedge &edge, int idx0, 
     i0 = i0 == from ? to : i0;
     i1 = i1 == from ? to : i1;
     i2 = i2 == from ? to : i2;
+    if (i0 == i1 || i1 == i2 || i0 == i2) continue;
     const vec3f target(cross(p[i0]-p[i1],p[i0]-p[i2]));
-    if (dot(initial,target) < 0.f) {
-     // static int pp = 0;
-    //  ++pp;printf("BOUM %d\n", pp);
+//    if (compactness(p[i0],p[i1],p[i2]) < 0.1f)
+//      return false;
+    if (dot(initial,target) < 0.f)
       return false;
-    }
   }
 
   // we are good to go. we replace each 'from' by 'to' in the index buffer
@@ -1187,7 +1199,7 @@ static void sharpenmesh(procmesh &pm) {
     // ...but colinear edges are still possible
     const auto dir = cross(edge0, edge1);
     const auto len2 = length2(dir);
-    if (len2 < MIN_TRIANGLE_AREA) continue;
+    if (len2 == 0.f) continue;
     const auto nor = dir*rsqrt(len2);
     loopj(3) {
       auto idx = int(t[j]);
@@ -1236,8 +1248,7 @@ static mesh buildmesh(octree &o, float cellsize) {
   buildmesh(o, pm);
 
   // decimate the edges and remove degenrate triangles
-  decimatemesh(pm, cellsize);
-  decimatemesh(pm, cellsize);
+  loopi(2) decimatemesh(pm, cellsize);
 
   // handle sharp edges
   sharpenmesh(pm);

@@ -512,7 +512,7 @@ static void makescene() {
   if (initialized_m) return;
   const auto start = sys::millis();
   const auto node = csg::makescene();
-  auto m = iso::dc_mesh_mt(vec3f(zero), 4096, CELLSIZE, *node);
+  auto m = iso::dc_mesh_mt(vec3f(0.15f), 4096, CELLSIZE, *node);
   segment = m.m_segment;
   segmentnum = m.m_segmentnum;
   ogl::genbuffers(1, &sceneposbo);
