@@ -5,7 +5,7 @@
 #include "client.hpp"
 #include "server.hpp"
 #include "network.hpp"
-#include <enet/enet.h>
+#include "enet/enet.h"
 
 namespace q {
 #if defined(STANDALONE)

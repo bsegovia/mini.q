@@ -9,10 +9,10 @@
 namespace q {
 namespace game {
 
-static int lastmillis_ = 0;
+static double lastmillis_ = 0;
 static int nextmode_ = 0;
 static vec3f worldpos_;
-static int curtime_ = 10;
+static double curtime_ = 10;
 VAR(gamemode, 1, 0, 0);
 
 GLOBAL_VAR(worldpos, worldpos_, const vec3f&);
@@ -142,7 +142,7 @@ dynent *newdynent() {
   d->frags = 0;
   d->plag = 0;
   d->ping = 0;
-  d->lastupdate = lastmillis();
+  d->lastupdate = int(lastmillis());
   d->enemy = NULL;
   d->monsterstate = 0;
   d->name[0] = d->team[0] = 0;
@@ -193,8 +193,8 @@ void arenarespawn() {
         con::out("team %s is last man standing", lastteam);
       else
         con::out("everyone died!");
-      arenarespawnwait = lastmillis()+5000;
-      arenadetectwait  = lastmillis()+10000;
+      arenarespawnwait = int(lastmillis())+5000;
+	  arenadetectwait = int(lastmillis()) + 10000;
       player1->ypr.z = 0.f ;
     }
   }
@@ -207,7 +207,7 @@ void zapdynent(dynent *&d) {
 
 static void otherplayers() {
   loopv(players) if (players[i]) {
-    const int lagtime = lastmillis()-players[i]->lastupdate;
+    const int lagtime = int(lastmillis())-players[i]->lastupdate;
     if (lagtime>1000 && players[i]->state==CS_ALIVE) {
       players[i]->state = CS_LAGGED;
       continue;
@@ -238,7 +238,7 @@ static void respawn() {
 static int sleepwait = 0;
 static string sleepcmd;
 static void sleepf(const char *msec, const char *cmd) {
-  sleepwait = atoi(msec)+lastmillis();
+  sleepwait = atoi(msec)+int(lastmillis());
   strcpy_s(sleepcmd, cmd);
 }
 CMDN(sleep, sleepf, ARG_2STR);
@@ -251,7 +251,7 @@ void updateworld(int millis) {
       script::execstring(sleepcmd);
     }
     physics::frame();
-    checkquad(curtime());
+    checkquad(int(curtime()));
     if (m_arena)
       arenarespawn();
     moveprojectiles(float(curtime()));
@@ -325,7 +325,7 @@ void spawnplayer(dynent *d) {
 void name(bool isdown) { \
   player1->s = isdown; \
   player1->v = isdown ? d : (player1->os ? -(d) : 0); \
-  player1->lastmove = lastmillis(); \
+  player1->lastmove = int(lastmillis()); \
 }\
 CMD(name, ARG_DOWN);
 DIRECTION(backward, move,   -1, k_down,  k_up);
@@ -405,7 +405,7 @@ void selfdamage(int damage, int actor, dynent *act) {
     player1->ypr.z = 60;
     sound::play(sound::DIE1+rnd(2));
     spawnstate(player1);
-    player1->lastaction = lastmillis();
+    player1->lastaction = int(lastmillis());
   } else
     sound::play(sound::PAIN6);
 }
@@ -477,8 +477,8 @@ void renderclient(dynent *d, bool team, const char *mdlname, bool hellpig, float
       n = cast%3;
       r = range[n];
     }
-    basetime = d->lastaction;
-    int t = lastmillis()-d->lastaction;
+    basetime = int(d->lastaction);
+    int t = int(lastmillis())-d->lastaction;
     if (t<0 || t>20000) return;
     if (t>(r-1)*100) {
       n += 4; if (t>(r+10)*100) {
@@ -510,7 +510,7 @@ void renderclient(dynent *d, bool team, const char *mdlname, bool hellpig, float
   const auto posxfm = ogl::matrix(ogl::MODELVIEW)
                     * mat4x4f::translate(vec3f(d->o.x, my, d->o.z))
                     * mat4x4f(norxfm);
-  md2::render(mdlname, frame[n], range[n], posxfm, norxfm, team, scale, speed, 0, basetime);
+  md2::render(mdlname, frame[n], range[n], posxfm, norxfm, team, scale, speed, 0, float(basetime));
 }
 
 void renderclients() {

@@ -298,7 +298,7 @@ static void drawtext(float x, float y, const char *text, int align, u32 c) {
     x -= int(text::width(text))/2;
   else if (align == ALIGN_RIGHT)
     x -= int(text::width(text));
-  text::drawf(text, vec2i(x,y));
+  text::drawf(text, vec2f(x,y));
 }
 
 void draw(int width, int height) {

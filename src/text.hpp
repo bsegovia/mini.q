@@ -24,7 +24,7 @@ void drawf(const char *fstr, vec2f pos, ...);
 void draw(const char *str, vec2f pos);
 void drawf(const char *fstr, float x, float y, ...);
 INLINE void draw(const char *str, float x, float y) {
-  draw(str, vec2i(x,y));
+  draw(str, vec2f(x,y));
 }
 } /* namespace text */
 } /* namespace q */

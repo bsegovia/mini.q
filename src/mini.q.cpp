@@ -3,8 +3,9 @@
  - mini.q.cpp -> stub to run the game
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
+#include "enet/enet.h"
 #include <time.h>
-#include <enet/enet.h>
+#include <SDL/SDL_image.h>
 
 #define TEST_UI 0
 
@@ -69,6 +70,17 @@ void start(int argc, const char *argv[]) {
       con::out("unknown commandline argument");
   }
   if (SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO) < 0) sys::fatal("SDL failed");
+
+
+  // load support for the JPG and PNG image formats
+  con::out("init: sdl image");
+  const auto flags = IMG_INIT_JPG | IMG_INIT_PNG;
+  const auto initted = IMG_Init(flags);
+  if ((initted&flags) != flags) {
+	  con::out("IMG_Init: Failed to init required jpg and png support!\n");
+	  con::out("IMG_Init: %s\n", IMG_GetError());
+	  sys::fatal("IMG_Init failed");
+  }
 
   con::out("init: memory debugger");
   sys::memstart();
@@ -321,10 +333,10 @@ INLINE void mainloop() {
   if (millis-game::lastmillis()<double(minmillis))
     SDL_Delay(minmillis-(int(millis)-int(game::lastmillis())));
 #endif // __JAVASCRIPT__
-  const auto fovy = float(fov), far = float(farplane);
-  game::setmatrices(fovy, far, float(sys::scrw), float(sys::scrh));
+  const auto fovy = float(fov), ffar = float(farplane);
+  game::setmatrices(fovy, ffar, float(sys::scrw), float(sys::scrh));
   computetarget();
-  game::updateworld(millis);
+  game::updateworld(int(millis));
   if (!demo::playing())
     server::slice(int(time(NULL)), 0);
   static double fps = 30.0;
@@ -367,10 +379,10 @@ static int run() {
   for (;;) q::mainloop();
   return 0;
 }
-} /* namespace q */
-
-int main(int argc, const char *argv[]) {
-  q::start(argc, argv);
-  return q::run();
 }
-
+extern "C" {
+int main(int argc, const char **argv) {
+	q::start(argc, argv);
+	return q::run();
+}
+}

@@ -2,8 +2,6 @@
  @file  win32.c
  @brief ENet Win32 system specific functions
 */
-#ifdef WIN32
-
 #include <time.h>
 #include "enet.h"
 
@@ -291,6 +289,4 @@ enet_socket_wait (ENetSocket socket, enet_uint32 * condition, enet_uint32 timeou
 
     return 0;
 }
-
-#endif
 

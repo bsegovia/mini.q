@@ -2,7 +2,7 @@
  - mini.q - a minimalistic multiplayer FPS
  - ogl.cpp -> defines opengl routines
  -------------------------------------------------------------------------*/
-#include "con.hpp"
+#include "console.hpp"
 #include "sys.hpp"
 #include "shaders.hpp"
 #include "script.hpp"
@@ -854,7 +854,7 @@ void destroyshader(shadertype &s) {
 }
 
 VAR(shaderfromfile, 0, 1, 1);
-bool loadfromfile() { return shaderfromfile; }
+bool loadfromfile() { return shaderfromfile!=0; }
 
 void shadererror(bool fatalerr, const char *msg) {
   if (fatalerr)
@@ -954,19 +954,19 @@ void start(int w, int h) {
   loopi(BUFFER_NUM) bindedvbo[i] = 0;
 
   coretexarray[TEX_UNUSED]       = 0;
-  coretexarray[TEX_CROSSHAIR]    = installtex("data/crosshair.png");
+  coretexarray[TEX_EXPLOSION] = installtex("data/explosion.jpg");
+  coretexarray[TEX_CROSSHAIR] = installtex("data/crosshair.png");
   coretexarray[TEX_CHARACTERS]   = text::oglfont();
   coretexarray[TEX_CHECKBOARD]   = buildcheckboard();
   coretexarray[TEX_MARTIN_BASE]  = installtex("data/martin/base.png");
   coretexarray[TEX_ITEM]         = installtex("data/items.png");
-  coretexarray[TEX_EXPLOSION]    = installtex("data/explosion.jpg");
   coretexarray[TEX_MARTIN_BALL1] = installtex("data/martin/ball1.png");
   coretexarray[TEX_MARTIN_SMOKE] = installtex("data/martin/smoke.png");
   coretexarray[TEX_MARTIN_BALL2] = installtex("data/martin/ball2.png");
   coretexarray[TEX_MARTIN_BALL3] = installtex("data/martin/ball3.png");
-  rangei(TEX_CROSSHAIR, TEX_PREALLOCATED_NUM)
-    if (coretexarray[i] == 0)
-      sys::fatal("could not find core textures");
+ // rangei(TEX_CROSSHAIR, TEX_PREALLOCATED_NUM)
+ //   if (coretexarray[i] == 0)
+  //    sys::fatal("could not find core textures");
 }
 
 #if !defined(RELEASE)

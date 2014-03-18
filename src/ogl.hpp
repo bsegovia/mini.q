@@ -186,7 +186,9 @@ struct shadertype {
     program(0), fixedfunction(fixedfunction) {}
   u32 program;
   bool fixedfunction;
+#if !defined(__MSVC__)
   u32 internal[0];
+#endif
 };
 void destroyshader(shadertype&);
 void bindshader(const shadertype&);

@@ -6,6 +6,7 @@
 #if defined(__UNIX__)
 #include <unistd.h>
 #endif
+#include <malloc.h>
 
 namespace q {
 namespace sys {
@@ -177,7 +178,11 @@ char *loadfile(const char *fn, int *size) {
 
 void quit(const char *msg) {
 #if defined(RELEASE)
+#if defined(__WIN32__)
+  ExitProcess(EXIT_SUCCESS);
+#else
   _exit(EXIT_SUCCESS);
+#endif
 #else
   if (msg && strlen(msg)) {
 #if defined(__WIN32__)
@@ -206,7 +211,7 @@ void keyrepeat(bool on) {
 float millis() {
   LARGE_INTEGER freq, val;
   QueryPerformanceFrequency(&freq);
-  QueryPerformanceCounter(&val);ss
+  QueryPerformanceCounter(&val);
   static double first = double(val.QuadPart) / double(freq.QuadPart) * 1e3;
   return float(double(val.QuadPart) / double(freq.QuadPart) * 1e3 - first);
 }

@@ -113,10 +113,17 @@ void builder::setuniform(ogl::shadertype &s) {
     auto &uniform = **desc.uniform;
     loopv(uniform) {
       const auto idx = (uniform[i].offset-sizeof(ogl::shadertype))/sizeof(u32);
+#if !defined(__MSVC__)
       OGLR(s.internal[idx], GetUniformLocation, s.program, uniform[i].name);
       if (uniform[i].hasdefault)
         OGL(Uniform1i, s.internal[idx], uniform[i].defaultvalue);
-    }
+#else
+	  u32 *u = (u32*)((char*)&s + sizeof(ogl::shadertype));
+	  OGLR(u[idx], GetUniformLocation, s.program, uniform[i].name);
+	  if (uniform[i].hasdefault)
+		  OGL(Uniform1i, u[idx], uniform[i].defaultvalue);
+#endif
+	}
   }
 }
 void builder::setattrib(ogl::shadertype &s) {

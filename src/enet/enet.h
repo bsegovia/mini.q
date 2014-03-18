@@ -12,8 +12,7 @@ extern "C"
 
 #include <stdlib.h>
 
-
-#ifdef WIN32
+#if (defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)) && !defined(__CYGWIN__)
 #include "win32.h"
 #else
 #include "unix.h"

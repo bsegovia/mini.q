@@ -5,7 +5,7 @@
 #include "server.hpp"
 #include "network.hpp"
 #include "sys.hpp"
-#include <enet/enet.h>
+#include "enet/enet.h"
 
 namespace q {
 namespace server {

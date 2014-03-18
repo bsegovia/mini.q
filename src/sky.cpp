@@ -54,10 +54,10 @@ static vec2f sunattime(float julianday2000, float latitude, float longitude) {
                + .00104f*sin(2.f*Ls-Ms)-.00035f*sin(2.f*Ls+Ms);
   // calcul right ascention
   const auto zs = w / sqrt(u-v*v);
-  const auto rightAscention = Ls + atan(zs/sqrt(1.-zs*zs));
+  const auto rightAscention = Ls + atan(zs/sqrt(1.f-zs*zs));
   // calcul declination
   const auto zzs = v / sqrt(u);
-  const auto declination = atan(zzs/sqrt(1.-zzs*zzs));
+  const auto declination = atan(zzs/sqrt(1.f-zzs*zzs));
   // position relative to geographic location
   const auto sin_dec = sin(declination),   cos_dec = cos(declination);
   const auto sin_lat = sin(TORAD*latitude),cos_lat = cos(TORAD*latitude);
