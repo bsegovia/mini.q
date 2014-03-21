@@ -982,6 +982,7 @@ static bool merge(qemcontext &ctx, procmesh &pm, const qemedge &edge, int idx0, 
 
   // we now commit the merged triangle list. we try to see if we can reuse one
   // of both lists. if not, we just linear allocate a new range
+  // XXX we should remove degenerated triangles as well
   int first = -1;
   loopi(2)
     if (ctx.vtri[idx[i]].second >= ctx.mergelist.length()) {

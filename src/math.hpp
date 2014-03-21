@@ -4,6 +4,7 @@
  -------------------------------------------------------------------------*/
 #pragma once
 #include "sys.hpp"
+#include "stl.hpp"
 #include <cmath>
 #include <cfloat>
 
@@ -711,6 +712,47 @@ sw40
 #undef sw43
 #undef sw42
 
+/*-------------------------------------------------------------------------
+ - bare minimum interval arithmetic
+ -------------------------------------------------------------------------*/
+template <typename T> struct interval {
+  INLINE interval(void) {}
+  INLINE interval(T m, T M) : m(m), M(M) {}
+  INLINE interval(zerotype) : m(zero), M(zero) {}
+  INLINE interval(onetype) : m(one), M(one) {}
+  T m, M;
+};
+
+#define itvarg const interval<T>&
+#define itv interval<T>
+TINLINE itv op- (itvarg x)  {return itv(-x.M,-x.m);}
+TINLINE itv op+ (itvarg x)  {return itv(+x.m,+x.M);}
+TINLINE itv op+ (itvarg x, itvarg y) {return itv(x.m+y.m,x.M+y.M);}
+TINLINE itv op- (itvarg x, itvarg y) {return itv(x.m+(-y.m),x.M+(-y.M));}
+TINLINE itv op* (itvarg x, itvarg y) {
+  return itv(min(x.m*y.m, x.M*y.m, x.M*y.M, x.m*y.M),
+             max(x.m*y.m, x.M*y.m, x.M*y.M, x.m*y.M));
+}
+TINLINE itv rcp (itvarg x) {return itv(rcp(x.M),rcp(x.m));}
+TINLINE itv U(itvarg x, itvarg y) {return itv(min(x.m,y.m),max(x.M,y.M)); }
+TINLINE itv U(itvarg x, itvarg y, itvarg z) {return U(U(x,y),z);}
+TINLINE itv U(itvarg x, itvarg y, itvarg z, itvarg w) {return U(U(x,y,z),w);}
+TINLINE itv I(itvarg x, itvarg y) {return itv(max(x.m,y.m),min(x.M,y.M)); }
+TINLINE itv I(itvarg x, itvarg y, itvarg z) {return I(I(x,y),z);}
+TINLINE itv I(itvarg x, itvarg y, itvarg z, itvarg w) {return I(I(x,y),I(z,w));}
+TINLINE bool empty(itvarg x) {return x.m > x.M;}
+TINLINE vec4<itv> makeinterval(vec4<T> m, vec4<T> M) {
+  return vec4<itv>(itv(m.x,M.x), itv(m.y,M.y), itv(m.z,M.z), itv(m.w,M.w));
+}
+TINLINE vec3<itv> makeinterval(vec3<T> m, vec3<T> M) {
+  return vec3<itv>(itv(m.x,M.x), itv(m.y,M.y), itv(m.z,M.z));
+}
+TINLINE vec2<itv> makeinterval(vec2<T> m, vec2<T> M) {
+  return vec2<itv>(itv(m.x,M.x), itv(m.y,M.y));
+}
+#undef itvarg
+#undef itv
+
 // commonly used types
 typedef vec2<bool> vec2b;
 typedef vec2<int> vec2i;
@@ -730,6 +772,10 @@ typedef mat4x4<float> mat4x4f;
 typedef mat4x4<double> mat4x4d;
 typedef quat<float>  quat3f;
 typedef quat<double> quat3d;
+typedef interval<float> intervalf;
+typedef interval<int> intervali;
+typedef vec3<intervalf> interval3f;
+typedef vec3<intervali> interval3i;
 
 #undef TINLINE
 #undef TNOINLINE
@@ -755,13 +801,98 @@ typedef quat<double> quat3d;
 #undef sw40
 
 /*-------------------------------------------------------------------------
- - graphics related
+ - simple fixed size array
  -------------------------------------------------------------------------*/
-// axis aligned bounding box
+template <typename U, int n> struct array {
+  typedef U scalar;
+  template <typename... T> INLINE array(T... args) {set(0,args...);}
+  INLINE array(zerotype) { loopi(n) v[i] = U(zero); }
+  INLINE array(onetype) { loopi(n) v[i] = U(one); }
+  template <typename First, typename... Rest>
+  INLINE void set(int i, First first, Rest... rest) {
+    assign(first, i);
+    set(i,rest...);
+  }
+  INLINE void assign(U x, int &i) {this->v[i++] = x;}
+  INLINE void assign(vec2<U> u, int &i) {v[i++]=u.x; v[i++]=u.y;}
+  INLINE void assign(vec3<U> u, int &i) {v[i++]=u.x; v[i++]=u.y; v[i++]=u.z;}
+  INLINE void assign(vec4<U> u, int &i) {v[i++]=u.x; v[i++]=u.y; v[i++]=u.z; v[i++]=u.w;}
+  INLINE void set(int i) {}
+  U &operator[] (int i) {assert(i<n&&i>=0);return v[i];}
+  const U &operator[] (int i) const {assert(i<n&&i>=0);return v[i];}
+  U v[n];
+};
+template <typename U, int n>
+INLINE bool operator!= (const array<U,n> &v0, const array<U,n> &v1) {
+  loopi(n) if (v0.v[i] != v1.v[i]) return true;
+  return false;
+}
+template <typename U, int n>
+INLINE bool operator== (const array<U,n> &v0, const array<U,n> &v1) {
+  return !(v0!=v1);
+}
+
+/*-------------------------------------------------------------------------
+ - raytracing / visibility related stuff
+ -------------------------------------------------------------------------*/
+struct ray {
+  INLINE ray(void) {}
+  INLINE ray(vec3f org, vec3f dir, float near = 0.f, float far = FLT_MAX)
+    : org(org), dir(dir), tnear(near), tfar(far) {}
+  vec3f org, dir;
+  float tnear, tfar;
+};
+
+struct CACHE_LINE_ALIGNED raypacket {
+  static const u32 MAXRAYNUM     = 256;
+  static const u32 COMMONORG     = 1<<0;
+  static const u32 COMMONDIR     = 1<<1;
+  static const u32 INTERVALARITH = 1<<2;
+  static const u32 CORNERRAYS    = 1<<3;
+  INLINE raypacket(void) : raynum(0), flags(0) {}
+  INLINE void setorg(vec3f org, u32 rayid) {
+    orgx[rayid] = org.x;
+    orgy[rayid] = org.y;
+    orgz[rayid] = org.z;
+  }
+  INLINE void setdir(vec3f dir, u32 rayid) {
+    dirx[rayid] = dir.x;
+    diry[rayid] = dir.y;
+    dirz[rayid] = dir.z;
+  }
+  INLINE vec3f org(u32 rayid=0) const {
+    return vec3f(orgx[rayid], orgy[rayid], orgz[rayid]);
+  }
+  INLINE vec3f dir(u32 rayid=0) const {
+    return vec3f(dirx[rayid], diry[rayid], dirz[rayid]);
+  }
+  array<float,MAXRAYNUM> orgx, orgy, orgz;
+  array<float,MAXRAYNUM> dirx, diry, dirz;
+  interval3f iaorg, iadir, iardir;
+  u32 raynum;
+  u32 flags;
+};
+
+struct camera {
+  camera(vec3f org, vec3f up, vec3f view, float fov, float ratio);
+  INLINE ray generate(int w, int h, int x, int y) const {
+    const float rw = rcp(float(w)), rh = rcp(float(h));
+    const vec3f sxaxis = xaxis*rw, szaxis = zaxis*rh;
+    const vec3f dir = normalize(imgplaneorg + float(x)*sxaxis + float(y)*szaxis);
+    return ray(org, dir);
+  }
+  vec3f org, up, view, imgplaneorg, xaxis, zaxis;
+  float fov, ratio, dist;
+};
+
 struct aabb {
-  INLINE aabb() {}
+  INLINE aabb(void) {}
   INLINE aabb(float m, float M) : pmin(m), pmax(M) {}
   INLINE aabb(vec3f m, vec3f M) : pmin(m), pmax(M) {}
+  INLINE void compose(const aabb &other) {
+    pmin = min(pmin, other.pmin);
+    pmax = max(pmax, other.pmax);
+  }
   INLINE float halfarea(void) const {
     const vec3f e(pmax-pmin);
     return e.x*e.y + e.y*e.z + e.x*e.z;
@@ -776,14 +907,27 @@ INLINE aabb sum(const aabb &b0, const aabb &b1) {
 INLINE aabb intersection(const aabb &b0, const aabb &b1) {
   return aabb(max(b0.pmin, b1.pmin), min(b0.pmax, b1.pmax));
 }
+INLINE bool intersect(const aabb &b0, const aabb &b1) {
+  return !(any(gt(b0.pmin, b1.pmax)) || any(gt(b1.pmin, b0.pmax)));
+}
 
 struct isecres {
   INLINE isecres(bool isec, float t = FLT_MAX) : t(t), isec(isec) {}
   float t;
   bool isec;
 };
-INLINE bool intersect(const aabb &b0, const aabb &b1) {
-  return !(any(gt(b0.pmin, b1.pmax)) || any(gt(b1.pmin, b0.pmax)));
+
+INLINE isecres slab(vec3f pmin, vec3f pmax, vec3f rdir, float t) {
+  const vec3f l1 = pmin*rdir;
+  const vec3f l2 = pmax*rdir;
+  const float tfar = reducemin(max(l1,l2));
+  const float tnear = reducemax(min(l1,l2));
+  return isecres((tfar >= tnear) & (tfar >= 0.f) & (tnear < t), max(0.f,tnear));
 }
+
+INLINE isecres slab(const aabb &box, vec3f org, vec3f rdir, float t) {
+  return slab(box.pmin-org,box.pmax-org, rdir, t);
+}
+
 } /* namespace q */
 

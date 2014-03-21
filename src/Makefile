@@ -19,6 +19,7 @@ ENET_OBJS=\
 CLIENT_OBJS=\
   $(ENET_OBJS)\
   client.o\
+  bvh.o\
   con.o\
   csg.o\
   demo.o\

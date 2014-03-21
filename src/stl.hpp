@@ -72,6 +72,7 @@ struct sprintfmt_s {
 #define GLOBAL(TYPE, NAME) static TYPE &NAME() {static TYPE var; return var;}
 
 template <typename T> void swap(T &x, T &y) { T tmp = x; x = y; y = tmp; }
+
 // makes a class non-copyable
 class noncopyable {
 protected:
@@ -123,7 +124,9 @@ struct DEFAULT_ALIGNED linear_allocator {
   char *head, data[size];
 };
 
-// very simple pair
+/*-------------------------------------------------------------------------
+ - pair
+ -------------------------------------------------------------------------*/
 template <typename T, typename U> struct pair {
   INLINE pair() {}
   INLINE pair(T t, U u) : first(t), second(u) {}
@@ -136,7 +139,9 @@ INLINE bool operator==(const pair<T,U> &x0, const pair<T,U> &x1) {
 template <typename T, typename U>
 INLINE pair<T,U> makepair(const T &t, const U &u){return pair<T,U>(t,u);}
 
-// very simple fixed size hash table (linear probing)
+/*-------------------------------------------------------------------------
+ - very simple fixed size hash table (linear probing)
+ -------------------------------------------------------------------------*/
 template <typename T, u32 max_n=1024> struct hashtable : noncopyable {
   hashtable() : n(0) {}
   INLINE pair<const char*, T> *begin() { return items; }
@@ -154,7 +159,7 @@ template <typename T, u32 max_n=1024> struct hashtable : noncopyable {
       if (i>=max_n) sys::fatal("out-of-memory");
       items[i] = makepair(key,*value);
       hashes[i] = h;
-      n = max(u32(i+1),n);
+      n = u32(i+1)>n?u32(i+1):n;
     }
     return i==n ? NULL : &items[i].second;
   }
@@ -162,7 +167,9 @@ template <typename T, u32 max_n=1024> struct hashtable : noncopyable {
   u32 hashes[max_n], n;
 };
 
-// very simple resizeable vector
+/*-------------------------------------------------------------------------
+ - simple resizeable vector
+ -------------------------------------------------------------------------*/
 template <class T> struct vector : noncopyable {
   T *buf;
   int alen, ulen;
@@ -217,7 +224,7 @@ template <class T> struct vector : noncopyable {
     }
   }
   INLINE void realloc() {
-    alen = max(2*alen,1);
+    alen = 2*alen>1?2*alen:1;
     buf = (T*)REALLOC(buf, alen*sizeof(T));
   }
 
@@ -309,37 +316,9 @@ template <class T> struct vector : noncopyable {
 typedef vector<char *> cvector;
 typedef vector<int> ivector;
 
-// simple fixed size array
-template <typename U, int n> struct array {
-  typedef U scalar;
-  template <typename... T> INLINE array(T... args) {set(0,args...);}
-  INLINE array(zerotype) { loopi(n) v[i] = U(zero); }
-  INLINE array(onetype) { loopi(n) v[i] = U(one); }
-  template <typename First, typename... Rest>
-  INLINE void set(int i, First first, Rest... rest) {
-    assign(first, i);
-    set(i,rest...);
-  }
-  INLINE void assign(U x, int &i) {this->v[i++] = x;}
-  INLINE void assign(vec2<U> u, int &i) {v[i++]=u.x; v[i++]=u.y;}
-  INLINE void assign(vec3<U> u, int &i) {v[i++]=u.x; v[i++]=u.y; v[i++]=u.z;}
-  INLINE void assign(vec4<U> u, int &i) {v[i++]=u.x; v[i++]=u.y; v[i++]=u.z; v[i++]=u.w;}
-  INLINE void set(int i) {}
-  U &operator[] (int i) {assert(i<n&&i>=0);return v[i];}
-  const U &operator[] (int i) const {assert(i<n&&i>=0);return v[i];}
-  U v[n];
-};
-template <typename U, int n>
-INLINE bool operator!= (const array<U,n> &v0, const array<U,n> &v1) {
-  loopi(n) if (v0.v[i] != v1.v[i]) return true;
-  return false;
-}
-template <typename U, int n>
-INLINE bool operator== (const array<U,n> &v0, const array<U,n> &v1) {
-  return !(v0!=v1);
-}
-
-// simple intrusive list
+/*-------------------------------------------------------------------------
+ - simple intrusive list
+ -------------------------------------------------------------------------*/
 struct intrusive_list_node {
   INLINE intrusive_list_node() { next = prev = this; }
   INLINE bool in_list() const  { return this != next; }
@@ -526,6 +505,75 @@ INLINE ref<T> &ref<T>::operator= (niltype) {
   if (ptr) ptr->release();
   *(T**)&ptr = NULL;
   return *this;
+}
+
+/*-------------------------------------------------------------------------
+ - sorting
+ -------------------------------------------------------------------------*/
+template<class T> INLINE bool compareless(const T &x, const T &y) { return x < y; }
+template<class T, class F>
+INLINE void insertionsort(T *start, T *end, F fun) {
+  for(T *i = start+1; i < end; i++) {
+    if(fun(*i, i[-1])) {
+      T tmp = *i;
+      *i = i[-1];
+      T *j = i-1;
+      for(; j > start && fun(tmp, j[-1]); --j)
+        *j = j[-1];
+      *j = tmp;
+    }
+  }
+}
+
+template<class T, class F>
+INLINE void insertionsort(T *buf, int n, F fun) {
+  insertionsort(buf, buf+n, fun);
+}
+
+template<class T>
+INLINE void insertionsort(T *buf, int n) {
+  insertionsort(buf, buf+n, compareless<T>);
+}
+
+template<class T, class F> void quicksort(T *start, T *end, F fun) {
+  while(end-start > 10) {
+    T *mid = &start[(end-start)/2], *i = start+1, *j = end-2, pivot;
+    if(fun(*start, *mid)) { // start < mid 
+      if(fun(end[-1], *start)) { pivot = *start; *start = end[-1]; end[-1] = *mid; } // end < start < mid 
+      else if(fun(end[-1], *mid)) { pivot = end[-1]; end[-1] = *mid; } // start <= end < mid 
+      else { pivot = *mid; } // start < mid <= end
+    }
+    else if(fun(*start, end[-1])) { pivot = *start; *start = *mid; } // mid <= start < end 
+    else if(fun(*mid, end[-1])) { pivot = end[-1]; end[-1] = *start; *start = *mid; } //  mid < end <= start 
+    else { pivot = *mid; swap(*start, end[-1]); }  // end <= mid <= start 
+    *mid = end[-2];
+    do {
+      while(fun(*i, pivot)) if(++i >= j) goto partitioned;
+      while(fun(pivot, *--j)) if(i >= j) goto partitioned;
+      swap(*i, *j);
+    } while(++i < j);
+partitioned:
+    end[-2] = *i;
+    *i = pivot;
+
+    if(i-start < end-(i+1)) {
+      quicksort(start, i, fun);
+      start = i+1;
+    } else {
+      quicksort(i+1, end, fun);
+      end = i;
+    }
+  }
+
+  insertionsort(start, end, fun);
+}
+
+template<class T, class F> INLINE void quicksort(T *buf, int n, F fun) {
+  quicksort(buf, buf+n, fun);
+}
+
+template<class T> INLINE void quicksort(T *buf, int n) {
+  quicksort(buf, buf+n, compareless<T>);
 }
 } /* namespace q */
 

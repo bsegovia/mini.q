@@ -263,6 +263,10 @@ typedef unsigned     short u16;
 typedef               char s8;
 typedef unsigned      char u8;
 #endif // __MSVC__
+template <u32 sz> struct ptrtype {};
+template <> struct ptrtype<4> { typedef u32 value; };
+template <> struct ptrtype<8> { typedef u64 value; };
+typedef typename ptrtype<sizeof(void*)>::value uintptr;
 static struct niltype {niltype(){}} nil MAYBE_UNUSED;
 
 namespace sys {

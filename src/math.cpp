@@ -42,5 +42,21 @@ mat4x4<T> mat4x4<T>::inverse(void) const {
   return inv / (vx.x*inv.vx.x + vx.y*inv.vy.x + vx.z*inv.vz.x + vx.w*inv.vw.x);
 }
 template mat4x4<float> mat4x4<float>::inverse(void) const;
+
+camera::camera(vec3f org, vec3f up, vec3f view, float fov, float ratio) :
+  org(org), up(up), view(view), fov(fov), ratio(ratio)
+{
+  const float left = -ratio * 0.5f;
+  const float top = 0.5f;
+  dist = 0.5f / tan(fov * float(pi) / 360.f);
+  view = normalize(view);
+  up = normalize(up);
+  xaxis = cross(view, up);
+  xaxis = normalize(xaxis);
+  zaxis = cross(view, xaxis);
+  zaxis = normalize(zaxis);
+  imgplaneorg = dist*view + left*xaxis - top*zaxis;
+  xaxis *= ratio;
+}
 } /* namespace q */
 
