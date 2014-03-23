@@ -18,8 +18,10 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 #pragma once
+#include "sys.hpp"
 #include "math.hpp"
 
+#define op operator
 namespace q {
 
 /*-------------------------------------------------------------------------
@@ -32,13 +34,13 @@ struct ssei {
   enum   {size = 4};                  // number of SIMD elements
   union  {__m128i m128; s32 i[4];}; // data
 
-  // constructors, assignment & cast operators
+  // constructors, assignment & cast ops
   INLINE ssei           () {}
   INLINE ssei           (const ssei& a) {m128 = a.m128;}
-  INLINE ssei& operator=(const ssei& a) {m128 = a.m128; return *this;}
+  INLINE ssei& op=(const ssei& a) {m128 = a.m128; return *this;}
   INLINE ssei(const __m128i a) : m128(a) {}
-  INLINE operator const __m128i&(void) const {return m128;}
-  INLINE operator       __m128i&(void)       {return m128;}
+  INLINE op const __m128i&(void) const {return m128;}
+  INLINE op       __m128i&(void)       {return m128;}
   INLINE explicit ssei (const s32* const a) : m128(_mm_loadu_si128((__m128i*)a)) {}
   INLINE ssei(const s32& a) : m128(_mm_shuffle_epi32(_mm_castps_si128(_mm_load_ss((float*)&a)), _MM_SHUFFLE(0, 0, 0, 0))) {}
   INLINE ssei(s32  a, s32  b) : m128(_mm_set_epi32(b, a, b, a)) {}
@@ -50,43 +52,43 @@ struct ssei {
   INLINE ssei(onetype) : m128(_mm_set_epi32(1, 1, 1, 1)) {}
 
   // array access
-  INLINE const s32& operator [](const size_t index) const {assert(index < 4); return i[index];}
-  INLINE       s32& operator [](const size_t index)       {assert(index < 4); return i[index];}
+  INLINE const s32& op [](const size_t index) const {assert(index < 4); return i[index];}
+  INLINE       s32& op [](const size_t index)       {assert(index < 4); return i[index];}
 };
 
-// unary operators
+// unary ops
 INLINE ssei cast(const __m128& a) {return _mm_castps_si128(a);}
-INLINE ssei operator +(const ssei& a) {return a;}
-INLINE ssei operator -(const ssei& a) {return _mm_sub_epi32(_mm_setzero_si128(), a.m128);}
+INLINE ssei op +(const ssei& a) {return a;}
+INLINE ssei op -(const ssei& a) {return _mm_sub_epi32(_mm_setzero_si128(), a.m128);}
 #if defined(__SSSE3__)
 INLINE ssei abs(const ssei& a) {return _mm_abs_epi32(a.m128);}
 #endif
 
-// binary operators
-INLINE ssei operator+ (const ssei& a, const ssei& b) {return _mm_add_epi32(a.m128, b.m128);}
-INLINE ssei operator+ (const ssei& a, const s32&  b) {return a + ssei(b);}
-INLINE ssei operator+ (const s32&  a, const ssei& b) {return ssei(a) + b;}
-INLINE ssei operator- (const ssei& a, const ssei& b) {return _mm_sub_epi32(a.m128, b.m128);}
-INLINE ssei operator- (const ssei& a, const s32&  b) {return a - ssei(b);}
-INLINE ssei operator- (const s32&  a, const ssei& b) {return ssei(a) - b;}
+// binary ops
+INLINE ssei op+ (const ssei& a, const ssei& b) {return _mm_add_epi32(a.m128, b.m128);}
+INLINE ssei op+ (const ssei& a, const s32&  b) {return a + ssei(b);}
+INLINE ssei op+ (const s32&  a, const ssei& b) {return ssei(a) + b;}
+INLINE ssei op- (const ssei& a, const ssei& b) {return _mm_sub_epi32(a.m128, b.m128);}
+INLINE ssei op- (const ssei& a, const s32&  b) {return a - ssei(b);}
+INLINE ssei op- (const s32&  a, const ssei& b) {return ssei(a) - b;}
 
 #if defined(__SSE4_1__)
-INLINE ssei operator* (const ssei& a, const ssei& b) {return _mm_mullo_epi32(a.m128, b.m128);}
-INLINE ssei operator* (const ssei& a, const s32&  b) {return a * ssei(b);}
-INLINE ssei operator* (const s32&  a, const ssei& b) {return ssei(a) * b;}
+INLINE ssei op* (const ssei& a, const ssei& b) {return _mm_mullo_epi32(a.m128, b.m128);}
+INLINE ssei op* (const ssei& a, const s32&  b) {return a * ssei(b);}
+INLINE ssei op* (const s32&  a, const ssei& b) {return ssei(a) * b;}
 #endif
 
-INLINE ssei operator& (const ssei& a, const ssei& b) {return _mm_and_si128(a.m128, b.m128);}
-INLINE ssei operator& (const ssei& a, const s32&  b) {return a & ssei(b);}
-INLINE ssei operator& (const s32& a, const ssei& b) {return ssei(a) & b;}
-INLINE ssei operator| (const ssei& a, const ssei& b) {return _mm_or_si128(a.m128, b.m128);}
-INLINE ssei operator| (const ssei& a, const s32&  b) {return a | ssei(b);}
-INLINE ssei operator| (const s32& a, const ssei& b) {return ssei(a) | b;}
-INLINE ssei operator^ (const ssei& a, const ssei& b) {return _mm_xor_si128(a.m128, b.m128);}
-INLINE ssei operator^ (const ssei& a, const s32&  b) {return a ^ ssei(b);}
-INLINE ssei operator^ (const s32& a, const ssei& b) {return ssei(a) ^ b;}
-INLINE ssei operator<< (const ssei& a, const s32& n) {return _mm_slli_epi32(a.m128, n);}
-INLINE ssei operator>> (const ssei& a, const s32& n) {return _mm_srai_epi32(a.m128, n);}
+INLINE ssei op& (const ssei& a, const ssei& b) {return _mm_and_si128(a.m128, b.m128);}
+INLINE ssei op& (const ssei& a, const s32&  b) {return a & ssei(b);}
+INLINE ssei op& (const s32& a, const ssei& b) {return ssei(a) & b;}
+INLINE ssei op| (const ssei& a, const ssei& b) {return _mm_or_si128(a.m128, b.m128);}
+INLINE ssei op| (const ssei& a, const s32&  b) {return a | ssei(b);}
+INLINE ssei op| (const s32& a, const ssei& b) {return ssei(a) | b;}
+INLINE ssei op^ (const ssei& a, const ssei& b) {return _mm_xor_si128(a.m128, b.m128);}
+INLINE ssei op^ (const ssei& a, const s32&  b) {return a ^ ssei(b);}
+INLINE ssei op^ (const s32& a, const ssei& b) {return ssei(a) ^ b;}
+INLINE ssei op<< (const ssei& a, const s32& n) {return _mm_slli_epi32(a.m128, n);}
+INLINE ssei op>> (const ssei& a, const s32& n) {return _mm_srai_epi32(a.m128, n);}
 INLINE ssei sra(const ssei& a, const s32& b) {return _mm_srai_epi32(a.m128, b);}
 INLINE ssei srl(const ssei& a, const s32& b) {return _mm_srli_epi32(a.m128, b);}
 
@@ -99,43 +101,43 @@ INLINE ssei max(const ssei& a, const s32&  b) {return max(a,ssei(b));}
 INLINE ssei max(const s32&  a, const ssei& b) {return max(ssei(a),b);}
 #endif
 
-// assignment operators
-INLINE ssei& operator +=(ssei& a, const ssei& b) {return a = a + b;}
-INLINE ssei& operator +=(ssei& a, const s32&  b) {return a = a + b;}
-INLINE ssei& operator -=(ssei& a, const ssei& b) {return a = a - b;}
-INLINE ssei& operator -=(ssei& a, const s32&  b) {return a = a - b;}
+// assignment ops
+INLINE ssei& op +=(ssei& a, const ssei& b) {return a = a + b;}
+INLINE ssei& op +=(ssei& a, const s32&  b) {return a = a + b;}
+INLINE ssei& op -=(ssei& a, const ssei& b) {return a = a - b;}
+INLINE ssei& op -=(ssei& a, const s32&  b) {return a = a - b;}
 
 #if defined(__SSE4_1__)
-INLINE ssei& operator *=(ssei& a, const ssei& b) {return a = a * b;}
-INLINE ssei& operator *=(ssei& a, const s32&  b) {return a = a * b;}
+INLINE ssei& op *=(ssei& a, const ssei& b) {return a = a * b;}
+INLINE ssei& op *=(ssei& a, const s32&  b) {return a = a * b;}
 #endif
 
-INLINE ssei& operator &=(ssei& a, const ssei& b) {return a = a & b;}
-INLINE ssei& operator &=(ssei& a, const s32&  b) {return a = a & b;}
-INLINE ssei& operator |=(ssei& a, const ssei& b) {return a = a | b;}
-INLINE ssei& operator |=(ssei& a, const s32&  b) {return a = a | b;}
-INLINE ssei& operator <<=(ssei& a, const s32&  b) {return a = a << b;}
-INLINE ssei& operator >>=(ssei& a, const s32&  b) {return a = a >> b;}
+INLINE ssei& op &=(ssei& a, const ssei& b) {return a = a & b;}
+INLINE ssei& op &=(ssei& a, const s32&  b) {return a = a & b;}
+INLINE ssei& op |=(ssei& a, const ssei& b) {return a = a | b;}
+INLINE ssei& op |=(ssei& a, const s32&  b) {return a = a | b;}
+INLINE ssei& op <<=(ssei& a, const s32&  b) {return a = a << b;}
+INLINE ssei& op >>=(ssei& a, const s32&  b) {return a = a >> b;}
 
-// comparison operators + select
-INLINE sseb operator ==(const ssei& a, const ssei& b) {return _mm_castsi128_ps(_mm_cmpeq_epi32 (a.m128, b.m128));}
-INLINE sseb operator ==(const ssei& a, const s32& b) {return a == ssei(b);}
-INLINE sseb operator ==(const s32& a, const ssei& b) {return ssei(a) == b;}
-INLINE sseb operator !=(const ssei& a, const ssei& b) {return !(a == b);}
-INLINE sseb operator !=(const ssei& a, const s32& b) {return a != ssei(b);}
-INLINE sseb operator !=(const s32& a, const ssei& b) {return ssei(a) != b;}
-INLINE sseb operator < (const ssei& a, const ssei& b) {return _mm_castsi128_ps(_mm_cmplt_epi32 (a.m128, b.m128));}
-INLINE sseb operator < (const ssei& a, const s32& b) {return a <  ssei(b);}
-INLINE sseb operator < (const s32& a, const ssei& b) {return ssei(a) <  b;}
-INLINE sseb operator >=(const ssei& a, const ssei& b) {return !(a <  b);}
-INLINE sseb operator >=(const ssei& a, const s32& b) {return a >= ssei(b);}
-INLINE sseb operator >=(const s32& a, const ssei& b) {return ssei(a) >= b;}
-INLINE sseb operator > (const ssei& a, const ssei& b) {return _mm_castsi128_ps(_mm_cmpgt_epi32 (a.m128, b.m128));}
-INLINE sseb operator > (const ssei& a, const s32& b) {return a >  ssei(b);}
-INLINE sseb operator > (const s32& a, const ssei& b) {return ssei(a) >  b;}
-INLINE sseb operator <=(const ssei& a, const ssei& b) {return !(a >  b);}
-INLINE sseb operator <=(const ssei& a, const s32& b) {return a <= ssei(b);}
-INLINE sseb operator <=(const s32& a, const ssei& b) {return ssei(a) <= b;}
+// comparison ops + select
+INLINE sseb op ==(const ssei& a, const ssei& b) {return _mm_castsi128_ps(_mm_cmpeq_epi32 (a.m128, b.m128));}
+INLINE sseb op ==(const ssei& a, const s32& b) {return a == ssei(b);}
+INLINE sseb op ==(const s32& a, const ssei& b) {return ssei(a) == b;}
+INLINE sseb op !=(const ssei& a, const ssei& b) {return !(a == b);}
+INLINE sseb op !=(const ssei& a, const s32& b) {return a != ssei(b);}
+INLINE sseb op !=(const s32& a, const ssei& b) {return ssei(a) != b;}
+INLINE sseb op < (const ssei& a, const ssei& b) {return _mm_castsi128_ps(_mm_cmplt_epi32 (a.m128, b.m128));}
+INLINE sseb op < (const ssei& a, const s32& b) {return a <  ssei(b);}
+INLINE sseb op < (const s32& a, const ssei& b) {return ssei(a) <  b;}
+INLINE sseb op >=(const ssei& a, const ssei& b) {return !(a <  b);}
+INLINE sseb op >=(const ssei& a, const s32& b) {return a >= ssei(b);}
+INLINE sseb op >=(const s32& a, const ssei& b) {return ssei(a) >= b;}
+INLINE sseb op > (const ssei& a, const ssei& b) {return _mm_castsi128_ps(_mm_cmpgt_epi32 (a.m128, b.m128));}
+INLINE sseb op > (const ssei& a, const s32& b) {return a >  ssei(b);}
+INLINE sseb op > (const s32& a, const ssei& b) {return ssei(a) >  b;}
+INLINE sseb op <=(const ssei& a, const ssei& b) {return !(a >  b);}
+INLINE sseb op <=(const ssei& a, const s32& b) {return a <= ssei(b);}
+INLINE sseb op <=(const s32& a, const ssei& b) {return ssei(a) <= b;}
 
 INLINE const ssei select(const sseb& m, const ssei& t, const ssei& f) {
 #if defined(__SSE4_1__)
@@ -156,8 +158,14 @@ INLINE const ssei select(const int mask, const ssei& t, const ssei& f) {
 #endif
 
 // movement/shifting/shuffling functions
-INLINE ssei unpacklo(const ssei& a, const ssei& b) {return _mm_castps_si128(_mm_unpacklo_ps(_mm_castsi128_ps(a.m128), _mm_castsi128_ps(b.m128)));}
-INLINE ssei unpackhi(const ssei& a, const ssei& b) {return _mm_castps_si128(_mm_unpackhi_ps(_mm_castsi128_ps(a.m128), _mm_castsi128_ps(b.m128)));}
+INLINE ssei unpacklo(const ssei& a, const ssei& b) {
+  return _mm_castps_si128(_mm_unpacklo_ps(_mm_castsi128_ps(a.m128),
+    _mm_castsi128_ps(b.m128)));
+}
+INLINE ssei unpackhi(const ssei& a, const ssei& b) {
+  return _mm_castps_si128(_mm_unpackhi_ps(_mm_castsi128_ps(a.m128),
+    _mm_castsi128_ps(b.m128)));
+}
 
 template<size_t i0, size_t i1, size_t i2, size_t i3>
 INLINE const ssei shuffle(const ssei& a) {
@@ -166,7 +174,8 @@ INLINE const ssei shuffle(const ssei& a) {
 
 template<size_t i0, size_t i1, size_t i2, size_t i3>
 INLINE const ssei shuffle(const ssei& a, const ssei& b) {
-  return _mm_castps_si128(_mm_shuffle_ps(_mm_castsi128_ps(a), _mm_castsi128_ps(b), _MM_SHUFFLE(i3, i2, i1, i0)));
+  return _mm_castps_si128(_mm_shuffle_ps(
+    _mm_castsi128_ps(a), _mm_castsi128_ps(b), _MM_SHUFFLE(i3, i2, i1, i0)));
 }
 
 #if defined(__SSE3__)
@@ -209,9 +218,14 @@ INLINE int reduce_add(const ssei &v) {return extract<0>(vreduce_add(v));}
 
 INLINE size_t select_min(const ssei &v) {return __bsf(movemask(v == vreduce_min(v)));}
 INLINE size_t select_max(const ssei &v) {return __bsf(movemask(v == vreduce_max(v)));}
-
-INLINE size_t select_min(const sseb& valid, const ssei& v) {const ssei a = select(valid,v,ssei(pos_inf)); return __bsf(movemask(valid & (a == vreduce_min(a))));}
-INLINE size_t select_max(const sseb& valid, const ssei& v) {const ssei a = select(valid,v,ssei(neg_inf)); return __bsf(movemask(valid & (a == vreduce_max(a))));}
+INLINE size_t select_min(const sseb& valid, const ssei& v) {
+  const ssei a = select(valid,v,ssei(pos_inf));
+  return __bsf(movemask(valid & (a == vreduce_min(a))));
+}
+INLINE size_t select_max(const sseb& valid, const ssei& v) {
+  const ssei a = select(valid,v,ssei(neg_inf));
+  return __bsf(movemask(valid & (a == vreduce_max(a))));
+}
 
 #else
 
@@ -250,4 +264,5 @@ INLINE void store4i_nt(void* ptr, const ssei& v) {
 #endif
 }
 } /* namespace q */
+#undef op
 

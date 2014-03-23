@@ -18,7 +18,9 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 #pragma once
+#include "sys.hpp"
 
+#define op operator
 namespace q {
 
 /*-------------------------------------------------------------------------
@@ -32,15 +34,15 @@ struct sseb {
   enum   {size = 4};                  // number of SIMD elements
   union  {__m128 m128; s32 v[4];};  // data
 
-  // constructors, assignment & cast operators
+  // constructors, assignment & cast ops
   INLINE sseb() {}
   INLINE sseb(const sseb& other) {m128 = other.m128;}
-  INLINE sseb &operator=(const sseb& other) {m128 = other.m128; return *this;}
+  INLINE sseb &op=(const sseb& other) {m128 = other.m128; return *this;}
 
   INLINE sseb(const __m128  input) : m128(input) {}
-  INLINE operator const __m128&(void) const {return m128;}
-  INLINE operator const __m128i(void) const {return _mm_castps_si128(m128);}
-  INLINE operator const __m128d(void) const {return _mm_castps_pd(m128);}
+  INLINE op const __m128&(void) const {return m128;}
+  INLINE op const __m128i(void) const {return _mm_castps_si128(m128);}
+  INLINE op const __m128d(void) const {return _mm_castps_pd(m128);}
 
   INLINE sseb(bool a)
     : m128(_mm_lookupmask_ps[(size_t(a)<<3) | (size_t(a)<<2) | (size_t(a)<<1) | size_t(a)]) {}
@@ -59,30 +61,30 @@ struct sseb {
     _mm_cmpeq_epi32(_mm_setzero_si128(), _mm_setzero_si128()))) {}
 
   // array access
-  INLINE bool   operator[] (const size_t i) const {
+  INLINE bool   op[] (const size_t i) const {
     assert(i < 4); return (_mm_movemask_ps(m128) >> i) & 1;
   }
-  INLINE s32& operator[] (const size_t i) {
+  INLINE s32& op[] (const size_t i) {
     assert(i < 4); return v[i];
   }
 };
 
-// unary operators
-INLINE sseb operator! (const sseb& a) {return _mm_xor_ps(a, sseb(truev));}
+// unary ops
+INLINE sseb op! (const sseb& a) {return _mm_xor_ps(a, sseb(truev));}
 
-// binary operators
-INLINE sseb operator& (const sseb& a, const sseb& b) {return _mm_and_ps(a, b);}
-INLINE sseb operator| (const sseb& a, const sseb& b) {return _mm_or_ps (a, b);}
-INLINE sseb operator^ (const sseb& a, const sseb& b) {return _mm_xor_ps(a, b);}
+// binary ops
+INLINE sseb op& (const sseb& a, const sseb& b) {return _mm_and_ps(a, b);}
+INLINE sseb op| (const sseb& a, const sseb& b) {return _mm_or_ps (a, b);}
+INLINE sseb op^ (const sseb& a, const sseb& b) {return _mm_xor_ps(a, b);}
 
-// assignment operators
-INLINE sseb operator&= (sseb& a, const sseb& b) {return a = a & b;}
-INLINE sseb operator|= (sseb& a, const sseb& b) {return a = a | b;}
-INLINE sseb operator^= (sseb& a, const sseb& b) {return a = a ^ b;}
+// assignment ops
+INLINE sseb op&= (sseb& a, const sseb& b) {return a = a & b;}
+INLINE sseb op|= (sseb& a, const sseb& b) {return a = a | b;}
+INLINE sseb op^= (sseb& a, const sseb& b) {return a = a ^ b;}
 
-// comparison operators + select
-INLINE sseb operator!= (const sseb& a, const sseb& b) {return _mm_xor_ps(a, b);}
-INLINE sseb operator== (const sseb& a, const sseb& b) {return _mm_castsi128_ps(_mm_cmpeq_epi32(a, b));}
+// comparison ops + select
+INLINE sseb op!= (const sseb& a, const sseb& b) {return _mm_xor_ps(a, b);}
+INLINE sseb op== (const sseb& a, const sseb& b) {return _mm_castsi128_ps(_mm_cmpeq_epi32(a, b));}
 
 INLINE sseb select(const sseb& m, const sseb& t, const sseb& f) {
 #if defined(__SSE4_1__)
@@ -147,4 +149,5 @@ INLINE bool reduce_and(const sseb& a) {return _mm_movemask_ps(a) == 0xf;}
 INLINE bool reduce_or (const sseb& a) {return _mm_movemask_ps(a) != 0x0;}
 INLINE size_t movemask(const sseb& a) {return _mm_movemask_ps(a);}
 } /* namespace q */
+#undef op
 
