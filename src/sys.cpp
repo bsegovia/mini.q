@@ -217,6 +217,71 @@ float millis() {
   return float(double(tp.tv_sec)*1e3 + double(tp.tv_usec)*1e-3 - first);
 }
 #endif
+
+void writebmp(const int *data, int w, int h, const char *filename) {
+  int x, y;
+  FILE *fp = fopen(filename, "wb");
+  assert(fp);
+  struct bmphdr {
+    int filesize;
+    short as0, as1;
+    int bmpoffset;
+    int headerbytes;
+    int w;
+    int h;
+    short nplanes;
+    short bpp;
+    int compression;
+    int sizeraw;
+    int hres;
+    int vres;
+    int npalcolors;
+    int nimportant;
+  };
+
+  const char magic[2] = { 'B', 'M' };
+  char *raw = (char *) MALLOC(w*h*sizeof(int));
+  assert(raw);
+  char *p = raw;
+
+  for (y = 0; y < h; y++) {
+    for (x = 0; x < w; x++) {
+      int c = *data++;
+      *p++ = ((c >> 16) & 0xff);
+      *p++ = ((c >> 8) & 0xff);
+      *p++ = ((c >> 0) & 0xff);
+    }
+    while (x & 3) {
+      *p++ = 0;
+      x++;
+    } // pad to dword
+  }
+  int sizeraw = p - raw;
+  int scanline = (w * 3 + 3) & ~3;
+  assert(sizeraw == scanline * h);
+
+  struct bmphdr hdr;
+  hdr.filesize = scanline * h + sizeof(hdr) + 2;
+  hdr.as0 = 0;
+  hdr.as1 = 0;
+  hdr.bmpoffset = sizeof(hdr) + 2;
+  hdr.headerbytes = 40;
+  hdr.w = w;
+  hdr.h = h;
+  hdr.nplanes = 1;
+  hdr.bpp = 24;
+  hdr.compression = 0;
+  hdr.sizeraw = sizeraw;
+  hdr.hres = 0;
+  hdr.vres = 0;
+  hdr.npalcolors = 0;
+  hdr.nimportant = 0;
+  fwrite(&magic[0], 1, 2, fp);
+  fwrite(&hdr, 1, sizeof(hdr), fp);
+  fwrite(raw, 1, hdr.sizeraw, fp);
+  fclose(fp);
+  FREE(raw);
+}
 } /* namespace sys */
 } /* namespace q */
 

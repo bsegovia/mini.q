@@ -264,9 +264,9 @@ typedef               char s8;
 typedef unsigned      char u8;
 #endif // __MSVC__
 template <u32 sz> struct ptrtype {};
-template <> struct ptrtype<4> { typedef u32 value; };
-template <> struct ptrtype<8> { typedef u64 value; };
-typedef typename ptrtype<sizeof(void*)>::value uintptr;
+template <> struct ptrtype<4> { typedef u32 type; };
+template <> struct ptrtype<8> { typedef u64 type; };
+typedef typename ptrtype<sizeof(void*)>::type uintptr;
 static struct niltype {niltype(){}} nil MAYBE_UNUSED;
 
 namespace sys {
@@ -285,6 +285,7 @@ void initendiancheck();
 int islittleendian();
 void endianswap(void *memory, int stride, int length);
 u32 threadnumber();
+void writebmp(const int *data, int w, int h, const char *filename);
 
 /*-------------------------------------------------------------------------
  - memory debugging / tracking facilities

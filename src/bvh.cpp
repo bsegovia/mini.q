@@ -45,9 +45,9 @@ struct intersector {
       uintptr prim;
     };
     template <typename T>
-    INLINE const T *getptr(void) const {return (const T*)(prim&~MASK);}
+    INLINE const T *getptr(void) const {return (const T*)(prim&~uintptr(MASK));}
     template <typename T>
-    INLINE void setptr(const T *acc) { prim = (prim&MASK)|uintptr(acc); }
+    INLINE void setptr(const T *ptr) { prim = (prim&uintptr(MASK))|uintptr(ptr); }
     INLINE u32 getoffset(void) const { return offsetflag>>SHIFT; }
     INLINE u32 getaxis(void) const { return axis; }
     INLINE u32 getflag(void) const { return offsetflag & MASK; }
