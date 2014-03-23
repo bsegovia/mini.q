@@ -12,6 +12,7 @@ namespace bvh {
 // hit point when tracing a ray inside a bvh
 struct hit {
   float t,u,v;
+  vec3f n;
   u32 id;
   INLINE hit(float tmax=FLT_MAX) : t(tmax), id(~0x0u) {}
   INLINE bool is_hit(void) const { return id != ~0x0u; }

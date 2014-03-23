@@ -24,7 +24,7 @@ VAR(bvhstatitics, 0, 1, 1);
 struct waldtriangle {
   vec2f bn, cn, vertk, n;
   float nd;
-  u16 k, num;
+  u32 k:2, sign:1, num:29;
   u32 id, matid;
 };
 
@@ -227,6 +227,7 @@ INLINE void maketriangle(const primitive &t, waldtriangle &w, u32 id, u32 matid)
   w.nd = dot(N,A)/krec;
   w.id = id;
   w.k = k;
+  w.sign = N[k] < 0.f ? 1 : 0;
   w.matid = matid;
 }
 
@@ -382,6 +383,9 @@ INLINE bool raytriangle(const waldtriangle &tri, vec3f org, vec3f dir, hit *hit 
     hit->u = beta;
     hit->v = gamma;
     hit->id = tri.id;
+    hit->n[k] = tri.sign ? -1.f : 1.f;
+    hit->n[waldmodulo[k]] = hit->n[k]*tri.n.x;
+    hit->n[waldmodulo[k+1]] = hit->n[k]*tri.n.y;
   }
   return true;
 }
