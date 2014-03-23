@@ -17,8 +17,8 @@ namespace bvh {
 
 // build options
 VAR(maxprimitivenum, 1, 8, 16);
-VAR(sahintersectioncost, 1, 8, 16);
-VAR(sahtraversalcost, 1, 1, 16);
+VAR(sahintersectioncost, 1, 4, 16);
+VAR(sahtraversalcost, 1, 4, 16);
 VAR(bvhstatitics, 0, 1, 1);
 
 struct waldtriangle {

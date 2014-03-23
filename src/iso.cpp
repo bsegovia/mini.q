@@ -17,9 +17,7 @@ STATS(iso_octree_num);
 STATS(iso_qef_num);
 STATS(iso_edgepos);
 
-#define SHARP_EDGE_DC 0
-
-#if !defined(NDEBUG)
+#if !defined(RELEASE)
 static void stats() {
   STATS_OUT(iso_num);
   STATS_OUT(iso_qef_num);
@@ -1292,7 +1290,7 @@ mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &
   job->scheduled();
   job->wait();
 
-#if !defined(NDEBUG)
+#if !defined(RELEASE)
   stats();
 #endif
   return buildmesh(o, cellsize);

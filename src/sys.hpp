@@ -216,7 +216,7 @@ INLINE void NAME##v(First first, Rest... rest) {\
 #define STRINGIFY(X) _DO_STRINGIFY(X)
 #define _DO_STRINGIFY(X) #X
 
-#if !defined(NDEBUG)
+#if !defined(RELEASE)
 #define STATS(X) q::s32 X = 0;
 #define STATS_ADD(X,Y) (atomic_add(&X,Y))
 #define STATS_INC(X) (atomic_add(&X,1))
