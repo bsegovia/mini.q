@@ -3,7 +3,7 @@
  - server.hpp -> implements server specific code
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
-#include <enet/enet.h>
+#include "enet/enet.h"
 #include <time.h>
 
 namespace q {
@@ -402,7 +402,7 @@ void init(bool dedicated, int uprate, const char *sdesc, const char *ip, const c
     printf("dedicated server started, waiting for clients...\nCtrl-C to exit\n\n");
     atexit(clean);
     atexit(enet_deinitialize);
-    for (;;) slice(/*enet_time_get_sec()*/time(NULL), 5);
+    for (;;) slice(/*enet_time_get_sec()*/int(time(NULL)), 5);
   }
 }
 } /* namespace server */

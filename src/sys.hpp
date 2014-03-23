@@ -101,6 +101,8 @@
 #if defined(__WIN32__)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <intrin.h>
+#pragma warning (disable:4200) // no standard zero sized array
 #undef min
 #undef max
 #else
@@ -110,7 +112,10 @@
 #if defined(__EMSCRIPTEN__)
 #include "GLES2/gl2.h"
 #else
+#if defined(__WIN32__)
+#define GL3_PROTOTYPES
 #include "GL/gl3.h"
+#endif
 #endif
 
 /*-------------------------------------------------------------------------
@@ -127,9 +132,9 @@
 #define DEBUGBREAK      __debugbreak()
 #define COMPILER_WRITE_BARRIER       _WriteBarrier()
 #define COMPILER_READ_WRITE_BARRIER  _ReadWriteBarrier()
-#define CDECL           __cdecl
-#define vsnprintf       _vsnprintf
-#define MAYBE_UNUSED    __attribute__((used))
+#define vsnprintf      _vsnprintf
+#define snprintf       _snprintf
+#define MAYBE_UNUSED
 #define MAYALIAS
 #define PATHDIV         '\\'
 #if _MSC_VER >= 1400

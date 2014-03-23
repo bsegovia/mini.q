@@ -51,7 +51,7 @@ dynent *basicmonster(int type, int yaw, int state, int trigger, int move) {
   m->aboveeye *= t->bscale/10.0f;
   m->monsterstate = state;
   if (state!=M_SLEEP) spawnplayer(m);
-  m->trigger = lastmillis()+trigger;
+  m->trigger = int(lastmillis())+trigger;
   m->targetyaw = m->ypr.x = float(yaw);
   m->move = move;
   m->enemy = player1;
@@ -96,7 +96,7 @@ void monsterclear(void) {
     nextmonster = mtimestart = int(lastmillis())+1000;
     monstertotal = spawnremain = 1; // XXX mode()<0 ? skill*10 : 0;
   } else if (m_classicsp) {
-    mtimestart = lastmillis();
+    mtimestart = int(lastmillis());
     loopv(ents) if (ents[i].type==MONSTER) {
       auto m = basicmonster(ents[i].attr2, ents[i].attr1, M_SLEEP, 100, 0);
       m->o.x = ents[i].x;
@@ -125,7 +125,7 @@ void transition(dynent *m, int state, int moving, int n, int r) {
   m->monsterstate = state;
   m->move = moving;
   n = n*130/100;
-  m->trigger = lastmillis()+n-skill*(n/16)+rnd(r+1);
+  m->trigger = int(lastmillis())+n-skill*(n/16)+rnd(r+1);
 }
 
 void normalise(dynent *m, float angle) {
@@ -141,10 +141,10 @@ void monsteraction(dynent *m) {
   }
   normalise(m, m->targetyaw);
   if (m->targetyaw>m->ypr.x) { // slowly turn monster towards his target
-    m->ypr.x += curtime()*0.5f;
+    m->ypr.x += float(curtime())*0.5f;
     if (m->targetyaw<m->ypr.x) m->ypr.x = m->targetyaw;
   } else {
-    m->ypr.x -= curtime()*0.5f;
+    m->ypr.x -= float(curtime())*0.5f;
     if (m->targetyaw>m->ypr.x) m->ypr.x = m->targetyaw;
   }
 
@@ -238,7 +238,7 @@ void monsterpain(dynent *m, int damage, dynent *d) {
   transition(m, M_PAIN, 0, monstertypes[m->mtype].pain,200);      // in this state monster won't attack
   if ((m->health -= damage)<=0) {
     m->state = CS_DEAD;
-    m->lastaction = lastmillis();
+    m->lastaction = int(lastmillis());
     player1->frags = ++numkilled;
     sound::play(monstertypes[m->mtype].diesound, &m->o);
     int remain = monstertotal-numkilled;
@@ -258,7 +258,7 @@ void monsterthink(void) {
   if (m_dmsp && spawnremain && lastmillis()>nextmonster) {
     if (spawnremain--==monstertotal)
       con::out("The invasion has begun!");
-    nextmonster = lastmillis()+1000;
+    nextmonster = int(lastmillis())+1000;
     spawnmonster();
   }
 

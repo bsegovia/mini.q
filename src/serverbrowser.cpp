@@ -46,7 +46,7 @@ static int resolverloop(void * data) {
       continue;
     }
     rt->query = resolverqueries.pop();
-    rt->starttime = game::lastmillis();
+    rt->starttime = int(game::lastmillis());
     SDL_UnlockMutex(resolvermutex);
     ENetAddress address = {ENET_HOST_ANY, CUBE_SERVINFO_PORT};
     enet_address_set_host(&address, rt->query);
@@ -161,12 +161,12 @@ static void pingservers(void) {
     ServerInfo &si = servers[i];
     if (si.address.host == ENET_HOST_ANY) continue;
     p = ping;
-    putint(p, game::lastmillis());
+    putint(p, int(game::lastmillis()));
     buf.data = ping;
     buf.dataLength = p - ping;
     enet_socket_send(pingsock, &si.address, &buf, 1);
   }
-  lastinfo = game::lastmillis();
+  lastinfo = int(game::lastmillis());
 }
 
 static void checkresolver(void) {
@@ -199,7 +199,7 @@ static void checkpings(void) {
       ServerInfo &si = servers[i];
       if (addr.host == si.address.host) {
         p = ping;
-        si.ping = game::lastmillis() - getint(p);
+        si.ping = int(game::lastmillis()) - getint(p);
         si.protocol = getint(p);
         if (si.protocol!=PROTOCOL_VERSION) si.ping = 9998;
         si.mode = getint(p);

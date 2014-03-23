@@ -821,7 +821,7 @@ static void buildedges(qemcontext &ctx, const procmesh &pm) {
 
   // maintain a list of edges per triangle
   const auto vertnum = pm.pos.length(), trinum = pm.trinum();
-  vector<int> vlist(pm.idx.length());
+  vector<int> vlist(pm.pos.length()+pm.idx.length());
   loopi(vertnum) vlist[i] = -1;
   int firstedge = vertnum;
 

@@ -40,7 +40,7 @@ CONSTANT_TYPE(pitype,pi,3.14159265358979323846);
 /*-------------------------------------------------------------------------
  - scalar math
  -------------------------------------------------------------------------*/
-INLINE int abs    (int x)   {return ::abs(x);}
+INLINE int abs    (int x)   {return std::abs(x);}
 INLINE float sign (float x) {return x<0?-1.0f:1.0f;}
 INLINE float rcp  (float x) {return 1.0f/x;}
 INLINE float rsqrt(float x) {return 1.0f/::sqrtf(x);}
@@ -69,7 +69,8 @@ INLINE double sign (double x) {return x<0?-1.0:1.0;}
 INLINE double log2 (double x) {return ::log(x) / 0.69314718055994530941723212145818;}
 INLINE double log10(double x) {return ::log10(x);}
 INLINE double rcp  (double x) {return 1.0/x;}
-INLINE double rsqrt(double x) {return 1.0/::sqrt(x);}
+INLINE double sqrt(double x) { return ::sqrt(x); }
+INLINE double rsqrt(double x) { return 1.0 / ::sqrt(x); }
 INLINE bool   select(bool s, bool  t , bool f) { return s ? t : f; }
 INLINE int    select(bool s, int   t,   int f) { return s ? t : f; }
 INLINE float  select(bool s, float t, float f) { return s ? t : f; }

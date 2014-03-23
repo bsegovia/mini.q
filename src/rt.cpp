@@ -3,7 +3,7 @@
  - rt.cpp -> implements ray tracing kernels
  -------------------------------------------------------------------------*/
 #include "math.hpp"
-#include "con.hpp"
+#include "console.hpp"
 #include "bvh.hpp"
 #include "task.hpp"
 

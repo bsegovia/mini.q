@@ -40,7 +40,7 @@ static void newparticle(const vec3f &o, const vec3f &d, int fade, int type) {
     p->d = d;
     p->fade = fade;
     p->type = type;
-    p->millis = game::lastmillis();
+    p->millis = int(game::lastmillis());
     p->next = parlist;
     parlist = p;
   }
@@ -133,7 +133,7 @@ static void render_particles(int time) {
       parempty = p;
     } else {
       if (pt->gr)
-        p->o.z -= ((game::lastmillis()-p->millis)/3.0f)*game::curtime()/(pt->gr*10000);
+        p->o.z -= float(((game::lastmillis()-p->millis)/3.0)*game::curtime()/(double(pt->gr)*10000));
       vec3f a = p->d;
       a *= float(time);
       a /= 20000.f;
@@ -336,7 +336,7 @@ static void drawhudmodel(int start, int end, float speed, int base) {
                     * mat3x3f::rotate(-pl->ypr.y, vec3f(1.f,0.f,0.f))
                     * mat3x3f::rotate(-pl->ypr.z, vec3f(0.f,0.f,1.f));
   md2::render(hudgunnames[pl->gunselect], start, end,
-              mat4x4f(one), norxfm, false, 1.0f, speed, 0, base);
+              mat4x4f(one), norxfm, false, 1.0f, speed, 0, float(base));
 }
 
 static void drawhudgun(float fovy, float aspect, float farplane) {
@@ -655,7 +655,7 @@ struct context {
     ogl::immdraw("Sp2", 4, screenquad::getnormalized().v);
     ogl::enable(GL_DEPTH_TEST);
 
-    render_particles(game::curtime());
+    render_particles(int(game::curtime()));
     OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
     ogl::enable(GL_CULL_FACE);
     ogl::endtimer(deferredtimer);
@@ -699,18 +699,18 @@ static void doshadertoy(float fovy, float aspect, float farplane) {
 VAR(raytrace, 0, 0, 1);
 void frame(int w, int h, int curfps) {
   const auto farplane = 100.f;
-  const auto aspect = float(sys::scrw) / float(sys::scrh);
+  const auto aspect = float(sys::scrw) / float(sys::scrh); // XXX not w or h?
   const auto fovy = float(fov) / aspect;
   if (shadertoy)
     doshadertoy(fovy,aspect,farplane);
   else {
-    context ctx(w,h,fov,aspect,farplane);
     if (raytrace) {
       const auto pos = game::player1->o;
       const auto ypr = game::player1->ypr;
       rt::raytrace("hop.bmp",pos,ypr,1024,1024,fov,aspect);
       raytrace = 0;
     }
+    context ctx(float(w),float(h),float(fov),aspect,farplane);
     ctx.begin();
     ctx.dogbuffer();
     ctx.dodeferred();

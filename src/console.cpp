@@ -2,7 +2,7 @@
  - mini.q - a minimalistic multiplayer FPS
  - con.cpp -> implements console functionalities
  -------------------------------------------------------------------------*/
-#include "con.hpp"
+#include "console.hpp"
 #include "game.hpp"
 #include "script.hpp"
 #include "client.hpp"
@@ -66,7 +66,7 @@ void finish() {
 static void line(const char *sf, bool highlight) {
   cline cl;
   cl.cref = conlines.length()>100 ? conlines.pop().cref : NEWSTRINGBUF("");
-  cl.outtime = game::lastmillis(); // for how long to keep line on screen
+  cl.outtime = int(game::lastmillis()); // for how long to keep line on screen
   conlines.insert(0,cl);
   if (highlight) { // show line in a different colour, for chat etc.
     cl.cref[0] = '\f';

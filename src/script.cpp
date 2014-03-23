@@ -2,12 +2,12 @@
  - mini.q - a minimalistic multiplayer FPS
  - script.cpp -> implements embedded script / con language
  -------------------------------------------------------------------------*/
-#include <cstdio>
 #include "sys.hpp"
 #include "stl.hpp"
 #include "script.hpp"
 #include "client.hpp"
-#include "con.hpp"
+#include "console.hpp"
+#include <cstdio>
 
 namespace q {
 namespace script {

@@ -5,6 +5,7 @@
 #pragma once
 #include "sys.hpp"
 #include "stl.hpp"
+#include <GL/gl3.h>
 
 namespace q {
 template<typename T> struct vec3;
@@ -186,7 +187,9 @@ struct shadertype {
     program(0), fixedfunction(fixedfunction) {}
   u32 program;
   bool fixedfunction;
+#if !defined(__MSVC__)
   u32 internal[0];
+#endif
 };
 void destroyshader(shadertype&);
 void bindshader(const shadertype&);

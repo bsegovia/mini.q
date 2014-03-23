@@ -5,12 +5,10 @@
 #include "mini.q.hpp"
 
 namespace q {
-
 #define SHADERNAME md2
 #define VERTEX_PROGRAM "data/shaders/md2_vp.decl"
 #define FRAGMENT_PROGRAM "data/shaders/md2_fp.decl"
 #include "shaderdecl.hxx"
-
 namespace md2 {
 
 struct header {
@@ -24,7 +22,7 @@ struct header {
   int offsetframes, offsetglcommands, offsetend;
 };
 
-struct vertex { u8 vertex[3], normalidx; };
+struct md2vertex { u8 vertex[3], normalidx; };
 static const float normaltable[256][3] = {
   {-0.525731f,  0.000000f,  0.850651f}, {-0.442863f,  0.238856f,  0.864188f}, {-0.295242f,  0.000000f,  0.955423f}, {-0.309017f,  0.500000f,  0.809017f}, 
   {-0.162460f,  0.262866f,  0.951056f}, { 0.000000f,  0.000000f,  1.000000f}, { 0.000000f,  0.850651f,  0.525731f}, {-0.147621f,  0.716567f,  0.681718f}, 
@@ -73,7 +71,7 @@ struct frame {
   float scale[3];
   float translate[3];
   char name[16];
-  vertex vertices[1];
+  md2vertex vertices[1];
 };
 
 struct mdl {
@@ -187,7 +185,7 @@ void mdl::render(int frame, int range,
   const auto mvp = ogl::matrix(ogl::PROJECTION) * posxfm;
 
   const int n = vboframesz / sizeof(vertextype);
-  const auto time = game::lastmillis()-basetime;
+  const auto time = float(game::lastmillis()-basetime);
   auto fr1 = intptr_t(time/speed);
   const auto frac = (time-fr1*speed)/speed;
   fr1 = fr1%range+frame;
@@ -232,7 +230,8 @@ static void delayedload(mdl *m, float scale, int snap) {
 void start() {}
 #if !defined(RELEASE)
 void finish() {
-  for (auto &m : mdllookup) DEL(m.second);
+ // for (auto &m : mdllookup) DEL(m.second);
+  for (auto it = mdllookup.begin(); it != mdllookup.end(); ++it) DEL(it->second);
 }
 #endif
 
@@ -255,7 +254,7 @@ void mapmodel(const char *rad, const char *h, const char *zoff, const char *snap
 
 void mapmodelreset(void) {
   auto &map = mdllookup;
-  for (auto item : map) SAFE_DEL(item.second);
+  for (auto it = map.begin(); it != map.end(); ++it) SAFE_DEL(it->second);
   mapmodels.setsize(0);
   modelnum = 0;
 }

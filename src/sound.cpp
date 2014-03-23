@@ -23,7 +23,7 @@ static void *stream = NULL;
 static vector<Mix_Chunk*> samples;
 static cvector snames;
 static int soundsatonce = 0;
-static float lastsoundmillis = 0.f;
+static int lastsoundmillis = 0;
 static struct { vec3f loc; bool inuse; } soundlocs[MAXCHAN];
 
 void stop(void) {

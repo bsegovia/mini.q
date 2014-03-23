@@ -86,7 +86,7 @@ static const int MINFRAMETIME = 20; // physics simulated at 50fps or better
 // optimally schedule physics frames inside the graphics frames
 void frame(void) {
   if (game::curtime()>=MINFRAMETIME) {
-    int faketime = game::curtime()+physicsfraction;
+    int faketime = int(game::curtime())+physicsfraction;
     physicsrepeat = faketime/MINFRAMETIME;
     physicsfraction = faketime-physicsrepeat*MINFRAMETIME;
   } else
@@ -229,8 +229,8 @@ void moveplayer(game::dynent *pl, int moveres, bool local, int curtime) {
 void moveplayer(game::dynent *pl, int moveres, bool local) {
   loopi(physicsrepeat)
     moveplayer(pl, moveres, local,
-      i ? game::curtime()/physicsrepeat :
-          game::curtime()-game::curtime()/physicsrepeat*(physicsrepeat-1));
+      i ? int(game::curtime()/physicsrepeat) :
+          int(game::curtime() - game::curtime() / physicsrepeat*(physicsrepeat - 1)));
 }
 } /* namespace physics */
 } /* namespace q */

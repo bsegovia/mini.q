@@ -19,7 +19,7 @@ ENET_OBJS=\
 GAME_OBJS=\
   client.o\
   bvh.o\
-  con.o\
+  console.o\
   csg.o\
   demo.o\
   editing.o\

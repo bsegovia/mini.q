@@ -3,7 +3,7 @@
  - demo.cpp -> implements demo record / play back
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
-#include <zlib.h>
+#include "zlib.h"
 
 // loading and saving of savegames & demos, dumps the spawn state of all
 // mapents, the full state of all dynents (monsters + player)
@@ -132,7 +132,7 @@ void loadgamerest(void) {
   server::restoreserverstate(game::ents);
 
   gzread(f, game::player1, sizeof(game::dynent));
-  game::player1->lastaction = game::lastmillis();
+  game::player1->lastaction = int(game::lastmillis());
 
   int nmonsters = gzgeti();
   game::dvector &monsters = game::getmonsters();
@@ -140,7 +140,7 @@ void loadgamerest(void) {
   loopv(monsters) {
     gzread(f, monsters[i], sizeof(game::dynent));
     monsters[i]->enemy = game::player1; // lazy, could save id of enemy instead
-    monsters[i]->lastaction = monsters[i]->trigger = game::lastmillis()+500; // also lazy, but no real noticable effect on game
+    monsters[i]->lastaction = monsters[i]->trigger = int(game::lastmillis())+500; // also lazy, but no real noticable effect on game
     if (monsters[i]->state==CS_DEAD) monsters[i]->lastaction = 0;
   }
   game::restoremonsterstate();
@@ -174,7 +174,7 @@ static void record(char *name) {
   gzputi(cn);
   con::out("started recording demo to %s", fn);
   demorecording = true;
-  starttime = game::lastmillis();
+  starttime = int(game::lastmillis());
   ddamage = bdamage = 0;
 }
 CMD(record, ARG_1STR);
@@ -184,7 +184,7 @@ void blend(int damage) { bdamage = damage; }
 
 void incomingdata(u8 *buf, int len, bool extras) {
   if (!demorecording) return;
-  gzputi(game::lastmillis()-starttime);
+  gzputi(int(game::lastmillis())-starttime);
   gzputi(len);
   gzwrite(f, buf, len);
   gzput(extras);
@@ -236,7 +236,7 @@ static void readdemotime() {
 static void start(void) {
   democlientnum = gzgeti();
   demoplayback = true;
-  starttime = game::lastmillis();
+  starttime = int(game::lastmillis());
   con::out("now playing demo");
   game::dynent *d = game::getclient(democlientnum);
   assert(d);
@@ -312,7 +312,7 @@ void playbackstep(void) {
   }
 
   if (demoplayback) {
-    int itime = game::lastmillis()-demodelaymsec;
+    int itime = int(game::lastmillis())-demodelaymsec;
     loopvrev(playerhistory) if (playerhistory[i]->lastupdate<itime) { // find 2 positions in history that surround interpolation time point
       game::dynent *a = playerhistory[i];
       game::dynent *b = a;

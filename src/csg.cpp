@@ -251,15 +251,15 @@ void distr(const node *n, const vec3f * RESTRICT pos, const float * RESTRICT nor
     }
     break;
     case C_INTERSECTION: {
-      const auto i = static_cast<const I*>(n);
-      const auto isecleft = intersection(i->left->box, box);
+      const auto in = static_cast<const I*>(n);
+      const auto isecleft = intersection(in->left->box, box);
       if (!all(le(isecleft.pmin, isecleft.pmax))) break;
-      const auto isecright = intersection(i->right->box, box);
+      const auto isecright = intersection(in->right->box, box);
       if (!all(le(isecright.pmin, isecright.pmax))) break;
-      distr(i->left, pos, normaldist, dist, matindex, num, box);
+      distr(in->left, pos, normaldist, dist, matindex, num, box);
       float tempdist[64];
       loopi(num) tempdist[i] = FLT_MAX;
-      distr(i->right, pos, normaldist, tempdist, matindex, num, box);
+      distr(in->right, pos, normaldist, tempdist, matindex, num, box);
       loopi(num) {
         dist[i] = max(dist[i], tempdist[i]);
         matindex[i] = dist[i] >= 0.f ? MAT_AIR_INDEX : matindex[i];

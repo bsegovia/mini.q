@@ -1,0 +1,214 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\client.cpp" />
+    <ClCompile Include="..\src\console.cpp" />
+    <ClCompile Include="..\src\csg.cpp" />
+    <ClCompile Include="..\src\demo.cpp" />
+    <ClCompile Include="..\src\editing.cpp" />
+    <ClCompile Include="..\src\enet\callbacks.cpp" />
+    <ClCompile Include="..\src\enet\host.cpp" />
+    <ClCompile Include="..\src\enet\list.cpp" />
+    <ClCompile Include="..\src\enet\packet.cpp" />
+    <ClCompile Include="..\src\enet\peer.cpp" />
+    <ClCompile Include="..\src\enet\protocol.cpp" />
+    <ClCompile Include="..\src\enet\win32.cpp" />
+    <ClCompile Include="..\src\entities.cpp" />
+    <ClCompile Include="..\src\game.cpp" />
+    <ClCompile Include="..\src\iso.cpp" />
+    <ClCompile Include="..\src\math.cpp" />
+    <ClCompile Include="..\src\md2.cpp" />
+    <ClCompile Include="..\src\menu.cpp" />
+    <ClCompile Include="..\src\mini.q.cpp" />
+    <ClCompile Include="..\src\monster.cpp" />
+    <ClCompile Include="..\src\network.cpp" />
+    <ClCompile Include="..\src\ogl.cpp" />
+    <ClCompile Include="..\src\physics.cpp" />
+    <ClCompile Include="..\src\qef.cpp" />
+    <ClCompile Include="..\src\renderer.cpp" />
+    <ClCompile Include="..\src\script.cpp" />
+    <ClCompile Include="..\src\server.cpp" />
+    <ClCompile Include="..\src\serverbrowser.cpp" />
+    <ClCompile Include="..\src\serverms.cpp" />
+    <ClCompile Include="..\src\serverutil.cpp" />
+    <ClCompile Include="..\src\shaders.cpp" />
+    <ClCompile Include="..\src\sky.cpp" />
+    <ClCompile Include="..\src\sound.cpp" />
+    <ClCompile Include="..\src\stl.cpp" />
+    <ClCompile Include="..\src\sys.cpp" />
+    <ClCompile Include="..\src\task.cpp" />
+    <ClCompile Include="..\src\text.cpp" />
+    <ClCompile Include="..\src\ui.cpp" />
+    <ClCompile Include="..\src\weapon.cpp" />
+    <ClCompile Include="..\src\world.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\client.hpp" />
+    <ClInclude Include="..\src\console.hpp" />
+    <ClInclude Include="..\src\csg.hpp" />
+    <ClInclude Include="..\src\demo.hpp" />
+    <ClInclude Include="..\src\editing.hpp" />
+    <ClInclude Include="..\src\enet\callbacks.h" />
+    <ClInclude Include="..\src\enet\enet.h" />
+    <ClInclude Include="..\src\enet\list.h" />
+    <ClInclude Include="..\src\enet\memory.h" />
+    <ClInclude Include="..\src\enet\protocol.h" />
+    <ClInclude Include="..\src\enet\time.h" />
+    <ClInclude Include="..\src\enet\types.h" />
+    <ClInclude Include="..\src\enet\utility.h" />
+    <ClInclude Include="..\src\enet\win32.h" />
+    <ClInclude Include="..\src\entities.hpp" />
+    <ClInclude Include="..\src\font.hxx" />
+    <ClInclude Include="..\src\game.hpp" />
+    <ClInclude Include="..\src\iso.hpp" />
+    <ClInclude Include="..\src\math.hpp" />
+    <ClInclude Include="..\src\md2.hpp" />
+    <ClInclude Include="..\src\menu.hpp" />
+    <ClInclude Include="..\src\mini.q.hpp" />
+    <ClInclude Include="..\src\monster.hpp" />
+    <ClInclude Include="..\src\network.hpp" />
+    <ClInclude Include="..\src\ogl.hpp" />
+    <ClInclude Include="..\src\ogl.hxx" />
+    <ClInclude Include="..\src\physics.hpp" />
+    <ClInclude Include="..\src\qef.hpp" />
+    <ClInclude Include="..\src\renderer.hpp" />
+    <ClInclude Include="..\src\script.hpp" />
+    <ClInclude Include="..\src\server.hpp" />
+    <ClInclude Include="..\src\serverbrowser.hpp" />
+    <ClInclude Include="..\src\shaderdecl.hxx" />
+    <ClInclude Include="..\src\shaders.hpp" />
+    <ClInclude Include="..\src\shaders.hxx" />
+    <ClInclude Include="..\src\shaderundef.hxx" />
+    <ClInclude Include="..\src\sky.hpp" />
+    <ClInclude Include="..\src\sound.hpp" />
+    <ClInclude Include="..\src\stl.hpp" />
+    <ClInclude Include="..\src\sys.hpp" />
+    <ClInclude Include="..\src\task.hpp" />
+    <ClInclude Include="..\src\text.hpp" />
+    <ClInclude Include="..\src\ui.hpp" />
+    <ClInclude Include="..\src\weapon.hpp" />
+    <ClInclude Include="..\src\world.hpp" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{3434853A-60B3-4025-BE62-FFE39F920F34}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>cube</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v120</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v120</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <IgnoreImportLibrary>false</IgnoreImportLibrary>
+    <OutDir>..\bin\</OutDir>
+    <IntDir>.\Debug\</IntDir>
+    <TargetName>mini.q.debug</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>..\bin\</OutDir>
+    <IntDir>.\Release\</IntDir>
+    <TargetName>mini.q</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../enet/include;../include/;../</AdditionalIncludeDirectories>
+      <StringPooling>true</StringPooling>
+      <MinimalRebuild>false</MinimalRebuild>
+      <ExceptionHandling>false</ExceptionHandling>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <PrecompiledHeaderFile>
+      </PrecompiledHeaderFile>
+      <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
+      <ForceConformanceInForLoopScope>false</ForceConformanceInForLoopScope>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>odbc32.lib;odbccp32.lib;zdll.lib;opengl32.lib;msvcrt.lib;SDLmain.lib;SDL.lib;SDL_image.lib;SDL_mixer.lib;ws2_32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>../lib/msvc/x86</AdditionalLibraryDirectories>
+      <AdditionalOptions>/NODEFAULTLIB:library %(AdditionalOptions)</AdditionalOptions>
+      <ForceFileOutput>
+      </ForceFileOutput>
+      <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
+      <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
+    </Link>
+    <ProjectReference>
+      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>false</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;USE_ENET;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../enet/include;../include/;../</AdditionalIncludeDirectories>
+      <StringPooling>true</StringPooling>
+      <ExceptionHandling>false</ExceptionHandling>
+      <BufferSecurityCheck>false</BufferSecurityCheck>
+      <PrecompiledHeaderFile>
+      </PrecompiledHeaderFile>
+      <TreatWChar_tAsBuiltInType>false</TreatWChar_tAsBuiltInType>
+      <ForceConformanceInForLoopScope>false</ForceConformanceInForLoopScope>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>../lib/msvc/x86</AdditionalLibraryDirectories>
+      <AdditionalDependencies>SDLmain.lib;odbc32.lib;odbccp32.lib;zdll.lib;opengl32.lib;msvcrt.lib;SDL.lib;SDL_image.lib;ws2_32.lib;winmm.lib;SDL_mixer.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
+      <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
+    </Link>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

@@ -1,5 +1,5 @@
 #include "mini.q.hpp"
-#include <enet/enet.h>
+#include "enet/enet.h"
 
 namespace q {
 namespace client {
@@ -86,7 +86,7 @@ void connect(const char *servername) {
   if (clienthost) {
     enet_host_connect(clienthost, &address, 1); 
     enet_host_flush(clienthost);
-    connecting = game::lastmillis();
+    connecting = int(game::lastmillis());
     connattempts = 0;
   } else {
     con::out("could not connect to server");
@@ -100,7 +100,7 @@ void disconnect(int onlyclean, int async) {
     if (!connecting && !disconnecting) {
       enet_peer_disconnect(clienthost->peers);
       enet_host_flush(clienthost);
-      disconnecting = game::lastmillis();
+      disconnecting = int(game::lastmillis());
     }
     if (clienthost->peers->state != ENET_PEER_STATE_DISCONNECTED) {
       if (async) return;
@@ -273,8 +273,8 @@ void c2sinfo(const game::dynent *d) {
     messages.setsize(0);
     if (game::lastmillis()-lastping>250) {
       putint(p, SV_PING);
-      putint(p, game::lastmillis());
-      lastping = game::lastmillis();
+      putint(p, int(game::lastmillis()));
+      lastping = int(game::lastmillis());
     }
   }
 
@@ -286,7 +286,7 @@ void c2sinfo(const game::dynent *d) {
     enet_host_flush(clienthost);
   } else
     server::localclienttoserver(packet);
-  lastupdate = game::lastmillis();
+  lastupdate = int(game::lastmillis());
   if (serveriteminitdone)
     demo::loadgamerest();  // hack
 }
@@ -310,10 +310,10 @@ static void updatepos(game::dynent *d) {
     else
       d->o.x += dx<0 ? r-fx : -(r-fx);
   }
-  const int lagtime = game::lastmillis()-d->lastupdate;
+  const int lagtime = int(game::lastmillis())-d->lastupdate;
   if (lagtime) {
     d->plag = (d->plag*5+lagtime)/6;
-    d->lastupdate = game::lastmillis();
+    d->lastupdate = int(game::lastmillis());
   }
 }
 
@@ -375,7 +375,8 @@ void localservertoclient(u8 *buf, int len) {
       d->move = (f&3)==3 ? -1 : f&3;
       d->onfloor = (f>>2)&1;
       int state = f>>3;
-      if (state==CS_DEAD && d->state!=CS_DEAD) d->lastaction = game::lastmillis();
+      if (state==CS_DEAD && d->state!=CS_DEAD)
+        d->lastaction = int(game::lastmillis());
       d->state = state;
       if (!demo::playing()) updatepos(d);
     }
@@ -543,7 +544,7 @@ void localservertoclient(u8 *buf, int len) {
     break;
     case SV_PONG: 
       addmsg(0, 2, SV_CLIENTPING, game::player1->ping =
-        (game::player1->ping*5+game::lastmillis()-getint(p))/6);
+        (game::player1->ping*5+int(game::lastmillis())-getint(p))/6);
     break;
     case SV_CLIENTPING:
       game::players[cn]->ping = getint(p);
@@ -594,7 +595,7 @@ void gets2c(void) {
   if (!clienthost) return;
   if (connecting && game::lastmillis()/3000 > connecting/3000) {
     con::out("attempting to connect...");
-    connecting = game::lastmillis();
+    connecting = int(game::lastmillis());
     ++connattempts; 
     if (connattempts > 3) {
       con::out("could not connect to server");

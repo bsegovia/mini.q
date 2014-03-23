@@ -180,20 +180,20 @@ void pickup(int n, game::dynent *d) {
     break;
     case CARROT:
       ents[n].spawned = false;
-      triggertime = lastmillis();
+      triggertime = int(lastmillis());
       // TODO world::trigger(ents[n].attr1, ents[n].attr2, false);  // needs to go over server for client::multiplayer
     break;
     case TELEPORT: {
       static int lastteleport = 0;
       if (lastmillis()-lastteleport<500) break;
-      lastteleport = lastmillis();
+      lastteleport = int(lastmillis());
       teleport(n, d);
     }
     break;
     case JUMPPAD: {
       static int lastjumppad = 0;
       if (lastmillis()-lastjumppad<300) break;
-      lastjumppad = lastmillis();
+      lastjumppad = int(lastmillis());
       vec3f v((int)(char)ents[n].attr3/10.0f, (int)(char)ents[n].attr2/10.0f, ents[n].attr1/10.0f);
       player1->vel.z = 0;
       player1->vel += v;

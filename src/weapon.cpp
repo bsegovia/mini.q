@@ -277,11 +277,11 @@ void raydamage(dynent *o, vec3f &from, vec3f &to, dynent *d, int i) {
 }
 
 void shoot(dynent *d, vec3f &targ) {
-  int attacktime = game::lastmillis()-d->lastaction;
+  int attacktime = int(game::lastmillis())-d->lastaction;
   if (attacktime<d->gunwait) return;
   d->gunwait = 0;
   if (!d->attacking) return;
-  d->lastaction = game::lastmillis();
+  d->lastaction = int(game::lastmillis());
   d->lastattackgun = d->gunselect;
   if (!d->ammo[d->gunselect]) {
     sound::playc(sound::NOAMMO);
