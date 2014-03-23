@@ -42,6 +42,7 @@ static const auto DEFAULT_GRAD_STEP = 1e-3f;
 static const int MAX_STEPS = 8;
 static const float SHARP_EDGE_THRESHOLD = 0.2f;
 static const float MIN_EDGE_FACTOR = 1.f/8.f;
+static const float MAX_EDGE_LEN = 4.f;
 static const double QEM_MIN_ERROR = 1e-8;
 
 INLINE pair<vec3i,u32> edge(vec3i start, vec3i end) {
@@ -766,18 +767,6 @@ struct qemheapitem {
   int idx;
 };
 
-INLINE float compactness(vec3f v0, vec3f v1, vec3f v2) {
-  const auto edge20 = v2-v0;
-  const auto edge10 = v1-v0;
-  const auto edge21 = v2-v1;
-  const auto area = length(cross(edge20,edge10));
-  const auto l0 = length2(edge10);
-  const auto l1 = length2(edge21);
-  const auto l2 = length2(edge20);
-  const auto compactness = 4.f*sqrtf(3.f)*area/(l0+l1+l2);
-  return compactness;
-}
-
 INLINE bool operator< (const qemheapitem &i0, const qemheapitem &i1) {
   if (i0.cost == 0.0 && i1.cost == 0.0)
     return i0.len2 < i1.len2;
@@ -961,8 +950,6 @@ static bool merge(qemcontext &ctx, procmesh &pm, const qemedge &edge, int idx0, 
     i2 = i2 == from ? to : i2;
     if (i0 == i1 || i1 == i2 || i0 == i2) continue;
     const vec3f target(cross(p[i0]-p[i1],p[i0]-p[i2]));
-//    if (compactness(p[i0],p[i1],p[i2]) < 0.1f)
-//      return false;
     if (dot(initial,target) < 0.f)
       return false;
   }
@@ -1049,6 +1036,7 @@ static void decimatemesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
   for (;;) {
   //while (0) {
     const auto item = heap.removeheap();
+    if (item.len2 > MAX_EDGE_LEN*MAX_EDGE_LEN) continue;
     auto &edge = eqem[item.idx];
     const auto idx0 = uncollapsedidx(vqem, edge.idx[0]);
     const auto idx1 = uncollapsedidx(vqem, edge.idx[1]);
