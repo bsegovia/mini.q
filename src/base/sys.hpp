@@ -89,33 +89,34 @@
 #endif
 
 /*-------------------------------------------------------------------------
- - dependencies
+ - intrinsics
  -------------------------------------------------------------------------*/
-#include <cstdio>
-#include <cstring>
-#include <cstdarg>
-#include <cassert>
-#include <new>
-#include <SDL/SDL.h>
-
-#if defined(__WIN32__)
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <intrin.h>
-#pragma warning (disable:4200) // no standard zero sized array
-#undef min
-#undef max
-#else
-#include <sys/time.h>
+#if defined(__SSE__)
+#include <xmmintrin.h>
 #endif
 
-#if defined(__EMSCRIPTEN__)
-#include "GLES2/gl2.h"
-#else
-#if defined(__WIN32__)
-#define GL3_PROTOTYPES
-#include "GL/gl3.h"
+#if defined(__SSE2__)
+#include <emmintrin.h>
 #endif
+
+#if defined(__SSE3__)
+#include <pmmintrin.h>
+#endif
+
+#if defined(__SSSE3__)
+#include <tmmintrin.h>
+#endif
+
+#if defined (__SSE4_1__)
+#include <smmintrin.h>
+#endif
+
+#if defined (__SSE4_2__)
+#include <nmmintrin.h>
+#endif
+
+#if defined(__AVX__) || defined(__MIC__)
+#include <immintrin.h>
 #endif
 
 /*-------------------------------------------------------------------------
@@ -244,11 +245,10 @@ void set##NAME(TYPE x) { VARNAME = x; }
 extern TYPE NAME(void);\
 extern void set##NAME(TYPE x);
 
-namespace q {
-
 /*-------------------------------------------------------------------------
  - standard types
  -------------------------------------------------------------------------*/
+namespace q {
 #if defined(__MSVC__)
 typedef          __int64 s64;
 typedef unsigned __int64 u64;
@@ -268,6 +268,335 @@ typedef unsigned     short u16;
 typedef               char s8;
 typedef unsigned      char u8;
 #endif // __MSVC__
+} /* namespace q */
+
+/*-------------------------------------------------------------------------
+ - windows intrinsics
+ -------------------------------------------------------------------------*/
+#if defined(__WIN32__)
+#include <intrin.h>
+
+INLINE q::u64 __rdpmc(int i) {
+  return __readpmc(i);
+}
+
+INLINE int __popcnt(int in) {
+  return _mm_popcnt_u32(in);
+}
+
+#if !defined(_MSC_VER)
+INLINE unsigned int __popcnt(unsigned int in) {
+  return _mm_popcnt_u32(in);
+}
+#endif
+
+#if defined(__X86_64__)
+INLINE long long __popcnt(long long in) {
+  return _mm_popcnt_u64(in);
+}
+INLINE size_t __popcnt(size_t in) {
+  return _mm_popcnt_u64(in);
+}
+#endif
+
+INLINE int __bsf(int v) {
+#if defined(__AVX2__)
+  return _tzcnt_u32(v);
+#else
+  unsigned long r = 0; _BitScanForward(&r,v); return r;
+#endif
+}
+
+INLINE unsigned int __bsf(unsigned int v) {
+#if defined(__AVX2__)
+  return _tzcnt_u32(v);
+#else
+  unsigned long r = 0; _BitScanForward(&r,v); return r;
+#endif
+}
+
+INLINE int __bsr(int v) {
+  unsigned long r = 0; _BitScanReverse(&r,v); return r;
+}
+
+INLINE int __btc(int v, int i) {
+  long r = v; _bittestandcomplement(&r,i); return r;
+}
+
+INLINE int __bts(int v, int i) {
+  long r = v; _bittestandset(&r,i); return r;
+}
+
+INLINE int __btr(int v, int i) {
+  long r = v; _bittestandreset(&r,i); return r;
+}
+
+INLINE int bitscan(int v) {
+#if defined(__AVX2__)
+  return _tzcnt_u32(v);
+#else
+  return __bsf(v);
+#endif
+}
+
+INLINE int clz(const int x) {
+#if defined(__AVX2__)
+  return _lzcnt_u32(x);
+#else
+  if (unlikely(x == 0)) return 32;
+  return 31 - __bsr(x);
+#endif
+}
+
+INLINE int __bscf(int& v) {
+  int i = __bsf(v);
+  v &= v-1;
+  return i;
+}
+
+INLINE unsigned int __bscf(unsigned int& v) {
+  unsigned int i = __bsf(v);
+  v &= v-1;
+  return i;
+}
+
+#if defined(__X86_64__)
+
+INLINE size_t __bsf(size_t v) {
+#if defined(__AVX2__)
+  return _tzcnt_u64(v);
+#else
+  unsigned long r = 0; _BitScanForward64(&r,v); return r;
+#endif
+}
+
+INLINE size_t __bsr(size_t v) {
+  unsigned long r = 0; _BitScanReverse64(&r,v); return r;
+}
+
+INLINE size_t __btc(size_t v, size_t i) {
+  size_t r = v; _bittestandcomplement64((__int64*)&r,i); return r;
+}
+
+INLINE size_t __bts(size_t v, size_t i) {
+  __int64 r = v; _bittestandset64(&r,i); return r;
+}
+
+INLINE size_t __btr(size_t v, size_t i) {
+  __int64 r = v; _bittestandreset64(&r,i); return r;
+}
+
+INLINE size_t bitscan(size_t v) {
+#if defined(__AVX2__)
+#if defined(__X86_64__)
+  return _tzcnt_u64(v);
+#else
+  return _tzcnt_u32(v);
+#endif
+#else
+  return __bsf(v);
+#endif
+}
+
+INLINE size_t __bscf(size_t& v) {
+  size_t i = __bsf(v);
+  v &= v-1;
+  return i;
+}
+#endif
+#endif
+
+/*-------------------------------------------------------------------------
+ - unix intrinsics
+ -------------------------------------------------------------------------*/
+#if !defined(__WIN32__)
+#if defined(__i386__) && defined(__PIC__)
+
+INLINE void __cpuid(int out[4], int op) {
+  asm volatile ("xchg{l}\t{%%}ebx, %1\n\t"
+                "cpuid\n\t"
+                "xchg{l}\t{%%}ebx, %1\n\t"
+                : "=a"(out[0]), "=r"(out[1]), "=c"(out[2]), "=d"(out[3])
+                : "0"(op));
+}
+
+INLINE void __cpuid_count(int out[4], int op1, int op2) {
+  asm volatile ("xchg{l}\t{%%}ebx, %1\n\t"
+                "cpuid\n\t"
+                "xchg{l}\t{%%}ebx, %1\n\t"
+                : "=a" (out[0]), "=r" (out[1]), "=c" (out[2]), "=d" (out[3])
+                : "0" (op1), "2" (op2));
+}
+
+#else
+
+INLINE void __cpuid(int out[4], int op) {
+  asm volatile ("cpuid" : "=a"(out[0]), "=b"(out[1]), "=c"(out[2]), "=d"(out[3]) : "a"(op));
+}
+
+INLINE void __cpuid_count(int out[4], int op1, int op2) {
+  asm volatile ("cpuid" : "=a"(out[0]), "=b"(out[1]), "=c"(out[2]), "=d"(out[3]) : "a"(op1), "c"(op2));
+}
+
+#endif
+
+INLINE q::u64 __rdtsc()  {
+  q::u32 high,low;
+  asm volatile ("rdtsc" : "=d"(high), "=a"(low));
+  return (((q::u64)high) << 32) + (q::u64)low;
+}
+
+INLINE q::u64 __rdpmc(int i) {
+  q::u32 high,low;
+  asm volatile ("rdpmc" : "=d"(high), "=a"(low) : "c"(i));
+  return (((q::u64)high) << 32) + (q::u64)low;
+}
+
+INLINE unsigned int __popcnt(unsigned int in) {
+  int r = 0; asm ("popcnt %1,%0" : "=r"(r) : "r"(in)); return r;
+}
+
+INLINE int __bsf(int v) {
+  int r = 0; asm ("bsf %1,%0" : "=r"(r) : "r"(v)); return r;
+}
+
+INLINE int __bsr(int v) {
+  int r = 0; asm ("bsr %1,%0" : "=r"(r) : "r"(v)); return r;
+}
+
+INLINE int __btc(int v, int i) {
+  int r = 0; asm ("btc %1,%0" : "=r"(r) : "r"(i), "0"(v) : "flags" ); return r;
+}
+
+INLINE int __bts(int v, int i) {
+  int r = 0; asm ("bts %1,%0" : "=r"(r) : "r"(i), "0"(v) : "flags"); return r;
+}
+
+INLINE int __btr(int v, int i) {
+  int r = 0; asm ("btr %1,%0" : "=r"(r) : "r"(i), "0"(v) : "flags"); return r;
+}
+
+INLINE size_t __bsf(size_t v) {
+  size_t r = 0; asm ("bsf %1,%0" : "=r"(r) : "r"(v)); return r;
+}
+
+INLINE unsigned int __bsf(unsigned int v) {
+  unsigned int r = 0; asm ("bsf %1,%0" : "=r"(r) : "r"(v)); return r;
+}
+
+INLINE size_t __bsr(size_t v) {
+  size_t r = 0; asm ("bsr %1,%0" : "=r"(r) : "r"(v)); return r;
+}
+
+INLINE size_t __btc(size_t v, size_t i) {
+  size_t r = 0; asm ("btc %1,%0" : "=r"(r) : "r"(i), "0"(v) : "flags" ); return r;
+}
+
+INLINE size_t __bts(size_t v, size_t i) {
+  size_t r = 0; asm ("bts %1,%0" : "=r"(r) : "r"(i), "0"(v) : "flags"); return r;
+}
+
+INLINE size_t __btr(size_t v, size_t i) {
+  size_t r = 0; asm ("btr %1,%0" : "=r"(r) : "r"(i), "0"(v) : "flags"); return r;
+}
+
+INLINE int bitscan(int v) {
+#if defined(__AVX2__)
+  return _tzcnt_u32(v);
+#else
+  return __bsf(v);
+#endif
+}
+
+INLINE unsigned int bitscan(unsigned int v) {
+#if defined(__AVX2__)
+  return _tzcnt_u32(v);
+#else
+  return __bsf(v);
+#endif
+}
+
+INLINE size_t bitscan(size_t v) {
+#if defined(__AVX2__)
+#if defined(__X86_64__)
+  return _tzcnt_u64(v);
+#else
+  return _tzcnt_u32(v);
+#endif
+#else
+  return __bsf(v);
+#endif
+}
+
+INLINE int clz(const int x)
+{
+#if defined(__AVX2__)
+  return _lzcnt_u32(x);
+#else
+  if (x == 0) return 32;
+  return 31 - __bsr(x);
+#endif
+}
+
+INLINE int __bscf(int& v)
+{
+  int i = bitscan(v);
+#if defined(__AVX2__)
+  v &= v-1;
+#else
+  v = __btc(v,i);
+#endif
+  return i;
+}
+
+INLINE unsigned int __bscf(unsigned int& v) {
+  unsigned int i = bitscan(v);
+  v &= v-1;
+  return i;
+}
+
+INLINE size_t __bscf(size_t& v) {
+  size_t i = bitscan(v);
+#if defined(__AVX2__)
+  v &= v-1;
+#else
+  v = __btc(v,i);
+#endif
+  return i;
+}
+#endif
+
+/*-------------------------------------------------------------------------
+ - dependencies
+ -------------------------------------------------------------------------*/
+#include <cstdio>
+#include <cstring>
+#include <cstdarg>
+#include <cassert>
+#include <new>
+#include <SDL/SDL.h>
+
+#if defined(__WIN32__)
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <intrin.h>
+#pragma warning (disable:4200) // no standard zero sized array
+#undef min
+#undef max
+#else
+#include <sys/time.h>
+#endif
+
+#if defined(__EMSCRIPTEN__)
+#include "GLES2/gl2.h"
+#else
+#if defined(__WIN32__)
+#define GL3_PROTOTYPES
+#include "GL/gl3.h"
+#endif
+#endif
+
+namespace q {
 template <u32 sz> struct ptrtype {};
 template <> struct ptrtype<4> { typedef u32 type; };
 template <> struct ptrtype<8> { typedef u64 type; };

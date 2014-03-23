@@ -31,6 +31,8 @@ static const struct TYPE {\
   INLINE op s8 (void) const {return s8 (NUM);}\
   INLINE op u8 (void) const {return u8 (NUM);}\
 } VALUE MAYBE_UNUSED;
+CONSTANT_TYPE(truetype,truev,true);
+CONSTANT_TYPE(falsetype,falsev,false);
 CONSTANT_TYPE(zerotype,zero,0);
 CONSTANT_TYPE(onetype,one,1);
 CONSTANT_TYPE(twotype,two,2);
