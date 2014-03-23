@@ -3,8 +3,8 @@
  - bvh.hpp -> exposes bvh routines (build and traversal)
  -------------------------------------------------------------------------*/
 #pragma once
-#include "math.hpp"
-#include "sys.hpp"
+#include "base/math.hpp"
+#include "base/sys.hpp"
 
 namespace q {
 namespace bvh {

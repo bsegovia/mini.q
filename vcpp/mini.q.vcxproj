@@ -11,11 +11,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\client.cpp" />
-    <ClCompile Include="..\src\console.cpp" />
-    <ClCompile Include="..\src\csg.cpp" />
-    <ClCompile Include="..\src\demo.cpp" />
-    <ClCompile Include="..\src\editing.cpp" />
     <ClCompile Include="..\src\enet\callbacks.cpp" />
     <ClCompile Include="..\src\enet\host.cpp" />
     <ClCompile Include="..\src\enet\list.cpp" />
@@ -23,10 +18,21 @@
     <ClCompile Include="..\src\enet\peer.cpp" />
     <ClCompile Include="..\src\enet\protocol.cpp" />
     <ClCompile Include="..\src\enet\win32.cpp" />
+    <ClCompile Include="..\src\base\console.cpp" />
+    <ClCompile Include="..\src\base\math.cpp" />
+    <ClCompile Include="..\src\base\script.cpp" />
+    <ClCompile Include="..\src\base\stl.cpp" />
+    <ClCompile Include="..\src\base\sys.cpp" />
+    <ClCompile Include="..\src\base\task.cpp" />
     <ClCompile Include="..\src\entities.cpp" />
+    <ClCompile Include="..\src\client.cpp" />
+    <ClCompile Include="..\src\csg.cpp" />
+    <ClCompile Include="..\src\bvh.cpp" />
+    <ClCompile Include="..\src\rt.cpp" />
+    <ClCompile Include="..\src\demo.cpp" />
+    <ClCompile Include="..\src\editing.cpp" />
     <ClCompile Include="..\src\game.cpp" />
     <ClCompile Include="..\src\iso.cpp" />
-    <ClCompile Include="..\src\math.cpp" />
     <ClCompile Include="..\src\md2.cpp" />
     <ClCompile Include="..\src\menu.cpp" />
     <ClCompile Include="..\src\mini.q.cpp" />
@@ -36,7 +42,6 @@
     <ClCompile Include="..\src\physics.cpp" />
     <ClCompile Include="..\src\qef.cpp" />
     <ClCompile Include="..\src\renderer.cpp" />
-    <ClCompile Include="..\src\script.cpp" />
     <ClCompile Include="..\src\server.cpp" />
     <ClCompile Include="..\src\serverbrowser.cpp" />
     <ClCompile Include="..\src\serverms.cpp" />
@@ -44,20 +49,12 @@
     <ClCompile Include="..\src\shaders.cpp" />
     <ClCompile Include="..\src\sky.cpp" />
     <ClCompile Include="..\src\sound.cpp" />
-    <ClCompile Include="..\src\stl.cpp" />
-    <ClCompile Include="..\src\sys.cpp" />
-    <ClCompile Include="..\src\task.cpp" />
     <ClCompile Include="..\src\text.cpp" />
     <ClCompile Include="..\src\ui.cpp" />
     <ClCompile Include="..\src\weapon.cpp" />
     <ClCompile Include="..\src\world.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\src\client.hpp" />
-    <ClInclude Include="..\src\console.hpp" />
-    <ClInclude Include="..\src\csg.hpp" />
-    <ClInclude Include="..\src\demo.hpp" />
-    <ClInclude Include="..\src\editing.hpp" />
     <ClInclude Include="..\src\enet\callbacks.h" />
     <ClInclude Include="..\src\enet\enet.h" />
     <ClInclude Include="..\src\enet\list.h" />
@@ -67,11 +64,22 @@
     <ClInclude Include="..\src\enet\types.h" />
     <ClInclude Include="..\src\enet\utility.h" />
     <ClInclude Include="..\src\enet\win32.h" />
+    <ClInclude Include="..\src\base\console.hpp" />
+    <ClInclude Include="..\src\base\math.hpp" />
+    <ClInclude Include="..\src\base\script.hpp" />
+    <ClInclude Include="..\src\base\stl.hpp" />
+    <ClInclude Include="..\src\base\sys.hpp" />
+    <ClInclude Include="..\src\base\task.hpp" />
+    <ClInclude Include="..\src\client.hpp" />
+    <ClInclude Include="..\src\csg.hpp" />
+    <ClInclude Include="..\src\demo.hpp" />
+    <ClInclude Include="..\src\editing.hpp" />
     <ClInclude Include="..\src\entities.hpp" />
     <ClInclude Include="..\src\font.hxx" />
+    <ClCompile Include="..\src\bvh.hpp" />
+    <ClCompile Include="..\src\rt.hpp" />
     <ClInclude Include="..\src\game.hpp" />
     <ClInclude Include="..\src\iso.hpp" />
-    <ClInclude Include="..\src\math.hpp" />
     <ClInclude Include="..\src\md2.hpp" />
     <ClInclude Include="..\src\menu.hpp" />
     <ClInclude Include="..\src\mini.q.hpp" />
@@ -82,7 +90,6 @@
     <ClInclude Include="..\src\physics.hpp" />
     <ClInclude Include="..\src\qef.hpp" />
     <ClInclude Include="..\src\renderer.hpp" />
-    <ClInclude Include="..\src\script.hpp" />
     <ClInclude Include="..\src\server.hpp" />
     <ClInclude Include="..\src\serverbrowser.hpp" />
     <ClInclude Include="..\src\shaderdecl.hxx" />
@@ -91,9 +98,6 @@
     <ClInclude Include="..\src\shaderundef.hxx" />
     <ClInclude Include="..\src\sky.hpp" />
     <ClInclude Include="..\src\sound.hpp" />
-    <ClInclude Include="..\src\stl.hpp" />
-    <ClInclude Include="..\src\sys.hpp" />
-    <ClInclude Include="..\src\task.hpp" />
     <ClInclude Include="..\src\text.hpp" />
     <ClInclude Include="..\src\ui.hpp" />
     <ClInclude Include="..\src\weapon.hpp" />

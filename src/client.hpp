@@ -1,6 +1,10 @@
+/*-------------------------------------------------------------------------
+ - mini.q - a minimalistic multiplayer fps
+ - client.cpp -> exposes client game routines
+ -------------------------------------------------------------------------*/
 #pragma once
 #include "entities.hpp"
-#include "sys.hpp"
+#include "base/sys.hpp"
 
 namespace q {
 namespace client {

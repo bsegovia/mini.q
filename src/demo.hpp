@@ -3,7 +3,7 @@
  - demo.hpp -> demo record/play back routines
  -------------------------------------------------------------------------*/
 #pragma once
-#include "sys.hpp"
+#include "base/sys.hpp"
 
 // bump if dynent/netprotocol changes or any other savegame/demo data
 #define SAVEGAMEVERSION 4

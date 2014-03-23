@@ -3,8 +3,8 @@
  - ogl.hpp -> exposes opengl routines
  -------------------------------------------------------------------------*/
 #pragma once
-#include "sys.hpp"
-#include "stl.hpp"
+#include "base/sys.hpp"
+#include "base/stl.hpp"
 #include <GL/gl3.h>
 
 namespace q {

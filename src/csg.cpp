@@ -3,8 +3,8 @@
  - csg.cpp -> implements csg routines
  -------------------------------------------------------------------------*/
 #include "csg.hpp"
-#include "sys.hpp"
-#include "math.hpp"
+#include "base/sys.hpp"
+#include "base/math.hpp"
 
 namespace q {
 namespace csg {

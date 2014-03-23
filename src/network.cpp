@@ -3,7 +3,7 @@
  - network.cpp -> implements network code shared by client and server
  -------------------------------------------------------------------------*/
 #include "network.hpp"
-#include "sys.hpp"
+#include "base/sys.hpp"
 
 // all network traffic is in 32bit ints, which are then compressed using the
 // following simple scheme (assumes that most values are small).

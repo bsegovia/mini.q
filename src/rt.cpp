@@ -2,10 +2,11 @@
  - mini.q - a minimalistic multiplayer FPS
  - rt.cpp -> implements ray tracing kernels
  -------------------------------------------------------------------------*/
-#include "math.hpp"
-#include "console.hpp"
 #include "bvh.hpp"
-#include "task.hpp"
+#include "rt.hpp"
+#include "base/math.hpp"
+#include "base/console.hpp"
+#include "base/task.hpp"
 
 namespace q {
 namespace rt {

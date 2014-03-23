@@ -4,9 +4,9 @@
  -------------------------------------------------------------------------*/
 #include "iso.hpp"
 #include "csg.hpp"
-#include "stl.hpp"
 #include "qef.hpp"
-#include "task.hpp"
+#include "base/stl.hpp"
+#include "base/task.hpp"
 
 STATS(iso_num);
 STATS(iso_edgepos_num);

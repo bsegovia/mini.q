@@ -1,5 +1,5 @@
 #pragma once
-#include "math.hpp"
+#include "base/math.hpp"
 
 namespace q {
 namespace sound {

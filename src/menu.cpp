@@ -4,14 +4,14 @@
  -------------------------------------------------------------------------*/
 #include "menu.hpp"
 #include "game.hpp"
-#include "script.hpp"
 #include "client.hpp"
 #include "ogl.hpp"
 #include "renderer.hpp"
 #include "text.hpp"
 #include "serverbrowser.hpp"
-#include "sys.hpp"
-#include "stl.hpp"
+#include "base/script.hpp"
+#include "base/sys.hpp"
+#include "base/stl.hpp"
 #include <SDL/SDL.h>
 
 namespace q {

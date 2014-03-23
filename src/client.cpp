@@ -1,3 +1,7 @@
+/*-------------------------------------------------------------------------
+ - mini.q - a minimalistic multiplayer fps
+ - client.cpp -> implements client game routines
+ -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
 #include "enet/enet.h"
 

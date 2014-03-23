@@ -16,10 +16,17 @@ ENET_OBJS=\
   enet/protocol.o\
   enet/unix.o
 
+BASE_OBJS=\
+  base/console.o\
+  base/math.o\
+  base/script.o\
+  base/stl.o\
+  base/sys.o\
+  base/task.o
+
 GAME_OBJS=\
   client.o\
   bvh.o\
-  console.o\
   csg.o\
   demo.o\
   editing.o\
@@ -27,7 +34,6 @@ GAME_OBJS=\
   game.o\
   iso.o\
   md2.o\
-  math.o\
   menu.o\
   monster.o\
   network.o\
@@ -35,7 +41,6 @@ GAME_OBJS=\
   physics.o\
   qef.o\
   renderer.o\
-  script.o\
   server.o\
   serverbrowser.o\
   serverms.o\
@@ -43,10 +48,7 @@ GAME_OBJS=\
   shaders.o\
   rt.o\
   sound.o\
-  stl.o\
   sky.o\
-  sys.o\
-  task.o\
   text.o\
   ui.o\
   weapon.o\
@@ -54,19 +56,21 @@ GAME_OBJS=\
 
 CLIENT_OBJS=\
   $(ENET_OBJS)\
+  $(BASE_OBJS)\
   $(GAME_OBJS)\
   mini.q.o
 
 RT_OBJS=\
   $(ENET_OBJS)\
+  $(BASE_OBJS)\
   $(GAME_OBJS)\
   mini.q.rt.o
 
 SERVER_OBJS=\
   $(ENET_OBJS)\
-  math.o\
-  stl.o\
-  sys.o\
+  base/math.o\
+  base/stl.o\
+  base/sys.o\
   network.o\
   server.o\
   serverms.o\
@@ -100,5 +104,6 @@ compress_chars: compress_chars.o
 	$(CXX) $(CXXFLAGS) -o compress_chars compress_chars.o $(LIBS)
 
 clean:
-	rm -rf mini.q mini.q.server compress_chars *.o *.d ./enet/*.o ./enet/*.d oprofile_data
+	rm -rf mini.q mini.q.server compress_chars *.o *.d ./enet/*.o ./enet/*.d \
+		base/*.o base/*.d oprofile_data
 

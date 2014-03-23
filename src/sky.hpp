@@ -3,7 +3,7 @@
  - sky.cpp -> get sun position at any given time
  -------------------------------------------------------------------------*/
 
-#include "math.hpp"
+#include "base/math.hpp"
 namespace q {
 namespace sky {
 

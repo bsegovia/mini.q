@@ -4,7 +4,7 @@
  - original code by Ronen Tzur (rtzur@shani.net)
  -------------------------------------------------------------------------*/
 #pragma once
-#include "math.hpp"
+#include "base/math.hpp"
 
 namespace q {
 namespace qef {

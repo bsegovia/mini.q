@@ -6,11 +6,11 @@
 #include <cfloat>
 #include <cmath>
 #include "bvh.hpp"
-#include "console.hpp"
-#include "script.hpp"
-#include "math.hpp"
-#include "stl.hpp"
-#include "sys.hpp"
+#include "base/console.hpp"
+#include "base/script.hpp"
+#include "base/math.hpp"
+#include "base/stl.hpp"
+#include "base/sys.hpp"
 
 namespace q {
 namespace bvh {

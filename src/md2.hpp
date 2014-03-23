@@ -2,7 +2,7 @@
  - mini.q - a minimalistic multiplayer FPS
  - md2.cpp -> exposes quake md2 model routines
  -------------------------------------------------------------------------*/
-#include "math.hpp"
+#include "base/math.hpp"
 
 namespace q {
 namespace md2 {

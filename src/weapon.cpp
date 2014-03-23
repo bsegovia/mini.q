@@ -7,10 +7,10 @@
 #include "monster.hpp"
 #include "network.hpp"
 #include "renderer.hpp"
-#include "script.hpp"
 #include "game.hpp"
 #include "client.hpp"
 #include "demo.hpp"
+#include "base/script.hpp"
 
 namespace q {
 namespace game {

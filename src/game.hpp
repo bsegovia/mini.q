@@ -4,7 +4,7 @@
  -------------------------------------------------------------------------*/
 #pragma once
 #include "entities.hpp"
-#include "sys.hpp"
+#include "base/sys.hpp"
 
 namespace q {
 namespace game {

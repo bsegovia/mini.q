@@ -4,9 +4,9 @@
  -------------------------------------------------------------------------*/
 #pragma once
 #include "ogl.hpp"
-#include "stl.hpp"
-#include "sys.hpp"
 #include "shaders.hxx"
+#include "base/stl.hpp"
+#include "base/sys.hpp"
 
 namespace q {
 namespace shaders {

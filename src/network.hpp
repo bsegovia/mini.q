@@ -3,8 +3,8 @@
  - network.hpp -> shared network code shared by client and server
  -------------------------------------------------------------------------*/
 #pragma once
-#include "sys.hpp"
-#include "math.hpp"
+#include "base/sys.hpp"
+#include "base/math.hpp"
 
 namespace q {
 

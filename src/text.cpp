@@ -5,9 +5,9 @@
 #include "ogl.hpp"
 #include "text.hpp"
 #include "renderer.hpp"
-#include "math.hpp"
-#include "stl.hpp"
 #include "shaders.hpp"
+#include "base/math.hpp"
+#include "base/stl.hpp"
 
 namespace q {
 namespace text {

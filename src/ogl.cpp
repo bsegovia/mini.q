@@ -2,14 +2,14 @@
  - mini.q - a minimalistic multiplayer FPS
  - ogl.cpp -> defines opengl routines
  -------------------------------------------------------------------------*/
-#include "console.hpp"
-#include "sys.hpp"
 #include "shaders.hpp"
-#include "script.hpp"
 #include "game.hpp"
-#include "math.hpp"
 #include "text.hpp"
 #include "ogl.hpp"
+#include "base/math.hpp"
+#include "base/script.hpp"
+#include "base/console.hpp"
+#include "base/sys.hpp"
 
 #include "GL/glext.h"
 #include <SDL/SDL_image.h>

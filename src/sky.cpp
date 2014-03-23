@@ -9,7 +9,7 @@
 // and from shadertoy shader:
 // https://www.shadertoy.com/view/XsS3Dm
 
-#include "math.hpp"
+#include "base/math.hpp"
 #include "sky.hpp"
 
 namespace q {

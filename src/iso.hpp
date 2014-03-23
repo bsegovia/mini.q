@@ -3,10 +3,10 @@
  - iso.cpp -> implements routines for iso surface
  -------------------------------------------------------------------------*/
 #pragma once
-#include "sys.hpp"
 #include "csg.hpp"
-#include "stl.hpp"
-#include "math.hpp"
+#include "base/sys.hpp"
+#include "base/stl.hpp"
+#include "base/math.hpp"
 
 namespace q {
 namespace iso {

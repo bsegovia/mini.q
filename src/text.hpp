@@ -3,8 +3,8 @@
  - text.cpp -> implements text rendering routines
  -------------------------------------------------------------------------*/
 #pragma once
-#include "sys.hpp"
-#include "math.hpp"
+#include "base/sys.hpp"
+#include "base/math.hpp"
 
 namespace q {
 namespace text {

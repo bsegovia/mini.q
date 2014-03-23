@@ -3,11 +3,11 @@
  - ui.cpp -> implements immediate mode rendering
  -------------------------------------------------------------------------*/
 #include "ui.hpp"
-#include "sys.hpp"
-#include "stl.hpp"
 #include "ogl.hpp"
 #include "text.hpp"
-#include "math.hpp"
+#include "base/sys.hpp"
+#include "base/stl.hpp"
+#include "base/math.hpp"
 
 namespace q {
 namespace ui {

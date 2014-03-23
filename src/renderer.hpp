@@ -3,7 +3,7 @@
  - renderer.hpp -> exposes rendering routines
  -------------------------------------------------------------------------*/
 #pragma once
-#include "math.hpp"
+#include "base/math.hpp"
 
 namespace q {
 namespace rr {
