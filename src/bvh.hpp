@@ -25,7 +25,7 @@ typedef hit packethit[raypacket::MAXRAYNUM];
 void closest(const struct intersector&, const struct ray&, hit&);
 bool occluded(const struct intersector&, const struct ray&);
 void closest(const struct intersector&, const struct raypacket&, packethit&);
-bool occluded(const struct intersector&, const struct raypacket&);
+void occluded(const intersector &bvhtree, const raypacket &p, packethit &hit);
 
 // opaque intersector data structure
 struct intersector *create(const struct primitive*, int n);
@@ -34,16 +34,12 @@ aabb getaabb(const struct intersector*);
 
 // May be either a triangle, a bounding box and an intersector
 struct primitive {
-  enum { TRI, AABB, INTERSECTOR };
+  enum { TRI, INTERSECTOR };
   INLINE primitive(void) {}
   INLINE primitive(vec3f a, vec3f b, vec3f c) : isec(NULL), type(TRI) {
     v[0]=a;
     v[1]=b;
     v[2]=c;
-  }
-  INLINE primitive(aabb box) : isec(NULL), type(AABB) {
-    v[0]=box.pmin;
-    v[1]=box.pmax;
   }
   INLINE primitive(const intersector *isec) : isec(isec), type(INTERSECTOR) {
     const aabb box = bvh::getaabb(isec);

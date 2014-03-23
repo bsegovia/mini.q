@@ -30,7 +30,6 @@ struct waldtriangle {
 
 struct intersector {
   static const u32 NONLEAF = 0x0;
-  static const u32 FULLLEAF = 0x1;
   static const u32 TRILEAF = 0x2;
   static const u32 ISECLEAF = 0x3;
   static const u32 MASK = 0x3;
@@ -215,7 +214,7 @@ struct segment {
 
 INLINE void maketriangle(const primitive &t, waldtriangle &w, u32 id, u32 matid) {
   const vec3f &A(t.v[0]), &B(t.v[1]), &C(t.v[2]);
-  const vec3f b(C-A), c(B-A), N(cross(b,c));
+  const vec3f b(B-A), c(C-A), N(cross(b,c));
   u32 k = 0;
   for (u32 i=1; i<3; ++i) k = abs(N[i]) > abs(N[k]) ? i : k;
   const u32 u = (k+1)%3, v = (k+2)%3;
@@ -244,10 +243,7 @@ INLINE void makeleaf(compiler &c, const segment &data) {
   const auto &first = c.prims[c.ids[0][data.first]];
   auto &node = c.root[data.id];
   node.box = data.box;
-  if (first.type == primitive::AABB) {
-    assert(n==1);
-    node.setflag(intersector::FULLLEAF);
-  } else if (first.type == primitive::INTERSECTOR) {
+  if (first.type == primitive::INTERSECTOR) {
     assert(n==1);
     node.setflag(intersector::ISECLEAF);
     node.setptr(first.isec);
@@ -370,16 +366,13 @@ INLINE bool raytriangle(const waldtriangle &tri, vec3f org, vec3f dir, hit *hit 
   const vec2f dirk(dir[ku], dir[kv]);
   const vec2f posk(org[ku], org[kv]);
   const float t = (tri.nd-org[k]-dot(tri.n,posk))/(dir[k]+dot(tri.n,dirk));
-  if (!occludedonly) {
-    if (!((hit->t > t) & (t >= 0.f)))
-      return false;
-  } else if (!(t >= 0.f))
+  if (!((hit->t > t) & (t >= 0.f)))
     return false;
   const vec2f h = posk + t*dirk - tri.vertk;
   const float beta = dot(h,tri.bn), gamma = dot(h,tri.cn);
   if ((beta < 0.f) | (gamma < 0.f) | ((beta + gamma) > 1.f)) return false;
+  hit->t = t;
   if (!occludedonly) {
-    hit->t = t;
     hit->u = beta;
     hit->v = gamma;
     hit->id = tri.id;
@@ -411,11 +404,7 @@ void closest(const intersector &bvhtree, const ray &r, hit &hit) {
         stack[stacksz++] = node+offset+farindex;
         node = node+offset+nearindex;
       } else {
-        if (flag == intersector::FULLLEAF) {
-          hit.t = res.t;
-          hit.id = 0;
-          break;
-        } else if (flag == intersector::TRILEAF) {
+        if (flag == intersector::TRILEAF) {
           auto tris = node->getptr<waldtriangle>();
           const s32 n = tris->num;
           loopi(n) raytriangle<false>(tris[i], r.org, r.dir, &hit);
@@ -447,9 +436,7 @@ bool occluded(const intersector &bvhtree, const ray &r) {
         stack[stacksz++] = node+offset+1;
         node = node+offset;
       } else {
-        if (flag == intersector::FULLLEAF)
-          return true;
-        else if (flag == intersector::TRILEAF) {
+        if (flag == intersector::TRILEAF) {
           auto tris = node->getptr<waldtriangle>();
           const s32 n = tris->num;
           loopi(n) if (raytriangle<true>(tris[i], r.org, r.dir)) return true;
@@ -607,15 +594,7 @@ NOINLINE void closestinternal(const intersector &bvhtree, const raypacket &p, pa
         stack[stacksz++] = makepair(node+offset+farindex, first);
         node = node+offset+nearindex;
       } else {
-        if (flag == intersector::FULLLEAF) {
-          hit[first].t = res.t;
-          hit[first].id = 0;
-          if (flags & raypacket::COMMONORG)
-            slaballco(node->box, p, rdir, first+1, hit);
-          else
-            slaball(node->box, p, rdir, first+1, hit);
-          break;
-        } else if (flag == intersector::TRILEAF) {
+        if (flag == intersector::TRILEAF) {
           auto tris = node->getptr<waldtriangle>();
           const s32 n = tris->num;
           u32 active[raypacket::MAXRAYNUM];
@@ -637,7 +616,6 @@ NOINLINE void closestinternal(const intersector &bvhtree, const raypacket &p, pa
 }
 #define CASE(X) case X: closestinternal<X>(bvhtree, p, hit); break;
 #define CASE4(X) CASE(X) CASE(X+1) CASE(X+2) CASE(X+3)
-
 void closest(const intersector &bvhtree, const raypacket &p, packethit &hit) {
   switch (p.flags) {
     CASE4(0)
@@ -646,7 +624,84 @@ void closest(const intersector &bvhtree, const raypacket &p, packethit &hit) {
     CASE4(12)
   };
 }
+#undef CASE
+#undef CASE4
 
+template <u32 flags>
+NOINLINE void occludedinternal(const intersector &bvhtree, const raypacket &p, packethit &hit) {
+  pair<intersector::node*,u32> stack[64];
+  stack[0] = makepair(bvhtree.root, 0u);
+  u32 stacksz = 1;
+  vec3f rdir[raypacket::MAXRAYNUM];
+  loopi(s32(p.raynum)) rdir[i] = rcp(p.dir(i));
+  u8 occluded[raypacket::MAXRAYNUM];
+  u32 occludednum = 0;
+  loopi(p.raynum) occluded[i] = 0;
+  while (stacksz) {
+    const auto elem = stack[--stacksz];
+    auto node = elem.first;
+    auto first = elem.second;
+    for (;;) {
+      isecres res(false);
+      if (flags & raypacket::INTERVALARITH) {
+        if (flags & raypacket::COMMONORG) {
+          res = slaboneco(node->box, p, rdir, first, hit);
+          if (res.isec) goto processnode;
+          if (culliaco(node->box, p)) break;
+        } else {
+          res = slabone(node->box, p, rdir, first, hit);
+          if (res.isec) goto processnode;
+          if (cullia(node->box, p)) break;
+        }
+        ++first;
+      }
+      if (flags & raypacket::COMMONORG)
+        res = slabfirstco(node->box, p, rdir, first, hit);
+      else
+        res = slabfirst(node->box, p, rdir, first, hit);
+      if (!res.isec) break;
+    processnode:
+      const u32 flag = node->getflag();
+      if (flag == intersector::NONLEAF) {
+        const u32 offset = node->getoffset();
+        stack[stacksz++] = makepair(node+offset+1, first);
+        node = node+offset;
+      } else {
+        if (flag == intersector::TRILEAF) {
+          auto tris = node->getptr<waldtriangle>();
+          const s32 n = tris->num;
+          u32 active[raypacket::MAXRAYNUM];
+          active[first] = 1;
+          if (flags & raypacket::COMMONORG)
+            slabfilterco(node->box, p, rdir, active, first+1, hit);
+          else
+            slabfilter(node->box, p, rdir, active, first+1, hit);
+          loopi(n) rangej(first,p.raynum)
+            if (!occluded[j] && active[j] && raytriangle<true>(tris[i], p.org(j), p.dir(j), hit+j)) {
+              hit[j].id = tris[i].id;
+              occluded[j] = 1;
+              occludednum++;
+            }
+          if (occludednum == p.raynum) return;
+          break;
+        } else {
+          node = node->getptr<intersector>()->root;
+          goto processnode;
+        }
+      }
+    }
+  }
+}
+#define CASE(X) case X: occludedinternal<X>(bvhtree, p, hit); break;
+#define CASE4(X) CASE(X) CASE(X+1) CASE(X+2) CASE(X+3)
+void occluded(const intersector &bvhtree, const raypacket &p, packethit &hit) {
+  switch (p.flags) {
+    CASE4(0)
+    CASE4(4)
+    CASE4(8)
+    CASE4(12)
+  };
+}
 #undef CASE
 #undef CASE4
 } /* namespace bvh */

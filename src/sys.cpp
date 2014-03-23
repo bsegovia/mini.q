@@ -177,6 +177,7 @@ char *loadfile(const char *fn, int *size) {
 
 void quit(const char *msg) {
 #if defined(RELEASE)
+  q::finish();
   _exit(EXIT_SUCCESS);
 #else
   if (msg && strlen(msg)) {

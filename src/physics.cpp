@@ -99,7 +99,7 @@ void frame(void) {
 // local is false for client::multiplayer prediction
 void moveplayer(game::dynent *pl, int moveres, bool local, int curtime) {
   const bool water = false;//world::waterlevel() > pl->o.z-0.5f;
-  const bool floating = (edit::mode() && local) || pl->state==CS_EDITING;
+  const bool floating = true;//(edit::mode() && local) || pl->state==CS_EDITING;
 
   vec3f d; // vector of direction we ideally want to move in
   d.x = float(pl->move*cos(deg2rad(pl->ypr.x-90.f)));
@@ -109,7 +109,7 @@ void moveplayer(game::dynent *pl, int moveres, bool local, int curtime) {
   if (floating || water) {
     d.x *= float(cos(deg2rad(pl->ypr.y)));
     d.z *= float(cos(deg2rad(pl->ypr.y)));
-    d.y  = float(pl->move*sin(deg2rad(pl->ypr.y)));
+    d.y  = float(-pl->move*sin(deg2rad(pl->ypr.y)));
   }
 
   d.x += float(pl->strafe*cos(deg2rad(pl->ypr.x-180.f)));

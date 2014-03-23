@@ -16,8 +16,7 @@ ENET_OBJS=\
   enet/protocol.o\
   enet/unix.o
 
-CLIENT_OBJS=\
-  $(ENET_OBJS)\
+GAME_OBJS=\
   client.o\
   bvh.o\
   con.o\
@@ -30,7 +29,6 @@ CLIENT_OBJS=\
   md2.o\
   math.o\
   menu.o\
-  mini.q.o\
   monster.o\
   network.o\
   ogl.o\
@@ -43,6 +41,7 @@ CLIENT_OBJS=\
   serverms.o\
   serverutil.o\
   shaders.o\
+  rt.o\
   sound.o\
   stl.o\
   sky.o\
@@ -52,6 +51,16 @@ CLIENT_OBJS=\
   ui.o\
   weapon.o\
   world.o
+
+CLIENT_OBJS=\
+  $(ENET_OBJS)\
+  $(GAME_OBJS)\
+  mini.q.o
+
+RT_OBJS=\
+  $(ENET_OBJS)\
+  $(GAME_OBJS)\
+  mini.q.rt.o
 
 SERVER_OBJS=\
   $(ENET_OBJS)\
@@ -64,10 +73,11 @@ SERVER_OBJS=\
   standalone.o
 
 SHADERS=$(shell ls data/shaders/*[glsl,decl])
-all: mini.q.server mini.q compress_chars
+all: mini.q.server mini.q.rt mini.q compress_chars
 
 -include $(CLIENT_OBJS:.o=.d)
 -include $(SERVER_OBJS:.o=.d)
+-include $(RT_OBJS:.o=.d)
 
 ## build embedded shader source
 shaders.hxx shaders.cxx: $(SHADERS)
@@ -79,6 +89,9 @@ font.hxx: compress_chars data/font8x16.png
 
 mini.q: $(CLIENT_OBJS)
 	$(CXX) $(CXXFLAGS) -o mini.q $(CLIENT_OBJS) $(LIBS)
+
+mini.q.rt: $(RT_OBJS)
+	$(CXX) $(CXXFLAGS) -o mini.q.rt $(RT_OBJS) $(LIBS)
 
 mini.q.server: $(SERVER_OBJS)
 	$(CXX) $(CXXFLAGS) -o mini.q.server $(SERVER_OBJS) $(LIBS)

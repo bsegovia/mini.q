@@ -25,28 +25,6 @@ VARP(minmillis, 0, 5, 1000);
 
 // static const float CELLSIZE = 0.2f;
 void start(int argc, const char *argv[]) {
-#if 0
-  con::out("init: memory debugger");
-  sys::memstart();
-  con::out("init: tasking system");
-  const u32 threadnum = 0;//sys::threadnumber() - 1;
-  con::out("init: tasking system: %d threads created", threadnum);
-  task::start(&threadnum, 1);
-  con::out("init: isosurface module");
-  iso::start();
-  const float start = sys::millis();
-  const auto node = csg::makescene();
-  const auto m = iso::dc_mesh_mt(vec3f(zero), 2*8192, 0.1f, *node);
-  const auto duration = sys::millis() - start;
-  con::out("csg: tris %i verts %i", m.m_indexnum/3, m.m_vertnum);
-  con::out("csg: elapsed %f ms ", float(duration));
-  exit(EXIT_SUCCESS);
-#elif 0
-  vector<int> heap;
-  loopi(1000) heap.addheap(rnd(1024));
-  loopi(1000) printf("%d ", heap.removeheap());
-  exit(EXIT_SUCCESS);
-#else
   bool dedicated = false;
   int fs = 0, uprate = 0, maxcl = 4;
   const char *master = NULL;
@@ -126,7 +104,6 @@ void start(int argc, const char *argv[]) {
   con::out("localconnect");
   server::localconnect();
   client::changemap("metl3");        // if this map is changed, also change depthcorrect()
-#endif
 }
 
 static void playerpos(int x, int y, int z) {game::player1->o = vec3f(vec3i(x,y,z));}

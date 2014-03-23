@@ -4,9 +4,9 @@
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
 #include "iso.hpp"
-#include "bvh.hpp"
 #include "sky.hpp"
 #include "csg.hpp"
+#include "rt.hpp"
 #include "shaders.hpp"
 
 namespace q {
@@ -490,7 +490,6 @@ static u32 scenenorbo = 0u, sceneposbo = 0u, sceneibo = 0u;
 static u32 indexnum = 0u;
 static bool initialized_m = false;
 static iso::segment *segment = NULL;
-static bvh::intersector *world = NULL;
 
 static u32 segmentnum = 0;
 void start() {
@@ -515,7 +514,7 @@ static void makescene() {
   if (initialized_m) return;
 
   // create the indexed mesh from the scene description
-  auto start = sys::millis();
+  const auto start = sys::millis();
   const auto node = csg::makescene();
   const auto m = iso::dc_mesh_mt(vec3f(0.15f), 4096, CELLSIZE, *node);
   segment = m.m_segment;
@@ -532,23 +531,14 @@ static void makescene() {
   OGL(BufferData, GL_ELEMENT_ARRAY_BUFFER, m.m_indexnum*sizeof(u32), &m.m_index[0], GL_STATIC_DRAW);
   ogl::bindbuffer(ogl::ELEMENT_ARRAY_BUFFER, 0);
   indexnum = m.m_indexnum;
-  auto duration = sys::millis() - start;
+  const auto duration = sys::millis() - start;
   con::out("csg: elapsed %f ms ", float(duration));
   con::out("csg: tris %i verts %i", m.m_indexnum/3, m.m_vertnum);
+
+  // create the bvh out of the mesh data
+  rt::buildbvh(m.m_pos, m.m_index, m.m_indexnum);
   initialized_m = true;
   destroyscene(node);
-
-  // create a triangle soup and make a mesh out of it
-  start = sys::millis();
-  const auto trinum = int(m.m_indexnum)/3;
-  const auto prim = NEWAE(bvh::primitive, trinum);
-  loopi(trinum) {
-    loopj(3) prim[i].v[j] = m.m_pos[m.m_index[3*i+j]];
-    prim[i].type = bvh::primitive::TRI;
-  }
-  world = bvh::create(prim, trinum);
-  duration = sys::millis() - start;
-  con::out("world bvh: elapsed %f ms ", float(duration));
 }
 
 struct screenquad {
@@ -595,78 +585,6 @@ static const vec3f lightpow[LIGHTNUM] = {
 };
 
 VAR(linemode, 0, 0, 1);
-
-enum { TILESIZE = 8 };
-struct raycasttask : public task {
-  raycasttask(bvh::intersector *bvhisec, const camera &cam, int *pixels, vec2i dim, vec2i tile) :
-    task("raycasttask", tile.x*tile.y, 1, 0, UNFAIR), bvhisec(bvhisec), cam(cam), pixels(pixels), dim(dim), tile(tile)
-  {}
-  virtual void run(u32 tileID) {
-    const vec2i tilexy(tileID%tile.x, tileID/tile.x);
-    const vec2i screen = int(TILESIZE) * tilexy;
-    raypacket p;
-    vec3f mindir(FLT_MAX), maxdir(-FLT_MAX);
-    for (u32 y = 0; y < u32(TILESIZE); ++y)
-    for (u32 x = 0; x < u32(TILESIZE); ++x) {
-      const ray ray = cam.generate(dim.x, dim.y, screen.x+x, screen.y+y);
-      const int idx = x+y*TILESIZE;
-      p.setdir(ray.dir, idx);
-      p.setorg(cam.org, idx);
-      mindir = min(mindir, ray.dir);
-      maxdir = max(maxdir, ray.dir);
-    }
-    p.raynum = TILESIZE*TILESIZE;
-    p.flags = raypacket::COMMONORG;
-    if (all(gt(mindir*maxdir,vec3f(zero)))) {
-      p.iadir = makeinterval(mindir, maxdir);
-      p.iardir = rcp(p.iadir);
-      p.iaorg = makeinterval(cam.org, cam.org);
-      p.flags |= raypacket::INTERVALARITH;
-    }
-
-    bvh::packethit hit;
-    closest(*bvhisec, p, hit);
-    for (u32 y = 0; y < u32(TILESIZE); ++y)
-    for (u32 x = 0; x < u32(TILESIZE); ++x) {
-      const int offset = (screen.x+x)+dim.x*(screen.y+y);
-      const int idx = x+y*TILESIZE;
-      if (hit[idx].is_hit()) {
-#if 0
-        const int d = min(int(0.5f*hit[idx].t*hit[idx].t), 255);
-        pixels[offset] = d|(d<<8)|(d<<16)|(0xff<<24);
-#else
-        const auto n = abs(normalize(hit[idx].n));
-        pixels[offset] = int(n.x*255.f) | (int(n.y*255.f)<<8) | (int(n.z*255.f)<<16) | 0xff000000;
-
-#endif
-      } else
-        pixels[offset] = 0;
-    }
-  }
-  bvh::intersector *bvhisec;
-  const camera &cam;
-  int *pixels;
-  vec2i dim;
-  vec2i tile;
-};
-
-static void doraytrace(int w, int h, float fovy, float aspect) {
-  const mat3x3f r = mat3x3f::rotate(-game::player1->ypr.x,vec3f(0.f,1.f,0.f))*
-                    mat3x3f::rotate(-game::player1->ypr.y,vec3f(1.f,0.f,0.f))*
-                    mat3x3f::rotate(-game::player1->ypr.z,vec3f(0.f,0.f,1.f));
-  const camera cam(game::player1->o, -r.vy, -r.vz, fovy, aspect);
-  const vec2i dim(w,h), tile(dim/int(TILESIZE));
-  const auto pixels = (int*)MALLOC(w*h*sizeof(int));
-  const auto start = sys::millis();
-  ref<task> isectask = NEW(raycasttask, world, cam, pixels, dim, tile);
-  isectask->scheduled();
-  isectask->wait();
-  const auto duration = float(sys::millis()-start);
-  con::out("\n%i ms, %f ray/s\n", int(duration), 1000.f*(w*h)/duration);
-  sys::writebmp(pixels, w, h, "bvh.bmp");
-  FREE(pixels);
-}
-VAR(raytrace, 0, 0, 1);
 
 struct context {
   context(float w, float h, float fovy, float aspect, float farplane)
@@ -778,6 +696,7 @@ static void doshadertoy(float fovy, float aspect, float farplane) {
   ogl::endtimer(shadertoytimer);
 }
 
+VAR(raytrace, 0, 0, 1);
 void frame(int w, int h, int curfps) {
   const auto farplane = 100.f;
   const auto aspect = float(sys::scrw) / float(sys::scrh);
@@ -787,7 +706,9 @@ void frame(int w, int h, int curfps) {
   else {
     context ctx(w,h,fov,aspect,farplane);
     if (raytrace) {
-      doraytrace(1024,1024,fov,aspect);
+      const auto pos = game::player1->o;
+      const auto ypr = game::player1->ypr;
+      rt::raytrace("hop.bmp",pos,ypr,1024,1024,fov,aspect);
       raytrace = 0;
     }
     ctx.begin();
