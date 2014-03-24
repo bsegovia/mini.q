@@ -1,11 +1,11 @@
-#CXX=clang++
+CXX=clang++
 FLAGS=-MP -MD -Wall -fvisibility=hidden -I./ `sdl-config --cflags` -I./
 CXXCOMMONFLAGS=-fno-exceptions -fno-unwind-tables -fno-rtti -std=c++11 -fvisibility-inlines-hidden -Wno-invalid-offsetof
 DEBUGFLAGS=-O0 -DMEMORY_DEBUGGER -g
 OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g -fsanitize=address
 RELFLAGS=-fomit-frame-pointer -O3 -DNDEBUG -DRELEASE -g
-CXXFLAGS= $(CXXCOMMONFLAGS) $(FLAGS) $(RELFLAGS)
-LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer -lz #-fsanitize=address
+CXXFLAGS= $(CXXCOMMONFLAGS) $(FLAGS) $(OPTFLAGS)
+LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer -lz -fsanitize=address
 
 ENET_OBJS=\
   enet/callbacks.o\
@@ -76,8 +76,13 @@ SERVER_OBJS=\
   serverms.o\
   standalone.o
 
+MAYAOBJ_OBJS=\
+  base/sys.o\
+  base/stl.o\
+  obj.o
+
 SHADERS=$(shell ls data/shaders/*[glsl,decl])
-all: mini.q.server mini.q.rt mini.q compress_chars
+all: mini.q.server mini.q.rt mini.q importobj compress_chars importobj
 
 -include $(CLIENT_OBJS:.o=.d)
 -include $(SERVER_OBJS:.o=.d)
@@ -100,10 +105,14 @@ mini.q.rt: $(RT_OBJS)
 mini.q.server: $(SERVER_OBJS)
 	$(CXX) $(CXXFLAGS) -o mini.q.server $(SERVER_OBJS) $(LIBS)
 
+importobj: $(MAYAOBJ_OBJS)
+	$(CXX) $(CXXFLAGS) -o importobj $(MAYAOBJ_OBJS) $(LIBS)
+
 compress_chars: compress_chars.o
 	$(CXX) $(CXXFLAGS) -o compress_chars compress_chars.o $(LIBS)
 
 clean:
-	rm -rf mini.q mini.q.server compress_chars *.o *.d ./enet/*.o ./enet/*.d \
+	rm -rf mini.q mini.q.server mini.q.rt importobj\
+		compress_chars *.o *.d ./enet/*.o ./enet/*.d \
 		base/*.o base/*.d oprofile_data
 

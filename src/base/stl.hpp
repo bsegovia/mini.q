@@ -49,6 +49,10 @@ char *newstringbuf(const char *s, const char *filename, int linenum);
 #define NEWSTRING(...) newstring(__VA_ARGS__, __FILE__, __LINE__)
 #define NEWSTRINGBUF(S) newstringbuf(S, __FILE__, __LINE__)
 
+char *tokenize(char *s1, const char *s2, char **lasts);
+bool strequal(const char *s1, const char *s2);
+bool contains(const char *haystack, const char *needle);
+
 // format string boilerplate
 struct sprintfmt_s {
   INLINE sprintfmt_s(string &str) : d(str) {}
@@ -81,6 +85,42 @@ protected:
 private:
   INLINE noncopyable(const noncopyable&) {}
   INLINE noncopyable& operator= (const noncopyable&) {return *this;}
+};
+
+/*-------------------------------------------------------------------------
+ - fast growing pool allocation
+ -------------------------------------------------------------------------*/
+template <typename T> class growingpool {
+public:
+  growingpool(void) : current(NEW(growingpoolelem, 1)) {}
+  ~growingpool(void) { SAFE_DEL(current); }
+  T *allocate(void) {
+    if (current->allocated == current->maxelemnum) {
+      growingpoolelem *elem = NEW(growingpoolelem, 2*current->maxelemnum);
+      elem->next = current;
+      current = elem;
+    }
+    T *data = current->data + current->allocated++;
+    return data;
+  }
+private:
+  // chunk of elements to allocate
+  struct growingpoolelem {
+    growingpoolelem(size_t elemnum) {
+      data = NEWAE(T, elemnum);
+      next = NULL;
+      maxelemnum = elemnum;
+      allocated = 0;
+    }
+    ~growingpoolelem(void) {
+      SAFE_DELA(data);
+      SAFE_DEL(next);
+    }
+    T *data;
+    growingpoolelem *next;
+    size_t allocated, maxelemnum;
+  };
+  growingpoolelem *current;
 };
 
 // very simple fixed size circular buffer that wraps around

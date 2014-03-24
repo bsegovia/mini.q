@@ -3,7 +3,7 @@
  - demo.cpp -> implements demo record / play back
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
-#include "zlib.h"
+#include <zlib.h>
 
 // loading and saving of savegames & demos, dumps the spawn state of all
 // mapents, the full state of all dynents (monsters + player)

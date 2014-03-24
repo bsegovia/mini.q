@@ -45,6 +45,33 @@ char *newstringbuf(const char *s, const char *filename, int linenum) {
   return newstring(s, MAXDEFSTR-1, filename, linenum);
 }
 
+char *tokenize(char *s1, const char *s2, char **lasts) {
+ char *ret;
+ if (s1 == NULL)
+   s1 = *lasts;
+ while(*s1 && strchr(s2, *s1))
+   ++s1;
+ if(*s1 == '\0')
+   return NULL;
+ ret = s1;
+ while(*s1 && !strchr(s2, *s1))
+   ++s1;
+ if(*s1)
+   *s1++ = '\0';
+ *lasts = s1;
+ return ret;
+}
+
+bool strequal(const char *s1, const char *s2) {
+  if (strcmp(s1, s2) == 0) return true;
+  return false;
+}
+
+bool contains(const char *haystack, const char *needle) {
+  if (strstr(haystack, needle) == NULL) return false;
+  return true;
+}
+
 intrusive_list_base::intrusive_list_base(void) : m_root() {}
 intrusive_list_base::size_type intrusive_list_base::size(void) const {
   size_type numnodes(0);

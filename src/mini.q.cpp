@@ -50,15 +50,14 @@ void start(int argc, const char *argv[]) {
   }
   if (SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO) < 0) sys::fatal("SDL failed");
 
-
   // load support for the JPG and PNG image formats
   con::out("init: sdl image");
   const auto flags = IMG_INIT_JPG | IMG_INIT_PNG;
   const auto initted = IMG_Init(flags);
   if ((initted&flags) != flags) {
-	  con::out("IMG_Init: Failed to init required jpg and png support!\n");
-	  con::out("IMG_Init: %s\n", IMG_GetError());
-	  sys::fatal("IMG_Init failed");
+    con::out("IMG_Init: Failed to init required jpg and png support!\n");
+      con::out("IMG_Init: %s\n", IMG_GetError());
+      sys::fatal("IMG_Init failed");
   }
 
   con::out("init: memory debugger");
