@@ -416,7 +416,7 @@ if (from.NAME) {\
   matnum = loader.materiallist.length();
   if (trinum) {
     tri = NEWAE(triangle, trinum);
-    memcpy(tri, &tris[0],  sizeof(triangle) * trinum);
+    memcpy(tri, &tris[0], sizeof(triangle) * trinum);
   }
   if (vertnum) {
     vert = NEWAE(vertex, vertnum);
@@ -454,8 +454,8 @@ struct segment {u32 start, num, mat;};
 
 int main(int argc, const char *argv[]) {
   using namespace q;
-  if (argc != 3) {
-    printf("usage: %s objname binary\n", argv[0]);
+  if (argc != 4) {
+    printf("usage: %s objname binary scale\n", argv[0]);
     return 1;
   }
 
@@ -469,6 +469,9 @@ int main(int argc, const char *argv[]) {
     return 1;
   }
 
+  // get the scaling factor
+  float scale = atof(argv[3]);
+
   // convert everything as needed
   auto seg = NEWAE(segment, o.grpnum);
   loopi(int(o.grpnum)) {
@@ -476,11 +479,14 @@ int main(int argc, const char *argv[]) {
     seg[i].num = (o.grp[i].last-o.grp[i].first+1)*3;
     seg[i].mat = 0;
   }
+  auto pmin = vec3f(FLT_MAX), pmax = vec3f(-FLT_MAX);
   auto pos = NEWAE(vec3f, o.vertnum);
   auto nor = NEWAE(vec3f, o.vertnum);
   loopi(int(o.vertnum)) {
-    pos[i] = o.vert[i].p;
+    pos[i] = scale*o.vert[i].p;
     nor[i] = o.vert[i].n;
+    pmin = min(pos[i], pmin);
+    pmax = max(pos[i], pmax);
   }
   auto idx = NEWAE(int, o.trinum*3);
   loopi(int(o.trinum)) {
@@ -488,14 +494,17 @@ int main(int argc, const char *argv[]) {
     idx[3*i+1] = o.tri[i].v.y;
     idx[3*i+2] = o.tri[i].v.z;
   }
+  printf("obj: scene extent (%f %f %f) -> (%f %f %f)\n",
+    pmin.x, pmin.y, pmin.z, pmax.x, pmax.y, pmax.z);
 
   // export the mesh into a binary file
   printf("obj: exporting %s\n", argv[2]);
-  const auto f = gzopen(argv[2], "wb");
-  gzwrite(f, &o.trinum, sizeof(o.trinum));
+  const auto f = gzopen(argv[2], "wb9");
+  const auto idxnum = o.trinum*3;
+  gzwrite(f, &idxnum, sizeof(idxnum));
   gzwrite(f, &o.vertnum, sizeof(o.vertnum));
   gzwrite(f, &o.grpnum, sizeof(o.grpnum));
-  gzwrite(f, idx, sizeof(int) * o.trinum*3);
+  gzwrite(f, idx, sizeof(u32) * idxnum);
   gzwrite(f, pos, sizeof(vec3f) * o.vertnum);
   gzwrite(f, nor, sizeof(vec3f) * o.vertnum);
   gzwrite(f, seg, sizeof(segment) * o.grpnum);

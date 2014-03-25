@@ -28,16 +28,16 @@ namespace q {
  - 4-wide SSE float type
  -------------------------------------------------------------------------*/
 struct ssef {
-  typedef struct sseb Mask;  // mask type
-  typedef struct ssei Int;   // int type
-  typedef struct ssef Float; // float type
+  typedef struct sseb masktype;  // mask type
+  typedef struct ssei inttype;   // int type
+  typedef struct ssef floattype; // float type
 
   enum   {size = 4};  // number of SIMD elements
   union {__m128 m128; float f[4]; int i[4];}; // data
 
   // constructors, assignment & cast ops
-  INLINE ssef           () {}
-  INLINE ssef           (const ssef& other) {m128 = other.m128;}
+  INLINE ssef() {}
+  INLINE ssef(const ssef& other) {m128 = other.m128;}
   INLINE ssef& op=(const ssef& other) {m128 = other.m128; return *this;}
   INLINE ssef(const __m128 a) : m128(a) {}
   INLINE op const __m128&(void) const {return m128;}
@@ -64,14 +64,22 @@ struct ssef {
 };
 
 // unary ops
-INLINE ssef cast      (const __m128i& a) {return _mm_castsi128_ps(a);}
+INLINE ssef cast(const __m128i& a) {return _mm_castsi128_ps(a);}
 INLINE ssef op +(const ssef& a) {return a;}
-INLINE ssef op -(const ssef& a) {return _mm_xor_ps(a.m128, _mm_castsi128_ps(_mm_set1_epi32(0x80000000)));}
-INLINE ssef abs       (const ssef& a) {return _mm_and_ps(a.m128, _mm_castsi128_ps(_mm_set1_epi32(0x7fffffff)));}
+INLINE ssef op -(const ssef& a) {
+  return _mm_xor_ps(a.m128, _mm_castsi128_ps(_mm_set1_epi32(0x80000000)));
+}
+INLINE ssef abs(const ssef& a) {
+  return _mm_and_ps(a.m128, _mm_castsi128_ps(_mm_set1_epi32(0x7fffffff)));
+}
 #if defined(__SSE4_1__)
-INLINE ssef sign      (const ssef& a) {return _mm_blendv_ps(ssef(one), -ssef(one), _mm_cmplt_ps (a,ssef(zero)));}
+INLINE ssef sign(const ssef& a) {
+  return _mm_blendv_ps(ssef(one), -ssef(one), _mm_cmplt_ps (a,ssef(zero)));
+}
 #endif
-INLINE ssef signmsk   (const ssef& a) {return _mm_and_ps(a.m128,_mm_castsi128_ps(_mm_set1_epi32(0x80000000)));}
+INLINE ssef signmsk(const ssef& a) {
+  return _mm_and_ps(a.m128,_mm_castsi128_ps(_mm_set1_epi32(0x80000000)));
+}
 
 INLINE ssef rcp  (const ssef& a) {
   const ssef r = _mm_rcp_ps(a.m128);
@@ -227,12 +235,18 @@ INLINE ssef shuffle8(const ssef& a, const ssei& shuf) {
 #endif
 
 #if defined(__SSE3__)
-template<> INLINE ssef shuffle<0, 0, 2, 2>(const ssef& b) {return _mm_moveldup_ps(b);}
-template<> INLINE ssef shuffle<1, 1, 3, 3>(const ssef& b) {return _mm_movehdup_ps(b);}
-template<> INLINE ssef shuffle<0, 1, 0, 1>(const ssef& b) {return _mm_castpd_ps(_mm_movedup_pd(_mm_castps_pd(b)));}
+template<>
+INLINE ssef shuffle<0, 0, 2, 2>(const ssef& b) {return _mm_moveldup_ps(b);}
+template<>
+INLINE ssef shuffle<1, 1, 3, 3>(const ssef& b) {return _mm_movehdup_ps(b);}
+template<>
+INLINE ssef shuffle<0, 1, 0, 1>(const ssef& b) {
+  return _mm_castpd_ps(_mm_movedup_pd(_mm_castps_pd(b)));
+}
 #endif
-
-template<size_t i0> INLINE ssef shuffle(const ssef& b) {return shuffle<i0,i0,i0,i0>(b);}
+template<size_t i0> INLINE ssef shuffle(const ssef& b) {
+  return shuffle<i0,i0,i0,i0>(b);
+}
 
 #if defined (__SSE4_1__) && !defined(__GNUC__)
 template<size_t i> INLINE float extract   (const ssef& a) {return _mm_cvtss_f32(_mm_extract_ps(a,i));}

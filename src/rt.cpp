@@ -23,12 +23,12 @@ void buildbvh(vec3f *v, u32 *idx, u32 idxnum) {
   }
   world = bvh::create(prim, trinum);
   const auto ms = sys::millis() - start;
-  con::out("world bvh: elapsed %f ms", float(ms));
+  con::out("bvh: elapsed %f ms", float(ms));
 }
 
 enum { TILESIZE = 8 };
 //static const vec3f lpos(10.f, 20.f, 10.f);
-static const vec3f lpos(10.f, 4.f, 14.f);
+static const vec3f lpos(10.f, -10.f, 10.f);
 static atomic totalraynum;
 struct raycasttask : public task {
   raycasttask(bvh::intersector *bvhisec, const camera &cam, int *pixels, vec2i dim, vec2i tile) :
@@ -82,6 +82,19 @@ struct raycasttask : public task {
       } else
         mapping[i] = -1;
     }
+#if 1
+    for (u32 y = 0; y < u32(TILESIZE); ++y)
+    for (u32 x = 0; x < u32(TILESIZE); ++x) {
+      const int offset = (screen.x+x)+dim.x*(screen.y+y);
+      const int idx = x+y*TILESIZE;
+      if (hit[idx].is_hit()) {
+        const auto n = vec3i(abs(hit[idx].n*255.f));
+        pixels[offset] = n.x|(n.y<<8)|(n.z<<16)|(0xff<<24);
+      } else
+        pixels[offset] = 0;
+    }
+    totalraynum += TILESIZE*TILESIZE;
+#else
     shadow.raynum = curr;
     shadow.flags = raypacket::COMMONORG;
     if (all(gt(mindir*maxdir,vec3f(zero)))) {
@@ -108,6 +121,7 @@ struct raycasttask : public task {
         pixels[offset] = 0;
     }
     totalraynum += curr+TILESIZE*TILESIZE;
+#endif
   }
   bvh::intersector *bvhisec;
   const camera &cam;
@@ -131,7 +145,7 @@ void raytrace(const char *bmp, const vec3f &pos, const vec3f &ypr,
   isectask->scheduled();
   isectask->wait();
   const auto duration = float(sys::millis()-start);
-  con::out("\n%i ms, %f Mray/s\n", int(duration), 1000.f*(float(totalraynum)*1e-6f)/duration);
+  con::out("rt: %i ms, %f Mray/s", int(duration), 1000.f*(float(totalraynum)*1e-6f)/duration);
   sys::writebmp(pixels, w, h, bmp);
   FREE(pixels);
 }
