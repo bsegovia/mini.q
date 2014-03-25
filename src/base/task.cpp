@@ -144,6 +144,10 @@ void queue::terminate(task *job) {
 }
 
 int queue::threadfunc(void *data) {
+#if defined(__X86__)
+  // flush to zero and no denormals
+  _mm_setcsr(_mm_getcsr() | (1<<15) | (1<<6));
+#endif
   auto q = (queue*) data;
   for (;;) {
     SDL_LockMutex(q->mutex);
