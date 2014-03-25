@@ -21,11 +21,23 @@ struct hit {
 // hit points when tracing a ray packet inside a bvh
 typedef hit packethit[raypacket::MAXRAYNUM];
 
+struct newpackethit : noncopyable {
+  array<float,raypacket::MAXRAYNUM> t;
+  array<float,raypacket::MAXRAYNUM> u;
+  array<float,raypacket::MAXRAYNUM> v;
+  array<float,raypacket::MAXRAYNUM> nn[3];
+  array<u32,raypacket::MAXRAYNUM> id;
+  INLINE bool ishit(u32 idx) { return id[idx] != ~0x0u; }
+  INLINE vec3f n(u32 idx) { return vec3f(nn[0][idx],nn[1][idx],nn[2][idx]); }
+};
+
 // ray tracing routines (visiblity and shadow rays)
 void closest(const struct intersector&, const struct ray&, hit&);
 bool occluded(const struct intersector&, const struct ray&);
 void closest(const struct intersector&, const struct raypacket&, packethit&);
 void occluded(const intersector &bvhtree, const raypacket &p, packethit &hit);
+
+void closest(const struct intersector&, const struct raypacket&, newpackethit&);
 
 // opaque intersector data structure
 struct intersector *create(const struct primitive*, int n);

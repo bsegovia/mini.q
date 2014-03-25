@@ -27,7 +27,7 @@ void buildbvh(vec3f *v, u32 *idx, u32 idxnum) {
 }
 
 enum { TILESIZE = 8 };
-//static const vec3f lpos(10.f, 20.f, 10.f);
+#if 1
 static const vec3f lpos(10.f, -10.f, 10.f);
 static atomic totalraynum;
 struct raycasttask : public task {
@@ -60,7 +60,7 @@ struct raycasttask : public task {
 
     bvh::packethit hit;
     closest(*bvhisec, p, hit);
-
+#if 0
     // exclude points that interesect nothing
     int mapping[TILESIZE*TILESIZE], curr = 0;
     raypacket shadow;
@@ -82,6 +82,7 @@ struct raycasttask : public task {
       } else
         mapping[i] = -1;
     }
+#endif
 #if 1
     for (u32 y = 0; y < u32(TILESIZE); ++y)
     for (u32 x = 0; x < u32(TILESIZE); ++x) {
@@ -129,6 +130,119 @@ struct raycasttask : public task {
   vec2i dim;
   vec2i tile;
 };
+#else
+static const vec3f lpos(10.f, -10.f, 10.f);
+static atomic totalraynum;
+struct raycasttask : public task {
+  raycasttask(bvh::intersector *bvhisec, const camera &cam, int *pixels, vec2i dim, vec2i tile) :
+    task("raycasttask", tile.x*tile.y, 1, 0, UNFAIR),
+    bvhisec(bvhisec), cam(cam), pixels(pixels), dim(dim), tile(tile)
+  {}
+  virtual void run(u32 tileID) {
+    const vec2i tilexy(tileID%tile.x, tileID/tile.x);
+    const vec2i screen = int(TILESIZE) * tilexy;
+    raypacket p;
+    vec3f mindir(FLT_MAX), maxdir(-FLT_MAX);
+    for (u32 y = 0; y < u32(TILESIZE); ++y)
+    for (u32 x = 0; x < u32(TILESIZE); ++x) {
+      const ray ray = cam.generate(dim.x, dim.y, screen.x+x, screen.y+y);
+      const int idx = x+y*TILESIZE;
+      p.setdir(ray.dir, idx);
+      p.setorg(cam.org, idx);
+      mindir = min(mindir, ray.dir);
+      maxdir = max(maxdir, ray.dir);
+    }
+    p.raynum = TILESIZE*TILESIZE;
+    p.flags = raypacket::COMMONORG;
+    if (all(gt(mindir*maxdir,vec3f(zero)))) {
+      p.iadir = makeinterval(mindir, maxdir);
+      p.iardir = rcp(p.iadir);
+      p.iaorg = makeinterval(cam.org, cam.org);
+      p.flags |= raypacket::INTERVALARITH;
+    }
+
+    bvh::newpackethit hit;
+    loopi(raypacket::MAXRAYNUM) {
+      hit.id[i] = ~0x0u;
+      hit.t[i] = FLT_MAX;
+    }
+    closest(*bvhisec, p, hit);
+
+    // exclude points that interesect nothing
+#if 0
+    int mapping[TILESIZE*TILESIZE], curr = 0;
+    raypacket shadow;
+    bvh::packethit shadowhit;
+    mindir = vec3f(FLT_MAX), maxdir = vec3f(-FLT_MAX);
+    loopi(int(p.raynum)) {
+      if (hit.ishit(i)) {
+        mapping[i] = curr;
+        //hit[i].n = normalize(hit[i].n);
+        const auto n = normalize(hit.n(i));
+        hit.nx[i] = n.x;
+        hit.ny[i] = n.y;
+        hit.nz[i] = n.z;
+        const auto dst = p.org(i) + hit.t[i] * p.dir(i) + n * 1e-2f;
+        const auto dir = dst-lpos;
+        const auto len = length(dir);
+        shadow.setorg(lpos, curr);
+        shadow.setdir(dir/len, curr);
+        mindir = min(mindir, shadow.dir(curr));
+        maxdir = max(maxdir, shadow.dir(curr));
+        shadowhit[curr].t = len;
+        ++curr;
+      } else
+        mapping[i] = -1;
+    }
+#endif
+#if 1
+    for (u32 y = 0; y < u32(TILESIZE); ++y)
+    for (u32 x = 0; x < u32(TILESIZE); ++x) {
+      const int offset = (screen.x+x)+dim.x*(screen.y+y);
+      const int idx = x+y*TILESIZE;
+      if (hit.ishit(idx)) {
+        const auto n = vec3i(abs(normalize(hit.n(idx))*255.f));
+        pixels[offset] = n.x|(n.y<<8)|(n.z<<16)|(0xff<<24);
+      } else
+        pixels[offset] = 0;
+    }
+    totalraynum += TILESIZE*TILESIZE;
+#else
+    shadow.raynum = curr;
+    shadow.flags = raypacket::COMMONORG;
+    if (all(gt(mindir*maxdir,vec3f(zero)))) {
+      shadow.iadir = makeinterval(mindir, maxdir);
+      shadow.iardir = rcp(shadow.iadir);
+      shadow.iaorg = makeinterval(lpos,lpos);
+      shadow.flags |= raypacket::INTERVALARITH;
+    }
+    occluded(*bvhisec, shadow, shadowhit);
+
+    for (u32 y = 0; y < u32(TILESIZE); ++y)
+    for (u32 x = 0; x < u32(TILESIZE); ++x) {
+      const int offset = (screen.x+x)+dim.x*(screen.y+y);
+      const int idx = x+y*TILESIZE;
+      if (hit[idx].is_hit()) {
+        const auto sid = mapping[idx];
+        if (!shadowhit[sid].is_hit()) {
+          const auto shade = dot(hit[idx].n, -normalize(shadow.dir(sid)));
+          const auto d = int(255.f*min(max(0.f,shade),1.f));
+          pixels[offset] = d|(d<<8)|(d<<16)|(0xff<<24);
+        } else
+          pixels[offset] = 0;
+      } else
+        pixels[offset] = 0;
+    }
+    totalraynum += curr+TILESIZE*TILESIZE;
+#endif
+  }
+  bvh::intersector *bvhisec;
+  const camera &cam;
+  int *pixels;
+  vec2i dim;
+  vec2i tile;
+};
+#endif
 
 void raytrace(const char *bmp, const vec3f &pos, const vec3f &ypr,
               int w, int h, float fovy, float aspect)

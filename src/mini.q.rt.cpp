@@ -56,7 +56,7 @@ static void run(int argc, const char *argv[]) {
   const auto pos = game::player1->o;
   const auto ypr = game::player1->ypr;
   //rt::raytrace(argv[2], pos, ypr, 1920/4, 1080/4, fov, 1.f);
-  loopi(4) rt::raytrace(argv[2], pos, ypr, 1920, 1080, fov, 1.f);
+  loopi(32) rt::raytrace(argv[2], pos, ypr, 1920, 1080, fov, 1.f);
 }
 } /* namespace q */
 
