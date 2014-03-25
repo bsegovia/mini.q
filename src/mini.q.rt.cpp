@@ -14,29 +14,15 @@ static void playerpos(int x, int y, int z) {game::player1->o = vec3f(vec3i(x,y,z
 static void playerypr(int x, int y, int z) {game::player1->ypr = vec3f(vec3i(x,y,z));}
 CMD(playerpos, ARG_3INT);
 CMD(playerypr, ARG_3INT);
-static void run(int argc, const char *argv[]) {
-  con::out("init: memory debugger");
-  sys::memstart();
-  con::out("init: tasking system");
-  const u32 threadnum = sys::threadnumber() - 1;
-  con::out("init: tasking system: %d threads created", threadnum);
-  task::start(&threadnum, 1);
-  con::out("init: isosurface module");
-  iso::start();
-
-  // create mesh data
-#if 0
-  const float start = sys::millis();
-  const auto node = csg::makescene();
-  const auto m = iso::dc_mesh_mt(vec3f(zero), 2*8192, 0.1f, *node);
-  const auto duration = sys::millis() - start;
-  con::out("csg: tris %i verts %i", m.m_indexnum/3, m.m_vertnum);
-  con::out("csg: elapsed %f ms ", float(duration));
-#else
+static void loadworld(const char *name) {
   iso::mesh m;
-  con::out("init: loading san-miguel.ogz");
+  con::out("init: loading %s", name);
   const auto start = sys::millis();
-  auto f = gzopen("san-miguel.ogz", "rb");
+  auto f = gzopen(name, "rb");
+  if (f==NULL) {
+    con::out("failed to open %s", name);
+    exit(EXIT_FAILURE);
+  }
   gzread(f, &m.m_indexnum, sizeof(m.m_indexnum));
   gzread(f, &m.m_vertnum, sizeof(m.m_vertnum));
   gzread(f, &m.m_segmentnum, sizeof(m.m_segmentnum));
@@ -49,14 +35,24 @@ static void run(int argc, const char *argv[]) {
   gzread(f, m.m_nor, sizeof(vec3f) * m.m_vertnum);
   gzread(f, m.m_segment, sizeof(iso::segment) * m.m_segmentnum);
   gzclose(f);
-#endif
-  con::out("init: san-miguel.ogz loaded in %.2f ms", float(sys::millis()-start));
-
-  // create bvh
+  con::out("init: %s loaded in %.2f ms", name, float(sys::millis()-start));
   rt::buildbvh(m.m_pos, m.m_index, m.m_indexnum);
+}
+CMD(loadworld, ARG_1STR);
 
-  // load position
+static void run(int argc, const char *argv[]) {
+  con::out("init: memory debugger");
+  sys::memstart();
+  con::out("init: tasking system");
+  const u32 threadnum = sys::threadnumber() - 1;
+  con::out("init: tasking system: %d threads created", threadnum);
+  task::start(&threadnum, 1);
+  con::out("init: isosurface module");
+  iso::start();
+
+  // load everything
   script::execfile(argv[1]);
+
   const auto pos = game::player1->o;
   const auto ypr = game::player1->ypr;
   //rt::raytrace(argv[2], pos, ypr, 1920/4, 1080/4, fov, 1.f);
