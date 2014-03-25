@@ -231,10 +231,12 @@ template<>
 INLINE avxf shuffle<0, 0, 2, 2>(const avxf& b) {
   return _mm256_moveldup_ps(b);
 }
-template<> INLINE const avxf shuffle<1, 1, 3, 3>(const avxf& b) {
+template<> INLINE
+avxf shuffle<1, 1, 3, 3>(const avxf& b) {
   return _mm256_movehdup_ps(b);
 }
-template<> INLINE const avxf shuffle<0, 1, 0, 1>(const avxf& b) {
+template<> INLINE
+avxf shuffle<0, 1, 0, 1>(const avxf& b) {
   return _mm256_castpd_ps(_mm256_movedup_pd(_mm256_castps_pd(b)));
 }
 

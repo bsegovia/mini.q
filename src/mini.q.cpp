@@ -8,6 +8,7 @@
 #include <SDL/SDL_image.h>
 
 #include "base/sse.hpp"
+#include "base/avx.hpp"
 #define TEST_UI 0
 
 #if TEST_UI

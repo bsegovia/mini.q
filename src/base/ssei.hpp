@@ -168,12 +168,12 @@ INLINE ssei unpackhi(const ssei& a, const ssei& b) {
 }
 
 template<size_t i0, size_t i1, size_t i2, size_t i3>
-INLINE const ssei shuffle(const ssei& a) {
+INLINE ssei shuffle(const ssei& a) {
   return _mm_shuffle_epi32(a, _MM_SHUFFLE(i3, i2, i1, i0));
 }
 
 template<size_t i0, size_t i1, size_t i2, size_t i3>
-INLINE const ssei shuffle(const ssei& a, const ssei& b) {
+INLINE ssei shuffle(const ssei& a, const ssei& b) {
   return _mm_castps_si128(_mm_shuffle_ps(
     _mm_castsi128_ps(a), _mm_castsi128_ps(b), _MM_SHUFFLE(i3, i2, i1, i0)));
 }
@@ -211,28 +211,15 @@ ssei insert(const ssei& a, const s32 b) {ssei c = a; c[dst] = b; return c;}
 INLINE ssei vreduce_min(const ssei &v) {ssei h = min(shuffle<1,0,3,2>(v),v); return min(shuffle<2,3,0,1>(h),h);}
 INLINE ssei vreduce_max(const ssei &v) {ssei h = max(shuffle<1,0,3,2>(v),v); return max(shuffle<2,3,0,1>(h),h);}
 INLINE ssei vreduce_add(const ssei &v) {ssei h = shuffle<1,0,3,2>(v)   + v ; return shuffle<2,3,0,1>(h)   + h ;}
-
 INLINE int reduce_min(const ssei &v) {return extract<0>(vreduce_min(v));}
 INLINE int reduce_max(const ssei &v) {return extract<0>(vreduce_max(v));}
 INLINE int reduce_add(const ssei &v) {return extract<0>(vreduce_add(v));}
-
 INLINE size_t select_min(const ssei &v) {return __bsf(movemask(v == vreduce_min(v)));}
 INLINE size_t select_max(const ssei &v) {return __bsf(movemask(v == vreduce_max(v)));}
-INLINE size_t select_min(const sseb& valid, const ssei& v) {
-  const ssei a = select(valid,v,ssei(pos_inf));
-  return __bsf(movemask(valid & (a == vreduce_min(a))));
-}
-INLINE size_t select_max(const sseb& valid, const ssei& v) {
-  const ssei a = select(valid,v,ssei(neg_inf));
-  return __bsf(movemask(valid & (a == vreduce_max(a))));
-}
-
 #else
-
 INLINE int reduce_min(const ssei& v) {return min(v[0],v[1],v[2],v[3]);}
 INLINE int reduce_max(const ssei& v) {return max(v[0],v[1],v[2],v[3]);}
 INLINE int reduce_add(const ssei& v) {return v[0]+v[1]+v[2]+v[3];}
-
 #endif
 
 // memory load and store operations

@@ -26,11 +26,11 @@ namespace q {
   struct avxf;
 } /* namespace q */
 
-#include "simd/avxb.hpp"
+#include "avxb.hpp"
 #if defined (__AVX2__)
-#include "simd/avxi.hpp"
+#include "avxi.hpp"
 #else
-#include "simd/avxi_emu.hpp"
+#include "avxi_emu.hpp"
 #endif
-#include "simd/avxf.hpp"
+#include "avxf.hpp"
 

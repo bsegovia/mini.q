@@ -201,7 +201,7 @@ INLINE avxi shuffle(const avxi& a,  const avxi& b) {
 template<size_t i0, size_t i1, size_t i2, size_t i3>
 INLINE avxi shuffle(const avxi& a) {
   return _mm256_castps_si256(_mm256_permute_ps(
-    mm256_castsi256_ps(a), _MM_SHUFFLE(i3, i2, i1, i0)));
+        _mm256_castsi256_ps(a), _MM_SHUFFLE(i3, i2, i1, i0)));
 }
 
 template<size_t i0, size_t i1, size_t i2, size_t i3>

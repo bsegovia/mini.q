@@ -88,7 +88,7 @@ struct avxb {
 };
 
 // unary operators
-INLINE avxb op !(const avxb& a) {return _mm256_xor_ps(a, avxb(True));}
+INLINE avxb op !(const avxb &a) {return _mm256_xor_ps(a, avxb(truev));}
 
 // binary operators
 INLINE avxb op& (const avxb& a, const avxb& b) {return _mm256_and_ps(a, b);}
@@ -103,7 +103,7 @@ INLINE avxb op !=(const avxb& a, const avxb& b) {
   return _mm256_xor_ps(a, b);
 }
 INLINE avxb op ==(const avxb& a, const avxb& b) {
-  return _mm256_xor_ps(_mm256_xor_ps(a,b),avxb(True));
+  return _mm256_xor_ps(_mm256_xor_ps(a,b),avxb(truev));
 }
 INLINE avxb select(const avxb& mask, const avxb& t, const avxb& f) {
   return _mm256_blendv_ps(f, t, mask);

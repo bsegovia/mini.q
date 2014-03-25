@@ -218,13 +218,13 @@ INLINE ssef unpacklo(const ssef& a, const ssef& b) {return _mm_unpacklo_ps(a.m12
 INLINE ssef unpackhi(const ssef& a, const ssef& b) {return _mm_unpackhi_ps(a.m128, b.m128);}
 
 template<size_t i0, size_t i1, size_t i2, size_t i3>
-INLINE const ssef shuffle(const ssef& b) {
+INLINE ssef shuffle(const ssef& b) {
   return _mm_castsi128_ps(
     _mm_shuffle_epi32(_mm_castps_si128(b), _MM_SHUFFLE(i3, i2, i1, i0)));
 }
 
 template<size_t i0, size_t i1, size_t i2, size_t i3>
-INLINE const ssef shuffle(const ssef& a, const ssef& b) {
+INLINE ssef shuffle(const ssef& a, const ssef& b) {
   return _mm_shuffle_ps(a, b, _MM_SHUFFLE(i3, i2, i1, i0));
 }
 
