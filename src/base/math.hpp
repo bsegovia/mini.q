@@ -872,6 +872,7 @@ struct CACHE_LINE_ALIGNED raypacket {
   array<float,MAXRAYNUM> orgx, orgy, orgz;
   array<float,MAXRAYNUM> dirx, diry, dirz;
   interval3f iaorg, iadir, iardir;
+  float iaminlen, iamaxlen;
   u32 raynum;
   u32 flags;
 };

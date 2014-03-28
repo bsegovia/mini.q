@@ -54,6 +54,8 @@ struct raycasttask : public task {
       p.iadir = makeinterval(mindir, maxdir);
       p.iardir = rcp(p.iadir);
       p.iaorg = makeinterval(cam.org, cam.org);
+      p.iamaxlen = FLT_MAX;
+      p.iaminlen = 0.f;
       p.flags |= raypacket::INTERVALARITH;
     }
 
@@ -64,7 +66,7 @@ struct raycasttask : public task {
     }
     closest(*bvhisec, p, hit);
 
-#define NORMAL_ONLY 0
+#define NORMAL_ONLY 1
 #if !NORMAL_ONLY
     // exclude points that interesect nothing
     int mapping[TILESIZE*TILESIZE], curr = 0;
@@ -74,6 +76,7 @@ struct raycasttask : public task {
       shadowhit.id[i] = ~0x0u;
       shadowhit.t[i] = FLT_MAX;
     }
+    float maxlen = -FLT_MAX;
     mindir = vec3f(FLT_MAX), maxdir = vec3f(-FLT_MAX);
     loopi(int(p.raynum)) {
       if (hit.ishit(i)) {
@@ -85,6 +88,7 @@ struct raycasttask : public task {
         const auto dst = p.org(i) + hit.t[i] * p.dir(i) + n * 1e-2f;
         const auto dir = dst-lpos;
         const auto len = length(dir);
+        maxlen = max(maxlen, len);
         shadow.setorg(lpos, curr);
         shadow.setdir(dir/len, curr);
         mindir = min(mindir, shadow.dir(curr));
@@ -101,6 +105,8 @@ struct raycasttask : public task {
       shadow.iardir = rcp(shadow.iadir);
       shadow.iaorg = makeinterval(lpos,lpos);
       shadow.flags |= raypacket::INTERVALARITH;
+      shadow.iamaxlen = maxlen;
+      shadow.iaminlen = 0.f;
     }
     occluded(*bvhisec, shadow, shadowhit);
 

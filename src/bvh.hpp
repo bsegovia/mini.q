@@ -31,7 +31,7 @@ struct packethit : noncopyable {
 // ray tracing routines (visiblity and shadow rays)
 void closest(const struct intersector&, const struct ray&, hit&);
 bool occluded(const struct intersector&, const struct ray&);
-void closest(const struct intersector&, const struct raypacket&, packethit&);
+void closest(const intersector &bvhtree, const raypacket &p, packethit &hit);
 void occluded(const intersector &bvhtree, const raypacket &p, packethit &hit);
 
 // opaque intersector data structure

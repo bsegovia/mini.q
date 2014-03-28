@@ -73,7 +73,7 @@ struct avxb {
   // constants
   INLINE avxb(falsetype) :
     m256(_mm256_setzero_ps()) {}
-  INLINE avxb(truetype ) :
+  INLINE avxb(truetype) :
     m256(_mm256_cmp_ps(_mm256_setzero_ps(), _mm256_setzero_ps(), _CMP_EQ_OQ)) {}
 
   // array access

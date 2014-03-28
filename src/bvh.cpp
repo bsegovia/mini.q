@@ -473,7 +473,7 @@ INLINE bool culliaco(const aabb &box, const raypacket &p) {
   const vec3f pmin = box.pmin - p.org();
   const vec3f pmax = box.pmax - p.org();
   const auto txyz = makeinterval(pmin,pmax)*p.iardir;
-  return empty(I(txyz.x,txyz.y,txyz.z,intervalf(0.f,FLT_MAX)));
+  return empty(I(txyz.x,txyz.y,txyz.z,intervalf(p.iaminlen,p.iamaxlen)));
 }
 
 struct soaarray {
@@ -492,13 +492,41 @@ typedef sseb soab;
 
 typedef vec3<soaf> soa3f;
 
+INLINE soa3f getorg(const raypacket &p, u32 idx) {
+  assert(p.flags & raypacket::COMMONORG == 0);
+  const soaf x = soaf::load(&p.orgx[0] + idx*soaf::size);
+  const soaf y = soaf::load(&p.orgy[0] + idx*soaf::size);
+  const soaf z = soaf::load(&p.orgz[0] + idx*soaf::size);
+  return soa3f(x,y,z);
+}
+
+INLINE soa3f getdir(const raypacket &p, u32 idx) {
+  assert(p.flags & raypacket::COMMONORG == 0);
+  const soaf x = soaf::load(&p.dirx[0] + idx*soaf::size);
+  const soaf y = soaf::load(&p.diry[0] + idx*soaf::size);
+  const soaf z = soaf::load(&p.dirz[0] + idx*soaf::size);
+  return soa3f(x,y,z);
+}
+
+INLINE soa3f getrdir(const soaarray &rdir, u32 idx) {
+  assert(p.flags & raypacket::COMMONORG == 0);
+  const soaf x = soaf::load(&rdir.x[0] + idx*soaf::size);
+  const soaf y = soaf::load(&rdir.y[0] + idx*soaf::size);
+  const soaf z = soaf::load(&rdir.z[0] + idx*soaf::size);
+  return soa3f(x,y,z);
+}
+
+INLINE soaf getdist(const packethit &hit, u32 idx) {
+  return soaf::load(&hit.t[0] + idx*soaf::size);
+}
+
 struct soaisec {
   INLINE soaisec(const soab &isec, const soaf &t) : t(t), isec(isec) {}
   soaf t;
   soab isec;
 };
 
-INLINE soaisec slab(const soa3f &pmin, const soa3f &pmax, const soa3f &rdir, const soaf &t) {
+INLINE soaisec soaslab(const soa3f &pmin, const soa3f &pmax, const soa3f &rdir, const soaf &t) {
   const auto l1 = pmin*rdir;
   const auto l2 = pmax*rdir;
   const auto tfar = reducemin(max(l1,l2));
@@ -508,40 +536,77 @@ INLINE soaisec slab(const soa3f &pmin, const soa3f &pmax, const soa3f &rdir, con
   return soaisec(isec, tisec);
 }
 
-INLINE isecres slabfirst(const aabb &RESTRICT box,
+INLINE bool soaslabfirst(const aabb &RESTRICT box,
                          const raypacket &RESTRICT p,
                          const soaarray &RESTRICT rdir,
                          u32 &RESTRICT first,
                          const packethit &RESTRICT hit)
 {
-  for (; first < p.raynum; ++first) {
-    const auto res = slab(box, p.org(first), rdir[first], hit.t[first]);
-    if (res.isec) return res;
+  auto const packetnum = p.raynum / soaf::size;
+  for (; first < packetnum; ++first) {
+    const auto org = getorg(p,first);
+    const auto rd = getrdir(rdir,first);
+    const auto t = getdist(hit,first);
+    const auto pmin = soa3f(box.pmin)-org;
+    const auto pmax = soa3f(box.pmax)-org;
+    const auto res = soaslab(pmin, pmax, rd, t);
+    if (any(res.isec)) return true;
   }
-  return isecres(false);
+  return false;
 }
 
-INLINE isecres slabone(const aabb &RESTRICT box,
+INLINE bool slabfirst(const aabb &RESTRICT box,
+                      const raypacket &RESTRICT p,
+                      const soaarray &RESTRICT rdir,
+                      u32 &RESTRICT first,
+                      const packethit &RESTRICT hit)
+{
+  for (; first < p.raynum; ++first) {
+    const auto res = slab(box, p.org(first), rdir[first], hit.t[first]);
+    if (res.isec) return true;
+  }
+  return false;
+}
+
+INLINE bool soaslabone(const aabb &RESTRICT box,
                        const raypacket &RESTRICT p,
                        const soaarray &RESTRICT rdir,
                        u32 first,
                        const packethit &RESTRICT hit)
 {
-  return slab(box, p.org(first), rdir[first], hit.t[first]);
+  const auto org = getorg(p,first);
+  const auto rd = getrdir(rdir,first);
+  const auto t = getdist(hit,first);
+  const auto pmin = soa3f(box.pmin)-org;
+  const auto pmax = soa3f(box.pmax)-org;
+  return any(soaslab(pmin, pmax, rd, t).isec);
 }
 
-INLINE void slaball(const aabb &RESTRICT box,
+INLINE bool slabone(const aabb &RESTRICT box,
                     const raypacket &RESTRICT p,
                     const soaarray &RESTRICT rdir,
                     u32 first,
-                    packethit &hit)
+                    const packethit &RESTRICT hit)
 {
-  for (u32 rayid = first; rayid < p.raynum; ++rayid) {
-    const auto res = slab(box, p.org(rayid), rdir[rayid], hit.t[rayid]);
-    if (res.isec) {
-      hit.t[rayid] = res.t;
-      hit.id[rayid] = 0;
-    }
+  return slab(box, p.org(first), rdir[first], hit.t[first]).isec;
+}
+
+INLINE void soaslabfilter(const aabb &RESTRICT box,
+                          const raypacket &RESTRICT p,
+                          const soaarray &RESTRICT rdir,
+                          u32 *RESTRICT active,
+                          u32 first,
+                          const packethit &RESTRICT hit)
+{
+  auto const packetnum = p.raynum / soaf::size;
+  for (u32 rayid = first; rayid < packetnum; ++rayid) {
+    const auto org = getorg(p,rayid);
+    const auto rd = getrdir(rdir,rayid);
+    const auto t = getdist(hit,rayid);
+    const auto pmin = soa3f(box.pmin)-org;
+    const auto pmax = soa3f(box.pmax)-org;
+    const auto res = soaslab(pmin, pmax, rd, t);
+    active[rayid] = any(res.isec);
   }
 }
 
@@ -558,46 +623,76 @@ INLINE void slabfilter(const aabb &RESTRICT box,
   }
 }
 
-INLINE isecres slabfirstco(const aabb &RESTRICT box,
+INLINE bool soaslabfirstco(const aabb &RESTRICT box,
                            const raypacket &RESTRICT p,
                            const soaarray &RESTRICT rdir,
                            u32 &RESTRICT first,
                            const packethit &RESTRICT hit)
 {
+  const auto pmin = soa3f(box.pmin - p.org());
+  const auto pmax = soa3f(box.pmax - p.org());
+  for (; first < p.raynum; ++first) {
+    const auto rd = getrdir(rdir,first);
+    const auto t = getdist(hit,first);
+    if (any(soaslab(pmin, pmax, rd, t).isec)) return true;
+  }
+  return false;
+}
+
+INLINE bool slabfirstco(const aabb &RESTRICT box,
+                        const raypacket &RESTRICT p,
+                        const soaarray &RESTRICT rdir,
+                        u32 &RESTRICT first,
+                        const packethit &RESTRICT hit)
+{
   const auto pmin = box.pmin - p.org();
   const auto pmax = box.pmax - p.org();
   for (; first < p.raynum; ++first) {
     const auto res = slab(pmin, pmax, rdir[first], hit.t[first]);
-    if (res.isec) return res;
+    if (res.isec) return true;
   }
-  return isecres(false);
+  return false;
 }
 
-INLINE isecres slaboneco(const aabb &RESTRICT box,
+INLINE bool soaslaboneco(const aabb &RESTRICT box,
                          const raypacket &RESTRICT p,
                          const soaarray &RESTRICT rdir,
                          u32 first,
                          const packethit &RESTRICT hit)
 {
-  const auto pmin = box.pmin - p.org();
-  const auto pmax = box.pmax - p.org();
-  return slab(pmin, pmax, rdir[first], hit.t[first]);
+  const auto pmin = soa3f(box.pmin - p.org());
+  const auto pmax = soa3f(box.pmax - p.org());
+  const auto rd = getrdir(rdir,first);
+  const auto t = getdist(hit,first);
+  return any(soaslab(pmin, pmax, rd, t).isec);
 }
 
-INLINE void slaballco(const aabb &RESTRICT box,
+INLINE bool slaboneco(const aabb &RESTRICT box,
                       const raypacket &RESTRICT p,
                       const soaarray &RESTRICT rdir,
                       u32 first,
-                      packethit &RESTRICT hit)
+                      const packethit &RESTRICT hit)
 {
   const auto pmin = box.pmin - p.org();
   const auto pmax = box.pmax - p.org();
-  for (u32 rayid = first; rayid < p.raynum; ++rayid) {
-    const auto res = slab(pmin, pmax, rdir[rayid], hit.t[rayid]);
-    if (res.isec) {
-      hit.t[rayid]= res.t;
-      hit.id[rayid] = 0;
-    }
+  return slab(pmin, pmax, rdir[first], hit.t[first]).isec;
+}
+
+INLINE void soaslabfilterco(const aabb &RESTRICT box,
+                            const raypacket &RESTRICT p,
+                            const soaarray &RESTRICT rdir,
+                            u32 *RESTRICT active,
+                            u32 first,
+                            const packethit &RESTRICT hit)
+{
+  const auto packetnum = p.raynum / soaf::size;
+  const auto pmin = soa3f(box.pmin - p.org());
+  const auto pmax = soa3f(box.pmax - p.org());
+  for (u32 rayid = first; rayid < packetnum; ++rayid) {
+    const auto rd = getrdir(rdir,rayid);
+    const auto t = getdist(hit,rayid);
+    const auto res = soaslab(pmin, pmax, rd, t);
+    active[rayid] = any(res.isec);
   }
 }
 
@@ -645,8 +740,8 @@ INLINE bool raytriangle(
   return true;
 }
 
-template <u32 flags>
-NOINLINE void closestinternal(const intersector &bvhtree, const raypacket &p, packethit &hit) {
+void closest(const intersector &bvhtree, const raypacket &p, packethit &hit) {
+  const u32 flags = p.flags;
   const s32 signs[3] = {(p.dir().x>=0.f)&1, (p.dir().y>=0.f)&1, (p.dir().z>=0.f)&1};
   pair<intersector::node*,u32> stack[64];
   stack[0] = makepair(bvhtree.root, 0u);
@@ -664,15 +759,15 @@ NOINLINE void closestinternal(const intersector &bvhtree, const raypacket &p, pa
     auto node = elem.first;
     auto first = elem.second;
     for (;;) {
-      isecres res(false);
+      bool res = false;
       if (flags & raypacket::INTERVALARITH) {
         if (flags & raypacket::COMMONORG) {
           res = slaboneco(node->box, p, rdir, first, hit);
-          if (res.isec) goto processnode;
+          if (res) goto processnode;
           if (culliaco(node->box, p)) break;
         } else {
           res = slabone(node->box, p, rdir, first, hit);
-          if (res.isec) goto processnode;
+          if (res) goto processnode;
           if (cullia(node->box, p)) break;
         }
         ++first;
@@ -681,7 +776,7 @@ NOINLINE void closestinternal(const intersector &bvhtree, const raypacket &p, pa
         res = slabfirstco(node->box, p, rdir, first, hit);
       else
         res = slabfirst(node->box, p, rdir, first, hit);
-      if (!res.isec) break;
+      if (!res) break;
     processnode:
       const u32 flag = node->getflag();
       if (flag == intersector::NONLEAF) {
@@ -712,21 +807,9 @@ NOINLINE void closestinternal(const intersector &bvhtree, const raypacket &p, pa
     }
   }
 }
-#define CASE(X) case X: closestinternal<X>(bvhtree, p, hit); break;
-#define CASE4(X) CASE(X) CASE(X+1) CASE(X+2) CASE(X+3)
-void closest(const intersector &bvhtree, const raypacket &p, packethit &hit) {
-  switch (p.flags) {
-    CASE4(0)
-    CASE4(4)
-    CASE4(8)
-    CASE4(12)
-  };
-}
-#undef CASE
-#undef CASE4
 
-template <u32 flags>
-NOINLINE void occludedinternal(const intersector &bvhtree, const raypacket &p, packethit &hit) {
+void occluded(const intersector &bvhtree, const raypacket &p, packethit &hit) {
+  const auto flags = p.flags;
   pair<intersector::node*,u32> stack[64];
   stack[0] = makepair(bvhtree.root, 0u);
   u32 stacksz = 1;
@@ -745,15 +828,15 @@ NOINLINE void occludedinternal(const intersector &bvhtree, const raypacket &p, p
     auto node = elem.first;
     auto first = elem.second;
     for (;;) {
-      isecres res(false);
+      bool res = false;
       if (flags & raypacket::INTERVALARITH) {
         if (flags & raypacket::COMMONORG) {
           res = slaboneco(node->box, p, rdir, first, hit);
-          if (res.isec) goto processnode;
+          if (res) goto processnode;
           if (culliaco(node->box, p)) break;
         } else {
           res = slabone(node->box, p, rdir, first, hit);
-          if (res.isec) goto processnode;
+          if (res) goto processnode;
           if (cullia(node->box, p)) break;
         }
         ++first;
@@ -762,7 +845,7 @@ NOINLINE void occludedinternal(const intersector &bvhtree, const raypacket &p, p
         res = slabfirstco(node->box, p, rdir, first, hit);
       else
         res = slabfirst(node->box, p, rdir, first, hit);
-      if (!res.isec) break;
+      if (!res) break;
     processnode:
       const u32 flag = node->getflag();
       if (flag == intersector::NONLEAF) {
@@ -795,19 +878,6 @@ NOINLINE void occludedinternal(const intersector &bvhtree, const raypacket &p, p
     }
   }
 }
-#define CASE(X) case X: occludedinternal<X>(bvhtree, p, hit); break;
-#define CASE4(X) CASE(X) CASE(X+1) CASE(X+2) CASE(X+3)
-void occluded(const intersector &bvhtree, const raypacket &p, packethit &hit) {
-  switch (p.flags) {
-    CASE4(0)
-    CASE4(4)
-    CASE4(8)
-    CASE4(12)
-  };
-}
-#undef CASE
-#undef CASE4
-
 } /* namespace bvh */
 } /* namespace q */
 
