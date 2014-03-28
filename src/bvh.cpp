@@ -462,101 +462,11 @@ bool occluded(const intersector &bvhtree, const ray &r) {
 }
 
 /*-------------------------------------------------------------------------
- - ray packet intersection routines (old version)
+ - ray packet intersection routines
  -------------------------------------------------------------------------*/
-INLINE isecres slabfirst(const aabb &box, const raypacket &p,
-                         const vec3f *rdir, u32 &first,
-                         const packethit &hit)
-{
-  for (; first < p.raynum; ++first) {
-    const auto res = slab(box, p.org(first), rdir[first], hit[first].t);
-    if (res.isec) return res;
-  }
-  return isecres(false);
-}
-
-INLINE isecres slabone(const aabb &box, const raypacket &p,
-                       const vec3f *rdir, u32 first,
-                       const packethit &hit)
-{
-  return slab(box, p.org(first), rdir[first], hit[first].t);
-}
-
-INLINE void slaball(const aabb &box, const raypacket &p,
-                    const vec3f *rdir, u32 first,
-                    packethit &hit)
-{
-  for (u32 rayid = first; rayid < p.raynum; ++rayid) {
-    const auto res = slab(box, p.org(rayid), rdir[rayid], hit[rayid].t);
-    if (res.isec) {
-      hit[rayid].t = res.t;
-      hit[rayid].id = 0;
-    }
-  }
-}
-
-INLINE void slabfilter(const aabb &box, const raypacket &p,
-                       const vec3f *rdir, u32 *active, u32 first,
-                       const packethit &hit)
-{
-  for (u32 rayid = first; rayid < p.raynum; ++rayid) {
-    const auto res = slab(box, p.org(rayid), rdir[rayid], hit[rayid].t);
-    active[rayid] = res.isec?1:0;
-  }
-}
-
 INLINE bool cullia(const aabb &box, const raypacket &p) {
   assert(false && "Not implemented");
   return false;
-}
-
-INLINE isecres slabfirstco(const aabb &box, const raypacket &p,
-                           const vec3f *rdir, u32 &first,
-                           const packethit &hit)
-{
-  const auto pmin = box.pmin - p.org();
-  const auto pmax = box.pmax - p.org();
-  for (; first < p.raynum; ++first) {
-    const auto res = slab(pmin, pmax, rdir[first], hit[first].t);
-    if (res.isec) return res;
-  }
-  return isecres(false);
-}
-
-INLINE isecres slaboneco(const aabb &box, const raypacket &p,
-                         const vec3f *rdir, u32 first,
-                         const packethit &hit)
-{
-  const auto pmin = box.pmin - p.org();
-  const auto pmax = box.pmax - p.org();
-  return slab(pmin, pmax, rdir[first], hit[first].t);
-}
-
-INLINE void slaballco(const aabb &box, const raypacket &p,
-                      const vec3f *rdir, u32 first,
-                      packethit &hit)
-{
-  const auto pmin = box.pmin - p.org();
-  const auto pmax = box.pmax - p.org();
-  for (u32 rayid = first; rayid < p.raynum; ++rayid) {
-    const auto res = slab(pmin, pmax, rdir[rayid], hit[rayid].t);
-    if (res.isec) {
-      hit[rayid].t = res.t;
-      hit[rayid].id = 0;
-    }
-  }
-}
-
-INLINE void slabfilterco(const aabb &box, const raypacket &p,
-                         const vec3f *rdir, u32 *active,
-                         u32 first, const packethit &hit)
-{
-  const auto pmin = box.pmin - p.org();
-  const auto pmax = box.pmax - p.org();
-  for (u32 rayid = first; rayid < p.raynum; ++rayid) {
-    const auto res = slab(pmin, pmax, rdir[rayid], hit[rayid].t);
-    active[rayid] = res.isec?1:0;
-  }
 }
 
 INLINE bool culliaco(const aabb &box, const raypacket &p) {
@@ -566,161 +476,6 @@ INLINE bool culliaco(const aabb &box, const raypacket &p) {
   return empty(I(txyz.x,txyz.y,txyz.z,intervalf(0.f,FLT_MAX)));
 }
 
-template <u32 flags>
-NOINLINE void closestinternal(const intersector &bvhtree, const raypacket &p, packethit &hit) {
-  const s32 signs[3] = {(p.dir().x>=0.f)&1, (p.dir().y>=0.f)&1, (p.dir().z>=0.f)&1};
-  pair<intersector::node*,u32> stack[64];
-  stack[0] = makepair(bvhtree.root, 0u);
-  u32 stacksz = 1;
-  vec3f rdir[raypacket::MAXRAYNUM];
-  loopi(s32(p.raynum)) rdir[i] = rcp(p.dir(i));
-
-  while (stacksz) {
-    const auto elem = stack[--stacksz];
-    auto node = elem.first;
-    auto first = elem.second;
-    for (;;) {
-      isecres res(false);
-      if (flags & raypacket::INTERVALARITH) {
-        if (flags & raypacket::COMMONORG) {
-          res = slaboneco(node->box, p, rdir, first, hit);
-          if (res.isec) goto processnode;
-          if (culliaco(node->box, p)) break;
-        } else {
-          res = slabone(node->box, p, rdir, first, hit);
-          if (res.isec) goto processnode;
-          if (cullia(node->box, p)) break;
-        }
-        ++first;
-      }
-      if (flags & raypacket::COMMONORG)
-        res = slabfirstco(node->box, p, rdir, first, hit);
-      else
-        res = slabfirst(node->box, p, rdir, first, hit);
-      if (!res.isec) break;
-    processnode:
-      const u32 flag = node->getflag();
-      if (flag == intersector::NONLEAF) {
-        const s32 farindex = signs[node->getaxis()];
-        const s32 nearindex = farindex^1;
-        const u32 offset = node->getoffset();
-        stack[stacksz++] = makepair(node+offset+farindex, first);
-        node = node+offset+nearindex;
-      } else {
-        if (flag == intersector::TRILEAF) {
-          auto tris = node->getptr<waldtriangle>();
-          const s32 n = tris->num;
-          u32 active[raypacket::MAXRAYNUM];
-          active[first] = 1;
-          if (flags & raypacket::COMMONORG)
-            slabfilterco(node->box, p, rdir, active, first+1, hit);
-          else
-            slabfilter(node->box, p, rdir, active, first+1, hit);
-          loopi(n) rangej(first,p.raynum)
-            if (active[j]) raytriangle<false>(tris[i], p.org(j), p.dir(j), hit+j);
-          break;
-        } else {
-          node = node->getptr<intersector>()->root;
-          goto processnode;
-        }
-      }
-    }
-  }
-}
-#define CASE(X) case X: closestinternal<X>(bvhtree, p, hit); break;
-#define CASE4(X) CASE(X) CASE(X+1) CASE(X+2) CASE(X+3)
-void closest(const intersector &bvhtree, const raypacket &p, packethit &hit) {
-  switch (p.flags) {
-    CASE4(0)
-    CASE4(4)
-    CASE4(8)
-    CASE4(12)
-  };
-}
-#undef CASE
-#undef CASE4
-
-template <u32 flags>
-NOINLINE void occludedinternal(const intersector &bvhtree, const raypacket &p, packethit &hit) {
-  pair<intersector::node*,u32> stack[64];
-  stack[0] = makepair(bvhtree.root, 0u);
-  u32 stacksz = 1;
-  vec3f rdir[raypacket::MAXRAYNUM];
-  loopi(s32(p.raynum)) rdir[i] = rcp(p.dir(i));
-  u8 occluded[raypacket::MAXRAYNUM];
-  u32 occludednum = 0;
-  loopi(p.raynum) occluded[i] = 0;
-  while (stacksz) {
-    const auto elem = stack[--stacksz];
-    auto node = elem.first;
-    auto first = elem.second;
-    for (;;) {
-      isecres res(false);
-      if (flags & raypacket::INTERVALARITH) {
-        if (flags & raypacket::COMMONORG) {
-          res = slaboneco(node->box, p, rdir, first, hit);
-          if (res.isec) goto processnode;
-          if (culliaco(node->box, p)) break;
-        } else {
-          res = slabone(node->box, p, rdir, first, hit);
-          if (res.isec) goto processnode;
-          if (cullia(node->box, p)) break;
-        }
-        ++first;
-      }
-      if (flags & raypacket::COMMONORG)
-        res = slabfirstco(node->box, p, rdir, first, hit);
-      else
-        res = slabfirst(node->box, p, rdir, first, hit);
-      if (!res.isec) break;
-    processnode:
-      const u32 flag = node->getflag();
-      if (flag == intersector::NONLEAF) {
-        const u32 offset = node->getoffset();
-        stack[stacksz++] = makepair(node+offset+1, first);
-        node = node+offset;
-      } else {
-        if (flag == intersector::TRILEAF) {
-          auto tris = node->getptr<waldtriangle>();
-          const s32 n = tris->num;
-          u32 active[raypacket::MAXRAYNUM];
-          active[first] = 1;
-          if (flags & raypacket::COMMONORG)
-            slabfilterco(node->box, p, rdir, active, first+1, hit);
-          else
-            slabfilter(node->box, p, rdir, active, first+1, hit);
-          loopi(n) rangej(first,p.raynum)
-            if (!occluded[j] && active[j] && raytriangle<true>(tris[i], p.org(j), p.dir(j), hit+j)) {
-              hit[j].id = tris[i].id;
-              occluded[j] = 1;
-              occludednum++;
-            }
-          if (occludednum == p.raynum) return;
-          break;
-        } else {
-          node = node->getptr<intersector>()->root;
-          goto processnode;
-        }
-      }
-    }
-  }
-}
-#define CASE(X) case X: occludedinternal<X>(bvhtree, p, hit); break;
-#define CASE4(X) CASE(X) CASE(X+1) CASE(X+2) CASE(X+3)
-void occluded(const intersector &bvhtree, const raypacket &p, packethit &hit) {
-  switch (p.flags) {
-    CASE4(0)
-    CASE4(4)
-    CASE4(8)
-    CASE4(12)
-  };
-}
-#undef CASE
-#undef CASE4
-
-/*-------------------------------------------------------------------------
- - ray packet intersection routines (new version)
- -------------------------------------------------------------------------*/
 struct soaarray {
   array<float,raypacket::MAXRAYNUM> x;
   array<float,raypacket::MAXRAYNUM> y;
@@ -969,6 +724,90 @@ void closest(const intersector &bvhtree, const raypacket &p, newpackethit &hit) 
 }
 #undef CASE
 #undef CASE4
+
+template <u32 flags>
+NOINLINE void occludedinternal(const intersector &bvhtree, const raypacket &p, newpackethit &hit) {
+  pair<intersector::node*,u32> stack[64];
+  stack[0] = makepair(bvhtree.root, 0u);
+  u32 stacksz = 1;
+  soaarray rdir;
+  loopi(s32(p.raynum)) {
+    const auto r = rcp(p.dir(i));
+    rdir.x[i] = r.x;
+    rdir.y[i] = r.y;
+    rdir.z[i] = r.z;
+  }
+  u8 occluded[raypacket::MAXRAYNUM];
+  u32 occludednum = 0;
+  loopi(p.raynum) occluded[i] = 0;
+  while (stacksz) {
+    const auto elem = stack[--stacksz];
+    auto node = elem.first;
+    auto first = elem.second;
+    for (;;) {
+      isecres res(false);
+      if (flags & raypacket::INTERVALARITH) {
+        if (flags & raypacket::COMMONORG) {
+          res = slaboneco(node->box, p, rdir, first, hit);
+          if (res.isec) goto processnode;
+          if (culliaco(node->box, p)) break;
+        } else {
+          res = slabone(node->box, p, rdir, first, hit);
+          if (res.isec) goto processnode;
+          if (cullia(node->box, p)) break;
+        }
+        ++first;
+      }
+      if (flags & raypacket::COMMONORG)
+        res = slabfirstco(node->box, p, rdir, first, hit);
+      else
+        res = slabfirst(node->box, p, rdir, first, hit);
+      if (!res.isec) break;
+    processnode:
+      const u32 flag = node->getflag();
+      if (flag == intersector::NONLEAF) {
+        const u32 offset = node->getoffset();
+        stack[stacksz++] = makepair(node+offset+1, first);
+        node = node+offset;
+      } else {
+        if (flag == intersector::TRILEAF) {
+          auto tris = node->getptr<waldtriangle>();
+          const s32 n = tris->num;
+          u32 active[raypacket::MAXRAYNUM];
+          active[first] = 1;
+          if (flags & raypacket::COMMONORG)
+            slabfilterco(node->box, p, rdir, active, first+1, hit);
+          else
+            slabfilter(node->box, p, rdir, active, first+1, hit);
+          loopi(n) rangej(first,p.raynum)
+            if (!occluded[j] && active[j] && raytriangle<true>(tris[i], p.org(j), p.dir(j), j, hit)) {
+              hit.id[j] = tris[i].id;
+              occluded[j] = 1;
+              occludednum++;
+            }
+          if (occludednum == p.raynum) return;
+          break;
+        } else {
+          node = node->getptr<intersector>()->root;
+          goto processnode;
+        }
+      }
+    }
+  }
+}
+#define CASE(X) case X: occludedinternal<X>(bvhtree, p, hit); break;
+#define CASE4(X) CASE(X) CASE(X+1) CASE(X+2) CASE(X+3)
+void occluded(const intersector &bvhtree, const raypacket &p, newpackethit &hit) {
+  switch (p.flags) {
+    CASE4(0)
+    CASE4(4)
+    CASE4(8)
+    CASE4(12)
+  };
+}
+#undef CASE
+#undef CASE4
+
 } /* namespace bvh */
 } /* namespace q */
 
