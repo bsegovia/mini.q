@@ -18,7 +18,7 @@ struct hit {
   INLINE bool is_hit(void) const { return id != ~0x0u; }
 };
 
-struct newpackethit : noncopyable {
+struct packethit : noncopyable {
   array<float,raypacket::MAXRAYNUM> t;
   array<float,raypacket::MAXRAYNUM> u;
   array<float,raypacket::MAXRAYNUM> v;
@@ -31,8 +31,8 @@ struct newpackethit : noncopyable {
 // ray tracing routines (visiblity and shadow rays)
 void closest(const struct intersector&, const struct ray&, hit&);
 bool occluded(const struct intersector&, const struct ray&);
-void closest(const struct intersector&, const struct raypacket&, newpackethit&);
-void occluded(const intersector &bvhtree, const raypacket &p, newpackethit &hit);
+void closest(const struct intersector&, const struct raypacket&, packethit&);
+void occluded(const intersector &bvhtree, const raypacket &p, packethit &hit);
 
 // opaque intersector data structure
 struct intersector *create(const struct primitive*, int n);

@@ -512,7 +512,7 @@ INLINE isecres slabfirst(const aabb &RESTRICT box,
                          const raypacket &RESTRICT p,
                          const soaarray &RESTRICT rdir,
                          u32 &RESTRICT first,
-                         const newpackethit &RESTRICT hit)
+                         const packethit &RESTRICT hit)
 {
   for (; first < p.raynum; ++first) {
     const auto res = slab(box, p.org(first), rdir[first], hit.t[first]);
@@ -525,7 +525,7 @@ INLINE isecres slabone(const aabb &RESTRICT box,
                        const raypacket &RESTRICT p,
                        const soaarray &RESTRICT rdir,
                        u32 first,
-                       const newpackethit &RESTRICT hit)
+                       const packethit &RESTRICT hit)
 {
   return slab(box, p.org(first), rdir[first], hit.t[first]);
 }
@@ -534,7 +534,7 @@ INLINE void slaball(const aabb &RESTRICT box,
                     const raypacket &RESTRICT p,
                     const soaarray &RESTRICT rdir,
                     u32 first,
-                    newpackethit &hit)
+                    packethit &hit)
 {
   for (u32 rayid = first; rayid < p.raynum; ++rayid) {
     const auto res = slab(box, p.org(rayid), rdir[rayid], hit.t[rayid]);
@@ -550,7 +550,7 @@ INLINE void slabfilter(const aabb &RESTRICT box,
                        const soaarray &RESTRICT rdir,
                        u32 *RESTRICT active,
                        u32 first,
-                       const newpackethit &RESTRICT hit)
+                       const packethit &RESTRICT hit)
 {
   for (u32 rayid = first; rayid < p.raynum; ++rayid) {
     const auto res = slab(box, p.org(rayid), rdir[rayid], hit.t[rayid]);
@@ -562,7 +562,7 @@ INLINE isecres slabfirstco(const aabb &RESTRICT box,
                            const raypacket &RESTRICT p,
                            const soaarray &RESTRICT rdir,
                            u32 &RESTRICT first,
-                           const newpackethit &RESTRICT hit)
+                           const packethit &RESTRICT hit)
 {
   const auto pmin = box.pmin - p.org();
   const auto pmax = box.pmax - p.org();
@@ -577,7 +577,7 @@ INLINE isecres slaboneco(const aabb &RESTRICT box,
                          const raypacket &RESTRICT p,
                          const soaarray &RESTRICT rdir,
                          u32 first,
-                         const newpackethit &RESTRICT hit)
+                         const packethit &RESTRICT hit)
 {
   const auto pmin = box.pmin - p.org();
   const auto pmax = box.pmax - p.org();
@@ -588,7 +588,7 @@ INLINE void slaballco(const aabb &RESTRICT box,
                       const raypacket &RESTRICT p,
                       const soaarray &RESTRICT rdir,
                       u32 first,
-                      newpackethit &RESTRICT hit)
+                      packethit &RESTRICT hit)
 {
   const auto pmin = box.pmin - p.org();
   const auto pmax = box.pmax - p.org();
@@ -606,7 +606,7 @@ INLINE void slabfilterco(const aabb &RESTRICT box,
                          const soaarray &RESTRICT rdir,
                          u32 *RESTRICT active,
                          u32 first,
-                         const newpackethit &RESTRICT hit)
+                         const packethit &RESTRICT hit)
 {
   const auto pmin = box.pmin - p.org();
   const auto pmax = box.pmax - p.org();
@@ -621,7 +621,7 @@ INLINE bool raytriangle(
   const waldtriangle &tri,
   vec3f org, vec3f dir,
   int idx,
-  newpackethit &hit)
+  packethit &hit)
 {
   const u32 k = tri.k, ku = waldmodulo[k], kv = waldmodulo[k+1];
   const vec2f dirk(dir[ku], dir[kv]);
@@ -646,7 +646,7 @@ INLINE bool raytriangle(
 }
 
 template <u32 flags>
-NOINLINE void closestinternal(const intersector &bvhtree, const raypacket &p, newpackethit &hit) {
+NOINLINE void closestinternal(const intersector &bvhtree, const raypacket &p, packethit &hit) {
   const s32 signs[3] = {(p.dir().x>=0.f)&1, (p.dir().y>=0.f)&1, (p.dir().z>=0.f)&1};
   pair<intersector::node*,u32> stack[64];
   stack[0] = makepair(bvhtree.root, 0u);
@@ -714,7 +714,7 @@ NOINLINE void closestinternal(const intersector &bvhtree, const raypacket &p, ne
 }
 #define CASE(X) case X: closestinternal<X>(bvhtree, p, hit); break;
 #define CASE4(X) CASE(X) CASE(X+1) CASE(X+2) CASE(X+3)
-void closest(const intersector &bvhtree, const raypacket &p, newpackethit &hit) {
+void closest(const intersector &bvhtree, const raypacket &p, packethit &hit) {
   switch (p.flags) {
     CASE4(0)
     CASE4(4)
@@ -726,7 +726,7 @@ void closest(const intersector &bvhtree, const raypacket &p, newpackethit &hit) 
 #undef CASE4
 
 template <u32 flags>
-NOINLINE void occludedinternal(const intersector &bvhtree, const raypacket &p, newpackethit &hit) {
+NOINLINE void occludedinternal(const intersector &bvhtree, const raypacket &p, packethit &hit) {
   pair<intersector::node*,u32> stack[64];
   stack[0] = makepair(bvhtree.root, 0u);
   u32 stacksz = 1;
@@ -797,7 +797,7 @@ NOINLINE void occludedinternal(const intersector &bvhtree, const raypacket &p, n
 }
 #define CASE(X) case X: occludedinternal<X>(bvhtree, p, hit); break;
 #define CASE4(X) CASE(X) CASE(X+1) CASE(X+2) CASE(X+3)
-void occluded(const intersector &bvhtree, const raypacket &p, newpackethit &hit) {
+void occluded(const intersector &bvhtree, const raypacket &p, packethit &hit) {
   switch (p.flags) {
     CASE4(0)
     CASE4(4)

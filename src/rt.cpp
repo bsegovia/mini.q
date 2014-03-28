@@ -57,7 +57,7 @@ struct raycasttask : public task {
       p.flags |= raypacket::INTERVALARITH;
     }
 
-    bvh::newpackethit hit;
+    bvh::packethit hit;
     loopi(raypacket::MAXRAYNUM) {
       hit.id[i] = ~0x0u;
       hit.t[i] = FLT_MAX;
@@ -69,7 +69,7 @@ struct raycasttask : public task {
     // exclude points that interesect nothing
     int mapping[TILESIZE*TILESIZE], curr = 0;
     raypacket shadow;
-    bvh::newpackethit shadowhit;
+    bvh::packethit shadowhit;
     loopi(raypacket::MAXRAYNUM) {
       shadowhit.id[i] = ~0x0u;
       shadowhit.t[i] = FLT_MAX;
