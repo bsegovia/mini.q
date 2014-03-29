@@ -66,7 +66,7 @@ struct raycasttask : public task {
     }
     closest(*bvhisec, p, hit);
 
-#define NORMAL_ONLY 1
+#define NORMAL_ONLY 0
 #if !NORMAL_ONLY
     // exclude points that interesect nothing
     int mapping[TILESIZE*TILESIZE], curr = 0;
@@ -82,9 +82,9 @@ struct raycasttask : public task {
       if (hit.ishit(i)) {
         mapping[i] = curr;
         const auto n = normalize(hit.n(i));
-        hit.nn[0][i] = n.x;
-        hit.nn[1][i] = n.y;
-        hit.nn[2][i] = n.z;
+        hit.vn[0][i] = n.x;
+        hit.vn[1][i] = n.y;
+        hit.vn[2][i] = n.z;
         const auto dst = p.org(i) + hit.t[i] * p.dir(i) + n * 1e-2f;
         const auto dir = dst-lpos;
         const auto len = length(dir);

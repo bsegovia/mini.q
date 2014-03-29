@@ -34,6 +34,7 @@ static const struct TYPE {\
 CONSTANT_TYPE(truetype,truev,true);
 CONSTANT_TYPE(falsetype,falsev,false);
 CONSTANT_TYPE(zerotype,zero,0);
+CONSTANT_TYPE(monetype,mone,-1);
 CONSTANT_TYPE(onetype,one,1);
 CONSTANT_TYPE(twotype,two,2);
 CONSTANT_TYPE(pitype,pi,3.14159265358979323846);
@@ -854,23 +855,23 @@ struct CACHE_LINE_ALIGNED raypacket {
   static const u32 CORNERRAYS    = 1<<3;
   INLINE raypacket(void) : raynum(0), flags(0) {}
   INLINE void setorg(vec3f org, u32 rayid) {
-    orgx[rayid] = org.x;
-    orgy[rayid] = org.y;
-    orgz[rayid] = org.z;
+    vorg[0][rayid] = org.x;
+    vorg[1][rayid] = org.y;
+    vorg[2][rayid] = org.z;
   }
   INLINE void setdir(vec3f dir, u32 rayid) {
-    dirx[rayid] = dir.x;
-    diry[rayid] = dir.y;
-    dirz[rayid] = dir.z;
+    vdir[0][rayid] = dir.x;
+    vdir[1][rayid] = dir.y;
+    vdir[2][rayid] = dir.z;
   }
   INLINE vec3f org(u32 rayid=0) const {
-    return vec3f(orgx[rayid], orgy[rayid], orgz[rayid]);
+    return vec3f(vorg[0][rayid], vorg[1][rayid], vorg[2][rayid]);
   }
   INLINE vec3f dir(u32 rayid=0) const {
-    return vec3f(dirx[rayid], diry[rayid], dirz[rayid]);
+    return vec3f(vdir[0][rayid], vdir[1][rayid], vdir[2][rayid]);
   }
-  array<float,MAXRAYNUM> orgx, orgy, orgz;
-  array<float,MAXRAYNUM> dirx, diry, dirz;
+  array<float,MAXRAYNUM> vorg[3];
+  array<float,MAXRAYNUM> vdir[3];
   interval3f iaorg, iadir, iardir;
   float iaminlen, iamaxlen;
   u32 raynum;

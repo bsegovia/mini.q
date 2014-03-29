@@ -485,26 +485,29 @@ struct soaarray {
 #if defined(__AVX__)
 typedef avxf soaf;
 typedef avxb soab;
+INLINE void store(void *ptr, const soaf &x) {store8f(ptr, x);}
 #else
 typedef ssef soaf;
 typedef sseb soab;
+INLINE void store(void *ptr, const soaf &x) {store4f(ptr, x);}
 #endif
 
 typedef vec3<soaf> soa3f;
+typedef vec2<soaf> soa2f;
 
 INLINE soa3f getorg(const raypacket &p, u32 idx) {
   assert(p.flags & raypacket::COMMONORG == 0);
-  const soaf x = soaf::load(&p.orgx[0] + idx*soaf::size);
-  const soaf y = soaf::load(&p.orgy[0] + idx*soaf::size);
-  const soaf z = soaf::load(&p.orgz[0] + idx*soaf::size);
+  const soaf x = soaf::load(&p.vorg[0][0] + idx*soaf::size);
+  const soaf y = soaf::load(&p.vorg[1][0] + idx*soaf::size);
+  const soaf z = soaf::load(&p.vorg[2][0] + idx*soaf::size);
   return soa3f(x,y,z);
 }
 
 INLINE soa3f getdir(const raypacket &p, u32 idx) {
   assert(p.flags & raypacket::COMMONORG == 0);
-  const soaf x = soaf::load(&p.dirx[0] + idx*soaf::size);
-  const soaf y = soaf::load(&p.diry[0] + idx*soaf::size);
-  const soaf z = soaf::load(&p.dirz[0] + idx*soaf::size);
+  const soaf x = soaf::load(&p.vdir[0][0] + idx*soaf::size);
+  const soaf y = soaf::load(&p.vdir[1][0] + idx*soaf::size);
+  const soaf z = soaf::load(&p.vdir[2][0] + idx*soaf::size);
   return soa3f(x,y,z);
 }
 
@@ -732,12 +735,129 @@ INLINE bool raytriangle(
     hit.u[idx] = beta;
     hit.v[idx] = gamma;
     hit.id[idx] = tri.id;
-    auto n = hit.nn;
+    auto n = hit.vn;
     n[k][idx] = tri.sign ? -1.f : 1.f;
     n[waldmodulo[k]][idx] = n[k][idx]*tri.n.x;
     n[waldmodulo[k+1]][idx] = n[k][idx]*tri.n.y;
   }
   return true;
+}
+
+INLINE void closesttriangle(
+  const waldtriangle &tri,
+  const raypacket &p,
+  const u32 *active,
+  u32 first,
+  packethit &hit)
+{
+  rangej(first,p.raynum) if (active[j]) {
+    const u32 k = tri.k, ku = waldmodulo[k], kv = waldmodulo[k+1];
+    const auto org = p.org(j);
+    const auto dir = p.dir(j);
+    const vec2f dirk(dir[ku], dir[kv]);
+    const vec2f posk(org[ku], org[kv]);
+    const float t = (tri.nd-org[k]-dot(tri.n,posk))/(dir[k]+dot(tri.n,dirk));
+    if (!((hit.t[j] > t) & (t >= 0.f)))
+      continue;
+    const vec2f h = posk + t*dirk - tri.vertk;
+    const float beta = dot(h,tri.bn), gamma = dot(h,tri.cn);
+    if ((beta < 0.f) | (gamma < 0.f) | ((beta + gamma) > 1.f))
+      continue;
+    hit.t[j] = t;
+    hit.u[j] = beta;
+    hit.v[j] = gamma;
+    hit.id[j] = tri.id;
+    auto n = hit.vn;
+    n[k][j] = tri.sign ? -1.f : 1.f;
+    n[waldmodulo[k]][j] = n[k][j]*tri.n.x;
+    n[waldmodulo[k+1]][j] = n[k][j]*tri.n.y;
+  }
+}
+
+INLINE void soaclosest(
+  const waldtriangle &tri,
+  const raypacket &p,
+  const u32 *active,
+  u32 first,
+  packethit &hit)
+{
+  const auto packetnum = p.raynum/soaf::size;
+  const auto vnd = soaf(tri.nd);
+  const auto vn = soa2f(tri.n);
+  rangej(first,packetnum) if (active[j]) {
+    const u32 k = tri.k, ku = waldmodulo[k], kv = waldmodulo[k+1];
+    const auto idx = j*soaf::size;
+    const auto dirk  = soaf::load(&p.vdir[k][idx]);
+    const auto dirku = soaf::load(&p.vdir[ku][idx]);
+    const auto dirkv = soaf::load(&p.vdir[kv][idx]);
+    const auto orgk  = soaf::load(&p.vorg[k][idx]);
+    const auto orgku = soaf::load(&p.vorg[ku][idx]);
+    const auto orgkv = soaf::load(&p.vorg[kv][idx]);
+    const auto dist = getdist(hit, j);
+    const soa2f dir(dirku, dirkv);
+    const soa2f org(orgku, orgkv);
+
+    // evalute intersection with triangle plane
+    const auto t = (vnd-orgk-dot(vn,org))/(dirk+dot(vn,dir));
+    const auto tmask = (dist > t) & (t > soaf(zero));
+    if (none(tmask)) continue;
+
+    // evaluate aperture
+    const auto vertk = soa2f(tri.vertk);
+    const auto vbn = soa2f(tri.bn);
+    const auto vcn = soa2f(tri.cn);
+    const auto h = org + t*dir - vertk;
+    const auto u = dot(h,vbn), v = dot(h,vcn);
+    const auto aperture = (u>=soaf(zero)) & (v>=soaf(zero)) & (u+v<=soaf(one));
+    const auto m = aperture & tmask;
+    if (none(m)) continue;
+
+    // we are good to go. we can update the hit point
+    const auto id = soaf(tri.id);
+    const auto mt = select(m,t,soaf::load(&hit.t[idx]));
+    const auto mu = select(m,u,soaf::load(&hit.u[idx]));
+    const auto mv = select(m,v,soaf::load(&hit.v[idx]));
+    const auto mid = select(m,id,soaf::load(&hit.id[idx]));
+    const auto trin = tri.sign?soaf(mone):soaf(one);
+    const auto nk = select(m,id,soaf::load(&hit.vn[k][idx]));
+    const auto nku = select(m,id,trin*soaf::load(&hit.vn[ku][idx]));
+    const auto nkv = select(m,id,trin*soaf::load(&hit.vn[kv][idx]));
+    store(&hit.t[idx], mt);
+    store(&hit.u[idx], mu);
+    store(&hit.v[idx], mv);
+    store(&hit.id[idx], mid);
+    store(&hit.vn[k][idx],nk);
+    store(&hit.vn[ku][idx],nku);
+    store(&hit.vn[kv][idx],nkv);
+  }
+}
+
+INLINE u32 occludedtriangle(
+  const waldtriangle &tri,
+  const raypacket &p,
+  const u32 *active,
+  const u32 *occluded,
+  u32 first,
+  packethit &hit)
+{
+  u32 occludednum = 0;
+  rangej(first,p.raynum) if (!occluded[j] && active[j]) {
+    const u32 k = tri.k, ku = waldmodulo[k], kv = waldmodulo[k+1];
+    const auto org = p.org(j);
+    const auto dir = p.dir(j);
+    const vec2f dirk(dir[ku], dir[kv]);
+    const vec2f posk(org[ku], org[kv]);
+    const float t = (tri.nd-org[k]-dot(tri.n,posk))/(dir[k]+dot(tri.n,dirk));
+    if (!((hit.t[j] > t) & (t >= 0.f)))
+      continue;
+    const vec2f h = posk + t*dirk - tri.vertk;
+    const float beta = dot(h,tri.bn), gamma = dot(h,tri.cn);
+    if ((beta < 0.f) | (gamma < 0.f) | ((beta + gamma) > 1.f))
+      continue;
+    hit.t[j] = t;
+    ++occludednum;
+  }
+  return occludednum;
 }
 
 void closest(const intersector &bvhtree, const raypacket &p, packethit &hit) {
@@ -795,9 +915,7 @@ void closest(const intersector &bvhtree, const raypacket &p, packethit &hit) {
             slabfilterco(node->box, p, rdir, active, first+1, hit);
           else
             slabfilter(node->box, p, rdir, active, first+1, hit);
-          loopi(n) rangej(first,p.raynum)
-            if (active[j])
-              raytriangle<false>(tris[i], p.org(j), p.dir(j), j, hit);
+          loopi(n) closesttriangle(tris[i], p, active, first, hit);
           break;
         } else {
           node = node->getptr<intersector>()->root;
@@ -820,7 +938,7 @@ void occluded(const intersector &bvhtree, const raypacket &p, packethit &hit) {
     rdir.y[i] = r.y;
     rdir.z[i] = r.z;
   }
-  u8 occluded[raypacket::MAXRAYNUM];
+  u32 occluded[raypacket::MAXRAYNUM];
   u32 occludednum = 0;
   loopi(p.raynum) occluded[i] = 0;
   while (stacksz) {
@@ -862,12 +980,7 @@ void occluded(const intersector &bvhtree, const raypacket &p, packethit &hit) {
             slabfilterco(node->box, p, rdir, active, first+1, hit);
           else
             slabfilter(node->box, p, rdir, active, first+1, hit);
-          loopi(n) rangej(first,p.raynum)
-            if (!occluded[j] && active[j] && raytriangle<true>(tris[i], p.org(j), p.dir(j), j, hit)) {
-              hit.id[j] = tris[i].id;
-              occluded[j] = 1;
-              occludednum++;
-            }
+          loopi(n) occludednum += occludedtriangle(tris[i], p, active, occluded, first, hit);
           if (occludednum == p.raynum) return;
           break;
         } else {

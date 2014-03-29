@@ -22,10 +22,10 @@ struct packethit : noncopyable {
   array<float,raypacket::MAXRAYNUM> t;
   array<float,raypacket::MAXRAYNUM> u;
   array<float,raypacket::MAXRAYNUM> v;
-  array<float,raypacket::MAXRAYNUM> nn[3];
+  array<float,raypacket::MAXRAYNUM> vn[3];
   array<u32,raypacket::MAXRAYNUM> id;
   INLINE bool ishit(u32 idx) { return id[idx] != ~0x0u; }
-  INLINE vec3f n(u32 idx) { return vec3f(nn[0][idx],nn[1][idx],nn[2][idx]); }
+  INLINE vec3f n(u32 idx) { return vec3f(vn[0][idx],vn[1][idx],vn[2][idx]); }
 };
 
 // ray tracing routines (visiblity and shadow rays)

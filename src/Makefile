@@ -1,9 +1,17 @@
-#CXX=clang++
-FLAGS=-MP -MD -Wall -fvisibility=hidden -I./ `sdl-config --cflags` -I./ -mavx -fabi-version=6
-CXXCOMMONFLAGS=-fno-exceptions -fno-unwind-tables -fno-rtti -std=c++11 -fvisibility-inlines-hidden -Wno-invalid-offsetof
+FLAGS=-MP -MD -Wall -fvisibility=hidden -I./ `sdl-config --cflags` -I./ -mavx
+CXXCOMMONFLAGS=-fno-exceptions -fno-rtti -std=c++11 -fvisibility-inlines-hidden -Wno-invalid-offsetof
+
+ifneq (,$(findstring g++, $(CXX)))
+FLAGS+=-fabi-version=6
+endif
+ifeq (,$(findstring icc, $(CXX)))
+CXXCOMMONFLAGS+=-fno-unwind-tables
+endif
+
 DEBUGFLAGS=-O0 -DMEMORY_DEBUGGER -g
 OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g -fsanitize=address
-RELFLAGS=-fomit-frame-pointer -O3 -DNDEBUG -DRELEASE -g
+RELFLAGS=-fomit-frame-pointer -O2 -DNDEBUG -DRELEASE -g
+
 CXXFLAGS= $(CXXCOMMONFLAGS) $(FLAGS) $(RELFLAGS)
 LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer -lz #-fsanitize=address
 
