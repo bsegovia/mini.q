@@ -131,7 +131,7 @@ struct raycasttask : public task {
       const int offset = (screen.x+x)+dim.x*(screen.y+y);
       const int idx = x+y*TILESIZE;
       if (hit.ishit(idx)) {
-        const auto n = vec3i(abs(normalize(hit.getnormal(idx))*255.f));
+        const auto n = vec3i(clamp(normalize(hit.getnormal(idx)), vec3f(zero), vec3f(one))*255.f);
         pixels[offset] = n.x|(n.y<<8)|(n.z<<16)|(0xff<<24);
       } else
         pixels[offset] = 0;
