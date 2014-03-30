@@ -10,7 +10,7 @@ endif
 
 DEBUGFLAGS=-O0 -DMEMORY_DEBUGGER -g
 OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g -fsanitize=address
-RELFLAGS=-fomit-frame-pointer -O2 -DNDEBUG -DRELEASE -g
+RELFLAGS=-fomit-frame-pointer -O3 -DNDEBUG -DRELEASE -g
 
 CXXFLAGS= $(CXXCOMMONFLAGS) $(FLAGS) $(RELFLAGS)
 LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer -lz #-fsanitize=address

@@ -26,7 +26,7 @@ void buildbvh(vec3f *v, u32 *idx, u32 idxnum) {
   con::out("bvh: elapsed %f ms", float(ms));
 }
 
-enum { TILESIZE = 8 };
+enum { TILESIZE = 16 };
 static const vec3f lpos(0.f, -4.f, 0.f);
 static atomic totalraynum;
 struct raycasttask : public task {
@@ -64,9 +64,9 @@ struct raycasttask : public task {
       hit.id[i] = ~0x0u;
       hit.t[i] = FLT_MAX;
     }
-    closest(*bvhisec, p, hit);
+    soaclosest(*bvhisec, p, hit);
 
-#define NORMAL_ONLY 0
+#define NORMAL_ONLY 1
 #if !NORMAL_ONLY
     // exclude points that interesect nothing
     int mapping[TILESIZE*TILESIZE], curr = 0;

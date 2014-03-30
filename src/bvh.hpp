@@ -18,14 +18,14 @@ struct hit {
   INLINE bool is_hit(void) const { return id != ~0x0u; }
 };
 
-struct packethit : noncopyable {
+struct CACHE_LINE_ALIGNED packethit : noncopyable {
   array<float,raypacket::MAXRAYNUM> t;
   array<float,raypacket::MAXRAYNUM> u;
   array<float,raypacket::MAXRAYNUM> v;
   array<float,raypacket::MAXRAYNUM> vn[3];
   array<u32,raypacket::MAXRAYNUM> id;
-  INLINE bool ishit(u32 idx) { return id[idx] != ~0x0u; }
-  INLINE vec3f n(u32 idx) { return vec3f(vn[0][idx],vn[1][idx],vn[2][idx]); }
+  INLINE bool ishit(u32 idx) const { return id[idx] != ~0x0u; }
+  INLINE vec3f n(u32 idx) const { return vec3f(vn[0][idx],vn[1][idx],vn[2][idx]); }
 };
 
 // ray tracing routines (visiblity and shadow rays)
@@ -33,6 +33,7 @@ void closest(const struct intersector&, const struct ray&, hit&);
 bool occluded(const struct intersector&, const struct ray&);
 void closest(const intersector &bvhtree, const raypacket &p, packethit &hit);
 void occluded(const intersector &bvhtree, const raypacket &p, packethit &hit);
+void soaclosest(const intersector &bvhtree, const raypacket &p, packethit &hit);
 
 // opaque intersector data structure
 struct intersector *create(const struct primitive*, int n);

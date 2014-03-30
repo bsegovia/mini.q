@@ -86,10 +86,7 @@ INLINE avxf signmsk(const avxf& a) {
   return _mm256_and_ps(a.m256,_mm256_castsi256_ps(_mm256_set1_epi32(0x80000000)));
 }
 
-INLINE avxf rcp  (const avxf& a) {
-  const avxf r = _mm256_rcp_ps(a.m256);
-  return _mm256_sub_ps(_mm256_add_ps(r, r), _mm256_mul_ps(_mm256_mul_ps(r, r), a));
-}
+INLINE avxf rcp(const avxf& a) { return _mm256_div_ps(avxf(one), a); }
 INLINE avxf sqr  (const avxf& a) {return _mm256_mul_ps(a,a);}
 INLINE avxf sqrt (const avxf& a) {return _mm256_sqrt_ps(a.m256);}
 INLINE avxf rsqrt(const avxf& a) {
