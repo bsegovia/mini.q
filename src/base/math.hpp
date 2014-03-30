@@ -847,37 +847,6 @@ struct ray {
   float tnear, tfar;
 };
 
-struct CACHE_LINE_ALIGNED raypacket {
-  static const u32 MAXRAYNUM     = 256;
-  static const u32 COMMONORG     = 1<<0;
-  static const u32 COMMONDIR     = 1<<1;
-  static const u32 INTERVALARITH = 1<<2;
-  static const u32 CORNERRAYS    = 1<<3;
-  INLINE raypacket(void) : raynum(0), flags(0) {}
-  INLINE void setorg(vec3f org, u32 rayid) {
-    vorg[0][rayid] = org.x;
-    vorg[1][rayid] = org.y;
-    vorg[2][rayid] = org.z;
-  }
-  INLINE void setdir(vec3f dir, u32 rayid) {
-    vdir[0][rayid] = dir.x;
-    vdir[1][rayid] = dir.y;
-    vdir[2][rayid] = dir.z;
-  }
-  INLINE vec3f org(u32 rayid=0) const {
-    return vec3f(vorg[0][rayid], vorg[1][rayid], vorg[2][rayid]);
-  }
-  INLINE vec3f dir(u32 rayid=0) const {
-    return vec3f(vdir[0][rayid], vdir[1][rayid], vdir[2][rayid]);
-  }
-  array<float,MAXRAYNUM> vorg[3];
-  array<float,MAXRAYNUM> vdir[3];
-  interval3f iaorg, iadir, iardir;
-  float iaminlen, iamaxlen;
-  u32 raynum;
-  u32 flags;
-};
-
 struct camera {
   camera(vec3f org, vec3f up, vec3f view, float fov, float ratio);
   INLINE ray generate(int w, int h, int x, int y) const {

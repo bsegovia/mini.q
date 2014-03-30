@@ -39,7 +39,7 @@ struct raycasttask : public task {
   virtual void run(u32 tileID) {
     const vec2i tilexy(tileID%tile.x, tileID/tile.x);
     const vec2i screen = int(TILESIZE) * tilexy;
-    raypacket p;
+    bvh::raypacket p;
     vec3f mindir(FLT_MAX), maxdir(-FLT_MAX);
     for (u32 y = 0; y < u32(TILESIZE); ++y)
     for (u32 x = 0; x < u32(TILESIZE); ++x) {
@@ -51,33 +51,29 @@ struct raycasttask : public task {
       maxdir = max(maxdir, ray.dir);
     }
     p.raynum = TILESIZE*TILESIZE;
-    p.flags = raypacket::COMMONORG;
+    p.flags = bvh::raypacket::COMMONORG;
     if (all(gt(mindir*maxdir,vec3f(zero)))) {
       p.iadir = makeinterval(mindir, maxdir);
       p.iardir = rcp(p.iadir);
       p.iaorg = makeinterval(cam.org, cam.org);
       p.iamaxlen = FLT_MAX;
       p.iaminlen = 0.f;
-      p.flags |= raypacket::INTERVALARITH;
+      p.flags |= bvh::raypacket::INTERVALARITH;
     }
 
     bvh::packethit hit;
-    loopi(raypacket::MAXRAYNUM) {
+    loopi(bvh::MAXRAYNUM) {
       hit.id[i] = ~0x0u;
       hit.t[i] = FLT_MAX;
     }
     bvh::avx::closest(*bvhisec, p, hit);
 
-#define NORMAL_ONLY 0
+#define NORMAL_ONLY 1
 #if !NORMAL_ONLY
     // exclude points that interesect nothing
     int mapping[TILESIZE*TILESIZE], curr = 0;
-    raypacket shadow;
-    bvh::packethit shadowhit;
-    loopi(raypacket::MAXRAYNUM) {
-      shadowhit.id[i] = ~0x0u;
-      shadowhit.t[i] = FLT_MAX;
-    }
+    bvh::raypacket shadow;
+    bvh::packetshadow occluded;
     float maxlen = -FLT_MAX;
     mindir = vec3f(FLT_MAX), maxdir = vec3f(-FLT_MAX);
     loopi(int(p.raynum)) {
@@ -95,22 +91,23 @@ struct raycasttask : public task {
         shadow.setdir(dir/len, curr);
         mindir = min(mindir, shadow.dir(curr));
         maxdir = max(maxdir, shadow.dir(curr));
-        shadowhit.t[curr] = len;
+        occluded.t[curr] = len;
+        occluded.occluded[curr] = 0;
         ++curr;
       } else
         mapping[i] = -1;
     }
     shadow.raynum = curr;
-    shadow.flags = raypacket::COMMONORG;
+    shadow.flags = bvh::raypacket::COMMONORG;
     if (all(gt(mindir*maxdir,vec3f(zero)))) {
       shadow.iadir = makeinterval(mindir, maxdir);
       shadow.iardir = rcp(shadow.iadir);
       shadow.iaorg = makeinterval(lpos,lpos);
-      shadow.flags |= raypacket::INTERVALARITH;
+      shadow.flags |= bvh::raypacket::INTERVALARITH;
       shadow.iamaxlen = maxlen;
       shadow.iaminlen = 0.f;
     }
-    bvh::occluded(*bvhisec, shadow, shadowhit);
+    bvh::occluded(*bvhisec, shadow, occluded);
 
     for (u32 y = 0; y < u32(TILESIZE); ++y)
     for (u32 x = 0; x < u32(TILESIZE); ++x) {
@@ -118,7 +115,7 @@ struct raycasttask : public task {
       const int idx = x+y*TILESIZE;
       if (hit.ishit(idx)) {
         const auto sid = mapping[idx];
-        if (!shadowhit.ishit(sid)) {
+        if (!occluded.occluded[sid]) {
           const auto shade = dot(hit.getnormal(idx), -normalize(shadow.dir(sid)));
           const auto d = int(255.f*min(max(0.f,shade),1.f));
           pixels[offset] = d|(d<<8)|(d<<16)|(0xff<<24);

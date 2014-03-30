@@ -17,11 +17,44 @@ struct hit {
   INLINE hit(float tmax=FLT_MAX) : t(tmax), id(~0x0u) {}
   INLINE bool is_hit(void) const { return id != ~0x0u; }
 };
-typedef CACHE_LINE_ALIGNED array<int,raypacket::MAXRAYNUM> arrayi;
-typedef CACHE_LINE_ALIGNED array<float,raypacket::MAXRAYNUM> arrayf;
+
+static const u32 MAXRAYNUM = 256u;
+typedef CACHE_LINE_ALIGNED array<int,MAXRAYNUM> arrayi;
+typedef CACHE_LINE_ALIGNED array<float,MAXRAYNUM> arrayf;
 typedef CACHE_LINE_ALIGNED arrayf array2f[2];
 typedef CACHE_LINE_ALIGNED arrayf array3f[3];
 typedef CACHE_LINE_ALIGNED arrayf array4f[4];
+
+struct CACHE_LINE_ALIGNED raypacket {
+  static const u32 COMMONORG     = 1<<0;
+  static const u32 COMMONDIR     = 1<<1;
+  static const u32 INTERVALARITH = 1<<2;
+  static const u32 CORNERRAYS    = 1<<3;
+  INLINE raypacket(void) : raynum(0), flags(0) {}
+  INLINE void setorg(vec3f org, u32 rayid) {
+    vorg[0][rayid] = org.x;
+    vorg[1][rayid] = org.y;
+    vorg[2][rayid] = org.z;
+  }
+  INLINE void setdir(vec3f dir, u32 rayid) {
+    vdir[0][rayid] = dir.x;
+    vdir[1][rayid] = dir.y;
+    vdir[2][rayid] = dir.z;
+  }
+  INLINE vec3f org(u32 rayid=0) const {
+    return vec3f(vorg[0][rayid], vorg[1][rayid], vorg[2][rayid]);
+  }
+  INLINE vec3f dir(u32 rayid=0) const {
+    return vec3f(vdir[0][rayid], vdir[1][rayid], vdir[2][rayid]);
+  }
+  array3f vorg; // only used when COMMONORG is *not* set
+  array3f vdir; // only used when COMMONDIR is *not* set
+  vec3f orgco;  // only used when COMMONORG is set
+  interval3f iaorg, iadir, iardir; // only used when INTERVALARITH is se
+  float iaminlen, iamaxlen;        // only used when INTERVALARITH is se
+  u32 raynum; // number of rays active in the packet
+  u32 flags;  // exposes property of the packet
+};
 
 struct CACHE_LINE_ALIGNED packethit : noncopyable {
   arrayf t, u, v;
@@ -38,10 +71,10 @@ struct CACHE_LINE_ALIGNED packetshadow : noncopyable {
 struct intersector;
 
 // ray tracing routines (visiblity and shadow rays)
-void closest(const intersector &tree, const struct ray&, hit&);
-bool occluded(const intersector &tree, const struct ray&);
-void closest(const intersector &tree, const raypacket &p, packethit &hit);
-void occluded(const intersector &tree, const raypacket &p, packethit &hit);
+void closest(const intersector&, const struct ray&, hit&);
+bool occluded(const intersector&, const struct ray&);
+void closest(const intersector&, const raypacket&, packethit&);
+void occluded(const intersector&, const raypacket&, packetshadow&);
 
 // opaque intersector data structure
 struct intersector *create(const struct primitive*, int n);

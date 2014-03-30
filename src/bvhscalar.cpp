@@ -236,26 +236,23 @@ INLINE u32 occluded(
   const raypacket &p,
   const u32 *active,
   u32 first,
-  u32 *occ,
-  packethit &hit)
+  packetshadow &s)
 {
   u32 occnum = 0;
-  rangej(first,p.raynum) if (!occ[j] && active[j]) {
+  rangej(first,p.raynum) if (!s.occluded[j] && active[j]) {
     const u32 k = tri.k, ku = waldmodulo[k], kv = waldmodulo[k+1];
     const auto org = p.org(j);
     const auto dir = p.dir(j);
     const vec2f dirk(dir[ku], dir[kv]);
     const vec2f posk(org[ku], org[kv]);
     const float t = (tri.nd-org[k]-dot(tri.n,posk))/(dir[k]+dot(tri.n,dirk));
-    if (!((hit.t[j] > t) & (t >= 0.f)))
+    if (!((s.t[j] > t) & (t >= 0.f)))
       continue;
     const vec2f h = posk + t*dirk - tri.vertk;
     const float beta = dot(h,tri.bn), gamma = dot(h,tri.cn);
     if ((beta < 0.f) | (gamma < 0.f) | ((beta + gamma) > 1.f))
       continue;
-    hit.id[j] = tri.id;
-    hit.t[j] = t;
-    occ[j] = 1;
+    s.occluded[j] = 1;
     ++occnum;
   }
   return occnum;
@@ -310,7 +307,7 @@ void closest(const intersector &bvhtree, const raypacket &p, packethit &hit) {
         if (flag == intersector::TRILEAF) {
           auto tris = node->getptr<waldtriangle>();
           const s32 n = tris->num;
-          u32 active[raypacket::MAXRAYNUM];
+          u32 active[MAXRAYNUM];
           active[first] = 1;
           if (flags & raypacket::COMMONORG)
             slabfilterco(node->box, p, rdir, active, first+1, hit.t);
@@ -327,7 +324,7 @@ void closest(const intersector &bvhtree, const raypacket &p, packethit &hit) {
   }
 }
 
-void occluded(const intersector &bvhtree, const raypacket &p, packethit &hit) {
+void occluded(const intersector &bvhtree, const raypacket &p, packetshadow &s) {
   const auto flags = p.flags;
   pair<intersector::node*,u32> stack[64];
   stack[0] = makepair(bvhtree.root, 0u);
@@ -339,9 +336,7 @@ void occluded(const intersector &bvhtree, const raypacket &p, packethit &hit) {
     rdir[1][i] = r.y;
     rdir[2][i] = r.z;
   }
-  u32 occ[raypacket::MAXRAYNUM];
   u32 occnum = 0;
-  loopi(p.raynum) occ[i] = 0;
   while (stacksz) {
     const auto elem = stack[--stacksz];
     auto node = elem.first;
@@ -350,20 +345,20 @@ void occluded(const intersector &bvhtree, const raypacket &p, packethit &hit) {
       bool res = false;
       if (flags & raypacket::INTERVALARITH) {
         if (flags & raypacket::COMMONORG) {
-          res = slaboneco(node->box, p, rdir, first, hit.t);
+          res = slaboneco(node->box, p, rdir, first, s.t);
           if (res) goto processnode;
           if (culliaco(node->box, p)) break;
         } else {
-          res = slabone(node->box, p, rdir, first, hit.t);
+          res = slabone(node->box, p, rdir, first, s.t);
           if (res) goto processnode;
           if (cullia(node->box, p)) break;
         }
         ++first;
       }
       if (flags & raypacket::COMMONORG)
-        res = slabfirstco(node->box, p, rdir, first, hit.t);
+        res = slabfirstco(node->box, p, rdir, first, s.t);
       else
-        res = slabfirst(node->box, p, rdir, first, hit.t);
+        res = slabfirst(node->box, p, rdir, first, s.t);
       if (!res) break;
     processnode:
       const u32 flag = node->getflag();
@@ -375,13 +370,13 @@ void occluded(const intersector &bvhtree, const raypacket &p, packethit &hit) {
         if (flag == intersector::TRILEAF) {
           auto tris = node->getptr<waldtriangle>();
           const s32 n = tris->num;
-          u32 active[raypacket::MAXRAYNUM];
+          u32 active[MAXRAYNUM];
           active[first] = 1;
           if (flags & raypacket::COMMONORG)
-            slabfilterco(node->box, p, rdir, active, first+1, hit.t);
+            slabfilterco(node->box, p, rdir, active, first+1, s.t);
           else
-            slabfilter(node->box, p, rdir, active, first+1, hit.t);
-          loopi(n) occnum += occluded(tris[i], p, active, first, occ, hit);
+            slabfilter(node->box, p, rdir, active, first+1, s.t);
+          loopi(n) occnum += occluded(tris[i], p, active, first, s);
           if (occnum == p.raynum) return;
           break;
         } else {
