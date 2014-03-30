@@ -1,4 +1,4 @@
-FLAGS=-MP -MD -Wall -fvisibility=hidden -I./ `sdl-config --cflags` -I./ -mavx
+FLAGS=-MP -MD -Wall -fvisibility=hidden -I./ `sdl-config --cflags` -I./ -msse3
 CXXCOMMONFLAGS=-fno-exceptions -fno-rtti -std=c++11 -fvisibility-inlines-hidden -Wno-invalid-offsetof
 
 ifneq (,$(findstring g++, $(CXX)))
@@ -35,6 +35,9 @@ BASE_OBJS=\
 GAME_OBJS=\
   client.o\
   bvh.o\
+  bvhscalar.o\
+  bvhsse.o\
+  bvhavx.o\
   csg.o\
   demo.o\
   editing.o\
@@ -91,6 +94,9 @@ MAYAOBJ_OBJS=\
 
 SHADERS=$(shell ls data/shaders/*[glsl,decl])
 all: mini.q.server mini.q.rt mini.q importobj compress_chars importobj
+
+bvhavx.o: bvhavx.cpp
+	$(CXX) $(CXXFLAGS) -mavx -c bvhavx.cpp -o  bvhavx.o
 
 -include $(CLIENT_OBJS:.o=.d)
 -include $(SERVER_OBJS:.o=.d)

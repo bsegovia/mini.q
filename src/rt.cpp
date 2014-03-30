@@ -3,6 +3,8 @@
  - rt.cpp -> implements ray tracing kernels
  -------------------------------------------------------------------------*/
 #include "bvh.hpp"
+#include "bvhsse.hpp"
+#include "bvhavx.hpp"
 #include "rt.hpp"
 #include "base/math.hpp"
 #include "base/console.hpp"
@@ -64,9 +66,9 @@ struct raycasttask : public task {
       hit.id[i] = ~0x0u;
       hit.t[i] = FLT_MAX;
     }
-    soaclosest(*bvhisec, p, hit);
+    bvh::avx::closest(*bvhisec, p, hit);
 
-#define NORMAL_ONLY 1
+#define NORMAL_ONLY 0
 #if !NORMAL_ONLY
     // exclude points that interesect nothing
     int mapping[TILESIZE*TILESIZE], curr = 0;
@@ -81,10 +83,10 @@ struct raycasttask : public task {
     loopi(int(p.raynum)) {
       if (hit.ishit(i)) {
         mapping[i] = curr;
-        const auto n = normalize(hit.n(i));
-        hit.vn[0][i] = n.x;
-        hit.vn[1][i] = n.y;
-        hit.vn[2][i] = n.z;
+        const auto n = normalize(hit.getnormal(i));
+        hit.n[0][i] = n.x;
+        hit.n[1][i] = n.y;
+        hit.n[2][i] = n.z;
         const auto dst = p.org(i) + hit.t[i] * p.dir(i) + n * 1e-2f;
         const auto dir = dst-lpos;
         const auto len = length(dir);
@@ -108,7 +110,7 @@ struct raycasttask : public task {
       shadow.iamaxlen = maxlen;
       shadow.iaminlen = 0.f;
     }
-    occluded(*bvhisec, shadow, shadowhit);
+    bvh::occluded(*bvhisec, shadow, shadowhit);
 
     for (u32 y = 0; y < u32(TILESIZE); ++y)
     for (u32 x = 0; x < u32(TILESIZE); ++x) {
@@ -117,7 +119,7 @@ struct raycasttask : public task {
       if (hit.ishit(idx)) {
         const auto sid = mapping[idx];
         if (!shadowhit.ishit(sid)) {
-          const auto shade = dot(hit.n(idx), -normalize(shadow.dir(sid)));
+          const auto shade = dot(hit.getnormal(idx), -normalize(shadow.dir(sid)));
           const auto d = int(255.f*min(max(0.f,shade),1.f));
           pixels[offset] = d|(d<<8)|(d<<16)|(0xff<<24);
         } else
@@ -132,7 +134,7 @@ struct raycasttask : public task {
       const int offset = (screen.x+x)+dim.x*(screen.y+y);
       const int idx = x+y*TILESIZE;
       if (hit.ishit(idx)) {
-        const auto n = vec3i(abs(normalize(hit.n(idx))*255.f));
+        const auto n = vec3i(abs(normalize(hit.getnormal(idx))*255.f));
         pixels[offset] = n.x|(n.y<<8)|(n.z<<16)|(0xff<<24);
       } else
         pixels[offset] = 0;

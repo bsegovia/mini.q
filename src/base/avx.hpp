@@ -18,6 +18,7 @@
 // limitations under the License.                                           //
 // ======================================================================== //
 #pragma once
+#if defined (__AVX__)
 #include "sse.hpp"
 
 namespace q {
@@ -33,4 +34,5 @@ namespace q {
 #include "avxi_emu.hpp"
 #endif
 #include "avxf.hpp"
+#endif
 
