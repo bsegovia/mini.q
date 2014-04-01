@@ -202,6 +202,7 @@ INLINE avxf ceil(const avxf& a) {return _mm256_round_ps(a, _MM_FROUND_TO_POS_INF
 // movement/shifting/shuffling functions
 INLINE avxf unpacklo(const avxf& a, const avxf& b) {return _mm256_unpacklo_ps(a.m256, b.m256);}
 INLINE avxf unpackhi(const avxf& a, const avxf& b) {return _mm256_unpackhi_ps(a.m256, b.m256);}
+INLINE avxf andnot(const avxf& a, const avxf& b) {return _mm256_andnot_ps(a.m256, b.m256);}
 
 template<size_t i>
 INLINE avxf shuffle(const avxf& a) {
@@ -328,11 +329,9 @@ INLINE size_t select_max(const avxf& v) {return __bsf(movemask(v == vreduce_max(
 INLINE avxf load8f(const void* const a) {
   return _mm256_load_ps((const float*)a);
 }
-
 INLINE void store8f(void *ptr, const avxf& f) {
   return _mm256_store_ps((float*)ptr,f);
 }
-
 INLINE void store8f(const avxb& mask, void *ptr, const avxf& f) {
   return _mm256_maskstore_ps((float*)ptr,(__m256i)mask,f);
 }

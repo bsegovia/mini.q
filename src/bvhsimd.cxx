@@ -31,12 +31,21 @@ INLINE bool culliaco(const aabb &box, const raypacket &p) {
 typedef avxf soaf;
 typedef avxb soab;
 INLINE void store(void *ptr, const soaf &x) {store8f(ptr, x);}
+INLINE void store(void *ptr, const soab &x) {store8b(ptr, x);}
 INLINE void maskstore(const soab &m, void *ptr, const soaf &x) {store8f(m, ptr, x);}
-#else
+INLINE soaf splat(const soaf &v) {
+  const auto p = shuffle<0,0>(v);
+  return shuffle<0,0,0,0>(p,p);
+}
+#elif defined(__SSE__)
 typedef ssef soaf;
 typedef sseb soab;
 INLINE void store(void *ptr, const soaf &x) {store4f(ptr, x);}
+INLINE void store(void *ptr, const soab &x) {store4b(ptr, x);}
 INLINE void maskstore(const soab &m, void *ptr, const soaf &x) {store4f(m, ptr, x);}
+INLINE soaf splat(const soaf &v) {return shuffle<0,0,0,0>(v,v);}
+#else
+#error "unsupported SIMD"
 #endif
 
 typedef vec3<soaf> soa3f;
@@ -127,7 +136,7 @@ INLINE bool slabfirstco(const aabb &RESTRICT box,
                            u32 &RESTRICT first,
                            const arrayf &RESTRICT hit)
 {
-  auto const packetnum = p.raynum / soaf::size;
+  const auto packetnum = p.raynum / soaf::size;
   const auto pmin = soa3f(box.pmin - p.org());
   const auto pmax = soa3f(box.pmax - p.org());
   for (; first < packetnum; ++first) {
@@ -171,17 +180,14 @@ INLINE void slabfilterco(const aabb &RESTRICT box,
 
 INLINE float asfloat(u32 x) { union {float f; u32 u;}; u = x; return f;}
 
-INLINE void closest(
-  const waldtriangle &tri,
-  const raypacket &p,
-  const u32 *active,
-  u32 first,
-  packethit &hit)
+INLINE void closest(const waldtriangle &tri, const raypacket &p,
+                    const u32 *active, u32 first,
+                    packethit &hit)
 {
   const auto packetnum = p.raynum/soaf::size;
   const auto trind = soaf(tri.nd);
   const auto trin = soa2f(tri.n);
-  const u32 k = tri.k, ku = waldmodulo[k], kv = waldmodulo[k+1];
+  const auto k = tri.k, ku = waldmodulo[k], kv = waldmodulo[k+1];
   rangej(first,packetnum) if (active[j]) {
     const auto idx = j*soaf::size;
     const auto dirk  = soaf::load(&p.vdir[k][idx]);
@@ -220,6 +226,49 @@ INLINE void closest(
     maskstore(m,&hit.n[ku][idx],tri.n.x^sign);
     maskstore(m,&hit.n[kv][idx],tri.n.y^sign);
   }
+}
+
+INLINE u32 occluded(const waldtriangle &tri, const raypacket &p,
+                    const u32 *active, u32 first,
+                    packetshadow &s)
+{
+  const auto packetnum = p.raynum/soaf::size;
+  const auto trind = soaf(tri.nd);
+  const auto trin = soa2f(tri.n);
+  const auto k = tri.k, ku = waldmodulo[k], kv = waldmodulo[k+1];
+  auto occludednum = 0u;
+  rangej(first,packetnum) if (active[j]) {
+    const auto idx = j*soaf::size;
+    const auto dirk  = soaf::load(&p.vdir[k][idx]);
+    const auto dirku = soaf::load(&p.vdir[ku][idx]);
+    const auto dirkv = soaf::load(&p.vdir[kv][idx]);
+    const auto orgk  = soaf::load(&p.vorg[k][idx]);
+    const auto orgku = soaf::load(&p.vorg[ku][idx]);
+    const auto orgkv = soaf::load(&p.vorg[kv][idx]);
+    const auto dist = get(s.t, j);
+    const soa2f dir(dirku, dirkv);
+    const soa2f org(orgku, orgkv);
+
+    // evalute intersection with triangle plane
+    const auto t = (trind-orgk-dot(trin,org))/(dirk+dot(trin,dir));
+    const auto tmask = (t<dist) & (t>soaf(zero));
+    if (none(tmask)) continue;
+
+    // evaluate aperture
+    const auto trivertk = soa2f(tri.vertk);
+    const auto tribn = soa2f(tri.bn);
+    const auto tricn = soa2f(tri.cn);
+    const auto h = org + t*dir - trivertk;
+    const auto u = dot(h,tribn), v = dot(h,tricn);
+    const auto aperture = (u>=soaf(zero)) & (v>=soaf(zero)) & (u+v<=soaf(one));
+    const auto m = aperture & tmask;
+    if (none(m)) continue;
+    const auto oldoccluded = soab::load(&s.occluded[idx]);
+    const auto newoccluded = andnot(m, oldoccluded);
+    occludednum += popcnt(newoccluded);
+    store(&s.occluded[idx], oldoccluded|m);
+  }
+  return occludednum;
 }
 
 template <int flags>
@@ -293,6 +342,124 @@ void closestinternal(const intersector &bvhtree, const raypacket &p, packethit &
 #define CASE(X) case X: closestinternal<X>(bvhtree, p, hit); break;
 #define CASE4(X) CASE(X) CASE(X+1) CASE(X+2) CASE(X+3)
 void closest(const intersector &bvhtree, const raypacket &p, packethit &hit) {
+  switch (p.flags) {
+    CASE4(0)
+    CASE4(4)
+    CASE4(8)
+    CASE4(12)
+  };
+}
+#undef CASE
+#undef CASE4
+
+template <u32 flags>
+void occludedinternal(const intersector &bvhtree, const raypacket &p, packetshadow &s) {
+  const auto packetnum = p.raynum / soaf::size;
+  pair<intersector::node*,u32> stack[64];
+  stack[0] = makepair(bvhtree.root, 0u);
+  u32 stacksz = 1;
+  CACHE_LINE_ALIGNED array3f rdir;
+  loopi(packetnum) {
+    const auto r = soaf(one) / get(p.vdir,i);
+    store(&rdir[0][i*soaf::size], r.x);
+    store(&rdir[1][i*soaf::size], r.y);
+    store(&rdir[2][i*soaf::size], r.z);
+  }
+  u32 occnum = 0;
+  while (stacksz) {
+    const auto elem = stack[--stacksz];
+    auto node = elem.first;
+    auto first = elem.second;
+    for (;;) {
+      bool res = false;
+      if (flags & raypacket::INTERVALARITH) {
+        if (flags & raypacket::COMMONORG) {
+          res = slaboneco(node->box, p, rdir, first, s.t);
+          if (res) goto processnode;
+          if (culliaco(node->box, p)) break;
+        } else {
+          res = slabone(node->box, p, rdir, first, s.t);
+          if (res) goto processnode;
+          if (cullia(node->box, p)) break;
+        }
+        ++first;
+      }
+      if (flags & raypacket::COMMONORG)
+        res = slabfirstco(node->box, p, rdir, first, s.t);
+      else
+        res = slabfirst(node->box, p, rdir, first, s.t);
+      if (!res) break;
+    processnode:
+      const u32 flag = node->getflag();
+      if (flag == intersector::NONLEAF) {
+        const u32 offset = node->getoffset();
+        stack[stacksz++] = makepair(node+offset+1, first);
+        node = node+offset;
+      } else {
+        if (flag == intersector::TRILEAF) {
+          auto tris = node->getptr<waldtriangle>();
+          const s32 n = tris->num;
+          u32 active[MAXRAYNUM];
+          active[first] = 1;
+          if (flags & raypacket::COMMONORG)
+            slabfilterco(node->box, p, rdir, active, first+1, s.t);
+          else
+            slabfilter(node->box, p, rdir, active, first+1, s.t);
+          loopi(n) occnum += occluded(tris[i], p, active, first, s);
+          if (occnum == p.raynum) return;
+          break;
+        } else {
+          node = node->getptr<intersector>()->root;
+          goto processnode;
+        }
+      }
+    }
+  }
+}
+
+#define F false
+#define T true
+#if defined(__AVX__)
+static const avxb seqactivemask[] = {
+  avxb(T,F,F,F,F,F,F,F),
+  avxb(T,T,F,F,F,F,F,F),
+  avxb(T,T,T,F,F,F,F,F),
+  avxb(T,T,T,T,F,F,F,F),
+  avxb(T,T,T,T,T,F,F,F),
+  avxb(T,T,T,T,T,T,F,F),
+  avxb(T,T,T,T,T,T,T,F),
+  avxb(T,T,T,T,T,T,T,T)
+};
+#elif defined(__SSE__)
+static const sseb seqactivemask[] = {
+  sseb(F,F,F,F),
+  sseb(T,F,F,F),
+  sseb(T,T,F,F),
+  sseb(T,T,T,F),
+  sseb(T,T,T,T)
+};
+#endif
+#undef F
+#undef T
+
+#define CASE(X) case X: occludedinternal<X>(bvhtree, p, s); break;
+#define CASE4(X) CASE(X) CASE(X+1) CASE(X+2) CASE(X+3)
+void occluded(const intersector &bvhtree, const raypacket &p, packetshadow &s) {
+  const auto lastsize = p.raynum % soaf::size;
+  if (lastsize != 0) {
+    auto &np = const_cast<raypacket&>(p);
+    const auto last = p.raynum / soaf::size;
+    const auto org = get(p.vorg, last);
+    const auto dir = get(p.vdir, last);
+    const auto idx = soaf::size*last;
+    const auto m = seqactivemask[lastsize];
+    store(&np.vorg[0][idx], select(m, org.x, splat(org.x)));
+    store(&np.vorg[1][idx], select(m, org.y, splat(org.y)));
+    store(&np.vorg[2][idx], select(m, org.z, splat(org.z)));
+    store(&np.vdir[0][idx], select(m, dir.x, splat(dir.x)));
+    store(&np.vdir[1][idx], select(m, dir.y, splat(dir.y)));
+    store(&np.vdir[2][idx], select(m, dir.z, splat(dir.z)));
+  }
   switch (p.flags) {
     CASE4(0)
     CASE4(4)

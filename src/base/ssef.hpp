@@ -92,7 +92,7 @@ INLINE ssef rsqrt(const ssef& a) {
   const ssef r = _mm_rsqrt_ps(a.m128);
   return _mm_add_ps(_mm_mul_ps(_mm_set_ps(1.5f, 1.5f, 1.5f, 1.5f), r),
                     _mm_mul_ps(_mm_mul_ps(_mm_mul_ps(a,
-                      _mm_set_ps(-0.5f, -0.5f, -0.5f, -0.5f)), r), _mm_mul_ps(r, r)));
+                     _mm_set_ps(-0.5f, -0.5f, -0.5f, -0.5f)), r), _mm_mul_ps(r, r)));
 }
 
 // binary ops
@@ -118,21 +118,21 @@ INLINE ssef max(const ssef& a, const float& b) {return _mm_max_ps(a.m128,ssef(b)
 INLINE ssef max(const float& a, const ssef& b) {return _mm_max_ps(ssef(a),b.m128);}
 
 #if defined(__SSE4_1__)
-  INLINE ssef mini(const ssef& a, const ssef& b) {
-    const ssei ai = _mm_castps_si128(a);
-    const ssei bi = _mm_castps_si128(b);
-    const ssei ci = _mm_min_epi32(ai,bi);
-    return _mm_castsi128_ps(ci);
-  }
+INLINE ssef mini(const ssef& a, const ssef& b) {
+  const ssei ai = _mm_castps_si128(a);
+  const ssei bi = _mm_castps_si128(b);
+  const ssei ci = _mm_min_epi32(ai,bi);
+  return _mm_castsi128_ps(ci);
+}
 #endif
 
 #if defined(__SSE4_1__)
-  INLINE ssef maxi(const ssef& a, const ssef& b) {
-    const ssei ai = _mm_castps_si128(a);
-    const ssei bi = _mm_castps_si128(b);
-    const ssei ci = _mm_max_epi32(ai,bi);
-    return _mm_castsi128_ps(ci);
-  }
+INLINE ssef maxi(const ssef& a, const ssef& b) {
+  const ssei ai = _mm_castps_si128(a);
+  const ssei bi = _mm_castps_si128(b);
+  const ssei ci = _mm_max_epi32(ai,bi);
+  return _mm_castsi128_ps(ci);
+}
 #endif
 
 // ternary ops
@@ -217,6 +217,7 @@ INLINE ssei floori (const ssef& a) {
 // movement/shifting/shuffling functions
 INLINE ssef unpacklo(const ssef& a, const ssef& b) {return _mm_unpacklo_ps(a.m128, b.m128);}
 INLINE ssef unpackhi(const ssef& a, const ssef& b) {return _mm_unpackhi_ps(a.m128, b.m128);}
+INLINE ssef andnot(const ssef& a, const ssef& b) {return _mm_andnot_ps(a.m128, b.m128);}
 
 template<size_t i0, size_t i1, size_t i2, size_t i3>
 INLINE ssef shuffle(const ssef& b) {

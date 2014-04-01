@@ -19,6 +19,7 @@
 // ======================================================================== //
 #pragma once
 #include "sys.hpp"
+#include "math.hpp"
 
 #define op operator
 namespace q {
@@ -27,9 +28,9 @@ namespace q {
  - 4-wide SSE bool type
  -------------------------------------------------------------------------*/
 struct sseb {
-  typedef struct sseb Mask;  // mask type
-  typedef struct ssei Int;   // int type
-  typedef struct ssef Float; // float type
+  typedef struct sseb masktype;  // mask type
+  typedef struct ssei inttype;   // int type
+  typedef struct ssef floattype; // float type
 
   enum   {size = 4};                  // number of SIMD elements
   union  {__m128 m128; s32 v[4];};  // data
@@ -54,6 +55,9 @@ struct sseb {
     assert(mask >= 0 && mask < 16);
     m128 = _mm_lookupmask_ps[mask];
   }
+
+  // loads and stores
+  static INLINE sseb load(const void* const ptr) {return *(__m128*)ptr;}
 
   // constants
   INLINE sseb(falsetype) : m128(_mm_setzero_ps()) {}
@@ -97,6 +101,7 @@ INLINE sseb select(const sseb& m, const sseb& t, const sseb& f) {
 // movement/shifting/shuffling functions
 INLINE sseb unpacklo(const sseb &a, const sseb &b) {return _mm_unpacklo_ps(a,b);}
 INLINE sseb unpackhi(const sseb &a, const sseb &b) {return _mm_unpackhi_ps(a,b);}
+INLINE sseb andnot(const sseb& a, const sseb& b) {return _mm_andnot_ps(a.m128, b.m128);}
 
 template<size_t i0, size_t i1, size_t i2, size_t i3>
 INLINE sseb shuffle(const sseb& a) {
@@ -107,6 +112,12 @@ template<size_t i0, size_t i1, size_t i2, size_t i3>
 INLINE sseb shuffle(const sseb &a, const sseb &b) {
   return _mm_shuffle_ps(a, b, _MM_SHUFFLE(i3, i2, i1, i0));
 }
+
+// memory load and store operations
+INLINE sseb load4b(const void* const a) {return _mm_load_ps((float*)a);}
+INLINE void store4b (void* ptr, const sseb& v) {_mm_store_ps((float*)ptr,v);}
+INLINE sseb loadu4b(const void* const a) {return _mm_loadu_ps((float*)a);}
+INLINE void storeu4b (void* ptr, const sseb& v) {_mm_storeu_ps((float*)ptr,v);}
 
 #if defined(__SSE3__)
 template<> INLINE sseb shuffle<0, 0, 2, 2>(const sseb& a) {

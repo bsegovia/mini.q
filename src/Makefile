@@ -30,6 +30,7 @@ BASE_OBJS=\
   base/script.o\
   base/stl.o\
   base/sys.o\
+  base/sse.o\
   base/task.o
 
 GAME_OBJS=\

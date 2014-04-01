@@ -76,6 +76,9 @@ struct avxb {
   INLINE avxb(truetype) :
     m256(_mm256_cmp_ps(_mm256_setzero_ps(), _mm256_setzero_ps(), _CMP_EQ_OQ)) {}
 
+  // loads and stores
+  static INLINE avxb load(const void* const ptr) {return *(__m256*)ptr;}
+
   // array access
   INLINE bool op [](const size_t i) const {
     assert(i < 8);
@@ -110,12 +113,9 @@ INLINE avxb select(const avxb& mask, const avxb& t, const avxb& f) {
 }
 
 // Movement/Shifting/Shuffling Functions
-INLINE avxb unpacklo(const avxb& a, const avxb& b) {
-  return _mm256_unpacklo_ps(a.m256, b.m256);
-}
-INLINE avxb unpackhi(const avxb& a, const avxb& b) {
-  return _mm256_unpackhi_ps(a.m256, b.m256);
-}
+INLINE avxb unpacklo(const avxb& a, const avxb& b) {return _mm256_unpacklo_ps(a.m256, b.m256); }
+INLINE avxb unpackhi(const avxb& a, const avxb& b) {return _mm256_unpackhi_ps(a.m256, b.m256); }
+INLINE avxb andnot(const avxb& a, const avxb& b) {return _mm256_andnot_ps(a.m256, b.m256);}
 
 template<size_t i>
 INLINE avxb shuffle(const avxb& a) {
@@ -150,6 +150,17 @@ template<> INLINE avxb shuffle<1,1,3,3>(const avxb& b) {
 }
 template<> INLINE avxb shuffle<0,1,0,1>(const avxb& b) {
   return _mm256_castpd_ps(_mm256_movedup_pd(_mm256_castps_pd(b)));
+}
+
+// memory load and store operations
+INLINE avxb load8b(const void* const a) {
+  return _mm256_load_ps((const float*)a);
+}
+INLINE void store8b(void *ptr, const avxb& b) {
+  return _mm256_store_ps((float*)ptr,b);
+}
+INLINE void store8b(const avxb& mask, void *ptr, const avxb& b) {
+  return _mm256_maskstore_ps((float*)ptr,(__m256i)mask,b);
 }
 
 template<size_t i>
