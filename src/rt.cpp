@@ -29,7 +29,7 @@ void buildbvh(vec3f *v, u32 *idx, u32 idxnum) {
 }
 
 enum { TILESIZE = 16 };
-static const vec3f lpos(0.f, -4.f, 0.f);
+static const vec3f lpos(0.f, -4.f, 2.f);
 static atomic totalraynum;
 struct raycasttask : public task {
   raycasttask(bvh::intersector *bvhisec, const camera &cam, int *pixels, vec2i dim, vec2i tile) :
@@ -68,7 +68,7 @@ struct raycasttask : public task {
     }
     bvh::avx::closest(*bvhisec, p, hit);
 
-#define NORMAL_ONLY 1
+#define NORMAL_ONLY 0
 #if !NORMAL_ONLY
     // exclude points that interesect nothing
     int mapping[TILESIZE*TILESIZE], curr = 0;
@@ -107,7 +107,7 @@ struct raycasttask : public task {
       shadow.iamaxlen = maxlen;
       shadow.iaminlen = 0.f;
     }
-    bvh::occluded(*bvhisec, shadow, occluded);
+    bvh::avx::occluded(*bvhisec, shadow, occluded);
 
     for (u32 y = 0; y < u32(TILESIZE); ++y)
     for (u32 x = 0; x < u32(TILESIZE); ++x) {

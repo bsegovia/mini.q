@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------
  - mini.q - a minimalistic multiplayer fps
- - bvh.cpp -> implements bvh intersection routines using plain C
+ - bvhsimd.cpp -> implements intersection routines using SIMD instructions
  -------------------------------------------------------------------------*/
 #include <cstring>
 #include <cfloat>
@@ -35,7 +35,8 @@ INLINE void store(void *ptr, const soab &x) {store8b(ptr, x);}
 INLINE void maskstore(const soab &m, void *ptr, const soaf &x) {store8f(m, ptr, x);}
 INLINE soaf splat(const soaf &v) {
   const auto p = shuffle<0,0>(v);
-  return shuffle<0,0,0,0>(p,p);
+  const auto s = shuffle<0,0,0,0>(p,p);
+  return s;
 }
 #elif defined(__SSE__)
 typedef ssef soaf;
@@ -258,14 +259,13 @@ INLINE u32 occluded(const waldtriangle &tri, const raypacket &p,
     const auto trivertk = soa2f(tri.vertk);
     const auto tribn = soa2f(tri.bn);
     const auto tricn = soa2f(tri.cn);
+    const auto oldoccluded = soab::load(&s.occluded[idx]);
     const auto h = org + t*dir - trivertk;
     const auto u = dot(h,tribn), v = dot(h,tricn);
     const auto aperture = (u>=soaf(zero)) & (v>=soaf(zero)) & (u+v<=soaf(one));
-    const auto m = aperture & tmask;
+    const auto m = andnot(oldoccluded, aperture&tmask);
     if (none(m)) continue;
-    const auto oldoccluded = soab::load(&s.occluded[idx]);
-    const auto newoccluded = andnot(m, oldoccluded);
-    occludednum += popcnt(newoccluded);
+    occludednum += popcnt(m);
     store(&s.occluded[idx], oldoccluded|m);
   }
   return occludednum;
@@ -446,11 +446,13 @@ static const sseb seqactivemask[] = {
 #define CASE4(X) CASE(X) CASE(X+1) CASE(X+2) CASE(X+3)
 void occluded(const intersector &bvhtree, const raypacket &p, packetshadow &s) {
   const auto lastsize = p.raynum % soaf::size;
+  const auto initialnum = p.raynum;
   if (lastsize != 0) {
     auto &np = const_cast<raypacket&>(p);
     const auto last = p.raynum / soaf::size;
     const auto org = get(p.vorg, last);
     const auto dir = get(p.vdir, last);
+    const auto t = get(s.t, last);
     const auto idx = soaf::size*last;
     const auto m = seqactivemask[lastsize];
     store(&np.vorg[0][idx], select(m, org.x, splat(org.x)));
@@ -459,6 +461,9 @@ void occluded(const intersector &bvhtree, const raypacket &p, packetshadow &s) {
     store(&np.vdir[0][idx], select(m, dir.x, splat(dir.x)));
     store(&np.vdir[1][idx], select(m, dir.y, splat(dir.y)));
     store(&np.vdir[2][idx], select(m, dir.z, splat(dir.z)));
+    store(&s.occluded[idx], soab(falsev));
+    store(&s.t[idx], splat(t));
+    np.raynum = (last+1) * soaf::size;
   }
   switch (p.flags) {
     CASE4(0)
@@ -466,6 +471,7 @@ void occluded(const intersector &bvhtree, const raypacket &p, packetshadow &s) {
     CASE4(8)
     CASE4(12)
   };
+  const_cast<raypacket&>(p).raynum = initialnum;
 }
 #undef CASE
 #undef CASE4
