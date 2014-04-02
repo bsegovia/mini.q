@@ -58,9 +58,9 @@ struct avxb {
 #endif
  }
 
-  INLINE avxb (const  sseb& a) :
+  INLINE avxb (const sseb& a) :
     m256(_mm256_insertf128_ps(_mm256_castps128_ps256(a),a,1)) {}
-  INLINE avxb (const  sseb& a, const  sseb& b) :
+  INLINE avxb (const sseb& a, const  sseb& b) :
     m256(_mm256_insertf128_ps(_mm256_castps128_ps256(a),b,1)) {}
   INLINE avxb (const __m128 a, const __m128 b) : l(a), h(b) {}
   INLINE avxb (bool a) : m256(avxb(sseb(a), sseb(a))) {}

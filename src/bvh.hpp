@@ -50,8 +50,6 @@ struct CACHE_LINE_ALIGNED raypacket {
   array3f vorg; // only used when COMMONORG is *not* set
   array3f vdir; // only used when COMMONDIR is *not* set
   vec3f orgco;  // only used when COMMONORG is set
-  interval3f iaorg, iadir, iardir; // only used when INTERVALARITH is se
-  float iaminlen, iamaxlen;        // only used when INTERVALARITH is se
   u32 raynum; // number of rays active in the packet
   u32 flags;  // exposes property of the packet
 };

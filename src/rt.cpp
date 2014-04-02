@@ -51,7 +51,10 @@ struct raycasttask : public task {
       maxdir = max(maxdir, ray.dir);
     }
     p.raynum = TILESIZE*TILESIZE;
+    p.orgco = cam.org;
     p.flags = bvh::raypacket::COMMONORG;
+
+#if 0
     if (all(gt(mindir*maxdir,vec3f(zero)))) {
       p.iadir = makeinterval(mindir, maxdir);
       p.iardir = rcp(p.iadir);
@@ -60,13 +63,13 @@ struct raycasttask : public task {
       p.iaminlen = 0.f;
       p.flags |= bvh::raypacket::INTERVALARITH;
     }
-
+#endif
     bvh::packethit hit;
     loopi(bvh::MAXRAYNUM) {
       hit.id[i] = ~0x0u;
       hit.t[i] = FLT_MAX;
     }
-    bvh::avx::closest(*bvhisec, p, hit);
+    bvh::sse::closest(*bvhisec, p, hit);
 
 #define NORMAL_ONLY 0
 #if !NORMAL_ONLY
@@ -89,8 +92,8 @@ struct raycasttask : public task {
         maxlen = max(maxlen, len);
         shadow.setorg(lpos, curr);
         shadow.setdir(dir/len, curr);
-        mindir = min(mindir, shadow.dir(curr));
-        maxdir = max(maxdir, shadow.dir(curr));
+        //mindir = min(mindir, shadow.dir(curr));
+        //maxdir = max(maxdir, shadow.dir(curr));
         occluded.t[curr] = len;
         occluded.occluded[curr] = 0;
         ++curr;
@@ -99,6 +102,8 @@ struct raycasttask : public task {
     }
     shadow.raynum = curr;
     shadow.flags = bvh::raypacket::COMMONORG;
+    p.orgco = lpos;
+#if 0
     if (all(gt(mindir*maxdir,vec3f(zero)))) {
       shadow.iadir = makeinterval(mindir, maxdir);
       shadow.iardir = rcp(shadow.iadir);
@@ -107,7 +112,8 @@ struct raycasttask : public task {
       shadow.iamaxlen = maxlen;
       shadow.iaminlen = 0.f;
     }
-    bvh::avx::occluded(*bvhisec, shadow, occluded);
+#endif
+    bvh::sse::occluded(*bvhisec, shadow, occluded);
 
     for (u32 y = 0; y < u32(TILESIZE); ++y)
     for (u32 x = 0; x < u32(TILESIZE); ++x) {

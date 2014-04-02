@@ -246,7 +246,7 @@ extern TYPE NAME(void);\
 extern void set##NAME(TYPE x);
 
 /*-------------------------------------------------------------------------
- - standard types
+ - standard types and some simple type traits
  -------------------------------------------------------------------------*/
 namespace q {
 #if defined(__MSVC__)
@@ -268,6 +268,9 @@ typedef unsigned     short u16;
 typedef               char s8;
 typedef unsigned      char u8;
 #endif // __MSVC__
+template <typename T, typename U> struct typeequal { enum {value = false}; };
+template <typename T> struct typeequal<T,T> { enum {value = true}; };
+
 } /* namespace q */
 
 /*-------------------------------------------------------------------------

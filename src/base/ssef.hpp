@@ -251,11 +251,11 @@ template<size_t i0> INLINE ssef shuffle(const ssef& b) {
 }
 
 #if defined (__SSE4_1__) && !defined(__GNUC__)
-template<size_t i> INLINE float extract   (const ssef& a) {return _mm_cvtss_f32(_mm_extract_ps(a,i));}
+template<size_t i> INLINE float fextract   (const ssef& a) {return _mm_cvtss_f32(_mm_extract_ps(a,i));}
 #else
-template<size_t i> INLINE float extract   (const ssef& a) {return _mm_cvtss_f32(shuffle<i,i,i,i>(a));}
+template<size_t i> INLINE float fextract   (const ssef& a) {return _mm_cvtss_f32(shuffle<i,i,i,i>(a));}
 #endif
-template<>         INLINE float extract<0>(const ssef& a) {return _mm_cvtss_f32(a);}
+template<>         INLINE float fextract<0>(const ssef& a) {return _mm_cvtss_f32(a);}
 
 #if defined (__SSE4_1__)
 template<size_t dst, size_t src, size_t clr>
