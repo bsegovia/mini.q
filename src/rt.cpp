@@ -54,16 +54,6 @@ struct raycasttask : public task {
     p.orgco = cam.org;
     p.flags = bvh::raypacket::COMMONORG;
 
-#if 0
-    if (all(gt(mindir*maxdir,vec3f(zero)))) {
-      p.iadir = makeinterval(mindir, maxdir);
-      p.iardir = rcp(p.iadir);
-      p.iaorg = makeinterval(cam.org, cam.org);
-      p.iamaxlen = FLT_MAX;
-      p.iaminlen = 0.f;
-      p.flags |= bvh::raypacket::INTERVALARITH;
-    }
-#endif
     bvh::packethit hit;
     loopi(bvh::MAXRAYNUM) {
       hit.id[i] = ~0x0u;
@@ -92,8 +82,6 @@ struct raycasttask : public task {
         maxlen = max(maxlen, len);
         shadow.setorg(lpos, curr);
         shadow.setdir(dir/len, curr);
-        //mindir = min(mindir, shadow.dir(curr));
-        //maxdir = max(maxdir, shadow.dir(curr));
         occluded.t[curr] = len;
         occluded.occluded[curr] = 0;
         ++curr;
@@ -103,16 +91,6 @@ struct raycasttask : public task {
     shadow.raynum = curr;
     shadow.flags = bvh::raypacket::COMMONORG;
     p.orgco = lpos;
-#if 0
-    if (all(gt(mindir*maxdir,vec3f(zero)))) {
-      shadow.iadir = makeinterval(mindir, maxdir);
-      shadow.iardir = rcp(shadow.iadir);
-      shadow.iaorg = makeinterval(lpos,lpos);
-      shadow.flags |= bvh::raypacket::INTERVALARITH;
-      shadow.iamaxlen = maxlen;
-      shadow.iaminlen = 0.f;
-    }
-#endif
     bvh::sse::occluded(*bvhisec, shadow, occluded);
 
     for (u32 y = 0; y < u32(TILESIZE); ++y)
