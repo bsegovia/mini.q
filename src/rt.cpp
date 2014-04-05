@@ -61,7 +61,7 @@ struct raycasttask : public task {
     avx::visibilitypackethit(hit);
     avx::closest(*bvhisec, p, hit);
 
-#define NORMAL_ONLY 0
+#define NORMAL_ONLY 1
 #if !NORMAL_ONLY
     // exclude points that interesect nothing
     int mapping[TILESIZE*TILESIZE], curr = 0;
