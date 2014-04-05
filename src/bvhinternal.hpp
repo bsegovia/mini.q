@@ -3,7 +3,7 @@
  - bvhinternal.hpp -> exposes internal structures for the BVH
  -------------------------------------------------------------------------*/
 namespace q {
-namespace bvh {
+namespace rt {
 
 struct waldtriangle {
   vec2f bn, cn, vertk, n;
@@ -47,6 +47,6 @@ static_assert(sizeof(intersector::node) == 32,"invalid node size");
 INLINE aabb getaabb(const struct intersector *isec) {
   return isec->root[0].box;
 }
-} /* namespace bvh */
+} /* namespace rt */
 } /* namespace q */
 

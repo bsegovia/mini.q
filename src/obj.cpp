@@ -254,9 +254,6 @@ static INLINE bool cmp(obj::triangle t0, obj::triangle t1) {return t0.m < t1.m;}
 struct vertexkey {
   INLINE vertexkey(void) {}
   INLINE vertexkey(int p, int n, int t) : p(p), n(n), t(t) {}
-  bool operator== (const vertexkey &other) const {
-    return p==other.p && n==other.n && t==other.t;
-  }
   bool operator< (const vertexkey &other) const {
     if (p != other.p) return p < other.p;
     if (n != other.n) return n < other.n;

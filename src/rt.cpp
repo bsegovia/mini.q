@@ -6,69 +6,67 @@
 #include "bvhsse.hpp"
 #include "bvhavx.hpp"
 #include "rt.hpp"
+#include "rtscalar.hpp"
 #include "base/math.hpp"
 #include "base/console.hpp"
 #include "base/task.hpp"
 
 namespace q {
 namespace rt {
-static bvh::intersector *world = NULL;
+static intersector *world = NULL;
 
 // create a triangle soup and make a mesh out of it
 void buildbvh(vec3f *v, u32 *idx, u32 idxnum) {
   const auto start = sys::millis();
   const auto trinum = idxnum/3;
-  const auto prim = NEWAE(bvh::primitive, trinum);
+  const auto prim = NEWAE(primitive, trinum);
   loopi(trinum) {
     loopj(3) prim[i].v[j] = v[idx[3*i+j]];
-    prim[i].type = bvh::primitive::TRI;
+    prim[i].type = primitive::TRI;
   }
-  world = bvh::create(prim, trinum);
+  world = create(prim, trinum);
   const auto ms = sys::millis() - start;
   con::out("bvh: elapsed %f ms", float(ms));
 }
 
-enum { TILESIZE = 16 };
+camera::camera(vec3f org, vec3f up, vec3f view, float fov, float ratio) :
+  org(org), up(up), view(view), fov(fov), ratio(ratio)
+{
+  const float left = -ratio * 0.5f;
+  const float top = 0.5f;
+  dist = 0.5f / tan(fov * float(pi) / 360.f);
+  view = normalize(view);
+  up = normalize(up);
+  xaxis = cross(view, up);
+  xaxis = normalize(xaxis);
+  zaxis = cross(view, xaxis);
+  zaxis = normalize(zaxis);
+  imgplaneorg = dist*view + left*xaxis - top*zaxis;
+  xaxis *= ratio;
+}
+
 static const vec3f lpos(0.f, -4.f, 2.f);
 static atomic totalraynum;
 struct raycasttask : public task {
-  raycasttask(bvh::intersector *bvhisec, const camera &cam, int *pixels, vec2i dim, vec2i tile) :
+  raycasttask(intersector *bvhisec, const camera &cam, int *pixels, vec2i dim, vec2i tile) :
     task("raycasttask", tile.x*tile.y, 1, 0, UNFAIR),
     bvhisec(bvhisec), cam(cam), pixels(pixels), dim(dim), tile(tile)
   {}
   virtual void run(u32 tileID) {
     const vec2i tilexy(tileID%tile.x, tileID/tile.x);
-    const vec2i screen = int(TILESIZE) * tilexy;
-    bvh::raypacket p;
-    vec3f mindir(FLT_MAX), maxdir(-FLT_MAX);
-    for (u32 y = 0; y < u32(TILESIZE); ++y)
-    for (u32 x = 0; x < u32(TILESIZE); ++x) {
-      const ray ray = cam.generate(dim.x, dim.y, screen.x+x, screen.y+y);
-      const int idx = x+y*TILESIZE;
-      p.setdir(ray.dir, idx);
-      p.setorg(cam.org, idx);
-      mindir = min(mindir, ray.dir);
-      maxdir = max(maxdir, ray.dir);
-    }
-    p.raynum = TILESIZE*TILESIZE;
-    p.orgco = cam.org;
-    p.flags = bvh::raypacket::COMMONORG;
-
-    bvh::packethit hit;
-    loopi(bvh::MAXRAYNUM) {
-      hit.id[i] = ~0x0u;
-      hit.t[i] = FLT_MAX;
-    }
-    bvh::sse::closest(*bvhisec, p, hit);
+    const vec2i tileorg = int(TILESIZE) * tilexy;
+    raypacket p;
+    packethit hit;
+    visibilitypacket(cam, p, tileorg, dim);
+    visibilitypackethit(hit);
+    avx::closest(*bvhisec, p, hit);
 
 #define NORMAL_ONLY 0
 #if !NORMAL_ONLY
     // exclude points that interesect nothing
     int mapping[TILESIZE*TILESIZE], curr = 0;
-    bvh::raypacket shadow;
-    bvh::packetshadow occluded;
-    float maxlen = -FLT_MAX;
-    mindir = vec3f(FLT_MAX), maxdir = vec3f(-FLT_MAX);
+    raypacket shadow;
+    packetshadow occluded;
     loopi(int(p.raynum)) {
       if (hit.ishit(i)) {
         mapping[i] = curr;
@@ -76,26 +74,23 @@ struct raycasttask : public task {
         hit.n[0][i] = n.x;
         hit.n[1][i] = n.y;
         hit.n[2][i] = n.z;
-        const auto dst = p.org(i) + hit.t[i] * p.dir(i) + n * 1e-2f;
+        const auto dst = p.sharedorg + hit.t[i] * p.dir(i) + n * 1e-2f;
         const auto dir = dst-lpos;
-        const auto len = length(dir);
-        maxlen = max(maxlen, len);
-        shadow.setorg(lpos, curr);
-        shadow.setdir(dir/len, curr);
-        occluded.t[curr] = len;
+        shadow.setdir(dir, curr);
+        occluded.t[curr] = 1.f;
         occluded.occluded[curr] = 0;
         ++curr;
       } else
         mapping[i] = -1;
     }
+    shadow.sharedorg = lpos;
     shadow.raynum = curr;
-    shadow.flags = bvh::raypacket::COMMONORG;
-    p.orgco = lpos;
-    bvh::sse::occluded(*bvhisec, shadow, occluded);
+    shadow.flags = raypacket::SHAREDORG;
+    avx::occluded(*bvhisec, shadow, occluded);
 
     for (u32 y = 0; y < u32(TILESIZE); ++y)
     for (u32 x = 0; x < u32(TILESIZE); ++x) {
-      const int offset = (screen.x+x)+dim.x*(screen.y+y);
+      const int offset = (tileorg.x+x)+dim.x*(tileorg.y+y);
       const int idx = x+y*TILESIZE;
       if (hit.ishit(idx)) {
         const auto sid = mapping[idx];
@@ -112,7 +107,7 @@ struct raycasttask : public task {
 #else
     for (u32 y = 0; y < u32(TILESIZE); ++y)
     for (u32 x = 0; x < u32(TILESIZE); ++x) {
-      const int offset = (screen.x+x)+dim.x*(screen.y+y);
+      const int offset = (tileorg.x+x)+dim.x*(tileorg.y+y);
       const int idx = x+y*TILESIZE;
       if (hit.ishit(idx)) {
         const auto n = vec3i(clamp(normalize(hit.getnormal(idx)), vec3f(zero), vec3f(one))*255.f);
@@ -123,7 +118,7 @@ struct raycasttask : public task {
     totalraynum += TILESIZE*TILESIZE;
 #endif
   }
-  bvh::intersector *bvhisec;
+  intersector *bvhisec;
   const camera &cam;
   int *pixels;
   vec2i dim;

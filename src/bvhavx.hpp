@@ -2,11 +2,13 @@
  - mini.q - a minimalistic multiplayer fps
  - bvhavx.hpp -> exposes bvh avx routines
  -------------------------------------------------------------------------*/
+#pragma once
+
 namespace q {
-namespace bvh {
+namespace rt {
 namespace avx {
-void closest(const intersector &tree, const raypacket &p, packethit &hit);
-void occluded(const intersector &tree, const raypacket &p, packetshadow &s);
+void closest(const struct intersector&, const struct raypacket&, struct packethit&);
+void occluded(const struct intersector&, const struct raypacket&, struct packetshadow&);
 } /* namespace avx */
-} /* namespace bvh */
+} /* namespace rt */
 } /* namespace q */

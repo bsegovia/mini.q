@@ -839,26 +839,6 @@ INLINE bool operator== (const array<U,n> &v0, const array<U,n> &v1) {
 /*-------------------------------------------------------------------------
  - raytracing / visibility related stuff
  -------------------------------------------------------------------------*/
-struct ray {
-  INLINE ray(void) {}
-  INLINE ray(vec3f org, vec3f dir, float near = 0.f, float far = FLT_MAX)
-    : org(org), dir(dir), tnear(near), tfar(far) {}
-  vec3f org, dir;
-  float tnear, tfar;
-};
-
-struct camera {
-  camera(vec3f org, vec3f up, vec3f view, float fov, float ratio);
-  INLINE ray generate(int w, int h, int x, int y) const {
-    const float rw = rcp(float(w)), rh = rcp(float(h));
-    const vec3f sxaxis = xaxis*rw, szaxis = zaxis*rh;
-    const vec3f dir = normalize(imgplaneorg + float(x)*sxaxis + float(y)*szaxis);
-    return ray(org, dir);
-  }
-  vec3f org, up, view, imgplaneorg, xaxis, zaxis;
-  float fov, ratio, dist;
-};
-
 struct aabb {
   INLINE aabb(void) {}
   INLINE aabb(float m, float M) : pmin(m), pmax(M) {}

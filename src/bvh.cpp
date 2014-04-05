@@ -18,7 +18,7 @@
 #endif
 
 namespace q {
-namespace bvh {
+namespace rt {
 
 /*-------------------------------------------------------------------------
  - bvh building
@@ -323,6 +323,6 @@ void destroy(intersector *bvhtree) {
   SAFE_DEL(bvhtree);
 }
 
-} /* namespace bvh */
+} /* namespace rt */
 } /* namespace q */
 

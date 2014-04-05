@@ -7,7 +7,7 @@
 #include "base/sys.hpp"
 
 namespace q {
-namespace bvh {
+namespace rt {
 
 // hit point when tracing a ray inside a bvh
 struct hit {
@@ -26,8 +26,8 @@ typedef CACHE_LINE_ALIGNED arrayf array3f[3];
 typedef CACHE_LINE_ALIGNED arrayf array4f[4];
 
 struct CACHE_LINE_ALIGNED raypacket {
-  static const u32 COMMONORG     = 1<<0;
-  static const u32 COMMONDIR     = 1<<1;
+  static const u32 SHAREDORG     = 1<<0;
+  static const u32 SHAREDDIR     = 1<<1;
   static const u32 INTERVALARITH = 1<<2;
   static const u32 CORNERRAYS    = 1<<3;
   INLINE raypacket(void) : raynum(0), flags(0) {}
@@ -47,9 +47,10 @@ struct CACHE_LINE_ALIGNED raypacket {
   INLINE vec3f dir(u32 rayid=0) const {
     return vec3f(vdir[0][rayid], vdir[1][rayid], vdir[2][rayid]);
   }
-  array3f vorg; // only used when COMMONORG is *not* set
-  array3f vdir; // only used when COMMONDIR is *not* set
-  vec3f orgco;  // only used when COMMONORG is set
+  array3f vorg;     // only used when SHAREDORG is *not* set
+  array3f vdir;     // only used when SHAREDDIR is *not* set
+  vec3f sharedorg;  // only used when SHAREDORG is set
+  vec3f shareddir;  // only used when SHAREDDIR is set
   u32 raynum; // number of rays active in the packet
   u32 flags;  // exposes property of the packet
 };
@@ -89,7 +90,7 @@ struct primitive {
     v[2]=c;
   }
   INLINE primitive(const intersector *isec) : isec(isec), type(INTERSECTOR) {
-    const aabb box = bvh::getaabb(isec);
+    const aabb box = rt::getaabb(isec);
     v[0]=box.pmin;
     v[1]=box.pmax;
   }
@@ -103,6 +104,6 @@ struct primitive {
   vec3f v[3];
   u32 type;
 };
-} /* namespace bvh */
+} /* namespace rt */
 } /* namespace q */
 
