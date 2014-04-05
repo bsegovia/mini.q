@@ -39,9 +39,12 @@ INLINE bool culliaco(const aabb &box, const raypacket &p, const raypacketextra &
 
 #if defined(__AVX__)
 typedef avxf soaf;
+typedef avxi soai;
 typedef avxb soab;
+INLINE void store(void *ptr, const soai &x) {store8i(ptr, x);}
 INLINE void store(void *ptr, const soaf &x) {store8f(ptr, x);}
 INLINE void store(void *ptr, const soab &x) {store8b(ptr, x);}
+INLINE void storent(void *ptr, const soai &x) {store8i_nt(ptr, x);}
 INLINE void maskstore(const soab &m, void *ptr, const soaf &x) {store8f(m, ptr, x);}
 INLINE soaf splat(const soaf &v) {
   const auto p = shuffle<0,0>(v);
@@ -50,15 +53,19 @@ INLINE soaf splat(const soaf &v) {
 }
 #elif defined(__SSE__)
 typedef ssef soaf;
+typedef ssei soai;
 typedef sseb soab;
+INLINE void store(void *ptr, const soai &x) {store4i(ptr, x);}
 INLINE void store(void *ptr, const soaf &x) {store4f(ptr, x);}
 INLINE void store(void *ptr, const soab &x) {store4b(ptr, x);}
+INLINE void storent(void *ptr, const soai &x) {store4i_nt(ptr, x);}
 INLINE void maskstore(const soab &m, void *ptr, const soaf &x) {store4f(m, ptr, x);}
 INLINE soaf splat(const soaf &v) {return shuffle<0,0,0,0>(v,v);}
 #else
 #error "unsupported SIMD"
 #endif
 
+typedef vec3<soai> soa3i;
 typedef vec3<soaf> soa3f;
 typedef vec2<soaf> soa2f;
 
@@ -227,8 +234,8 @@ INLINE void closest(const waldtriangle &RESTRICT tri,
   const auto k = u32(tri.k), ku = waldmodulo[k], kv = waldmodulo[k+1];
   rangej(first,packetnum) if (active[j]) {
     const auto idx = j*soaf::size;
-    const auto raydir = getdir<flags&raypacket::SHAREDDIR>(p,j);
-    const auto rayorg = getorg<flags&raypacket::SHAREDORG>(p,j);
+    const auto raydir = getdir<0!=(flags&raypacket::SHAREDDIR)>(p,j);
+    const auto rayorg = getorg<0!=(flags&raypacket::SHAREDORG)>(p,j);
     const auto dist = get(hit.t, j);
     const soa2f dir(raydir[ku], raydir[kv]);
     const soa2f org(rayorg[ku], rayorg[kv]);
@@ -276,8 +283,8 @@ INLINE u32 occluded(const waldtriangle &RESTRICT tri,
   auto occludednum = 0u;
   rangej(first,packetnum) if (active[j]) {
     const auto idx = j*soaf::size;
-    const auto raydir = getdir<flags&raypacket::SHAREDDIR>(p,j);
-    const auto rayorg = getorg<flags&raypacket::SHAREDORG>(p,j);
+    const auto raydir = getdir<0!=(flags&raypacket::SHAREDDIR)>(p,j);
+    const auto rayorg = getorg<0!=(flags&raypacket::SHAREDORG)>(p,j);
     const auto dist = get(s.t, j);
     const soa2f dir(raydir[ku], raydir[kv]);
     const soa2f org(rayorg[ku], rayorg[kv]);
@@ -609,11 +616,34 @@ void visibilitypacket(const camera &RESTRICT cam,
   p.sharedorg = cam.org;
   p.flags = raypacket::SHAREDORG;
 }
+
 void visibilitypackethit(packethit &hit) {
   const auto packetnum = MAXRAYNUM/soaf::size;
   loopi(packetnum) {
     store(&hit.id[i*soaf::size], soaf(asfloat(~0x0u)));
     store(&hit.t[i*soaf::size],  soaf(FLT_MAX));
+  }
+}
+
+/*-------------------------------------------------------------------------
+ - framebuffer routines
+ -------------------------------------------------------------------------*/
+void fbwritenormal(const packethit &RESTRICT hit,
+                   const vec2i &RESTRICT tileorg,
+                   const vec2i &RESTRICT screensize,
+                   int *RESTRICT pixels)
+{
+  u32 idx = 0;
+  for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y) {
+    const auto yoffset = screensize.x*y;
+    for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size, ++idx) {
+      const auto m = soaf::load(&hit.id[idx*soaf::size]) != soaf(~0x0u);
+      const auto n = clamp(normalize(get(hit.n, idx)), soa3f(zero), soa3f(one));
+      const auto rgb = soa3i(n*soaf(255.f));
+      const auto hitcolor = rgb.x | (rgb.y<<8) | (rgb.z<<16) | soai(0xff000000);
+      const auto color = select(m, hitcolor, soai(zero));
+      storent(pixels+yoffset+x, color);
+    }
   }
 }
 } /* namespace NAMESPACE */

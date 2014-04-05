@@ -16,7 +16,7 @@ OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g -fsanitize=address
 RELFLAGS=-fomit-frame-pointer -O2 -DNDEBUG -DRELEASE -g
 
 CXXFLAGS=$(CXXCOMMONFLAGS) $(FLAGS) $(RELFLAGS)
-LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer -lz #-fsanitize=address
+LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer -lz -lm -lstdc++ #-fsanitize=address
 
 ENET_OBJS=\
   enet/callbacks.o\

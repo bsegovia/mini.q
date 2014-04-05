@@ -209,18 +209,12 @@ template <bool sharedorg>
 INLINE vec3f getorg(const raypacket &p, u32 idx) {
   return get(p.vorg, idx);
 }
-template <> INLINE
-vec3f getorg<true>(const raypacket &p, u32 idx) {
-  return vec3f(p.sharedorg);
-}
 template <bool shareddir>
 INLINE vec3f getdir(const raypacket &p, u32 idx) {
   return get(p.vdir, idx);
 }
-template <> INLINE
-vec3f getdir<true>(const raypacket &p, u32 idx) {
-  return vec3f(p.shareddir);
-}
+template <> INLINE vec3f getorg<true>(const raypacket &p, u32 idx) {return p.sharedorg;}
+template <> INLINE vec3f getdir<true>(const raypacket &p, u32 idx) {return p.shareddir;}
 
 template <u32 flags>
 INLINE void closest(
@@ -232,8 +226,8 @@ INLINE void closest(
 {
   rangej(first,p.raynum) if (active[j]) {
     const u32 k = tri.k, ku = waldmodulo[k], kv = waldmodulo[k+1];
-    const auto org = getorg<flags&raypacket::SHAREDORG>(p,j);
-    const auto dir = getdir<flags&raypacket::SHAREDDIR>(p,j);
+    const auto org = getorg<0!=(flags&raypacket::SHAREDORG)>(p,j);
+    const auto dir = getdir<0!=(flags&raypacket::SHAREDDIR)>(p,j);
     const vec2f dirk(dir[ku], dir[kv]);
     const vec2f posk(org[ku], org[kv]);
     const float t = (tri.nd-org[k]-dot(tri.n,posk))/(dir[k]+dot(tri.n,dirk));
@@ -264,8 +258,8 @@ INLINE u32 occluded(
   u32 occnum = 0;
   rangej(first,p.raynum) if (!s.occluded[j] && active[j]) {
     const u32 k = tri.k, ku = waldmodulo[k], kv = waldmodulo[k+1];
-    const auto org = getorg<flags&raypacket::SHAREDORG>(p,j);
-    const auto dir = getdir<flags&raypacket::SHAREDDIR>(p,j);
+    const auto org = getorg<0!=(flags&raypacket::SHAREDORG)>(p,j);
+    const auto dir = getdir<0!=(flags&raypacket::SHAREDDIR)>(p,j);
     const vec2f dirk(dir[ku], dir[kv]);
     const vec2f posk(org[ku], org[kv]);
     const float t = (tri.nd-org[k]-dot(tri.n,posk))/(dir[k]+dot(tri.n,dirk));

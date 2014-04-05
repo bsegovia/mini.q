@@ -63,7 +63,6 @@ struct raycasttask : public task {
 
 #define NORMAL_ONLY 1
 #if !NORMAL_ONLY
-    return;
     // exclude points that interesect nothing
     int mapping[TILESIZE*TILESIZE], curr = 0;
     raypacket shadow;
@@ -87,7 +86,7 @@ struct raycasttask : public task {
     shadow.sharedorg = lpos;
     shadow.raynum = curr;
     shadow.flags = raypacket::SHAREDORG;
-    avx::occluded(*bvhisec, shadow, occluded);
+    sse::occluded(*bvhisec, shadow, occluded);
 
     for (u32 y = 0; y < u32(TILESIZE); ++y)
     for (u32 x = 0; x < u32(TILESIZE); ++x) {
@@ -106,6 +105,7 @@ struct raycasttask : public task {
     }
     totalraynum += curr+TILESIZE*TILESIZE;
 #else
+#if 0
     for (u32 y = 0; y < u32(TILESIZE); ++y)
     for (u32 x = 0; x < u32(TILESIZE); ++x) {
       const int offset = (tileorg.x+x)+dim.x*(tileorg.y+y);
@@ -116,6 +116,9 @@ struct raycasttask : public task {
       } else
         pixels[offset] = 0;
     }
+#else
+    avx::fbwritenormal(hit, tileorg, dim, pixels);
+#endif
     totalraynum += TILESIZE*TILESIZE;
 #endif
   }
@@ -125,7 +128,7 @@ struct raycasttask : public task {
   vec2i dim;
   vec2i tile;
 };
-
+static int *pixels=NULL;
 void raytrace(const char *bmp, const vec3f &pos, const vec3f &ypr,
               int w, int h, float fovy, float aspect)
 {
@@ -134,7 +137,8 @@ void raytrace(const char *bmp, const vec3f &pos, const vec3f &ypr,
                     mat3x3f::rotate(-ypr.z,vec3f(0.f,0.f,1.f));
   const camera cam(pos, -r.vy, -r.vz, fovy, aspect);
   const vec2i dim(w,h), tile(dim/int(TILESIZE));
-  const auto pixels = (int*)MALLOC(w*h*sizeof(int));
+  if (pixels==NULL)
+  pixels = (int*)MALLOC(w*h*sizeof(int));
   const auto start = sys::millis();
   totalraynum=0;
   ref<task> isectask = NEW(raycasttask, world, cam, pixels, dim, tile);
@@ -143,7 +147,7 @@ void raytrace(const char *bmp, const vec3f &pos, const vec3f &ypr,
   const auto duration = float(sys::millis()-start);
   con::out("rt: %i ms, %f Mray/s", int(duration), 1000.f*(float(totalraynum)*1e-6f)/duration);
   sys::writebmp(pixels, w, h, bmp);
-  FREE(pixels);
+  //FREE(pixels);
 }
 } /* namespace rt */
 } /* namespace q */
