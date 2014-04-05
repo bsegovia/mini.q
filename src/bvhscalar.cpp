@@ -8,7 +8,7 @@
 #include "rt.hpp"
 #include "bvh.hpp"
 #include "bvhinternal.hpp"
-
+#if 0
 namespace q {
 namespace rt {
 
@@ -481,4 +481,5 @@ void occluded(const intersector &bvhtree, const raypacket &p, packetshadow &s) {
 #undef CASE4
 } /* namespace rt */
 } /* namespace q */
+#endif
 

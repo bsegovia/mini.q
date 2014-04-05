@@ -3,6 +3,6 @@
  - bvhavx.cpp -> instantiates avx routines
  -------------------------------------------------------------------------*/
 #define NAMESPACE avx
-#include "bvhsimd.cxx"
+#include "rtsimd.cxx"
 #undef avx
 

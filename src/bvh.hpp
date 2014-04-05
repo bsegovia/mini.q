@@ -69,12 +69,6 @@ struct CACHE_LINE_ALIGNED packetshadow : noncopyable {
 };
 struct intersector;
 
-// ray tracing routines (visiblity and shadow rays)
-void closest(const intersector&, const struct ray&, hit&);
-bool occluded(const intersector&, const struct ray&);
-void closest(const intersector&, const raypacket&, packethit&);
-void occluded(const intersector&, const raypacket&, packetshadow&);
-
 // opaque intersector data structure
 struct intersector *create(const struct primitive*, int n);
 void destroy(intersector*);

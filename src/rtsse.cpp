@@ -3,6 +3,6 @@
  - bvhsse.cpp -> instantiates sse routines
  -------------------------------------------------------------------------*/
 #define NAMESPACE sse
-#include "bvhsimd.cxx"
+#include "rtsimd.cxx"
 #undef sse
 

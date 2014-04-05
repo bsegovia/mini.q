@@ -39,9 +39,6 @@ BASE_OBJS=\
 GAME_OBJS=\
   client.o\
   bvh.o\
-  bvhscalar.o\
-  bvhsse.o\
-  bvhavx.o\
   csg.o\
   demo.o\
   editing.o\
@@ -63,6 +60,8 @@ GAME_OBJS=\
   shaders.o\
   rt.o\
   rtscalar.o\
+  rtsse.o\
+  rtavx.o\
   sound.o\
   sky.o\
   text.o\
