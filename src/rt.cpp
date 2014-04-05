@@ -63,6 +63,7 @@ struct raycasttask : public task {
 
 #define NORMAL_ONLY 1
 #if !NORMAL_ONLY
+    return;
     // exclude points that interesect nothing
     int mapping[TILESIZE*TILESIZE], curr = 0;
     raypacket shadow;
