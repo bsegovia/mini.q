@@ -10,6 +10,11 @@
 #include "base/avx.hpp"
 #include "bvh.hpp"
 #include "bvhinternal.hpp"
+#include "rt.hpp"
+
+//TODO * tester culling en premier
+//TODO * enlever le code scalaire dans initextra
+//TODO * faire IA en simd
 
 namespace q {
 namespace rt {
@@ -572,9 +577,45 @@ void occluded(const intersector &bvhtree, const raypacket &p, packetshadow &s) {
 }
 #undef CASE
 #undef CASE4
-//* tester culling en premier
-//* enlever le code scalaire dans initextra
-//* faire IA en simd
+
+/*-------------------------------------------------------------------------
+ - generation of packets
+ -------------------------------------------------------------------------*/
+#if defined(__AVX__)
+static const soaf identity(0.f,1.f,2.f,3.f,4.f,5.f,6.f,7.f);
+#elif defined(__SSE__)
+static const soaf identity(0.f,1.f,2.f,3.f);
+#endif
+void visibilitypacket(const camera &RESTRICT cam,
+                      raypacket &RESTRICT p,
+                      const vec2i &RESTRICT tileorg,
+                      const vec2i &RESTRICT screensize)
+{
+  const auto rw = rcp(float(screensize.x));
+  const auto rh = rcp(float(screensize.y));
+  const auto xaxis = soa3f(cam.xaxis*rw);
+  const auto zaxis = soa3f(cam.zaxis*rh);
+  const auto imgplaneorg = soa3f(cam.imgplaneorg);
+  u32 idx = 0;
+  for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y) {
+    const auto ydir = soaf(float(y))*zaxis;
+    for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size, ++idx) {
+      const auto xdir = (identity+soaf(float(x)))*xaxis;
+      const auto dir = imgplaneorg+xdir+ydir;
+      set(p.vdir, dir, idx);
+    }
+  }
+  p.raynum = TILESIZE*TILESIZE;
+  p.sharedorg = cam.org;
+  p.flags = raypacket::SHAREDORG;
+}
+void visibilitypackethit(packethit &hit) {
+  const auto packetnum = MAXRAYNUM/soaf::size;
+  loopi(packetnum) {
+    store(&hit.id[i*soaf::size], soaf(asfloat(~0x0u)));
+    store(&hit.t[i*soaf::size],  soaf(FLT_MAX));
+  }
+}
 } /* namespace NAMESPACE */
 } /* namespace rt */
 } /* namespace q */

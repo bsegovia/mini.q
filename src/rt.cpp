@@ -57,8 +57,8 @@ struct raycasttask : public task {
     const vec2i tileorg = int(TILESIZE) * tilexy;
     raypacket p;
     packethit hit;
-    visibilitypacket(cam, p, tileorg, dim);
-    visibilitypackethit(hit);
+    avx::visibilitypacket(cam, p, tileorg, dim);
+    avx::visibilitypackethit(hit);
     avx::closest(*bvhisec, p, hit);
 
 #define NORMAL_ONLY 0
