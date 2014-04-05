@@ -98,10 +98,19 @@ void internal::wait(bool recursivewait) {
   }
 
   // execute all ending dependencies. n.a.u.g.h.t.y -> busy waiting here
-  while (toend)
+#if defined(__SSE__)
+  int pausenum = 1;
+#endif
+  while (toend) {
     loopi(depnum)
       if (tasking::inner(deps[i]).toend)
         inner(deps[i]).wait(true);
+#if defined(__SSE__)
+    else
+      loopj(pausenum) _mm_pause();
+      pausenum = min(pausenum*2, 64);
+#endif
+  }
 
   // finished and no more waiters, we can safely release the dependency array
   if (!recursivewait && --waiternum == 0)

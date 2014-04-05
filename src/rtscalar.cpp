@@ -489,10 +489,66 @@ void visibilitypacket(const camera &RESTRICT cam,
   p.sharedorg = cam.org;
   p.flags = raypacket::SHAREDORG;
 }
+
+void normalizehitnormal(packethit &hit, int raynum) {
+  loopi(raynum) if (hit.ishit(i)) {
+    const auto n = normalize(hit.getnormal(i));
+    hit.n[0][i] = n.x;
+    hit.n[1][i] = n.y;
+    hit.n[2][i] = n.z;
+  }
+}
+#if 0
+void shadowpacket(const raypacket &primary,
+                  const packethit &hit,
+                  raypacket &shadow,
+                  packetshadow &occluded)
+{
+  loopi(int(p.raynum)) {
+    if (hit.ishit(i)) {
+      mapping[i] = curr;
+      const auto n = normalize(hit.getnormal(i));
+      hit.n[0][i] = n.x;
+      hit.n[1][i] = n.y;
+      hit.n[2][i] = n.z;
+      const auto dst = p.sharedorg + hit.t[i] * p.dir(i) + n * 1e-2f;
+      const auto dir = dst-lpos;
+      shadow.setdir(dir, curr);
+      occluded.t[curr] = 1.f;
+      occluded.occluded[curr] = 0;
+      ++curr;
+    } else
+      mapping[i] = -1;
+  }
+}
+#endif
 void visibilitypackethit(packethit &hit) {
   loopi(MAXRAYNUM) {
     hit.id[i] = ~0x0u;
     hit.t[i] = FLT_MAX;
+  }
+}
+
+/*-------------------------------------------------------------------------
+ - framebuffer routines
+ -------------------------------------------------------------------------*/
+void fbwritenormal(const packethit &RESTRICT hit,
+                   const vec2i &RESTRICT tileorg,
+                   const vec2i &RESTRICT screensize,
+                   int *RESTRICT pixels)
+{
+  u32 idx = 0;
+  for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y) {
+    const auto yoffset = screensize.x*y;
+    for (auto x = tileorg.x; x < tileorg.x+TILESIZE; ++x, ++idx) {
+      const int offset = x+yoffset;
+      if (hit.ishit(idx)) {
+        const auto n = clamp(normalize(hit.getnormal(idx)), vec3f(zero), vec3f(one));
+        const auto rgb = vec3i(n*255.f);
+        pixels[offset] = rgb.x|(rgb.y<<8)|(rgb.z<<16)|(0xff<<24);
+      } else
+        pixels[offset] = 0;
+    }
   }
 }
 } /* namespace rt */

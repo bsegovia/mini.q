@@ -453,10 +453,10 @@ void closest(const intersector &bvhtree, const raypacket &p, packethit &hit) {
 #undef CASE4
 
 template <u32 flags>
-void occludedinternal(const intersector &RESTRICT bvhtree,
-                      const raypacket &RESTRICT p,
-                      const raypacketextra &RESTRICT extra,
-                      packetshadow &RESTRICT s)
+void occluded(const intersector &RESTRICT bvhtree,
+              const raypacket &RESTRICT p,
+              const raypacketextra &RESTRICT extra,
+              packetshadow &RESTRICT s)
 {
   pair<intersector::node*,u32> stack[64];
   stack[0] = makepair(bvhtree.root, 0u);
@@ -517,6 +517,7 @@ void occludedinternal(const intersector &RESTRICT bvhtree,
 #define T true
 #if defined(__AVX__)
 static const avxb seqactivemask[] = {
+  avxb(F,F,F,F,F,F,F,F),
   avxb(T,F,F,F,F,F,F,F),
   avxb(T,T,F,F,F,F,F,F),
   avxb(T,T,T,F,F,F,F,F),
@@ -542,10 +543,10 @@ INLINE soa3f splat(const soa3f &v) {
   return soa3f(splat(v.x),splat(v.y),splat(v.z));
 }
 INLINE soa3f select(const soab &m, const soa3f &a, const soa3f &b) {
-  return soa3f(select(m,a.x,b.x),select(m,a.x,b.x),select(m,a.x,b.x));
+  return soa3f(select(m,a.x,b.x),select(m,a.y,b.y),select(m,a.z,b.z));
 }
 
-#define CASE(X) case X: occludedinternal<X>(bvhtree, p, extra, s); break;
+#define CASE(X) case X: occluded<X>(bvhtree, p, extra, s); break;
 #define CASE4(X) CASE(X) CASE(X+1) CASE(X+2) CASE(X+3)
 void occluded(const intersector &bvhtree, const raypacket &p, packetshadow &s) {
 
@@ -560,8 +561,8 @@ void occluded(const intersector &bvhtree, const raypacket &p, packetshadow &s) {
     const auto t = get(s.t, last);
     const auto idx = soaf::size*last;
     const auto m = seqactivemask[lastsize];
-    set(np.vorg, select(m,org,splat(org)), idx);
-    set(np.vdir, select(m,dir,splat(dir)), idx);
+    set(np.vorg, select(m,org,splat(org)), last);
+    set(np.vdir, select(m,dir,splat(dir)), last);
     store(&s.occluded[idx], soab(falsev));
     store(&s.t[idx], splat(t));
     np.raynum = (last+1) * soaf::size;

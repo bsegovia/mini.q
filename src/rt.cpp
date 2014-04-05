@@ -57,18 +57,25 @@ struct raycasttask : public task {
     const vec2i tileorg = int(TILESIZE) * tilexy;
     raypacket p;
     packethit hit;
+#define NORMAL_ONLY 0
+#if NORMAL_ONLY
+    avx::visibilitypacket(cam, p, tileorg, dim);
+    avx::visibilitypackethit(hit);
+    avx::closest(*bvhisec, p, hit);
+    avx::fbwritenormal(hit, tileorg, dim, pixels);
+    totalraynum += TILESIZE*TILESIZE;
+#else
     avx::visibilitypacket(cam, p, tileorg, dim);
     avx::visibilitypackethit(hit);
     avx::closest(*bvhisec, p, hit);
 
-#define NORMAL_ONLY 1
-#if !NORMAL_ONLY
     // exclude points that interesect nothing
     int mapping[TILESIZE*TILESIZE], curr = 0;
     raypacket shadow;
     packetshadow occluded;
     loopi(int(p.raynum)) {
-      if (hit.ishit(i)) {
+      if (hit.ishit(i))
+      {
         mapping[i] = curr;
         const auto n = normalize(hit.getnormal(i));
         hit.n[0][i] = n.x;
@@ -86,40 +93,21 @@ struct raycasttask : public task {
     shadow.sharedorg = lpos;
     shadow.raynum = curr;
     shadow.flags = raypacket::SHAREDORG;
-    sse::occluded(*bvhisec, shadow, occluded);
+    avx::occluded(*bvhisec, shadow, occluded);
 
     for (u32 y = 0; y < u32(TILESIZE); ++y)
     for (u32 x = 0; x < u32(TILESIZE); ++x) {
       const int offset = (tileorg.x+x)+dim.x*(tileorg.y+y);
       const int idx = x+y*TILESIZE;
-      if (hit.ishit(idx)) {
-        const auto sid = mapping[idx];
-        if (!occluded.occluded[sid]) {
+      const auto sid = mapping[idx];
+      if (sid != -1 && !occluded.occluded[sid]) {
           const auto shade = dot(hit.getnormal(idx), -normalize(shadow.dir(sid)));
           const auto d = int(255.f*min(max(0.f,shade),1.f));
           pixels[offset] = d|(d<<8)|(d<<16)|(0xff<<24);
-        } else
-          pixels[offset] = 0;
       } else
         pixels[offset] = 0;
     }
     totalraynum += curr+TILESIZE*TILESIZE;
-#else
-#if 0
-    for (u32 y = 0; y < u32(TILESIZE); ++y)
-    for (u32 x = 0; x < u32(TILESIZE); ++x) {
-      const int offset = (tileorg.x+x)+dim.x*(tileorg.y+y);
-      const int idx = x+y*TILESIZE;
-      if (hit.ishit(idx)) {
-        const auto n = vec3i(clamp(normalize(hit.getnormal(idx)), vec3f(zero), vec3f(one))*255.f);
-        pixels[offset] = n.x|(n.y<<8)|(n.z<<16)|(0xff<<24);
-      } else
-        pixels[offset] = 0;
-    }
-#else
-    avx::fbwritenormal(hit, tileorg, dim, pixels);
-#endif
-    totalraynum += TILESIZE*TILESIZE;
 #endif
   }
   intersector *bvhisec;
