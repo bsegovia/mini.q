@@ -240,7 +240,8 @@ INLINE void closest(
     if (!((hit.t[j] > t) & (t >= 0.f)))
       continue;
     const auto h = posk + t*dirk - tri.vertk;
-    const auto u = dot(h,tri.bn), v = dot(h,tri.cn);
+    const auto u = dot(h,tri.bn);
+    const auto v = dot(h,tri.cn);
     if ((u < 0.f) | (v < 0.f) | (u + v > 1.f))
       continue;
     hit.t[j] = t;
@@ -272,7 +273,8 @@ INLINE u32 occluded(
     if (!((s.t[j] > t) & (t >= 0.f)))
       continue;
     const auto h = posk + t*dirk - tri.vertk;
-    const auto u = dot(h,tri.bn), v = dot(h,tri.cn);
+    const auto u = dot(h,tri.bn);
+    const auto v = dot(h,tri.cn);
     if ((u < 0.f) | (v < 0.f) | (u + v > 1.f))
       continue;
     s.occluded[j] = ~0x0u;
