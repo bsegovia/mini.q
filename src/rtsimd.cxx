@@ -44,6 +44,7 @@ typedef avxb soab;
 INLINE void store(void *ptr, const soai &x) {store8i(ptr, x);}
 INLINE void store(void *ptr, const soaf &x) {store8f(ptr, x);}
 INLINE void store(void *ptr, const soab &x) {store8b(ptr, x);}
+INLINE void storeu(void *ptr, const soaf &x) {storeu8f(ptr, x);}
 INLINE void storent(void *ptr, const soai &x) {store8i_nt(ptr, x);}
 INLINE void maskstore(const soab &m, void *ptr, const soaf &x) {store8f(m, ptr, x);}
 INLINE soaf splat(const soaf &v) {
@@ -59,6 +60,7 @@ INLINE void store(void *ptr, const soai &x) {store4i(ptr, x);}
 INLINE void store(void *ptr, const soaf &x) {store4f(ptr, x);}
 INLINE void store(void *ptr, const soab &x) {store4b(ptr, x);}
 INLINE void storent(void *ptr, const soai &x) {store4i_nt(ptr, x);}
+INLINE void storeu(void *ptr, const soaf &x) {storeu4f(ptr, x);}
 INLINE void maskstore(const soab &m, void *ptr, const soaf &x) {store4f(m, ptr, x);}
 INLINE soaf splat(const soaf &v) {return shuffle<0,0,0,0>(v,v);}
 #else
@@ -590,9 +592,11 @@ void occluded(const intersector &bvhtree, const raypacket &p, packetshadow &s) {
  - generation of packets
  -------------------------------------------------------------------------*/
 #if defined(__AVX__)
-static const soaf identity(0.f,1.f,2.f,3.f,4.f,5.f,6.f,7.f);
+static const soaf identityf(0.f,1.f,2.f,3.f,4.f,5.f,6.f,7.f);
+static const soai identityi(0,1,2,3,4,5,6,7);
 #elif defined(__SSE__)
-static const soaf identity(0.f,1.f,2.f,3.f);
+static const soaf identityf(0.f,1.f,2.f,3.f);
+static const soai identityi(0,1,2,3);
 #endif
 void visibilitypacket(const camera &RESTRICT cam,
                       raypacket &RESTRICT p,
@@ -608,7 +612,7 @@ void visibilitypacket(const camera &RESTRICT cam,
   for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y) {
     const auto ydir = soaf(float(y))*zaxis;
     for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size, ++idx) {
-      const auto xdir = (identity+soaf(float(x)))*xaxis;
+      const auto xdir = (identityf+soaf(float(x)))*xaxis;
       const auto dir = imgplaneorg+xdir+ydir;
       set(p.vdir, dir, idx);
     }
@@ -626,22 +630,79 @@ void clearpackethit(packethit &hit) {
   }
 }
 
-void normalizehitnormal(packethit &hit, int raynum) {
-  assert(raynum % soaf::size == 0);
-  const auto packetnum = raynum / soaf::size;
+void primarypoint(const raypacket &RESTRICT p,
+                  const packethit &RESTRICT hit,
+                  array3f &RESTRICT pos,
+                  array3f &RESTRICT nor,
+                  arrayi &RESTRICT mask)
+{
+  assert((p.flags & raypacket::SHAREDORG) != 0);
+  assert(p.raynum % soaf::size == 0);
+  const auto packetnum = p.raynum / soaf::size;
   loopi(packetnum) {
     const auto noisec = soai(~0x0u);
     const auto m = soai::load(&hit.id[i*soaf::size]) != noisec;
     if (none(m))
      continue;
-    const auto n = normalize(get(hit.n, i));
-    set(hit.n, n, i);
+    const auto t = get(hit.t,i);
+    const auto dir = get(p.vdir,i);
+    const auto unormal = get(hit.n,i);
+    const auto org = soa3f(p.sharedorg);
+    const auto normal = normalize(unormal);
+    const auto position = org + t*dir + soaf(SHADOWRAYBIAS)*normal;
+    store(&mask[i*soaf::size], m);
+    set(nor, normal, i);
+    set(pos, position, i);
   }
 }
 
-void packstore() {
-
+void shadowpacket(const array3f &RESTRICT pos,
+                  const arrayi &RESTRICT mask,
+                  const vec3f &RESTRICT lpos,
+                  raypacket &RESTRICT shadow,
+                  packetshadow &RESTRICT occluded,
+                  int raynum)
+{
+  assert((primary.flags & raypacket::SHAREDORG) != 0);
+  assert(raynum % soaf::size == 0);
+  const auto packetnum = raynum/soaf::size;
+  int curr = 0;
+  const auto soalpos = soa3f(lpos);
+  loopi(packetnum) {
+    const auto m = soab::load(&mask[i*soaf::size]);
+    if (none(m))
+      continue;
+    const auto dst = get(pos, i);
+    const auto dir = dst-soalpos;
+    storeu(&occluded.occluded[curr], soaf(zero));
+    storeu(&occluded.t[curr], soaf(one));
+    if (all(m)) {
+      const auto idx = soai(curr)+identityi;
+      store(&occluded.mapping[i*soaf::size], idx);
+      storeu(&shadow.vdir[0][curr], dir.x);
+      storeu(&shadow.vdir[1][curr], dir.y);
+      storeu(&shadow.vdir[2][curr], dir.z);
+      curr += soaf::size;
+    } else if (none(m)) {
+      store(&occluded.mapping[i*soaf::size], soai(-1));
+      continue;
+    } else loopj(soaf::size) {
+      if (mask[i*soaf::size+j]==0) {
+        occluded.mapping[i*soaf::size+j] = -1;
+        continue;
+      }
+      occluded.mapping[i*soaf::size+j] = curr;
+      shadow.vdir[0][curr] = dir.x[j];
+      shadow.vdir[1][curr] = dir.y[j];
+      shadow.vdir[2][curr] = dir.z[j];
+      ++curr;
+    }
+  }
+  shadow.sharedorg = lpos;
+  shadow.raynum = curr;
+  shadow.flags = raypacket::SHAREDORG;
 }
+
 
 /*-------------------------------------------------------------------------
  - framebuffer routines

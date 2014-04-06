@@ -52,30 +52,39 @@ struct raycasttask : public task {
     task("raycasttask", tile.x*tile.y, 1, 0, UNFAIR),
     bvhisec(bvhisec), cam(cam), pixels(pixels), dim(dim), tile(tile)
   {}
+  INLINE void primarypoint(vec2i tileorg, array3f &pos, array3f &nor, arrayi &mask) {
+    raypacket p;
+    packethit hit;
+    avx::visibilitypacket(cam, p, tileorg, dim);
+    avx::clearpackethit(hit);
+    avx::closest(*bvhisec, p, hit);
+    avx::primarypoint(p, hit, pos, nor, mask);
+  }
   virtual void run(u32 tileID) {
     const vec2i tilexy(tileID%tile.x, tileID/tile.x);
     const vec2i tileorg = int(TILESIZE) * tilexy;
 
+#define NORMAL_ONLY 0
+#if NORMAL_ONLY
     // primary intersections
     raypacket p;
     packethit hit;
     avx::visibilitypacket(cam, p, tileorg, dim);
     avx::clearpackethit(hit);
     avx::closest(*bvhisec, p, hit);
-
-#define NORMAL_ONLY 0
-#if NORMAL_ONLY
     avx::writenormal(hit, tileorg, dim, pixels);
     totalraynum += TILESIZE*TILESIZE;
 #else
     // shadow rays toward the light source
+    array3f pos, nor;
+    arrayi mask;
     raypacket shadow;
     packetshadow occluded;
-    avx::normalizehitnormal(hit, p.raynum);
-    shadowpacket(p, hit, lpos, shadow, occluded);
+    primarypoint(tileorg, pos, nor, mask);
+    avx::shadowpacket(pos, mask, lpos, shadow, occluded, TILESIZE*TILESIZE);
     avx::occluded(*bvhisec, shadow, occluded);
-    writendotl(shadow, hit, occluded, tileorg, dim, pixels);
-    totalraynum += shadow.raynum+p.raynum;
+    writendotl(shadow, nor, occluded, tileorg, dim, pixels);
+    totalraynum += shadow.raynum+TILESIZE*TILESIZE;
 #endif
   }
   intersector *bvhisec;

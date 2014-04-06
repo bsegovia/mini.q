@@ -334,6 +334,9 @@ INLINE avxf load8f(const void* const a) {
 INLINE void store8f(void *ptr, const avxf& f) {
   return _mm256_store_ps((float*)ptr,f);
 }
+INLINE void storeu8f(void *ptr, const avxf& f) {
+  return _mm256_storeu_ps((float*)ptr,f);
+}
 INLINE void store8f(const avxb& mask, void *ptr, const avxf& f) {
   return _mm256_maskstore_ps((float*)ptr,(__m256i)mask,f);
 }

@@ -13,11 +13,19 @@ void visibilitypacket(const struct camera &RESTRICT cam,
                       const vec2i &RESTRICT screensize);
 
 // shadow ray packet generation
-void shadowpacket(const raypacket &RESTRICT primary,
-                  const packethit &RESTRICT hit,
+void shadowpacket(const array3f &RESTRICT pos,
+                  const arrayi &RESTRICT mask,
                   const vec3f &RESTRICT lpos,
                   raypacket &RESTRICT shadow,
-                  packetshadow &RESTRICT occluded);
+                  packetshadow &RESTRICT occluded,
+                  int raynum);
+
+// compute normals and position of primary hit points
+void primarypoint(const raypacket &RESTRICT p,
+                  const packethit &RESTRICT hit,
+                  array3f &RESTRICT pos,
+                  array3f &RESTRICT nor,
+                  arrayi &RESTRICT mask);
 
 // clear and initialize packethit
 void clearpackethit(packethit &hit);
@@ -30,12 +38,9 @@ void writenormal(const packethit &RESTRICT hit,
 
 // frame buffer write (just simple dot product)
 void writendotl(const raypacket &RESTRICT shadow,
-                const packethit &RESTRICT hit,
+                const array3f &RESTRICT nor,
                 const packetshadow &RESTRICT occluded,
                 const vec2i &RESTRICT tileorg,
                 const vec2i &RESTRICT screensize,
                 int *RESTRICT pixels);
-
-// normalize geometric normal in the packet hit structure
-void normalizehitnormal(packethit &hit, int raynum);
 

@@ -15,6 +15,7 @@ struct ray {
   float tnear, tfar;
 };
 
+static const float SHADOWRAYBIAS = 1e-2f;
 static const u32 MAXRAYNUM = 256u;
 typedef CACHE_LINE_ALIGNED array<int,MAXRAYNUM> arrayi;
 typedef CACHE_LINE_ALIGNED array<float,MAXRAYNUM> arrayf;
@@ -63,6 +64,11 @@ struct CACHE_LINE_ALIGNED packethit : noncopyable {
 struct CACHE_LINE_ALIGNED packetshadow : noncopyable {
   arrayf t;
   arrayi occluded, mapping;
+};
+
+struct CACHE_LINE_ALIGNED packedprimary : noncopyable {
+  array3f pos, nor;
+  arrayi mapping;
 };
 
 struct camera {

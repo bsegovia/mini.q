@@ -122,6 +122,12 @@ INLINE vec3f get(const array3f &v, u32 idx) {
   return vec3f(v[0][idx], v[1][idx], v[2][idx]);
 }
 
+INLINE void set(array3f &out, const vec3f &v, u32 idx) {
+  out[0][idx]=v.x;
+  out[1][idx]=v.y;
+  out[2][idx]=v.z;
+}
+
 INLINE bool culliaco(const aabb &box, const raypacket &p, const raypacketextra &extra) {
   const vec3f pmin = box.pmin - p.sharedorg;
   const vec3f pmax = box.pmax - p.sharedorg;
@@ -490,26 +496,18 @@ void visibilitypacket(const camera &RESTRICT cam,
   p.flags = raypacket::SHAREDORG;
 }
 
-void normalizehitnormal(packethit &hit, int raynum) {
-  loopi(raynum) if (hit.ishit(i)) {
-    const auto n = normalize(hit.getnormal(i));
-    loopj(3) hit.n[j][i] = n[j];
-  }
-}
-
-static const float SHADOWRAYBIAS = 1e-2f;
-void shadowpacket(const raypacket &RESTRICT primary,
-                  const packethit &RESTRICT hit,
+void shadowpacket(const array3f &RESTRICT pos,
+                  const arrayi &RESTRICT mask,
                   const vec3f &RESTRICT lpos,
                   raypacket &RESTRICT shadow,
-                  packetshadow &RESTRICT occluded)
+                  packetshadow &RESTRICT occluded,
+                  int raynum)
 {
   assert((primary.flags & raypacket::SHAREDORG) != 0);
   int curr = 0;
-  loopi(primary.raynum) {
-    if (hit.ishit(i)) {
-      const auto n = hit.getnormal(i);
-      const auto dst = primary.sharedorg + hit.t[i]*primary.dir(i) + SHADOWRAYBIAS*n;
+  loopi(raynum) {
+    if (u32(mask[i]) != 0) {
+      const auto dst = get(pos, i);
       const auto dir = dst-lpos;
       shadow.setdir(dir, curr);
       occluded.mapping[i] = curr;
@@ -527,6 +525,27 @@ void clearpackethit(packethit &hit) {
   loopi(MAXRAYNUM) {
     hit.id[i] = ~0x0u;
     hit.t[i] = FLT_MAX;
+  }
+}
+
+void primarypoint(const raypacket &RESTRICT p,
+                  const packethit &RESTRICT hit,
+                  array3f &RESTRICT pos,
+                  array3f &RESTRICT nor,
+                  arrayi &RESTRICT mask)
+{
+  loopi(p.raynum) {
+    if (u32(hit.id[i]) == ~0x0u)
+     continue;
+    const auto t = hit.t[i];
+    const auto dir = get(p.vdir,i);
+    const auto unormal = get(hit.n,i);
+    const auto org = p.sharedorg;
+    const auto normal = normalize(unormal);
+    const auto position = org + t*dir + SHADOWRAYBIAS*normal;
+    mask[i] = ~0x0u;
+    set(nor, normal, i);
+    set(pos, position, i);
   }
 }
 
@@ -554,7 +573,7 @@ void writenormal(const packethit &RESTRICT hit,
 }
 
 void writendotl(const raypacket &RESTRICT shadow,
-                const packethit &RESTRICT hit,
+                const array3f &nor,
                 const packetshadow &RESTRICT occluded,
                 const vec2i &RESTRICT tileorg,
                 const vec2i &RESTRICT screensize,
@@ -567,7 +586,7 @@ void writendotl(const raypacket &RESTRICT shadow,
       const auto offset = x+yoffset;
       const auto remapped = occluded.mapping[idx];
       if (remapped != -1 && !occluded.occluded[remapped]) {
-        const auto n = hit.getnormal(idx);
+        const auto n = get(nor, idx);
         const auto l = normalize(shadow.dir(remapped));
         const auto shade = -dot(n, l);
         const auto d = int(255.f*min(max(0.f,shade),1.f));
