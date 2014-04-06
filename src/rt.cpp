@@ -55,10 +55,10 @@ struct raycasttask : public task {
   INLINE void primarypoint(vec2i tileorg, array3f &pos, array3f &nor, arrayi &mask) {
     raypacket p;
     packethit hit;
-    avx::visibilitypacket(cam, p, tileorg, dim);
-    avx::clearpackethit(hit);
-    avx::closest(*bvhisec, p, hit);
-    avx::primarypoint(p, hit, pos, nor, mask);
+    rt::visibilitypacket(cam, p, tileorg, dim);
+    rt::clearpackethit(hit);
+    rt::closest(*bvhisec, p, hit);
+    rt::primarypoint(p, hit, pos, nor, mask);
   }
   virtual void run(u32 tileID) {
     const vec2i tilexy(tileID%tile.x, tileID/tile.x);
@@ -81,9 +81,9 @@ struct raycasttask : public task {
     raypacket shadow;
     packetshadow occluded;
     primarypoint(tileorg, pos, nor, mask);
-    avx::shadowpacket(pos, mask, lpos, shadow, occluded, TILESIZE*TILESIZE);
-    avx::occluded(*bvhisec, shadow, occluded);
-    writendotl(shadow, nor, occluded, tileorg, dim, pixels);
+    rt::shadowpacket(pos, mask, lpos, shadow, occluded, TILESIZE*TILESIZE);
+    rt::occluded(*bvhisec, shadow, occluded);
+    rt::writendotl(shadow, nor, occluded, tileorg, dim, pixels);
     totalraynum += shadow.raynum+TILESIZE*TILESIZE;
 #endif
   }

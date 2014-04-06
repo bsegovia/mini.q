@@ -663,13 +663,13 @@ void shadowpacket(const array3f &RESTRICT pos,
                   packetshadow &RESTRICT occluded,
                   int raynum)
 {
-  assert((primary.flags & raypacket::SHAREDORG) != 0);
   assert(raynum % soaf::size == 0);
   const auto packetnum = raynum/soaf::size;
-  int curr = 0;
   const auto soalpos = soa3f(lpos);
+  int curr = 0;
   loopi(packetnum) {
-    const auto m = soab::load(&mask[i*soaf::size]);
+    const auto idx = i*soaf::size;
+    const auto m = soab::load(&mask[idx]);
     if (none(m))
       continue;
     const auto dst = get(pos, i);
@@ -677,21 +677,21 @@ void shadowpacket(const array3f &RESTRICT pos,
     storeu(&occluded.occluded[curr], soaf(zero));
     storeu(&occluded.t[curr], soaf(one));
     if (all(m)) {
-      const auto idx = soai(curr)+identityi;
-      store(&occluded.mapping[i*soaf::size], idx);
+      const auto remapped = soai(curr)+identityi;
+      store(&occluded.mapping[idx], remapped);
       storeu(&shadow.vdir[0][curr], dir.x);
       storeu(&shadow.vdir[1][curr], dir.y);
       storeu(&shadow.vdir[2][curr], dir.z);
       curr += soaf::size;
     } else if (none(m)) {
-      store(&occluded.mapping[i*soaf::size], soai(-1));
+      store(&occluded.mapping[idx], soai(mone));
       continue;
     } else loopj(soaf::size) {
-      if (mask[i*soaf::size+j]==0) {
-        occluded.mapping[i*soaf::size+j] = -1;
+      if (mask[idx+j]==0) {
+        occluded.mapping[idx+j] = -1;
         continue;
       }
-      occluded.mapping[i*soaf::size+j] = curr;
+      occluded.mapping[idx+j] = curr;
       shadow.vdir[0][curr] = dir.x[j];
       shadow.vdir[1][curr] = dir.y[j];
       shadow.vdir[2][curr] = dir.z[j];
@@ -702,7 +702,6 @@ void shadowpacket(const array3f &RESTRICT pos,
   shadow.raynum = curr;
   shadow.flags = raypacket::SHAREDORG;
 }
-
 
 /*-------------------------------------------------------------------------
  - framebuffer routines
@@ -717,11 +716,52 @@ void writenormal(const packethit &RESTRICT hit,
     const auto yoffset = screensize.x*y;
     for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size, ++idx) {
       const auto m = soaf::load(&hit.id[idx*soaf::size]) != soaf(~0x0u);
-      const auto n = clamp(normalize(get(hit.n, idx)), soa3f(zero), soa3f(one));
+      const auto n = clamp(normalize(get(hit.n, idx)));
       const auto rgb = soa3i(n*soaf(255.f));
       const auto hitcolor = rgb.x | (rgb.y<<8) | (rgb.z<<16) | soai(0xff000000);
       const auto color = select(m, hitcolor, soai(zero));
       storent(pixels+yoffset+x, color);
+    }
+  }
+}
+
+void writendotl(const raypacket &RESTRICT shadow,
+                const array3f &nor,
+                const packetshadow &RESTRICT occluded,
+                const vec2i &RESTRICT tileorg,
+                const vec2i &RESTRICT screensize,
+                int *RESTRICT pixels)
+{
+  int idx = 0, curr = 0;
+  for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y) {
+    const auto yoffset = screensize.x*y;
+    for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size, idx+=soaf::size) {
+      soa3f l;
+      soab m;
+      if (none(soai::load(&occluded.mapping[idx])==soai(mone))) {
+        m = soai::loadu(&occluded.occluded[curr])==soai(zero);
+        l.x = soaf::loadu(&shadow.vdir[0][curr]);
+        l.y = soaf::loadu(&shadow.vdir[1][curr]);
+        l.z = soaf::loadu(&shadow.vdir[2][curr]);
+        curr += soaf::size;
+      } else loopj(soaf::size) {
+        const auto remapped = occluded.mapping[idx+j];
+        if (remapped == -1) {
+          m[j] = 0;
+          continue;
+        }
+        assert(remapped==curr);
+        m[j] = ~occluded.occluded[remapped];
+        l.x[j] = shadow.vdir[0][remapped];
+        l.y[j] = shadow.vdir[1][remapped];
+        l.z[j] = shadow.vdir[2][remapped];
+        ++curr;
+      }
+      const auto n = get(nor, idx/soaf::size);
+      const auto shade = select(m, -dot(n, normalize(l)), soaf(zero));
+      const auto d = soai(soaf(255.f)*clamp(shade));
+      const auto rgb = d | (d<<8) | (d<<16) | 0xff000000;
+      storent(pixels+yoffset+x, rgb);
     }
   }
 }

@@ -100,7 +100,7 @@ SHADERS=$(shell ls data/shaders/*[glsl,decl])
 all: mini.q.server mini.q.rt mini.q importobj compress_chars importobj
 
 rtavx.o: rtavx.cpp
-	$(CXX) $(CXXFLAGS) -mavx -c rtavx.cpp -o  rtavx.o
+	$(CXX) $(CXXFLAGS) -mavx -c rtavx.cpp -o rtavx.o
 
 -include $(CLIENT_OBJS:.o=.d)
 -include $(SERVER_OBJS:.o=.d)

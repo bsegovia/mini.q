@@ -49,6 +49,7 @@ struct ssei {
 
   // loads
   static INLINE ssei load(const void* const ptr) {return *(__m128i*)ptr;}
+  static INLINE ssei loadu(const void* const ptr) {return ssei((const s32*const)ptr);}
 
   // constants
   INLINE ssei(zerotype) : m128(_mm_setzero_si128()) {}

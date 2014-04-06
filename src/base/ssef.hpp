@@ -58,6 +58,7 @@ struct ssef {
   static INLINE ssef broadcast(const void* const a) {return _mm_set1_ps(*(float*)a);}
 #endif
   static INLINE ssef load(const void* const ptr) {return *(__m128*)ptr;}
+  static INLINE ssef loadu(const void* const ptr) {return _mm_loadu_ps((const float*)ptr);}
 
   // array access
   INLINE const float& op [](const size_t i) const {assert(i<4); return f[i];}

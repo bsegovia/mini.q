@@ -236,16 +236,16 @@ INLINE void closest(
     const auto dir = getdir<0!=(flags&raypacket::SHAREDDIR)>(p,j);
     const vec2f dirk(dir[ku], dir[kv]);
     const vec2f posk(org[ku], org[kv]);
-    const float t = (tri.nd-org[k]-dot(tri.n,posk))/(dir[k]+dot(tri.n,dirk));
+    const auto t = (tri.nd-org[k]-dot(tri.n,posk))/(dir[k]+dot(tri.n,dirk));
     if (!((hit.t[j] > t) & (t >= 0.f)))
       continue;
-    const vec2f h = posk + t*dirk - tri.vertk;
-    const float beta = dot(h,tri.bn), gamma = dot(h,tri.cn);
-    if ((beta < 0.f) | (gamma < 0.f) | ((beta + gamma) > 1.f))
+    const auto h = posk + t*dirk - tri.vertk;
+    const auto u = dot(h,tri.bn), v = dot(h,tri.cn);
+    if ((u < 0.f) | (v < 0.f) | (u + v > 1.f))
       continue;
     hit.t[j] = t;
-    hit.u[j] = beta;
-    hit.v[j] = gamma;
+    hit.u[j] = u;
+    hit.v[j] = v;
     hit.id[j] = tri.id;
     hit.n[k][j] = tri.sign ? -1.f : 1.f;
     hit.n[waldmodulo[k]][j] = hit.n[k][j]*tri.n.x;
@@ -268,14 +268,14 @@ INLINE u32 occluded(
     const auto dir = getdir<0!=(flags&raypacket::SHAREDDIR)>(p,j);
     const vec2f dirk(dir[ku], dir[kv]);
     const vec2f posk(org[ku], org[kv]);
-    const float t = (tri.nd-org[k]-dot(tri.n,posk))/(dir[k]+dot(tri.n,dirk));
+    const auto t = (tri.nd-org[k]-dot(tri.n,posk))/(dir[k]+dot(tri.n,dirk));
     if (!((s.t[j] > t) & (t >= 0.f)))
       continue;
-    const vec2f h = posk + t*dirk - tri.vertk;
-    const float beta = dot(h,tri.bn), gamma = dot(h,tri.cn);
-    if ((beta < 0.f) | (gamma < 0.f) | ((beta + gamma) > 1.f))
+    const auto h = posk + t*dirk - tri.vertk;
+    const auto u = dot(h,tri.bn), v = dot(h,tri.cn);
+    if ((u < 0.f) | (v < 0.f) | (u + v > 1.f))
       continue;
-    s.occluded[j] = 1;
+    s.occluded[j] = ~0x0u;
     ++occnum;
   }
   return occnum;
@@ -293,7 +293,7 @@ INLINE u32 initextra(raypacketextra &extra, const raypacket &p, const Hit &hit) 
     extra.rdir[1][i] = r.y;
     extra.rdir[2][i] = r.z;
   }
-  if (all(gt(mindir*maxdir,vec3f(zero)))) {
+  if (all(ge(mindir*maxdir,vec3f(zero)))) {
     if ((p.flags & raypacket::SHAREDORG) == 0) {
       vec3f minorg(FLT_MAX), maxorg(-FLT_MAX);
       loopi(p.raynum) {
@@ -308,14 +308,10 @@ INLINE u32 initextra(raypacketextra &extra, const raypacket &p, const Hit &hit) 
     if (typeequal<Hit,packetshadow>::value) {
       extra.iamaxlen = -FLT_MAX;
       extra.iaminlen = FLT_MAX;
-      loopi(p.raynum) {
-        extra.iamaxlen = max(extra.iamaxlen, hit.t[i]);
-        extra.iaminlen = min(extra.iaminlen, hit.t[i]);
-      }
-    } else {
+      loopi(p.raynum) extra.iamaxlen = max(extra.iamaxlen, hit.t[i]);
+    } else
       extra.iamaxlen = FLT_MAX;
-      extra.iaminlen = 0.f;
-    }
+    extra.iaminlen = 0.f;
     return p.flags | raypacket::INTERVALARITH;
   } else
     return p.flags;

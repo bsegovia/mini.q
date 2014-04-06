@@ -55,6 +55,7 @@ struct avxf {
 
   // loads
   static INLINE avxf load(const void* const ptr) {return *(__m256*)ptr;}
+  static INLINE avxf loadu(const void* const ptr) {return _mm256_loadu_ps((const float*)ptr);}
 
   // constants
   INLINE avxf(zerotype) : m256(_mm256_setzero_ps()) {}

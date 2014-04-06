@@ -61,6 +61,7 @@ struct avxi {
 
   // loads
   static INLINE avxi load(const void* const ptr) {return *(__m256i*)ptr;}
+  static INLINE avxi loadu(const void* const ptr) {return avxi((const s32* const) ptr);}
 
   // constants
   INLINE avxi(zerotype) : m256(_mm256_setzero_si256()) {}
