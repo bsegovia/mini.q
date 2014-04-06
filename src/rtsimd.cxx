@@ -223,6 +223,35 @@ soa3f getdir<true>(const raypacket &p, u32 idx) {
   return soa3f(p.shareddir);
 }
 
+INLINE bool cornerray(const waldtriangle &RESTRICT tri,
+                      const raypacket &RESTRICT p)
+{
+  const auto trind = ssef(tri.nd);
+  const auto trin = vec2<ssef>(tri.n);
+  const auto k = u32(tri.k), ku = waldmodulo[k], kv = waldmodulo[k+1];
+  const auto raydir = vec3<ssef>(ssef::load(p.crx),ssef::load(p.cry),ssef::load(p.crz));
+  const auto rayorg = vec3<ssef>(p.sharedorg);
+  const vec2<ssef> dir(raydir[ku], raydir[kv]);
+  const vec2<ssef> org(rayorg[ku], rayorg[kv]);
+
+  // evalute intersection with triangle plane
+  const auto t = (trind-rayorg[k]-dot(trin,org))/(raydir[k]+dot(trin,dir));
+  const auto tmask = (t>ssef(zero));
+  if (none(tmask)) return false;
+
+  // evaluate aperture
+  const auto trivertk = vec2<ssef>(tri.vertk);
+  const auto tribn = vec2<ssef>(tri.bn);
+  const auto tricn = vec2<ssef>(tri.cn);
+  const auto h = org + t*dir - trivertk;
+  const auto u = dot(h,tribn);
+  const auto v = dot(h,tricn);
+  const auto w = ssef(one)-u-v;
+  if ((movemask(sseb(u))==0xf) | (movemask(sseb(v))==0xf) | (movemask(sseb(w))==0xf))
+    return false;
+  return true;
+}
+
 template <u32 flags>
 INLINE void closest(const waldtriangle &RESTRICT tri,
                     const raypacket &RESTRICT p,
@@ -230,6 +259,8 @@ INLINE void closest(const waldtriangle &RESTRICT tri,
                     u32 first,
                     packethit &RESTRICT hit)
 {
+  if (0!=(flags&raypacket::CORNERRAYS) && !cornerray(tri, p))
+    return;
   const auto packetnum = p.raynum/soaf::size;
   const auto trind = soaf(tri.nd);
   const auto trin = soa2f(tri.n);
@@ -598,6 +629,8 @@ static const soai identityi(0,1,2,3,4,5,6,7);
 static const soaf identityf(0.f,1.f,2.f,3.f);
 static const soai identityi(0,1,2,3);
 #endif
+static const ssef tilecrx(0.f,0.f,float(TILESIZE),float(TILESIZE));
+static const ssef tilecry(0.f,float(TILESIZE),0.f,float(TILESIZE));
 void visibilitypacket(const camera &RESTRICT cam,
                       raypacket &RESTRICT p,
                       const vec2i &RESTRICT tileorg,
@@ -617,9 +650,22 @@ void visibilitypacket(const camera &RESTRICT cam,
       set(p.vdir, dir, idx);
     }
   }
+  const auto crx = tilecrx+ssef(float(tileorg.x));
+  const auto cry = tilecry+ssef(float(tileorg.y));
+#if defined(__AVX__)
+  const auto sseimgplaneorg = vec3<ssef>(cam.imgplaneorg);
+  const auto ssexaxis = vec3<ssef>(cam.xaxis*rw);
+  const auto ssezaxis = vec3<ssef>(cam.zaxis*rh);
+  const auto crdir = sseimgplaneorg+cry*ssezaxis+crx*ssexaxis;
+#else
+  const auto crdir = imgplaneorg+cry*zaxis+crx*xaxis;
+#endif
+  store4f(p.crx,crdir.x);
+  store4f(p.cry,crdir.y);
+  store4f(p.crz,crdir.z);
   p.raynum = TILESIZE*TILESIZE;
   p.sharedorg = cam.org;
-  p.flags = raypacket::SHAREDORG;
+  p.flags = raypacket::SHAREDORG|raypacket::CORNERRAYS;
 }
 
 void clearpackethit(packethit &hit) {

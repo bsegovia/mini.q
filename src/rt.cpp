@@ -45,7 +45,10 @@ camera::camera(vec3f org, vec3f up, vec3f view, float fov, float ratio) :
   xaxis *= ratio;
 }
 
-static const vec3f lpos(0.f, -4.f, 2.f);
+#define NORMAL_ONLY 0
+
+//static const vec3f lpos(0.f, -4.f, 2.f);
+static const vec3f lpos(0.f, 4.f, 0.f);
 static atomic totalraynum;
 struct raycasttask : public task {
   raycasttask(intersector *bvhisec, const camera &cam, int *pixels, vec2i dim, vec2i tile) :
@@ -64,7 +67,6 @@ struct raycasttask : public task {
     const vec2i tilexy(tileID%tile.x, tileID/tile.x);
     const vec2i tileorg = int(TILESIZE) * tilexy;
 
-#define NORMAL_ONLY 0
 #if NORMAL_ONLY
     // primary intersections
     raypacket p;

@@ -47,10 +47,13 @@ struct CACHE_LINE_ALIGNED raypacket {
   }
   array3f vorg;     // only used when SHAREDORG is *not* set
   array3f vdir;     // only used when SHAREDDIR is *not* set
-  vec3f sharedorg;  // only used when SHAREDORG is set
-  vec3f shareddir;  // only used when SHAREDDIR is set
-  u32 raynum; // number of rays active in the packet
-  u32 flags;  // exposes property of the packet
+  ALIGNED(16) vec3f sharedorg;  // only used when SHAREDORG is set
+  ALIGNED(16) vec3f shareddir;  // only used when SHAREDDIR is set
+  ALIGNED(16) float crx[4]; // only used when CORNERRAYS is set
+  ALIGNED(16) float cry[4]; // only used when CORNERRAYS is set
+  ALIGNED(16) float crz[4]; // only used when CORNERRAYS is set
+  u32 raynum;       // number of rays active in the packet
+  u32 flags;        // exposes property of the packet
 };
 
 struct CACHE_LINE_ALIGNED packethit : noncopyable {
