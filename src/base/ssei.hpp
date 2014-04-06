@@ -47,6 +47,9 @@ struct ssei {
   INLINE ssei(s32  a, s32  b, s32  c, s32  d) : m128(_mm_set_epi32(d, c, b, a)) {}
   INLINE explicit ssei(const __m128 a) : m128(_mm_cvtps_epi32(a)) {}
 
+  // loads
+  static INLINE ssei load(const void* const ptr) {return *(__m128i*)ptr;}
+
   // constants
   INLINE ssei(zerotype) : m128(_mm_setzero_si128()) {}
   INLINE ssei(onetype) : m128(_mm_set_epi32(1, 1, 1, 1)) {}

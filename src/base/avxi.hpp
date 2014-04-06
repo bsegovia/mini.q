@@ -58,6 +58,9 @@ struct avxi {
     m256(_mm256_set_epi32(h, g, f, e, d, c, b, a)) {}
   INLINE explicit avxi(const __m256 a) : m256(_mm256_cvtps_epi32(a)) {}
 
+  // loads
+  static INLINE avxi load(const void* const ptr) {return *(__m256i*)ptr;}
+
   // constants
   INLINE avxi(zerotype) : m256(_mm256_setzero_si256()) {}
   INLINE avxi(onetype)  : m256(_mm256_set1_epi32(1)) {}

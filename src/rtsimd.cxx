@@ -626,6 +626,23 @@ void clearpackethit(packethit &hit) {
   }
 }
 
+void normalizehitnormal(packethit &hit, int raynum) {
+  assert(raynum % soaf::size == 0);
+  const auto packetnum = raynum / soaf::size;
+  loopi(packetnum) {
+    const auto noisec = soai(~0x0u);
+    const auto m = soai::load(&hit.id[i*soaf::size]) != noisec;
+    if (none(m))
+     continue;
+    const auto n = normalize(get(hit.n, i));
+    set(hit.n, n, i);
+  }
+}
+
+void packstore() {
+
+}
+
 /*-------------------------------------------------------------------------
  - framebuffer routines
  -------------------------------------------------------------------------*/

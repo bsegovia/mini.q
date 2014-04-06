@@ -44,7 +44,6 @@ struct avxf {
     m256(_mm256_insertf128_ps(_mm256_castps128_ps256(a),a,1)) {}
   INLINE avxf(const ssef &a, const ssef &b) :
     m256(_mm256_insertf128_ps(_mm256_castps128_ps256(a),b,1)) {}
-  static INLINE avxf load(const void* const ptr) {return *(__m256*)ptr;}
   INLINE explicit avxf(const char* const a) : m256(_mm256_loadu_ps((const float*)a)) {}
   INLINE avxf(const float &a) : m256(_mm256_broadcast_ss(&a)) {}
   INLINE avxf(float a, float b) : m256(_mm256_set_ps(b, a, b, a, b, a, b, a)) {}
@@ -53,6 +52,9 @@ struct avxf {
   INLINE avxf(float a, float b, float c, float d, float e, float f, float g, float h) :
     m256(_mm256_set_ps(h, g, f, e, d, c, b, a)) {}
   INLINE explicit avxf(const __m256i a) : m256(_mm256_cvtepi32_ps(a)) {}
+
+  // loads
+  static INLINE avxf load(const void* const ptr) {return *(__m256*)ptr;}
 
   // constants
   INLINE avxf(zerotype) : m256(_mm256_setzero_ps()) {}

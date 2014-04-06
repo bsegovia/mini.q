@@ -569,7 +569,7 @@ void writendotl(const raypacket &RESTRICT shadow,
       if (remapped != -1 && !occluded.occluded[remapped]) {
         const auto n = hit.getnormal(idx);
         const auto l = normalize(shadow.dir(remapped));
-        const auto shade = dot(n, -l);
+        const auto shade = -dot(n, l);
         const auto d = int(255.f*min(max(0.f,shade),1.f));
         pixels[offset] = d|(d<<8)|(d<<16)|(0xff<<24);
       } else

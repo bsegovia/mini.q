@@ -71,6 +71,7 @@ struct raycasttask : public task {
     // shadow rays toward the light source
     raypacket shadow;
     packetshadow occluded;
+    avx::normalizehitnormal(hit, p.raynum);
     shadowpacket(p, hit, lpos, shadow, occluded);
     avx::occluded(*bvhisec, shadow, occluded);
     writendotl(shadow, hit, occluded, tileorg, dim, pixels);
