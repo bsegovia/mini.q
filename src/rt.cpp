@@ -55,59 +55,26 @@ struct raycasttask : public task {
   virtual void run(u32 tileID) {
     const vec2i tilexy(tileID%tile.x, tileID/tile.x);
     const vec2i tileorg = int(TILESIZE) * tilexy;
+
+    // primary intersections
     raypacket p;
     packethit hit;
+    avx::visibilitypacket(cam, p, tileorg, dim);
+    avx::clearpackethit(hit);
+    avx::closest(*bvhisec, p, hit);
+
 #define NORMAL_ONLY 0
 #if NORMAL_ONLY
-    avx::visibilitypacket(cam, p, tileorg, dim);
-    avx::visibilitypackethit(hit);
-    avx::closest(*bvhisec, p, hit);
-    avx::fbwritenormal(hit, tileorg, dim, pixels);
+    avx::writenormal(hit, tileorg, dim, pixels);
     totalraynum += TILESIZE*TILESIZE;
 #else
-    avx::visibilitypacket(cam, p, tileorg, dim);
-    avx::visibilitypackethit(hit);
-    avx::closest(*bvhisec, p, hit);
-
-    // exclude points that interesect nothing
-    int mapping[TILESIZE*TILESIZE], curr = 0;
+    // shadow rays toward the light source
     raypacket shadow;
     packetshadow occluded;
-    loopi(int(p.raynum)) {
-      if (hit.ishit(i))
-      {
-        mapping[i] = curr;
-        const auto n = normalize(hit.getnormal(i));
-        hit.n[0][i] = n.x;
-        hit.n[1][i] = n.y;
-        hit.n[2][i] = n.z;
-        const auto dst = p.sharedorg + hit.t[i] * p.dir(i) + n * 1e-2f;
-        const auto dir = dst-lpos;
-        shadow.setdir(dir, curr);
-        occluded.t[curr] = 1.f;
-        occluded.occluded[curr] = 0;
-        ++curr;
-      } else
-        mapping[i] = -1;
-    }
-    shadow.sharedorg = lpos;
-    shadow.raynum = curr;
-    shadow.flags = raypacket::SHAREDORG;
+    shadowpacket(p, hit, lpos, shadow, occluded);
     avx::occluded(*bvhisec, shadow, occluded);
-
-    for (u32 y = 0; y < u32(TILESIZE); ++y)
-    for (u32 x = 0; x < u32(TILESIZE); ++x) {
-      const int offset = (tileorg.x+x)+dim.x*(tileorg.y+y);
-      const int idx = x+y*TILESIZE;
-      const auto sid = mapping[idx];
-      if (sid != -1 && !occluded.occluded[sid]) {
-          const auto shade = dot(hit.getnormal(idx), -normalize(shadow.dir(sid)));
-          const auto d = int(255.f*min(max(0.f,shade),1.f));
-          pixels[offset] = d|(d<<8)|(d<<16)|(0xff<<24);
-      } else
-        pixels[offset] = 0;
-    }
-    totalraynum += curr+TILESIZE*TILESIZE;
+    writendotl(shadow, hit, occluded, tileorg, dim, pixels);
+    totalraynum += shadow.raynum+p.raynum;
 #endif
   }
   intersector *bvhisec;

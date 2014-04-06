@@ -34,3 +34,4 @@ void raytrace(const char *bmp, const vec3f &pos, const vec3f &ypr,
               int w, int h, float fovy, float aspect);
 } /* namespace rt */
 } /* namespace q */
+

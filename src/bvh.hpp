@@ -65,7 +65,7 @@ struct CACHE_LINE_ALIGNED packethit : noncopyable {
 
 struct CACHE_LINE_ALIGNED packetshadow : noncopyable {
   arrayf t;
-  arrayi occluded;
+  arrayi occluded, mapping;
 };
 struct intersector;
 

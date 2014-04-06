@@ -436,7 +436,7 @@ static void occluded(const intersector &RESTRICT bvhtree,
       } else {
         if (flag == intersector::TRILEAF) {
           auto tris = node->getptr<waldtriangle>();
-          const s32 n = tris->num;
+          const auto n = tris->num;
           u32 active[MAXRAYNUM];
           active[first] = 1;
           if (flags & raypacket::SHAREDORG)
@@ -493,36 +493,37 @@ void visibilitypacket(const camera &RESTRICT cam,
 void normalizehitnormal(packethit &hit, int raynum) {
   loopi(raynum) if (hit.ishit(i)) {
     const auto n = normalize(hit.getnormal(i));
-    hit.n[0][i] = n.x;
-    hit.n[1][i] = n.y;
-    hit.n[2][i] = n.z;
+    loopj(3) hit.n[j][i] = n[j];
   }
 }
-#if 0
-void shadowpacket(const raypacket &primary,
-                  const packethit &hit,
-                  raypacket &shadow,
-                  packetshadow &occluded)
+
+static const float SHADOWRAYBIAS = 1e-2f;
+void shadowpacket(const raypacket &RESTRICT primary,
+                  const packethit &RESTRICT hit,
+                  const vec3f &RESTRICT lpos,
+                  raypacket &RESTRICT shadow,
+                  packetshadow &RESTRICT occluded)
 {
-  loopi(int(p.raynum)) {
+  assert((primary.flags & raypacket::SHAREDORG) != 0);
+  int curr = 0;
+  loopi(primary.raynum) {
     if (hit.ishit(i)) {
-      mapping[i] = curr;
-      const auto n = normalize(hit.getnormal(i));
-      hit.n[0][i] = n.x;
-      hit.n[1][i] = n.y;
-      hit.n[2][i] = n.z;
-      const auto dst = p.sharedorg + hit.t[i] * p.dir(i) + n * 1e-2f;
+      const auto n = hit.getnormal(i);
+      const auto dst = primary.sharedorg + hit.t[i]*primary.dir(i) + SHADOWRAYBIAS*n;
       const auto dir = dst-lpos;
       shadow.setdir(dir, curr);
-      occluded.t[curr] = 1.f;
+      occluded.mapping[i] = curr;
       occluded.occluded[curr] = 0;
-      ++curr;
+      occluded.t[curr++] = 1.f;
     } else
-      mapping[i] = -1;
+      occluded.mapping[i] = -1;
   }
+  shadow.sharedorg = lpos;
+  shadow.raynum = curr;
+  shadow.flags = raypacket::SHAREDORG;
 }
-#endif
-void visibilitypackethit(packethit &hit) {
+
+void clearpackethit(packethit &hit) {
   loopi(MAXRAYNUM) {
     hit.id[i] = ~0x0u;
     hit.t[i] = FLT_MAX;
@@ -532,16 +533,16 @@ void visibilitypackethit(packethit &hit) {
 /*-------------------------------------------------------------------------
  - framebuffer routines
  -------------------------------------------------------------------------*/
-void fbwritenormal(const packethit &RESTRICT hit,
-                   const vec2i &RESTRICT tileorg,
-                   const vec2i &RESTRICT screensize,
-                   int *RESTRICT pixels)
+void writenormal(const packethit &RESTRICT hit,
+                 const vec2i &RESTRICT tileorg,
+                 const vec2i &RESTRICT screensize,
+                 int *RESTRICT pixels)
 {
   u32 idx = 0;
   for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y) {
     const auto yoffset = screensize.x*y;
     for (auto x = tileorg.x; x < tileorg.x+TILESIZE; ++x, ++idx) {
-      const int offset = x+yoffset;
+      const auto offset = x+yoffset;
       if (hit.ishit(idx)) {
         const auto n = clamp(normalize(hit.getnormal(idx)), vec3f(zero), vec3f(one));
         const auto rgb = vec3i(n*255.f);
@@ -551,5 +552,31 @@ void fbwritenormal(const packethit &RESTRICT hit,
     }
   }
 }
+
+void writendotl(const raypacket &RESTRICT shadow,
+                const packethit &RESTRICT hit,
+                const packetshadow &RESTRICT occluded,
+                const vec2i &RESTRICT tileorg,
+                const vec2i &RESTRICT screensize,
+                int *RESTRICT pixels)
+{
+  int idx = 0;
+  for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y) {
+    const auto yoffset = screensize.x*y;
+    for (auto x = tileorg.x; x < tileorg.x+TILESIZE; ++x, ++idx) {
+      const auto offset = x+yoffset;
+      const auto remapped = occluded.mapping[idx];
+      if (remapped != -1 && !occluded.occluded[remapped]) {
+        const auto n = hit.getnormal(idx);
+        const auto l = normalize(shadow.dir(remapped));
+        const auto shade = dot(n, -l);
+        const auto d = int(255.f*min(max(0.f,shade),1.f));
+        pixels[offset] = d|(d<<8)|(d<<16)|(0xff<<24);
+      } else
+        pixels[offset] = 0;
+    }
+  }
+}
 } /* namespace rt */
 } /* namespace q */
+

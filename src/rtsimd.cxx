@@ -618,7 +618,7 @@ void visibilitypacket(const camera &RESTRICT cam,
   p.flags = raypacket::SHAREDORG;
 }
 
-void visibilitypackethit(packethit &hit) {
+void clearpackethit(packethit &hit) {
   const auto packetnum = MAXRAYNUM/soaf::size;
   loopi(packetnum) {
     store(&hit.id[i*soaf::size], soaf(asfloat(~0x0u)));
@@ -629,10 +629,10 @@ void visibilitypackethit(packethit &hit) {
 /*-------------------------------------------------------------------------
  - framebuffer routines
  -------------------------------------------------------------------------*/
-void fbwritenormal(const packethit &RESTRICT hit,
-                   const vec2i &RESTRICT tileorg,
-                   const vec2i &RESTRICT screensize,
-                   int *RESTRICT pixels)
+void writenormal(const packethit &RESTRICT hit,
+                 const vec2i &RESTRICT tileorg,
+                 const vec2i &RESTRICT screensize,
+                 int *RESTRICT pixels)
 {
   u32 idx = 0;
   for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y) {
