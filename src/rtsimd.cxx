@@ -21,7 +21,7 @@ namespace rt {
 namespace NAMESPACE {
 struct raypacketextra {
   array3f rdir;                    // used by ray/box intersection
-  interval3f iaorg, iadir, iardir; // only used when INTERVALARITH is set
+  interval3f iaorg, iardir; // only used when INTERVALARITH is set
   float iaminlen, iamaxlen;        // only used when INTERVALARITH is set
 };
 static const u32 waldmodulo[] = {1,2,0,1};
@@ -344,19 +344,19 @@ INLINE u32 occluded(const waldtriangle &RESTRICT tri,
   return occludednum;
 }
 
-INLINE bool samesign(const soa3f &min, const soa3f &max, vec3f &mindir, vec3f &maxdir) {
+INLINE void iardir(raypacketextra &extra, const soa3f &min, const soa3f &max) {
   const soa3f minall(vreduce_min(min.x),vreduce_min(min.y),vreduce_min(min.z));
   const soa3f maxall(vreduce_max(max.x),vreduce_max(max.y),vreduce_max(max.z));
   const soa3f mulall = minall*maxall;
   const auto signx = movemask(soab(mulall.x));
   const auto signy = movemask(soab(mulall.y));
   const auto signz = movemask(soab(mulall.z));
-  if ((signx|signy|signz) == 0) {
-    mindir = vec3f(fextract<0>(minall.x),fextract<0>(minall.y),fextract<0>(minall.z));
-    maxdir = vec3f(fextract<0>(maxall.x),fextract<0>(maxall.y),fextract<0>(maxall.z));
-    return true;
-  } else
-    return false;
+  const vec3f mindir(fextract<0>(minall.x),fextract<0>(minall.y),fextract<0>(minall.z));
+  const vec3f maxdir(fextract<0>(maxall.x),fextract<0>(maxall.y),fextract<0>(maxall.z));
+  extra.iardir = rcp(makeinterval(mindir, maxdir));
+  if (signx) extra.iardir.x = intervalf(-FLT_MAX, FLT_MAX);
+  if (signy) extra.iardir.y = intervalf(-FLT_MAX, FLT_MAX);
+  if (signz) extra.iardir.z = intervalf(-FLT_MAX, FLT_MAX);
 }
 
 template <typename Hit>
@@ -376,30 +376,24 @@ INLINE u32 initextra(raypacketextra &RESTRICT extra,
     set(extra.rdir, r, i);
   }
 
-  vec3f mindir, maxdir;
-  if (samesign(soamindir, soamaxdir, mindir, maxdir)) {
-    if ((p.flags & raypacket::SHAREDORG) == 0) {
-      vec3f minorg(FLT_MAX), maxorg(-FLT_MAX);
-      loopi(p.raynum) {
-        minorg = min(minorg, p.org(i));
-        maxorg = max(maxorg, p.org(i));
-      }
-      extra.iaorg = makeinterval(minorg, maxorg);
-    } else
-      extra.iaorg = makeinterval(p.sharedorg, p.sharedorg);
-    extra.iadir = makeinterval(mindir, maxdir);
-    extra.iardir = rcp(extra.iadir);
-    if (typeequal<Hit,packetshadow>::value) {
-      extra.iamaxlen = -FLT_MAX;
-      extra.iaminlen = FLT_MAX;
-      loopi(p.raynum)
-        extra.iamaxlen = max(extra.iamaxlen, hit.t[i]);
-    } else
-      extra.iamaxlen = FLT_MAX;
-    extra.iaminlen = 0.f;
-    return p.flags | raypacket::INTERVALARITH;
+  iardir(extra, soamindir, soamaxdir);
+  if ((p.flags & raypacket::SHAREDORG) == 0) {
+    vec3f minorg(FLT_MAX), maxorg(-FLT_MAX);
+    loopi(p.raynum) {
+      minorg = min(minorg, p.org(i));
+      maxorg = max(maxorg, p.org(i));
+    }
+    extra.iaorg = makeinterval(minorg, maxorg);
   } else
-    return p.flags;
+    extra.iaorg = makeinterval(p.sharedorg, p.sharedorg);
+  if (typeequal<Hit,packetshadow>::value) {
+    extra.iamaxlen = -FLT_MAX;
+    extra.iaminlen = FLT_MAX;
+    loopi(p.raynum) extra.iamaxlen = max(extra.iamaxlen, hit.t[i]);
+  } else
+    extra.iamaxlen = FLT_MAX;
+  extra.iaminlen = 0.f;
+  return p.flags | raypacket::INTERVALARITH;
 }
 
 template <u32 flags>
@@ -625,12 +619,15 @@ void occluded(const intersector &bvhtree, const raypacket &p, packetshadow &s) {
 #if defined(__AVX__)
 static const soaf identityf(0.f,1.f,2.f,3.f,4.f,5.f,6.f,7.f);
 static const soai identityi(0,1,2,3,4,5,6,7);
+static const soaf packetx(0.f,1.f,2.f,3.f,0.f,1.f,2.f,3.f);
+static const soaf packety(0.f,0.f,0.f,0.f,1.f,1.f,1.f,1.f);
 #elif defined(__SSE__)
 static const soaf identityf(0.f,1.f,2.f,3.f);
 static const soai identityi(0,1,2,3);
 #endif
 static const ssef tilecrx(0.f,0.f,float(TILESIZE),float(TILESIZE));
 static const ssef tilecry(0.f,float(TILESIZE),0.f,float(TILESIZE));
+
 void visibilitypacket(const camera &RESTRICT cam,
                       raypacket &RESTRICT p,
                       const vec2i &RESTRICT tileorg,
@@ -642,6 +639,16 @@ void visibilitypacket(const camera &RESTRICT cam,
   const auto zaxis = soa3f(cam.zaxis*rh);
   const auto imgplaneorg = soa3f(cam.imgplaneorg);
   u32 idx = 0;
+#if 0 //defined(__AVX__)
+  for (auto y = tileorg.y; y < tileorg.y+TILESIZE; y+=2) {
+    const auto ydir = (packety+soaf(float(y)))*zaxis;
+    for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size/2, ++idx) {
+      const auto xdir = (packetx+soaf(float(x)))*xaxis;
+      const auto dir = imgplaneorg+xdir+ydir;
+      set(p.vdir, dir, idx);
+    }
+  }
+#else
   for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y) {
     const auto ydir = soaf(float(y))*zaxis;
     for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size, ++idx) {
@@ -650,6 +657,8 @@ void visibilitypacket(const camera &RESTRICT cam,
       set(p.vdir, dir, idx);
     }
   }
+#endif
+
   const auto crx = tilecrx+ssef(float(tileorg.x));
   const auto cry = tilecry+ssef(float(tileorg.y));
 #if defined(__AVX__)

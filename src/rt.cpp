@@ -45,7 +45,7 @@ camera::camera(vec3f org, vec3f up, vec3f view, float fov, float ratio) :
   xaxis *= ratio;
 }
 
-#define NORMAL_ONLY 0
+#define NORMAL_ONLY 1
 
 //static const vec3f lpos(0.f, -4.f, 2.f);
 static const vec3f lpos(0.f, 4.f, 0.f);
