@@ -639,7 +639,7 @@ void visibilitypacket(const camera &RESTRICT cam,
   const auto zaxis = soa3f(cam.zaxis*rh);
   const auto imgplaneorg = soa3f(cam.imgplaneorg);
   u32 idx = 0;
-#if 0 //defined(__AVX__)
+#if defined(__AVX__)
   for (auto y = tileorg.y; y < tileorg.y+TILESIZE; y+=2) {
     const auto ydir = (packety+soaf(float(y)))*zaxis;
     for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size/2, ++idx) {
@@ -767,15 +767,28 @@ void writenormal(const packethit &RESTRICT hit,
                  int *RESTRICT pixels)
 {
   u32 idx = 0;
-  for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y) {
-    const auto yoffset = screensize.x*y;
+  const auto w = screensize.x;
+#if defined(__AVX__)
+  auto yoffset0 = w*tileorg.y;
+  auto yoffset1 = w+yoffset0;
+  for (auto y = tileorg.y; y < tileorg.y+TILESIZE; y+=2, yoffset0+=2*w, yoffset1+=2*w) {
+    for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size/2, ++idx) {
+#else
+  auto yoffset = w*tileorg.y;
+  for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y, yoffset+=w) {
     for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size, ++idx) {
+#endif
       const auto m = soaf::load(&hit.id[idx*soaf::size]) != soaf(~0x0u);
       const auto n = clamp(normalize(get(hit.n, idx)));
       const auto rgb = soa3i(n*soaf(255.f));
       const auto hitcolor = rgb.x | (rgb.y<<8) | (rgb.z<<16) | soai(0xff000000);
       const auto color = select(m, hitcolor, soai(zero));
+#if defined(__AVX__)
+      store4i_nt(pixels+yoffset0+x, extract<0>(color));
+      store4i_nt(pixels+yoffset1+x, extract<1>(color));
+#else
       storent(pixels+yoffset+x, color);
+#endif
     }
   }
 }
@@ -788,9 +801,17 @@ void writendotl(const raypacket &RESTRICT shadow,
                 int *RESTRICT pixels)
 {
   int idx = 0, curr = 0;
-  for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y) {
-    const auto yoffset = screensize.x*y;
+  const auto w = screensize.x;
+#if defined(__AVX__)
+  auto yoffset0 = w*tileorg.y;
+  auto yoffset1 = w+yoffset0;
+  for (auto y = tileorg.y; y < tileorg.y+TILESIZE; y+=2, yoffset0+=2*w, yoffset1+=2*w) {
+    for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size/2, idx+=soaf::size) {
+#else
+  auto yoffset = w*tileorg.y;
+  for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y, yoffset+=w) {
     for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size, idx+=soaf::size) {
+#endif
       soa3f l;
       soab m;
       if (none(soai::load(&occluded.mapping[idx])==soai(mone))) {
@@ -816,7 +837,12 @@ void writendotl(const raypacket &RESTRICT shadow,
       const auto shade = select(m, -dot(n, normalize(l)), soaf(zero));
       const auto d = soai(soaf(255.f)*clamp(shade));
       const auto rgb = d | (d<<8) | (d<<16) | 0xff000000;
+#if defined(__AVX__)
+      store4i_nt(pixels+yoffset0+x, extract<0>(rgb));
+      store4i_nt(pixels+yoffset1+x, extract<1>(rgb));
+#else
       storent(pixels+yoffset+x, rgb);
+#endif
     }
   }
 }
