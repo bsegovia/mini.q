@@ -60,6 +60,9 @@ struct avxi {
 
   // loads
   static INLINE avxi load(const void* const ptr) {return *(__m256i*)ptr;}
+  static INLINE avxi loadu(const int* const i) {
+    return _mm256_loadu_si256((__m256i*)i);
+  }
 
   // constants
   INLINE avxi(zerotype) : m256(_mm256_setzero_si256()) {}
@@ -150,11 +153,11 @@ INLINE avxi select(const avxb& m, const avxi& t, const avxi& f) {
 }
 
 #if !defined(__clang__)
-INLINE const avxi select(const int m, const avxi& t, const avxi& f) {
+INLINE avxi select(const int m, const avxi& t, const avxi& f) {
   return _mm256_blend_epi32(f,t,m);
 }
 #else
-INLINE const avxi select(const int m, const avxi& t, const avxi& f) {
+INLINE avxi select(const int m, const avxi& t, const avxi& f) {
   return select(avxb(m),t,f);
 }
 #endif
@@ -174,18 +177,18 @@ INLINE avxi shuffle(const avxi& a) {
 }
 
 template<size_t i0, size_t i1>
-INLINE const avxi shuffle(const avxi& a,  const avxi& b) {
+INLINE avxi shuffle(const avxi& a,  const avxi& b) {
   return _mm256_permute2f128_si256(a, b, (i1 << 4) | (i0 << 0));
 }
 
 template<size_t i0, size_t i1, size_t i2, size_t i3>
-INLINE const avxi shuffle(const avxi& a) {
+INLINE avxi shuffle(const avxi& a) {
   return _mm256_castps_si256(_mm256_permute_ps(
           _mm256_castsi256_ps(a), _MM_SHUFFLE(i3, i2, i1, i0)));
 }
 
 template<size_t i0, size_t i1, size_t i2, size_t i3>
-INLINE const avxi shuffle(const avxi& a, const avxi& b) {
+INLINE avxi shuffle(const avxi& a, const avxi& b) {
   return _mm256_castps_si256(_mm256_shuffle_ps(
           _mm256_castsi256_ps(a), _mm256_castsi256_ps(b),
            _MM_SHUFFLE(i3, i2, i1, i0)));
@@ -237,11 +240,11 @@ INLINE size_t select_min(const avxi& v) {return __bsf(movemask(v == vreduce_min(
 INLINE size_t select_max(const avxi& v) {return __bsf(movemask(v == vreduce_max(v)));}
 
 // memory load and store operations
-INLINE const avxi load8i(const int* const i) {
-  return _mm256_load_si256((__m256i*)i); 
+INLINE avxi load8i(const int* const i) {
+  return _mm256_load_si256((__m256i*)i);
 }
-INLINE const avxi uload8i(const int* const i) {
-  return _mm256_loadu_si256((__m256i*)i); 
+INLINE avxi uload8i(const int* const i) {
+  return _mm256_loadu_si256((__m256i*)i);
 }
 INLINE void store8i(void *ptr, const avxi& i) {
   _mm256_store_si256((__m256i*)ptr,i);

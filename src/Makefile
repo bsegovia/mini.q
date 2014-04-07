@@ -1,5 +1,6 @@
-FLAGS=-MP -MD -Wall -fvisibility=hidden -I./ `sdl-config --cflags` -I./ -msse3
+FLAGS=-MP -MD -Wall -fvisibility=hidden -I./ `sdl-config --cflags` -I./ 
 CXXCOMMONFLAGS=-fno-exceptions -fno-rtti -std=c++11 -fvisibility-inlines-hidden -Wno-invalid-offsetof
+# avx2 stuff for gcc -> -mavx2 -mbmi -mlzcnt -mfma -mf16c
 
 ifneq (,$(findstring g++, $(CXX)))
 FLAGS+=-fabi-version=6

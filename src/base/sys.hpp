@@ -119,6 +119,16 @@
 #include <immintrin.h>
 #endif
 
+#if defined(__BMI__) && defined(__GNUC__)
+#define _tzcnt_u32 __tzcnt_u32
+#define _tzcnt_u64 __tzcnt_u64
+#endif
+
+#if defined(__LZCNT__)
+#define _lzcnt_u32 __lzcnt32
+#define _lzcnt_u64 __lzcnt64
+#endif
+
 /*-------------------------------------------------------------------------
  - useful macros
  -------------------------------------------------------------------------*/
@@ -631,6 +641,8 @@ void memstart();
 void *memalloc(size_t sz, const char *filename, int linenum);
 void *memrealloc(void *ptr, size_t sz, const char *filename, int linenum);
 void memfree(void *);
+void *memalignedalloc(size_t size, size_t align, const char *file, int lineno);
+void memalignedfree(const void* ptr);
 template <typename T> void callctor(void *ptr) { new (ptr) T; }
 template <typename T, typename... Args>
 INLINE void callctor(void *ptr, Args&&... args) { new (ptr) T(args...); }
@@ -667,6 +679,8 @@ template <typename T> INLINE void memdestroya(T *array) {
 }
 } /* namespace sys */
 
+#define ALIGNEDMALLOC(SZ,ALIGN) q::sys::memalignedalloc(SZ, ALIGN, __FILE__, __LINE__)
+#define ALIGNEDFREE(PTR) q::sys::memalignedfree(PTR)
 #define MALLOC(SZ) q::sys::memalloc(SZ, __FILE__, __LINE__)
 #define REALLOC(PTR, SZ) q::sys::memrealloc(PTR, SZ, __FILE__, __LINE__)
 #define FREE(PTR) q::sys::memfree(PTR)

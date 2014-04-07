@@ -105,7 +105,7 @@ void raytrace(const char *bmp, const vec3f &pos, const vec3f &ypr,
   const camera cam(pos, -r.vy, -r.vz, fovy, aspect);
   const vec2i dim(w,h), tile(dim/int(TILESIZE));
   if (pixels==NULL)
-  pixels = (int*)MALLOC(w*h*sizeof(int));
+  pixels = (int*)ALIGNEDMALLOC(w*h*sizeof(int), CACHE_LINE_ALIGNMENT);
   const auto start = sys::millis();
   totalraynum=0;
   ref<task> isectask = NEW(raycasttask, world, cam, pixels, dim, tile);

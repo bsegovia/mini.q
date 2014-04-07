@@ -144,13 +144,29 @@ void *memrealloc(void *ptr, size_t sz, const char *filename, int linenum) {
     free(block);
   return NULL;
 }
-
 #else
 void memstart(void) {}
 void *memalloc(size_t sz, const char*, int) {return malloc(sz);}
 void *memrealloc(void *ptr, size_t sz, const char *, int) {return realloc(ptr,sz);}
 void memfree(void *ptr) {if (ptr) free(ptr);}
 #endif // defined(MEMORY_DEBUGGER)
+
+void *memalignedalloc(size_t size, size_t align, const char *file, int lineno) {
+  if (size == 0) return NULL;
+  auto base = (char*)memalloc(size+align+sizeof(int), file, lineno);
+  assert(NULL != base);
+
+  auto unaligned = base + sizeof(int);
+  auto aligned = unaligned + align - ((size_t)unaligned & (align-1));
+  ((int*)aligned)[-1] = (int)((size_t)aligned-(size_t)base);
+  return aligned;
+}
+
+void memalignedfree(const void* ptr) {
+  if (ptr == NULL) return;
+  int ofs = ((int*)ptr)[-1];
+  free((char*)ptr-ofs);
+}
 
 char *path(char *s) {
   for (char *t = s; (t = strpbrk(t, "/\\")) != 0; *t++ = PATHDIV);
