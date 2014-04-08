@@ -252,6 +252,9 @@ INLINE void store8i(void *ptr, const avxi& i) {
 INLINE void store8i(const avxb &mask, void *ptr, const avxi& i) {
   _mm256_maskstore_epi32((int*)ptr,mask,i);
 }
+INLINE void storeu8i(void* ptr, const avxi& i) {
+  _mm256_storeu_ps((float*)ptr,_mm256_castsi256_ps(i));
+}
 
 #if defined (__AVX2__)
 INLINE avxi load8i_nt(void* ptr) {

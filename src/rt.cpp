@@ -45,7 +45,7 @@ camera::camera(vec3f org, vec3f up, vec3f view, float fov, float ratio) :
   xaxis *= ratio;
 }
 
-#define NORMAL_ONLY 0
+#define NORMAL_ONLY 1
 
 //static const vec3f lpos(0.f, -4.f, 2.f);
 static const vec3f lpos(0.f, 4.f, 0.f);
@@ -95,8 +95,8 @@ struct raycasttask : public task {
   vec2i dim;
   vec2i tile;
 };
-static int *pixels=NULL;
-void raytrace(const char *bmp, const vec3f &pos, const vec3f &ypr,
+
+void raytrace(int *pixels, const vec3f &pos, const vec3f &ypr,
               int w, int h, float fovy, float aspect)
 {
   const mat3x3f r = mat3x3f::rotate(-ypr.x,vec3f(0.f,1.f,0.f))*
@@ -104,13 +104,19 @@ void raytrace(const char *bmp, const vec3f &pos, const vec3f &ypr,
                     mat3x3f::rotate(-ypr.z,vec3f(0.f,0.f,1.f));
   const camera cam(pos, -r.vy, -r.vz, fovy, aspect);
   const vec2i dim(w,h), tile(dim/int(TILESIZE));
-  if (pixels==NULL)
-  pixels = (int*)ALIGNEDMALLOC(w*h*sizeof(int), CACHE_LINE_ALIGNMENT);
-  const auto start = sys::millis();
   totalraynum=0;
   ref<task> isectask = NEW(raycasttask, world, cam, pixels, dim, tile);
   isectask->scheduled();
   isectask->wait();
+}
+
+static int *pixels=NULL;
+void raytrace(const char *bmp, const vec3f &pos, const vec3f &ypr,
+              int w, int h, float fovy, float aspect)
+{
+  if (pixels==NULL) pixels = (int*)ALIGNEDMALLOC(w*h*sizeof(int), CACHE_LINE_ALIGNMENT);
+  const auto start = sys::millis();
+  raytrace(pixels, pos, ypr, w, h, fovy, aspect);
   const auto duration = float(sys::millis()-start);
   con::out("rt: %i ms, %f Mray/s", int(duration), 1000.f*(float(totalraynum)*1e-6f)/duration);
   sys::writebmp(pixels, w, h, bmp);

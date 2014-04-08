@@ -501,7 +501,6 @@ void shadowpacket(const array3f &RESTRICT pos,
                   packetshadow &RESTRICT occluded,
                   int raynum)
 {
-  assert((primary.flags & raypacket::SHAREDORG) != 0);
   int curr = 0;
   loopi(raynum) {
     if (u32(mask[i]) != 0) {

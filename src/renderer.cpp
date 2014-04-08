@@ -472,11 +472,55 @@ static void cleandeferred() {
 static u32 rttex, rtpbo;
 static void initrt() {
   const auto dim = scrdim();
+#if 0
   ogl::genbuffers(1, &rtpbo);
   OGL(BindBuffer, GL_PIXEL_UNPACK_BUFFER, rtpbo);
   OGL(BufferData,GL_PIXEL_UNPACK_BUFFER, dim.x*dim.y*sizeof(u32), NULL, GL_DYNAMIC_DRAW);
-  rttex = ogl::maketex("TB I4 D4 B2 Wtr Wsr mn Mn", NULL, dim.x, dim.y);
+  //rttex = ogl::maketex("TB I4 D4 B2 Wtr Wsr mn Mn", NULL, dim.x, dim.y);
   OGL(BindBuffer, GL_PIXEL_UNPACK_BUFFER, 0);
+#else
+  auto _w = dim.x, _h = dim.y;
+  ogl::genbuffers(1, &rtpbo);
+  ogl::gentextures(1, &rttex);
+  OGL(BindBuffer,GL_PIXEL_UNPACK_BUFFER, rtpbo);
+  OGL(BufferData,GL_PIXEL_UNPACK_BUFFER, _w * _h * 4, NULL, GL_DYNAMIC_DRAW);
+  OGL(BindTexture,GL_TEXTURE_2D, rttex);
+  OGL(TexImage2D,GL_TEXTURE_2D, 0, GL_RGBA, _w, _h, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+  OGL(PixelStorei,GL_UNPACK_ALIGNMENT, 1);
+  OGL(TexParameteri,GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+  OGL(TexParameteri,GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+  OGL(TexParameteri,GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+  OGL(TexParameteri,GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  OGL(BindTexture,GL_TEXTURE_2D, 0);
+  OGL(BindBuffer,GL_PIXEL_UNPACK_BUFFER, 0);
+#endif
+}
+
+#if !defined(RELEASE)
+static void cleanrt() {
+  ogl::deletetextures(1, &rttex);
+  ogl::deletebuffers(1, &rtpbo);
+}
+#endif
+
+// bindbuffer for PIXEL_UNPACK
+static void *pbomap(u32 pbo) {
+  void *ptr;
+  OGL(BindBuffer, GL_PIXEL_UNPACK_BUFFER, pbo);
+  OGLR(ptr, MapBuffer, GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
+  assert(ptr != NULL);
+  OGL(BindBuffer, GL_PIXEL_UNPACK_BUFFER, 0);
+  return ptr;
+}
+
+static void pbounmap(u32 pbo, u32 tex) {
+  const auto dim = scrdim();
+  OGL(BindBuffer, GL_PIXEL_UNPACK_BUFFER, pbo);
+  OGL(UnmapBuffer, GL_PIXEL_UNPACK_BUFFER);
+  ogl::bindtexture(GL_TEXTURE_2D, tex, 0);
+  OGL(TexSubImage2D, GL_TEXTURE_2D, 0, 0, 0, dim.x, dim.y, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+  OGL(BindBuffer, GL_PIXEL_UNPACK_BUFFER, 0);
+  ogl::bindtexture(GL_TEXTURE_2D, 0, 0);
 }
 
 /*--------------------------------------------------------------------------
@@ -505,6 +549,7 @@ static u32 segmentnum = 0;
 void start() {
   initdeferred();
   initparticles();
+  initrt();
 }
 #if !defined(RELEASE)
 void finish() {
@@ -514,8 +559,9 @@ void finish() {
     ogl::deletebuffers(1, &sceneibo);
     SAFE_DEL(segment);
   }
-  cleandeferred();
+  cleanrt();
   cleanparticles();
+  cleandeferred();
 }
 #endif
 
@@ -713,13 +759,33 @@ void frame(int w, int h, int curfps) {
   const auto fovy = float(fov) / aspect;
   if (shadertoy)
     doshadertoy(fovy,aspect,farplane);
-  else {
-    if (raytrace) {
-      const auto pos = game::player1->o;
-      const auto ypr = game::player1->ypr;
-      rt::raytrace("hop.bmp",pos,ypr,1024,1024,fov,aspect);
-      raytrace = 0;
-    }
+  else if (raytrace) {
+    const auto rttimer = ogl::begintimer("rt", true);
+    const auto pos = game::player1->o;
+    const auto ypr = game::player1->ypr;
+    const auto pixels = (int*) pbomap(rtpbo);
+    const auto start = sys::millis();
+    rt::raytrace(pixels,pos,ypr,w,h,fov,aspect);
+    const auto end = sys::millis();
+    printf("\rrt %f               ", float(end-start));
+    pbounmap(rtpbo, rttex);
+    ogl::bindfixedshader(ogl::FIXED_DIFFUSETEX);
+    ogl::disable(GL_CULL_FACE);
+    OGL(DepthMask, GL_FALSE);
+    ogl::bindtexture(GL_TEXTURE_2D, rttex, 0);
+    pushscreentransform();
+    const float coords[]={
+      float(w),float(h),0.f,1.f,
+      float(w),0,0.f,0.f,
+      0,float(h),1.f,1.f,
+      0,0,1.f,0.f
+    };
+    ogl::immdraw("Sp2t2", 4, coords);
+    popscreentransform();
+    ogl::enable(GL_CULL_FACE);
+    OGL(DepthMask, GL_TRUE);
+    ogl::endtimer(rttimer);
+  } else {
     context ctx(float(w),float(h),float(fov),aspect,farplane);
     ctx.begin();
     ctx.dogbuffer();

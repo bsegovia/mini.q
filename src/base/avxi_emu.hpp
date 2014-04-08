@@ -260,11 +260,12 @@ INLINE size_t select_max(const avxi& v) {return __bsf(movemask(v == vreduce_max(
 INLINE void store8i(void* ptr, const avxi& i) {
   _mm256_store_ps((float*)ptr,_mm256_castsi256_ps(i));
 }
-
+INLINE void storeu8i(void* ptr, const avxi& i) {
+  _mm256_storeu_ps((float*)ptr,_mm256_castsi256_ps(i));
+}
 INLINE void store8i(const avxb &mask, void *ptr, const avxi& i) {
   _mm256_maskstore_ps((float*)ptr,(__m256i)mask,_mm256_castsi256_ps(i));
 }
-
 INLINE void store8i_nt(void* ptr, const avxi& v) {
   store4i_nt((int*)ptr+0,v.l);
   store4i_nt((int*)ptr+4,v.h);

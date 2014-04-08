@@ -45,6 +45,7 @@ INLINE void store(void *ptr, const soai &x) {store8i(ptr, x);}
 INLINE void store(void *ptr, const soaf &x) {store8f(ptr, x);}
 INLINE void store(void *ptr, const soab &x) {store8b(ptr, x);}
 INLINE void storeu(void *ptr, const soaf &x) {storeu8f(ptr, x);}
+INLINE void storeui(void *ptr, const soai &x) {storeu8i(ptr, x);}
 INLINE void storent(void *ptr, const soai &x) {store8i_nt(ptr, x);}
 INLINE void maskstore(const soab &m, void *ptr, const soaf &x) {store8f(m, ptr, x);}
 INLINE soaf splat(const soaf &v) {
@@ -61,6 +62,7 @@ INLINE void store(void *ptr, const soaf &x) {store4f(ptr, x);}
 INLINE void store(void *ptr, const soab &x) {store4b(ptr, x);}
 INLINE void storent(void *ptr, const soai &x) {store4i_nt(ptr, x);}
 INLINE void storeu(void *ptr, const soaf &x) {storeu4f(ptr, x);}
+INLINE void storeui(void *ptr, const soai &x) {storeu4i(ptr, x);}
 INLINE void maskstore(const soab &m, void *ptr, const soaf &x) {store4f(m, ptr, x);}
 INLINE soaf splat(const soaf &v) {return shuffle<0,0,0,0>(v,v);}
 #else
@@ -628,6 +630,7 @@ static const soai identityi(0,1,2,3);
 static const ssef tilecrx(0.f,0.f,float(TILESIZE),float(TILESIZE));
 static const ssef tilecry(0.f,float(TILESIZE),0.f,float(TILESIZE));
 
+// TODO remove this +0.5f offset for ogl
 void visibilitypacket(const camera &RESTRICT cam,
                       raypacket &RESTRICT p,
                       const vec2i &RESTRICT tileorg,
@@ -641,18 +644,18 @@ void visibilitypacket(const camera &RESTRICT cam,
   u32 idx = 0;
 #if defined(__AVX__)
   for (auto y = tileorg.y; y < tileorg.y+TILESIZE; y+=2) {
-    const auto ydir = (packety+soaf(float(y)))*zaxis;
+    const auto ydir = (packety+soaf(float(y)+0.5f))*zaxis;
     for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size/2, ++idx) {
-      const auto xdir = (packetx+soaf(float(x)))*xaxis;
+      const auto xdir = (packetx+soaf(float(x)+0.5f))*xaxis;
       const auto dir = imgplaneorg+xdir+ydir;
       set(p.vdir, dir, idx);
     }
   }
 #else
   for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y) {
-    const auto ydir = soaf(float(y))*zaxis;
+    const auto ydir = soaf(float(y)+0.5f)*zaxis;
     for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size, ++idx) {
-      const auto xdir = (identityf+soaf(float(x)))*xaxis;
+      const auto xdir = (identityf+soaf(float(x)+0.5f))*xaxis;
       const auto dir = imgplaneorg+xdir+ydir;
       set(p.vdir, dir, idx);
     }
@@ -838,10 +841,10 @@ void writendotl(const raypacket &RESTRICT shadow,
       const auto d = soai(soaf(255.f)*clamp(shade));
       const auto rgb = d | (d<<8) | (d<<16) | 0xff000000;
 #if defined(__AVX__)
-      store4i_nt(pixels+yoffset0+x, extract<0>(rgb));
-      store4i_nt(pixels+yoffset1+x, extract<1>(rgb));
+      storeu4i(pixels+yoffset0+x, extract<0>(rgb));
+      storeu4i(pixels+yoffset1+x, extract<1>(rgb));
 #else
-      storent(pixels+yoffset+x, rgb);
+      storeui(pixels+yoffset+x, rgb);
 #endif
     }
   }
