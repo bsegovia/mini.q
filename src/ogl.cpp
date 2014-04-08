@@ -391,6 +391,7 @@ u32 maketex(const char *fmt, ...) {
   }
 #undef PEEK
   va_end(args);
+  ogl::bindtexture(target, 0, 0);
   return id;
 }
 

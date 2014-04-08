@@ -469,6 +469,16 @@ static void cleandeferred() {
 }
 #endif
 
+static u32 rttex, rtpbo;
+static void initrt() {
+  const auto dim = scrdim();
+  ogl::genbuffers(1, &rtpbo);
+  OGL(BindBuffer, GL_PIXEL_UNPACK_BUFFER, rtpbo);
+  OGL(BufferData,GL_PIXEL_UNPACK_BUFFER, dim.x*dim.y*sizeof(u32), NULL, GL_DYNAMIC_DRAW);
+  rttex = ogl::maketex("TB I4 D4 B2 Wtr Wsr mn Mn", NULL, dim.x, dim.y);
+  OGL(BindBuffer, GL_PIXEL_UNPACK_BUFFER, 0);
+}
+
 /*--------------------------------------------------------------------------
  - sky parameters
  -------------------------------------------------------------------------*/
