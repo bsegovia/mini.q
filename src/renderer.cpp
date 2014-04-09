@@ -500,8 +500,8 @@ static void initrt() {
 
 #if !defined(RELEASE)
 static void cleanrt() {
-  ogl::deletetextures(2, &rttex);
-  ogl::deletebuffers(2, &rtpbo);
+  ogl::deletetextures(2, rttex);
+  ogl::deletebuffers(2, rtpbo);
 }
 #endif
 

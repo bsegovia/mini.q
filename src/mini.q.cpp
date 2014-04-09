@@ -129,6 +129,9 @@ CMD(playerpos, ARG_3INT);
 CMD(playerypr, ARG_3INT);
 VAR(savepos, 0, 1, 1);
 
+static void debug() {script::execfile("debug.q");}
+CMD(debug, ARG_NONE);
+
 void finish() {
   if (savepos) {
     auto f = fopen("pos.q", "wb");
