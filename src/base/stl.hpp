@@ -300,6 +300,7 @@ template <class T> struct vector : noncopyable {
     return buf[i];
   }
 
+  // TODO remove this!
   void sort(void *cf) {
     qsort(buf, ulen, sizeof(T), (int (CDECL *)(const void *,const void *))cf);
   }
