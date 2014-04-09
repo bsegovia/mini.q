@@ -950,7 +950,7 @@ static bool merge(qemcontext &ctx, procmesh &pm, const qemedge &edge, int idx0, 
     i2 = i2 == from ? to : i2;
     if (i0 == i1 || i1 == i2 || i0 == i2) continue;
     const vec3f target(cross(p[i0]-p[i1],p[i0]-p[i2]));
-    if (dot(initial,target) < 0.f)
+    if (dot(initial,target) <= 0.f)
       return false;
   }
 
@@ -969,11 +969,10 @@ static bool merge(qemcontext &ctx, procmesh &pm, const qemedge &edge, int idx0, 
   // of both lists. if not, we just linear allocate a new range
   // XXX we should remove degenerated triangles as well
   int first = -1;
-  loopi(2)
-    if (ctx.vtri[idx[i]].second >= ctx.mergelist.length()) {
-      first = ctx.vtri[idx[i]].first;
-      break;
-    }
+  loopi(2) if (ctx.vtri[idx[i]].second >= ctx.mergelist.length()) {
+    first = ctx.vtri[idx[i]].first;
+    break;
+  }
   if (first == -1) {
     first = ctx.vidx.length();
     ctx.vidx.setsize(first+ctx.mergelist.length());
