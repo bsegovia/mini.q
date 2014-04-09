@@ -277,6 +277,7 @@ template <class T> struct vector : noncopyable {
   }
 
   T remove(int i) {
+    assert(i<ulen);
     T e = buf[i];
     for(int p = i+1; p<ulen; p++) buf[p-1] = buf[p];
     ulen--;
@@ -284,6 +285,7 @@ template <class T> struct vector : noncopyable {
   }
 
   T removeunordered(int i) {
+    assert(i<ulen);
     T e = buf[i];
     ulen--;
     if(ulen>0) buf[i] = buf[ulen];
