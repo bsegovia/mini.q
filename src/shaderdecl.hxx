@@ -6,6 +6,7 @@
 /*-------------------------------------------------------------------------
  - first we define a shadertype with all the given uniforms
  -------------------------------------------------------------------------*/
+#define SHADERVER(N,VER)
 #define SHADER(N)
 #define VATTRIB(T,N,LOC)
 #define FRAGDATA(T,N,LOC)

@@ -56,8 +56,9 @@ shaderregister::shaderregister(void *s, const shaderdesc &desc, const char *name
 void start() {
   if (allshaders) loopv(*allshaders) {
     const auto &def = (*allshaders)[i];
+    if (def.d->minglslversion > ogl::glslversion) continue;
     const auto b = NEW(builder, *def.d, def.idx);
-    assert(def.s->program == 0);
+    assert(def.s->program == 0 && "program is already built");
     if (!b->build(*def.s, ogl::loadfromfile()))
       ogl::shadererror(true, def.n);
   }

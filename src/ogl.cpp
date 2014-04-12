@@ -33,7 +33,7 @@ static void *getfunction(const char *name) {
   return ptr;
 }
 
-static u32 glversion = 100, glslversion = 100;
+u32 glversion = 100, glslversion = 100;
 static bool mesa = false, intel = false, nvidia = false, amd = false;
 static u32 hwtexunits = 0, hwvtexunits = 0, hwtexsize = 0, hwcubetexsize = 0;
 bool hasTQ = false, hasTB = false;
@@ -118,8 +118,6 @@ static void startgl() {
   u32 glslmajorversion, glslminorversion;
   if (glslstr && sscanf(glslstr, " %u.%u", &glslmajorversion, &glslminorversion) == 2)
     glslversion = glslmajorversion*100 + glslminorversion;
-  if (glslversion < 130)
-    sys::fatal("OpenGL: GLSL 1.30 or greater is required!");
 
 // load OGL 3.0 now
 #if !defined(__WEBGL__)

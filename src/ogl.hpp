@@ -248,8 +248,10 @@ void fixedrules(shaderrules &vert, shaderrules &frag, u32 rule);
 /*--------------------------------------------------------------------------
  - ogl support information
  -------------------------------------------------------------------------*/
-extern bool hasTQ; // timer
-extern bool hasTB; // texture buffer
+extern u32 glversion;   // opengl version
+extern u32 glslversion; // glsl version
+extern bool hasTQ;      // timer query
+extern bool hasTB;      // texture buffer
 
 } /* namespace ogl */
 } /* namespace q */

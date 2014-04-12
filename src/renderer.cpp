@@ -414,6 +414,16 @@ static void rules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32 rule) {
 #include "shaderdecl.hxx"
 #undef RULES
 
+static void texbufrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32) {
+  ogl::fixedrules(vert,frag,0);
+}
+#define RULES texbufrules
+#define SHADERNAME texbuf
+#define VERTEX_PROGRAM "data/shaders/fixed_vp.decl"
+#define FRAGMENT_PROGRAM "data/shaders/texbuf_fp.decl"
+#include "shaderdecl.hxx"
+#undef RULES
+
 static void shadertoyrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32) {
   if (ogl::loadfromfile()) {
     auto s = sys::loadfile("data/shaders/hell.glsl");

@@ -1,0 +1,5 @@
+SHADERVER(texbuf, 150)
+UNIFORM(int, u_width)
+UNIFORMI(samplerBuffer, u_texbuf, 0)
+FRAGDATA(vec4, rt_col, 0)
+

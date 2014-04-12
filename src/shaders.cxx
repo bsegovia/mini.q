@@ -1588,4 +1588,12 @@ const char split_deferred_vp[] = {
 "void main() {gl_Position = u_mvp*vec4(vs_pos,1.0,1.0);}\n"
 
 };
+const char texbuf_fp[] = {
+"void main() {\n"
+"  ivec2 ipos = ivec2(gl_FragCoord.xy);\n"
+"  rt_col = texelFetch(u_texbuf, ipos.x+ipos.y*u_width);\n"
+"dsdsd\n"
+"}\n"
+
+};
 

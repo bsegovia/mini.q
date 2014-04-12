@@ -32,6 +32,7 @@ extern const char simple_material_vp[];
 extern const char sky[];
 extern const char split_deferred_fp[];
 extern const char split_deferred_vp[];
+extern const char texbuf_fp[];
 } /* namespace shaders */
 } /* namespace q */
 
