@@ -5,3 +5,4 @@
 #undef FRAGDATA
 #undef VATTRIB
 #undef SHADER
+#undef SHADERVER

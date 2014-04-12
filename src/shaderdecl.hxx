@@ -13,6 +13,7 @@
 #define UNIFORMI(T,N,I) u32 N;
 #define UNIFORMARRAY(T,N,S) u32 N;
 #define INCLUDE(N)
+#define MINVERSION(N)
 namespace SHADERNAME {
 struct shadertype : ogl::shadertype {
 #include VERTEX_PROGRAM
@@ -56,9 +57,11 @@ static vector<shaders::attribdesc> *attrib = NULL;
 static vector<shaders::uniformdesc> *uniform = NULL;
 static vector<shaders::includedesc> *include = NULL;
 
-#define SHADER(N)\
+#define SHADERVER(N,VER)\
 static const char vppath[] = "data/shaders/" STRINGIFY(N) "_vp.glsl";\
-static const char *vp = shaders:: JOIN(N,_vp);
+static const char *vp = shaders:: JOIN(N,_vp);\
+static const u32 vertglslversion = VER;
+#define SHADER(N) SHADERVER(N, 120)
 #define VATTRIB(T,N,LOC)\
   static const shaders::attribdesc N##desc(&attrib,LOC,#N,#T);
 #define INCLUDE(N) PINCLUDE(N,true)
@@ -68,9 +71,11 @@ static const char *vp = shaders:: JOIN(N,_vp);
 #include VERTEX_PROGRAM
 #include "shaderundef.hxx"
 
-#define SHADER(N)\
+#define SHADERVER(N, VER)\
 static const char fppath[] = "data/shaders/" STRINGIFY(N) "_fp.glsl";\
-static const char *fp = shaders:: JOIN(N,_fp);
+static const char *fp = shaders:: JOIN(N,_fp);\
+static const u32 fragglslversion = VER;
+#define SHADER(N) SHADERVER(N, 120)
 #define FRAGDATA(T,N,LOC) PFRAGDATA(T,N,LOC)
 #define INCLUDE(N) PINCLUDE(N,false)
 #define UNIFORM(T,N) PUNIFORM(T,N,false)
@@ -90,7 +95,9 @@ static const shaders::destroyregister destroyreg(destroy);
 #endif
 
 static const shaders::shaderdesc rsc = {
-  vppath, fppath, vp, fp, &uniform, &attrib, &fragdata, &include, RULES
+  vppath, fppath, vp, fp, &uniform, &attrib, &fragdata, &include,
+  max(fragglslversion,vertglslversion),
+  RULES
 };
 static const shaders::shaderregister
   shaderreg(s, rsc, STRINGIFY(N), u32(sizeof(shadertype)), SHADERVARIANT);

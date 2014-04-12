@@ -129,7 +129,7 @@ void render() {
 
 // turns input to the command line on or off
 static void saycommand(const char *init) {
-  // SDL_EnableUNICODE(saycommandon = (init!=NULL));
+  saycommandon = (init!=NULL);
   sys::keyrepeat(saycommandon);
   if (!init) init = "";
   strcpy_s(cmdbuf, init);

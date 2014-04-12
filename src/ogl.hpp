@@ -244,6 +244,13 @@ void bindfixedshader(u32 flags);
 void bindfixedshader(u32 flags, float delta);
 void fixedflush();
 void fixedrules(shaderrules &vert, shaderrules &frag, u32 rule);
+
+/*--------------------------------------------------------------------------
+ - ogl support information
+ -------------------------------------------------------------------------*/
+extern bool hasTQ; // timer
+extern bool hasTB; // texture buffer
+
 } /* namespace ogl */
 } /* namespace q */
 

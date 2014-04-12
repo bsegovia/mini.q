@@ -35,8 +35,8 @@ static void *getfunction(const char *name) {
 
 static u32 glversion = 100, glslversion = 100;
 static bool mesa = false, intel = false, nvidia = false, amd = false;
-static bool hasTQ = false;
 static u32 hwtexunits = 0, hwvtexunits = 0, hwtexsize = 0, hwcubetexsize = 0;
+bool hasTQ = false, hasTB = false;
 
 static PFNGLGETQUERYOBJECTI64VEXTPROC GetQueryObjecti64v = NULL;
 static PFNGLGETQUERYOBJECTUI64VEXTPROC GetQueryObjectui64v = NULL;
@@ -160,6 +160,8 @@ static void startgl() {
     }
     hasTQ = true;
   }
+  if (glversion >= 310 || ext.has("GL_ARB_texture_buffer_object"))
+    hasTB = true;
 
   // we need a vertex array for gl >= 3
   if (glversion >= 300) {
@@ -751,6 +753,15 @@ static bool checkshader(const vector<const char*> &sources, u32 shadernumame) {
   return result == GL_TRUE;
 }
 
+static const pair<u32,const char*> glglslversion[] = {
+  {210,"#version 120\n"},
+  {300,"#version 130\n"},
+  {310,"#version 140\n"},
+  {320,"#version 150\n"},
+  {330,"#version 330\n"},
+  {400,"#version 400\n"}
+};
+static const auto glglslversionnum = ARRAY_ELEM_NUM(glglslversion);
 static const char header[] = {
 #if defined(__WEBGL__)
   "precision highp float;\n"
@@ -761,7 +772,6 @@ static const char header[] = {
   "#define VS_OUT varying\n"
   "#define PS_IN varying\n"
 #else
-  "#version 130\n"
   "#extension GL_ARB_texture_rectangle : enable\n"
   "#define IF_WEBGL(X)\n"
   "#define IF_NOT_WEBGL(X) X\n"
@@ -775,11 +785,19 @@ static const char header[] = {
 static u32 loadshader(GLenum type, const char *source, const shaderrules &rules) {
   u32 name;
   OGLR(name, CreateShader, type);
+  const char *version = NULL;
+  loopi(glglslversionnum)
+    if (glversion == glglslversion[i].first)
+      version = glglslversion[i].second;
+  assert(version != NULL && "invalid ogl version");
   vector<const char*> sources;
+#if !defined(__WEBGL__)
+  sources.add(version);
+#endif
   sources.add(header);
   loopv(rules) sources.add(rules[i]);
   sources.add(source);
-  OGL(ShaderSource, name, rules.length()+2, &sources[0], NULL);
+  OGL(ShaderSource, name, sources.length(), &sources[0], NULL);
   OGL(CompileShader, name);
   if (!checkshader(sources, name)) return 0;
   return name;
@@ -973,8 +991,8 @@ void start(int w, int h) {
   loopi(BUFFER_NUM) bindedvbo[i] = 0;
 
   coretexarray[TEX_UNUSED]       = 0;
-  coretexarray[TEX_EXPLOSION] = installtex("data/explosion.jpg");
-  coretexarray[TEX_CROSSHAIR] = installtex("data/crosshair.png");
+  coretexarray[TEX_EXPLOSION]    = installtex("data/explosion.jpg");
+  coretexarray[TEX_CROSSHAIR]    = installtex("data/crosshair.png");
   coretexarray[TEX_CHARACTERS]   = text::oglfont();
   coretexarray[TEX_CHECKBOARD]   = buildcheckboard();
   coretexarray[TEX_MARTIN_BASE]  = installtex("data/martin/base.png");

@@ -55,6 +55,7 @@ struct shaderdesc {
   vector<attribdesc> **attrib;
   vector<fragdatadesc> **fragdata;
   vector<includedesc> **include;
+  u32 minglslversion;
   rulescallback rulescb;
 };
 

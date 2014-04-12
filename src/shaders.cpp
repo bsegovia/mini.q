@@ -118,12 +118,12 @@ void builder::setuniform(ogl::shadertype &s) {
       if (uniform[i].hasdefault)
         OGL(Uniform1i, s.internal[idx], uniform[i].defaultvalue);
 #else
-	  u32 *u = (u32*)((char*)&s + sizeof(ogl::shadertype));
-	  OGLR(u[idx], GetUniformLocation, s.program, uniform[i].name);
-	  if (uniform[i].hasdefault)
-		  OGL(Uniform1i, u[idx], uniform[i].defaultvalue);
+      u32 *u = (u32*)((char*)&s + sizeof(ogl::shadertype));
+      OGLR(u[idx], GetUniformLocation, s.program, uniform[i].name);
+      if (uniform[i].hasdefault)
+        OGL(Uniform1i, u[idx], uniform[i].defaultvalue);
 #endif
-	}
+    }
   }
 }
 void builder::setattrib(ogl::shadertype &s) {
