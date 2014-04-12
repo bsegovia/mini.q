@@ -208,7 +208,7 @@ int queue::threadfunc(void *data) {
 queue::queue(u32 threadnum) : terminatethreads(false) {
   mutex = SDL_CreateMutex();
   cond = SDL_CreateCond();
-  loopi(s32(threadnum)) threads.add(SDL_CreateThread(threadfunc, this));
+  loopi(s32(threadnum)) threads.add(SDL_CreateThread(threadfunc, "worker thread", this));
 }
 
 queue::~queue(void) {

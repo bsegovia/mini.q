@@ -34,7 +34,7 @@ struct keym { int code; char *name; char *action; } keyms[256];
 static int numkm = 0;
 
 static void keymap(const char *code, const char *key, const char *action) {
-  keyms[numkm].code = atoi(code);
+  keyms[numkm].code = ATOI(code);
   keyms[numkm].name = NEWSTRING(key);
   keyms[numkm++].action = NEWSTRINGBUF(action);
 }
@@ -129,7 +129,7 @@ void render() {
 
 // turns input to the command line on or off
 static void saycommand(const char *init) {
-  SDL_EnableUNICODE(saycommandon = (init!=NULL));
+  // SDL_EnableUNICODE(saycommandon = (init!=NULL));
   sys::keyrepeat(saycommandon);
   if (!init) init = "";
   strcpy_s(cmdbuf, init);

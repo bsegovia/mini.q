@@ -2,8 +2,8 @@
  - mini.q - a minimalistic multiplayer FPS
  - compress_chars.cpp -> load a png for the font and make a bitstring
  -------------------------------------------------------------------------*/
-#include <SDL/SDL.h>
-#include <SDL/SDL_image.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_image.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstdint>

@@ -220,7 +220,7 @@ void fatal(const char *s, const char *o) {
 }
 
 void keyrepeat(bool on) {
-  SDL_EnableKeyRepeat(on ? SDL_DEFAULT_REPEAT_DELAY : 0, SDL_DEFAULT_REPEAT_INTERVAL);
+  // TODO SDL_EnableKeyRepeat(on ? SDL_DEFAULT_REPEAT_DELAY : 0, SDL_DEFAULT_REPEAT_INTERVAL);
 }
 
 #if defined(__WIN32__)

@@ -1,4 +1,4 @@
-FLAGS=-MP -MD -Wall -fvisibility=hidden -I./ `sdl-config --cflags` -I./ 
+FLAGS=-MP -MD -Wall -fvisibility=hidden -I./ `sdl2-config --cflags`
 CXXCOMMONFLAGS=-fno-exceptions -fno-rtti -std=c++11 -fvisibility-inlines-hidden -Wno-invalid-offsetof
 # avx2 stuff for gcc -> -mavx2 -mbmi -mlzcnt -mfma -mf16c
 
@@ -17,7 +17,7 @@ OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g -fsanitize=address
 RELFLAGS=-fomit-frame-pointer -O2 -DNDEBUG -DRELEASE -g
 
 CXXFLAGS=$(CXXCOMMONFLAGS) $(FLAGS) $(OPTFLAGS)
-LIBS=`sdl-config --libs` -lSDL_image -lSDL_mixer -lz -lm -lstdc++ #-fsanitize=address
+LIBS=`sdl2-config --libs` -lSDL2_image -lSDL2_mixer -lz -lm -lstdc++ #-fsanitize=address
 
 ENET_OBJS=\
   enet/callbacks.o\

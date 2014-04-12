@@ -587,7 +587,7 @@ INLINE size_t __bscf(size_t& v) {
 #include <cstdarg>
 #include <cassert>
 #include <new>
-#include <SDL/SDL.h>
+#include <SDL2/SDL.h>
 
 #if defined(__WIN32__)
 #define WIN32_LEAN_AND_MEAN

@@ -40,19 +40,31 @@ static u32 hwtexunits = 0, hwvtexunits = 0, hwtexsize = 0, hwcubetexsize = 0;
 
 static PFNGLGETQUERYOBJECTI64VEXTPROC GetQueryObjecti64v = NULL;
 static PFNGLGETQUERYOBJECTUI64VEXTPROC GetQueryObjectui64v = NULL;
+static PFNGLGETSTRINGIPROC GetStringi;
+static u32 vao = 0;
 
 struct glext {
   ~glext() { for (auto item : glexts) FREE(item.second); }
   void parse() {
-    const char *exts = (const char *) ogl::GetString(GL_EXTENSIONS);
-    for(;;) {
-      while (*exts == ' ') exts++;
-      if (!*exts) break;
-      const char *ext = exts;
-      while (*exts && *exts != ' ') exts++;
-      if (exts > ext) {
-        const auto str = NEWSTRING(ext, size_t(exts-ext));
+    if (glversion >= 300) {
+      GLint numexts = 0;
+      ogl::GetIntegerv(GL_NUM_EXTENSIONS, &numexts);
+      loopi(numexts) {
+        const auto ext = (const char*) ogl::GetStringi(GL_EXTENSIONS, i);
+        const auto str = NEWSTRING(ext);
         glexts.access(str,&str);
+      }
+    } else {
+      const char *exts = (const char*) ogl::GetString(GL_EXTENSIONS);
+      for(;;) {
+        while (*exts == ' ') exts++;
+        if (!*exts) break;
+        const char *ext = exts;
+        while (*exts && *exts != ' ') exts++;
+        if (exts > ext) {
+          const auto str = NEWSTRING(ext, size_t(exts-ext));
+          glexts.access(str,&str);
+        }
       }
     }
   }
@@ -74,8 +86,6 @@ static void startgl() {
 #undef OGLPROC
 #endif /* __WEBGL__ */
 
-  glext ext;
-  ext.parse();
   const auto vendor = (const char *) ogl::GetString(GL_VENDOR);
   const auto renderer = (const char *) ogl::GetString(GL_RENDERER);
   const auto version = (const char *) ogl::GetString(GL_VERSION);
@@ -98,8 +108,10 @@ static void startgl() {
   else
     glversion = glmajorversion*100 + glminorversion*10;
 
-  if (glversion < 300) sys::fatal("OpenGL 2.1 or greater is required");
-
+  if (glversion < 210) sys::fatal("OpenGL 2.1 or greater is required");
+  if (glversion >= 300) GetStringi = (PFNGLGETSTRINGIPROC) getfunction("glGetStringi");
+  glext ext;
+  ext.parse();
   const auto glslstr = (const char*) ogl::GetString(GL_SHADING_LANGUAGE_VERSION);
   con::out("ogl: glsl: %s", glslstr ? glslstr : "unknown");
 
@@ -147,6 +159,12 @@ static void startgl() {
       GetQueryObjectui64v = (PFNGLGETQUERYOBJECTUI64VEXTPROC) getfunction("glGetQueryObjectui64v");
     }
     hasTQ = true;
+  }
+
+  // we need a vertex array for gl >= 3
+  if (glversion >= 300) {
+    ogl::GenVertexArrays(1, &vao);
+    ogl::BindVertexArray(vao);
   }
 }
 
@@ -965,13 +983,15 @@ void start(int w, int h) {
   coretexarray[TEX_MARTIN_SMOKE] = installtex("data/martin/smoke.png");
   coretexarray[TEX_MARTIN_BALL2] = installtex("data/martin/ball2.png");
   coretexarray[TEX_MARTIN_BALL3] = installtex("data/martin/ball3.png");
- // rangei(TEX_CROSSHAIR, TEX_PREALLOCATED_NUM)
- //   if (coretexarray[i] == 0)
-  //    sys::fatal("could not find core textures");
+  rangei(TEX_CROSSHAIR, TEX_PREALLOCATED_NUM)
+    if (coretexarray[i] == 0)
+      sys::fatal("could not find core textures");
 }
 
 #if !defined(RELEASE)
 void finish() {
+  // we need a vertex array for gl >= 3
+  if (glversion >= 300) ogl::DeleteVertexArrays(1, &vao);
   loopv(allshaders) DEL(allshaders[i].first);
   allshaders.destroy();
   rangei(TEX_CROSSHAIR, TEX_PREALLOCATED_NUM)

@@ -22,21 +22,105 @@ CMD(quit, ARG_1STR);
 } /* namespace q */
 
 namespace q {
-VARF(grabmouse, 0, 0, 1, SDL_WM_GrabInput(grabmouse ? SDL_GRAB_ON : SDL_GRAB_OFF););
+VARF(grabmouse, 0, 0, 1, SDL_SetRelativeMouseMode(grabmouse ? SDL_TRUE : SDL_FALSE));
 VARF(gamespeed, 10, 100, 1000, if (client::multiplayer()) gamespeed = 100);
 VARP(minmillis, 0, 5, 1000);
+VARP(fullscreen, 0, 0, 1);
+
+static const int SCR_DEFAULTW = 1024;
+static const int SCR_DEFAULTH = 768;
+static const int SCR_MINW = 320;
+static const int SCR_MINH = 200;
+static const int SCR_MAXW = 8192;
+static const int SCR_MAXH = 8192;
+static SDL_Window *screen = NULL;
+static SDL_GLContext glcontext = NULL;
+static int desktopw = 0, desktoph = 0;
+static int renderw = 0, renderh = 0;
+static int screenw = 0, screenh = 0;
+static bool initwindowpos = false;
+
+static void setupscreen() {
+  if (glcontext) {
+    SDL_GL_DeleteContext(glcontext);
+    glcontext = NULL;
+  }
+  if (screen) {
+    SDL_DestroyWindow(screen);
+    screen = NULL;
+  }
+
+  SDL_DisplayMode desktop;
+  if (SDL_GetDesktopDisplayMode(0, &desktop) < 0)
+    sys::fatal("failed querying desktop display mode: %s", SDL_GetError());
+  desktopw = desktop.w;
+  desktoph = desktop.h;
+
+  if (sys::scrh < 0) sys::scrh = SCR_DEFAULTH;
+  if (sys::scrw < 0) sys::scrw = (sys::scrh*desktopw)/desktoph;
+  sys::scrw = min(sys::scrw, desktopw);
+  sys::scrh = min(sys::scrh, desktoph);
+
+  int winx = SDL_WINDOWPOS_UNDEFINED;
+  int winy = SDL_WINDOWPOS_UNDEFINED;
+  int winw = sys::scrw;
+  int winh = sys::scrh;
+  int flags = SDL_WINDOW_RESIZABLE;
+  if (fullscreen) {
+    winw = desktopw;
+    winh = desktoph;
+    flags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+    initwindowpos = true;
+  }
+
+  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+  SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
+  SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
+  const int winflags = SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN |
+                       SDL_WINDOW_INPUT_FOCUS |
+                       SDL_WINDOW_MOUSE_FOCUS | flags;
+  screen = SDL_CreateWindow("mini.q", winx, winy, winw, winh, winflags);
+  if (!screen)
+    sys::fatal("failed to create OpenGL window: %s", SDL_GetError());
+
+  SDL_SetWindowMinimumSize(screen, SCR_MINW, SCR_MINH);
+  SDL_SetWindowMaximumSize(screen, SCR_MAXW, SCR_MAXH);
+
+  static const struct {int major, minor;} coreversions[] = {
+    {4,0}, {3,3}, {3,2}, {3,1}, {3,0}
+  };
+  loopi(sizeof(coreversions)/sizeof(coreversions[0])) {
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, coreversions[i].major);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, coreversions[i].minor);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    glcontext = SDL_GL_CreateContext(screen);
+    if (glcontext) break;
+  }
+  if (!glcontext) {
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, 0);
+    glcontext = SDL_GL_CreateContext(screen);
+    if (!glcontext)
+      sys::fatal("failed to create OpenGL context: %s", SDL_GetError());
+  }
+
+  SDL_GetWindowSize(screen, &screenw, &screenh);
+  renderw = min(sys::scrw, screenw);
+  renderh = min(sys::scrh, screenh);
+}
 
 // static const float CELLSIZE = 0.2f;
 void start(int argc, const char *argv[]) {
   bool dedicated = false;
-  int fs = 0, uprate = 0, maxcl = 4;
+  int uprate = 0, maxcl = 4;
   const char *master = NULL;
   const char *sdesc = "", *ip = "", *passwd = "";
   rangei(1, argc) {
     const char *a = &argv[i][2];
     if (argv[i][0]=='-') switch (argv[i][1]) {
       case 'd': dedicated = true; break;
-      case 't': fs     = 0; break;
+      case 't': fullscreen = 0; break;
       case 'w': sys::scrw  = atoi(a); break;
       case 'h': sys::scrh  = atoi(a); break;
       case 'u': uprate = atoi(a); break;
@@ -49,7 +133,19 @@ void start(int argc, const char *argv[]) {
     } else
       con::out("unknown commandline argument");
   }
-  if (SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO) < 0) sys::fatal("SDL failed");
+#if !defined(NDEBUG)
+  const int par = SDL_INIT_NOPARACHUTE;
+#else
+  const int par = 0;
+#endif
+
+  if(SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO|SDL_INIT_AUDIO|par)<0)
+    sys::fatal("init: failed to initialize SDL");
+
+ SDL_SetHint(SDL_HINT_GRAB_KEYBOARD, "0");
+ #if !defined(WIN32) && !defined(__APPLE__)
+ SDL_SetHint(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0");
+ #endif
 
   // load support for the JPG and PNG image formats
   con::out("init: sdl image");
@@ -75,12 +171,11 @@ void start(int argc, const char *argv[]) {
 
   con::out("init: video: sdl");
   rr::VIRTH = rr::VIRTW * float(sys::scrh) / float(sys::scrw);
-  if (SDL_InitSubSystem(SDL_INIT_VIDEO)<0) sys::fatal("SDL video failed");
-  SDL_WM_GrabInput(grabmouse ? SDL_GRAB_ON : SDL_GRAB_OFF);
+  setupscreen();
+  SDL_ShowCursor(SDL_FALSE);
+  SDL_StopTextInput();
 
   con::out("init: video: mode");
-  SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-  if (!SDL_SetVideoMode(sys::scrw, sys::scrh, 0, SDL_OPENGL|fs)) sys::fatal("OpenGL failed");
   sys::initendiancheck();
 
   con::out("net: enet");
@@ -97,9 +192,7 @@ void start(int argc, const char *argv[]) {
   shaders::start();
 
   con::out("init: video: misc");
-  SDL_WM_SetCaption("mini.q", NULL);
   sys::keyrepeat(true);
-  SDL_ShowCursor(0);
 
   con::out("init: sound");
   sound::start();
@@ -259,7 +352,7 @@ INLINE void mainloop() {
   const auto millis = sys::millis()*double(gamespeed)/100.0;
   static float fps = 30.0f;
   fps = (1000.0f/float(game::curtime())+fps*50.f)/51.f;
-  SDL_GL_SwapBuffers();
+  SDL_GL_SwapWindow(screen);
   ogl::beginframe();
   gui();
   SDL_Event e;
@@ -326,7 +419,7 @@ INLINE void mainloop() {
     server::slice(int(time(NULL)), 0);
   static double fps = 30.0;
   fps = (1000.0/game::curtime()+fps*50.0)/51.0;
-  SDL_GL_SwapBuffers();
+  SDL_GL_SwapWindow(screen);
   ogl::beginframe();
   sound::updatevol();
   rr::frame(sys::scrw, sys::scrh, int(fps));
@@ -338,7 +431,7 @@ INLINE void mainloop() {
       case SDL_QUIT: sys::quit(); break;
       case SDL_KEYDOWN: 
       case SDL_KEYUP: 
-        con::keypress(event.key.keysym.sym, event.key.state==SDL_PRESSED, event.key.keysym.unicode);
+        con::keypress(event.key.keysym.sym, event.key.state==SDL_PRESSED, 0);
       break;
       case SDL_MOUSEMOTION:
         if (ignore) {

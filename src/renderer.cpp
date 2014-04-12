@@ -667,10 +667,10 @@ struct context {
     if (indexnum != 0) {
       if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_LINE);
       ogl::bindbuffer(ogl::ARRAY_BUFFER, sceneposbo);
+      ogl::setattribarray()(ogl::ATTRIB_POS0, ogl::ATTRIB_COL);
       OGL(VertexAttribPointer, ogl::ATTRIB_POS0, 3, GL_FLOAT, 0, sizeof(vec3f), NULL);
       ogl::bindbuffer(ogl::ARRAY_BUFFER, scenenorbo);
       OGL(VertexAttribPointer, ogl::ATTRIB_COL, 3, GL_FLOAT, 0, sizeof(vec3f), NULL);
-      ogl::setattribarray()(ogl::ATTRIB_POS0, ogl::ATTRIB_COL);
       ogl::bindbuffer(ogl::ELEMENT_ARRAY_BUFFER, sceneibo);
       loopi(segmentnum) {
         const auto seg = segment[i];

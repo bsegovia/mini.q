@@ -13,6 +13,7 @@ struct ResolverThread {
   SDL_Thread *thread;
   char *query;
   int starttime;
+  volatile bool alive;
 };
 
 struct ResolverResult {
@@ -37,8 +38,8 @@ static SDL_sem *resolversem = NULL;
 static int resolverlimit = 1000;
 
 static int resolverloop(void * data) {
-  ResolverThread *rt = (ResolverThread *) data;
-  for (;;) {
+  auto rt = (ResolverThread *) data;
+  while (rt->alive) {
     SDL_SemWait(resolversem);
     SDL_LockMutex(resolvermutex);
     if (resolverqueries.empty()) {
@@ -69,20 +70,23 @@ static void resolverinit(int threads, int limit) {
   while (threads > 0) {
     ResolverThread &rt = ResolverThreads.add();
     rt.query = NULL;
+    rt.alive = true;
     rt.starttime = 0;
-    rt.thread = SDL_CreateThread(resolverloop, &rt);
+    rt.thread = SDL_CreateThread(resolverloop, "browser thread", &rt);
     --threads;
   }
 }
 
 static void resolverstop(ResolverThread &rt, bool restart) {
   SDL_LockMutex(resolvermutex);
-  SDL_KillThread(rt.thread);
+  int status = 0;
+  rt.alive = false;
+  SDL_WaitThread(rt.thread, &status);
   rt.query = NULL;
   rt.starttime = 0;
   rt.thread = NULL;
-  if (restart) rt.thread = SDL_CreateThread(resolverloop, &rt);
-    SDL_UnlockMutex(resolvermutex);
+  if (restart) rt.thread = SDL_CreateThread(resolverloop, "browser thread", &rt);
+  SDL_UnlockMutex(resolvermutex);
 }
 
 static void resolverclear(void) {
