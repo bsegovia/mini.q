@@ -37,6 +37,38 @@ BASE_OBJS=\
   base/sse.o\
   base/task.o
 
+LUA_OBJS=\
+  base/lua/lapi.o\
+  base/lua/lauxlib.o\
+  base/lua/lbaselib.o\
+  base/lua/lcode.o\
+  base/lua/ldblib.o\
+  base/lua/ldebug.o\
+  base/lua/ldo.o\
+  base/lua/ldump.o\
+  base/lua/lfunc.o\
+  base/lua/lgc.o\
+  base/lua/linit.o\
+  base/lua/liolib.o\
+  base/lua/llex.o\
+  base/lua/lmathlib.o\
+  base/lua/lmem.o\
+  base/lua/loadlib.o\
+  base/lua/lobject.o\
+  base/lua/lopcodes.o\
+  base/lua/loslib.o\
+  base/lua/lparser.o\
+  base/lua/lstate.o\
+  base/lua/lstring.o\
+  base/lua/lstrlib.o\
+  base/lua/ltable.o\
+  base/lua/ltablib.o\
+  base/lua/ltm.o\
+  base/lua/lundump.o\
+  base/lua/lvm.o\
+  base/lua/lzio.o\
+  base/lua/print.o
+
 GAME_OBJS=\
   client.o\
   bvh.o\
@@ -71,6 +103,7 @@ GAME_OBJS=\
   world.o
 
 CLIENT_OBJS=\
+  $(LUA_OBJS)\
   $(ENET_OBJS)\
   $(BASE_OBJS)\
   $(GAME_OBJS)\
@@ -83,6 +116,7 @@ RT_OBJS=\
   mini.q.rt.o
 
 SERVER_OBJS=\
+  $(LUA_OBJS)\
   $(ENET_OBJS)\
   base/math.o\
   base/stl.o\
@@ -132,6 +166,7 @@ compress_chars: compress_chars.o
 
 clean:
 	rm -rf mini.q mini.q.server mini.q.rt importobj\
-		compress_chars *.o *.d ./enet/*.o ./enet/*.d \
-		base/*.o base/*.d oprofile_data
+		compress_chars *.o *.d ./enet/*.o ./enet/*.d\
+		base/*.o base/*.d base/lua/*.o base/lua/*.d\
+		oprofile_data
 
