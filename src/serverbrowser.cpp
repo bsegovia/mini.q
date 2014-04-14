@@ -4,7 +4,7 @@
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
 #include "enet/enet.h"
-#include <SDL/SDL_thread.h>
+#include <SDL2/SDL_thread.h>
 
 namespace q {
 namespace browser {

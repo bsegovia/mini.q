@@ -12,7 +12,7 @@
 #include "base/script.hpp"
 #include "base/sys.hpp"
 #include "base/stl.hpp"
-#include <SDL/SDL.h>
+#include <SDL2/SDL.h>
 
 namespace q {
 namespace menu {
