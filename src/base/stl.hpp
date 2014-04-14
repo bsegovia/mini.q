@@ -192,8 +192,8 @@ template <typename T, u32 max_n=1024> struct hashtable : noncopyable {
   }
   T *access(const char *key, const T *value = NULL) {
     u32 h = 5381, i = 0;
-	for (u32 k; (k = key[i]) != 0; ++i) h = ((h << 5) + h) ^ k;
-	for (i = 0; i<n; ++i) { if (h == hashes[i] && !strcmp(key, items[i].first)) break; }
+    for (u32 k; (k = key[i]) != 0; ++i) h = ((h << 5) + h) ^ k;
+    for (i = 0; i<n; ++i) if (h == hashes[i] && !strcmp(key, items[i].first)) break;
     if (value != NULL) {
       if (i>=max_n) sys::fatal("out-of-memory");
       items[i] = makepair(key,*value);

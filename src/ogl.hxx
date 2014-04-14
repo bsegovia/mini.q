@@ -238,3 +238,8 @@ OGLPROC(GetActiveUniformBlockiv, glGetActiveUniformBlockiv, PFNGLGETACTIVEUNIFOR
 OGLPROC(GetActiveUniformBlockName, glGetActiveUniformBlockName, PFNGLGETACTIVEUNIFORMBLOCKNAMEPROC)
 OGLPROC(UniformBlockBinding, glUniformBlockBinding, PFNGLUNIFORMBLOCKBINDINGPROC)
 
+/// OGL 320
+OGLPROC(GetInteger64i_v, glGetInteger64i_v, PFNGLGETINTEGER64I_VPROC)
+OGLPROC(GetBufferParameteri64v, glGetBufferParameteri64v, PFNGLGETBUFFERPARAMETERI64VPROC)
+OGLPROC(FramebufferTexture, glFramebufferTexture, PFNGLFRAMEBUFFERTEXTUREPROC)
+
