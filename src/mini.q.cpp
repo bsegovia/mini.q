@@ -429,9 +429,12 @@ INLINE void mainloop() {
   while (SDL_PollEvent(&event)) {
     switch (event.type) {
       case SDL_QUIT: sys::quit(); break;
-      case SDL_KEYDOWN: 
-      case SDL_KEYUP: 
-        con::keypress(event.key.keysym.sym, event.key.state==SDL_PRESSED, 0);
+      case SDL_TEXTINPUT:
+        con::processtextinput(event.text.text);
+      break;
+      case SDL_KEYDOWN:
+      case SDL_KEYUP:
+        con::keypress(event.key.keysym.sym, event.key.state==SDL_PRESSED);
       break;
       case SDL_MOUSEMOTION:
         if (ignore) {
@@ -443,8 +446,8 @@ INLINE void mainloop() {
       case SDL_MOUSEBUTTONDOWN:
       case SDL_MOUSEBUTTONUP:
         // why?? get event twice without it
-        if (lasttype==event.type && lastbut==event.button.button) break;
-        con::keypress(-event.button.button, event.button.state!=0, 0);
+        if (lasttype==int(event.type) && lastbut==event.button.button) break;
+        con::keypress(-event.button.button, event.button.state!=0);
         lasttype = event.type;
         lastbut = event.button.button;
       break;

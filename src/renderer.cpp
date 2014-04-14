@@ -495,14 +495,14 @@ static void initrt() {
     ogl::gentextures(1, rttex+i);
     OGL(BindBuffer,GL_PIXEL_UNPACK_BUFFER, rtpbo[i]);
     OGL(BufferData,GL_PIXEL_UNPACK_BUFFER, _w * _h * 4, NULL, GL_DYNAMIC_DRAW);
-    OGL(BindTexture,GL_TEXTURE_2D, rttex[i]);
+    ogl::bindtexture(GL_TEXTURE_2D, rttex[i], 0);
     OGL(TexImage2D,GL_TEXTURE_2D, 0, GL_RGBA, _w, _h, 0, GL_BGRA, GL_UNSIGNED_BYTE, 0);
     OGL(PixelStorei,GL_UNPACK_ALIGNMENT, 1);
     OGL(TexParameteri,GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     OGL(TexParameteri,GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     OGL(TexParameteri,GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     OGL(TexParameteri,GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    OGL(BindTexture,GL_TEXTURE_2D, 0);
+    ogl::bindtexture(GL_TEXTURE_2D, 0, 0);
     OGL(BindBuffer,GL_PIXEL_UNPACK_BUFFER, 0);
   }
 #endif
@@ -515,7 +515,6 @@ static void cleanrt() {
 }
 #endif
 
-// bindbuffer for PIXEL_UNPACK
 static void *pbomap(u32 pbo) {
   const auto dim = scrdim();
   void *ptr;
@@ -533,7 +532,6 @@ static void pbounmap(u32 pbo, u32 tex) {
   OGL(UnmapBuffer, GL_PIXEL_UNPACK_BUFFER);
   ogl::bindtexture(GL_TEXTURE_2D, tex, 0);
   OGL(TexSubImage2D, GL_TEXTURE_2D, 0, 0, 0, dim.x, dim.y, GL_BGRA, GL_UNSIGNED_BYTE, 0);
-  //OGL(TexImage2D,GL_TEXTURE_2D, 0, GL_RGBA, dim.x, dim.y, 0, GL_BGRA, GL_UNSIGNED_BYTE, 0);
   OGL(BindBuffer, GL_PIXEL_UNPACK_BUFFER, 0);
   ogl::bindtexture(GL_TEXTURE_2D, 0, 0);
 }

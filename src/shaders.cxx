@@ -1592,7 +1592,6 @@ const char texbuf_fp[] = {
 "void main() {\n"
 "  ivec2 ipos = ivec2(gl_FragCoord.xy);\n"
 "  rt_col = texelFetch(u_texbuf, ipos.x+ipos.y*u_width);\n"
-"dsdsd\n"
 "}\n"
 
 };

@@ -130,6 +130,7 @@ void render() {
 // turns input to the command line on or off
 static void saycommand(const char *init) {
   saycommandon = (init!=NULL);
+  sys::textinput(saycommandon);
   sys::keyrepeat(saycommandon);
   if (!init) init = "";
   strcpy_s(cmdbuf, init);
@@ -146,29 +147,31 @@ static void history(int n) {
 }
 CMD(history, ARG_1INT);
 
-void keypress(int code, bool isdown, int cooked) {
+void processtextinput(const char *str) {
+  script::resetcomplete();
+  strcat_s(cmdbuf, str);
+}
+
+void keypress(int code, bool isdown) {
   if (saycommandon) { // keystrokes go to commandline
     if (isdown) {
       switch (code) {
         case SDLK_RETURN: break;
         case SDLK_BACKSPACE:
-        case SDLK_LEFT: {
+        case SDLK_LEFT:
           loopi(cmdbuf[i]) if (!cmdbuf[i+1]) cmdbuf[i] = 0;
           script::resetcomplete();
-          break;
-        }
+        break;
         case SDLK_UP:
-          if (histpos) strcpy_s(cmdbuf, vhistory[--histpos]); break;
+          if (histpos) strcpy_s(cmdbuf, vhistory[--histpos]);
+        break;
         case SDLK_DOWN:
           if (histpos<vhistory.length()) strcpy_s(cmdbuf, vhistory[histpos++]);
         break;
         case SDLK_TAB: script::complete(cmdbuf); break;
         default:
           script::resetcomplete();
-          if (cooked) {
-            const char add[] = { char(cooked), 0 };
-            strcat_s(cmdbuf, add);
-          }
+        break;
       }
     } else {
       if (code==SDLK_RETURN) {

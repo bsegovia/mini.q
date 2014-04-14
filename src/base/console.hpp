@@ -10,7 +10,8 @@ void finish();
 const char *curcmd();
 void out(const char *s, ...);
 float height();
-void keypress(int code, bool isdown, int cooked);
+void keypress(int code, bool isdown);
+void processtextinput(const char *txt);
 bool active();
 void render();
 } /* namespace con */

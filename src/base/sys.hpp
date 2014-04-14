@@ -541,8 +541,7 @@ INLINE size_t bitscan(size_t v) {
 #endif
 }
 
-INLINE int clz(const int x)
-{
+INLINE int clz(const int x) {
 #if defined(__AVX2__)
   return _lzcnt_u32(x);
 #else
@@ -551,8 +550,7 @@ INLINE int clz(const int x)
 #endif
 }
 
-INLINE int __bscf(int& v)
-{
+INLINE int __bscf(int& v) {
   int i = bitscan(v);
 #if defined(__AVX2__)
   v &= v-1;
@@ -633,6 +631,7 @@ int islittleendian();
 void endianswap(void *memory, int stride, int length);
 u32 threadnumber();
 void writebmp(const int *data, int w, int h, const char *filename);
+void textinput(bool on);
 
 /*-------------------------------------------------------------------------
  - memory debugging / tracking facilities

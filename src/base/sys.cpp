@@ -303,6 +303,13 @@ void writebmp(const int *data, int w, int h, const char *filename) {
   fclose(fp);
   FREE(raw);
 }
+
+void textinput(bool on) {
+  if(on)
+    SDL_StartTextInput();
+  else
+    SDL_StopTextInput();
+}
 } /* namespace sys */
 } /* namespace q */
 
