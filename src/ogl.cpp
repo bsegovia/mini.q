@@ -29,6 +29,8 @@ namespace ogl {
 #endif /* __WEBGL__ */
 static void *getfunction(const char *name) {
   void *ptr = SDL_GL_GetProcAddress(name);
+  // XXX Add proper versioning in OGLPROC definition such that we can handle OGL
+  // 2.1
   if (ptr == NULL) sys::fatal("OpenGL 3.0 is required");
   return ptr;
 }
