@@ -688,30 +688,35 @@ void clearpackethit(packethit &hit) {
   }
 }
 
-void primarypoint(const raypacket &RESTRICT p,
-                  const packethit &RESTRICT hit,
-                  array3f &RESTRICT pos,
-                  array3f &RESTRICT nor,
-                  arrayi &RESTRICT mask)
+u32 primarypoint(const raypacket &RESTRICT p,
+                 const packethit &RESTRICT hit,
+                 array3f &RESTRICT pos,
+                 array3f &RESTRICT nor,
+                 arrayi &RESTRICT mask)
 {
   assert((p.flags & raypacket::SHAREDORG) != 0);
   assert(p.raynum % soaf::size == 0);
+  u32 valid = 0;
   const auto packetnum = p.raynum / soaf::size;
   loopi(packetnum) {
     const auto noisec = soai(~0x0u);
     const auto m = soai::load(&hit.id[i*soaf::size]) != noisec;
-    if (none(m))
-     continue;
+    if (none(m)) {
+      store(&mask[i*soaf::size], m);
+      continue;
+    }
     const auto t = get(hit.t,i);
     const auto dir = get(p.vdir,i);
     const auto unormal = get(hit.n,i);
     const auto org = soa3f(p.sharedorg);
     const auto normal = normalize(unormal);
     const auto position = org + t*dir + soaf(SHADOWRAYBIAS)*normal;
+    valid += popcnt(m);
     store(&mask[i*soaf::size], m);
     set(nor, normal, i);
     set(pos, position, i);
   }
+  return valid;
 }
 
 void shadowpacket(const array3f &RESTRICT pos,
@@ -728,8 +733,10 @@ void shadowpacket(const array3f &RESTRICT pos,
   loopi(packetnum) {
     const auto idx = i*soaf::size;
     const auto m = soab::load(&mask[idx]);
-    if (none(m))
+    if (none(m)) {
+      store(&occluded.mapping[idx], soai(mone));
       continue;
+    }
     const auto dst = get(pos, i);
     const auto dir = dst-soalpos;
     storeu(&occluded.occluded[curr], soaf(zero));
@@ -741,9 +748,6 @@ void shadowpacket(const array3f &RESTRICT pos,
       storeu(&shadow.vdir[1][curr], dir.y);
       storeu(&shadow.vdir[2][curr], dir.z);
       curr += soaf::size;
-    } else if (none(m)) {
-      store(&occluded.mapping[idx], soai(mone));
-      continue;
     } else loopj(soaf::size) {
       if (mask[idx+j]==0) {
         occluded.mapping[idx+j] = -1;
@@ -817,12 +821,15 @@ void writendotl(const raypacket &RESTRICT shadow,
 #endif
       soa3f l;
       soab m;
-      if (none(soai::load(&occluded.mapping[idx])==soai(mone))) {
+      const auto inactive = soai::load(&occluded.mapping[idx])==soai(mone);
+      if (none(inactive)) {
         m = soai::loadu(&occluded.occluded[curr])==soai(zero);
         l.x = soaf::loadu(&shadow.vdir[0][curr]);
         l.y = soaf::loadu(&shadow.vdir[1][curr]);
         l.z = soaf::loadu(&shadow.vdir[2][curr]);
         curr += soaf::size;
+      } else if (all(inactive)) {
+        m = soab(falsev);
       } else loopj(soaf::size) {
         const auto remapped = occluded.mapping[idx+j];
         if (remapped == -1) {
@@ -848,6 +855,17 @@ void writendotl(const raypacket &RESTRICT shadow,
 #endif
     }
   }
+}
+
+void clear(const vec2i &RESTRICT tileorg,
+           const vec2i &RESTRICT screensize,
+           int *RESTRICT pixels)
+{
+  const auto w = screensize.x;
+  auto yoffset = w*tileorg.y;
+  for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y, yoffset+=w)
+    for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size)
+      storeu(pixels+yoffset+x, soaf(zero));
 }
 } /* namespace NAMESPACE */
 } /* namespace rt */

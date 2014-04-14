@@ -525,15 +525,18 @@ void clearpackethit(packethit &hit) {
   }
 }
 
-void primarypoint(const raypacket &RESTRICT p,
-                  const packethit &RESTRICT hit,
-                  array3f &RESTRICT pos,
-                  array3f &RESTRICT nor,
-                  arrayi &RESTRICT mask)
+u32 primarypoint(const raypacket &RESTRICT p,
+                 const packethit &RESTRICT hit,
+                 array3f &RESTRICT pos,
+                 array3f &RESTRICT nor,
+                 arrayi &RESTRICT mask)
 {
+  u32 valid = 0;
   loopi(p.raynum) {
-    if (u32(hit.id[i]) == ~0x0u)
-     continue;
+    if (u32(hit.id[i]) == ~0x0u) {
+      mask[i] = 0u;
+      continue;
+    }
     const auto t = hit.t[i];
     const auto dir = get(p.vdir,i);
     const auto unormal = get(hit.n,i);
@@ -543,7 +546,9 @@ void primarypoint(const raypacket &RESTRICT p,
     mask[i] = ~0x0u;
     set(nor, normal, i);
     set(pos, position, i);
+    ++valid;
   }
+  return valid;
 }
 
 /*-------------------------------------------------------------------------
@@ -592,6 +597,17 @@ void writendotl(const raypacket &RESTRICT shadow,
         pixels[offset] = 0;
     }
   }
+}
+
+void clear(const vec2i &RESTRICT tileorg,
+           const vec2i &RESTRICT screensize,
+           int *RESTRICT pixels)
+{
+  const auto w = screensize.x;
+  auto yoffset = tileorg.y*w;
+  for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y, yoffset += w)
+    for (auto x = tileorg.x; x < tileorg.x+TILESIZE; ++x)
+        pixels[x+yoffset] = 0;
 }
 } /* namespace rt */
 } /* namespace q */

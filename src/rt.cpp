@@ -45,23 +45,25 @@ camera::camera(vec3f org, vec3f up, vec3f view, float fov, float ratio) :
   xaxis *= ratio;
 }
 
-#define NORMAL_ONLY 1
+#define NORMAL_ONLY 0
 
+#define RTVER avx
 //static const vec3f lpos(0.f, -4.f, 2.f);
-static const vec3f lpos(0.f, 4.f, 0.f);
+static const vec3f lpos(35.f, 10.f, 11.f);
+//static const vec3f lpos(0.f, 4.f, 0.f);
 static atomic totalraynum;
 struct raycasttask : public task {
   raycasttask(intersector *bvhisec, const camera &cam, int *pixels, vec2i dim, vec2i tile) :
     task("raycasttask", tile.x*tile.y, 1, 0, UNFAIR),
     bvhisec(bvhisec), cam(cam), pixels(pixels), dim(dim), tile(tile)
   {}
-  INLINE void primarypoint(vec2i tileorg, array3f &pos, array3f &nor, arrayi &mask) {
+  INLINE u32 primarypoint(vec2i tileorg, array3f &pos, array3f &nor, arrayi &mask) {
     raypacket p;
     packethit hit;
-    avx::visibilitypacket(cam, p, tileorg, dim);
-    avx::clearpackethit(hit);
-    avx::closest(*bvhisec, p, hit);
-    avx::primarypoint(p, hit, pos, nor, mask);
+    RTVER::visibilitypacket(cam, p, tileorg, dim);
+    RTVER::clearpackethit(hit);
+    RTVER::closest(*bvhisec, p, hit);
+    return RTVER::primarypoint(p, hit, pos, nor, mask);
   }
   virtual void run(u32 tileID) {
     const vec2i tilexy(tileID%tile.x, tileID/tile.x);
@@ -71,10 +73,10 @@ struct raycasttask : public task {
     // primary intersections
     raypacket p;
     packethit hit;
-    avx::visibilitypacket(cam, p, tileorg, dim);
-    avx::clearpackethit(hit);
-    avx::closest(*bvhisec, p, hit);
-    avx::writenormal(hit, tileorg, dim, pixels);
+    RTVER::visibilitypacket(cam, p, tileorg, dim);
+    RTVER::clearpackethit(hit);
+    RTVER::closest(*bvhisec, p, hit);
+    RTVER::writenormal(hit, tileorg, dim, pixels);
     totalraynum += TILESIZE*TILESIZE;
 #else
     // shadow rays toward the light source
@@ -82,11 +84,16 @@ struct raycasttask : public task {
     arrayi mask;
     raypacket shadow;
     packetshadow occluded;
-    primarypoint(tileorg, pos, nor, mask);
-    avx::shadowpacket(pos, mask, lpos, shadow, occluded, TILESIZE*TILESIZE);
-    avx::occluded(*bvhisec, shadow, occluded);
-    avx::writendotl(shadow, nor, occluded, tileorg, dim, pixels);
-    totalraynum += shadow.raynum+TILESIZE*TILESIZE;
+    const auto validnum = primarypoint(tileorg, pos, nor, mask);
+    if (validnum == 0) {
+      RTVER::clear(tileorg, dim, pixels);
+      totalraynum += TILESIZE*TILESIZE;
+    } else {
+      RTVER::shadowpacket(pos, mask, lpos, shadow, occluded, TILESIZE*TILESIZE);
+      RTVER::occluded(*bvhisec, shadow, occluded);
+      RTVER::writendotl(shadow, nor, occluded, tileorg, dim, pixels);
+      totalraynum += shadow.raynum+TILESIZE*TILESIZE;
+    }
 #endif
   }
   intersector *bvhisec;

@@ -21,11 +21,11 @@ void shadowpacket(const array3f &RESTRICT pos,
                   int raynum);
 
 // compute normals and position of primary hit points
-void primarypoint(const raypacket &RESTRICT p,
-                  const packethit &RESTRICT hit,
-                  array3f &RESTRICT pos,
-                  array3f &RESTRICT nor,
-                  arrayi &RESTRICT mask);
+u32 primarypoint(const raypacket &RESTRICT p,
+                 const packethit &RESTRICT hit,
+                 array3f &RESTRICT pos,
+                 array3f &RESTRICT nor,
+                 arrayi &RESTRICT mask);
 
 // clear and initialize packethit
 void clearpackethit(packethit &hit);
@@ -43,4 +43,9 @@ void writendotl(const raypacket &RESTRICT shadow,
                 const vec2i &RESTRICT tileorg,
                 const vec2i &RESTRICT screensize,
                 int *RESTRICT pixels);
+
+// zero clear the given tile
+void clear(const vec2i &RESTRICT tileorg,
+           const vec2i &RESTRICT screensize,
+           int *RESTRICT pixels);
 
