@@ -50,7 +50,13 @@ void genframebuffers(s32 n, u32 *id);
 void deleteframebuffers(s32 n, u32 *id);
 
 // following functions also ensure state tracking
-enum {ARRAY_BUFFER, ELEMENT_ARRAY_BUFFER, BUFFER_NUM};
+enum {
+  ARRAY_BUFFER,
+  ELEMENT_ARRAY_BUFFER,
+  TEXTURE_BUFFER,
+  PIXEL_UNPACK_BUFFER,
+  BUFFER_NUM
+};
 void bindbuffer(u32 target, u32 buffer);
 void bindtexture(u32 target, u32 id, u32 slot=0);
 void enableattribarray(u32 target);

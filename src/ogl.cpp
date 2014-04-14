@@ -178,8 +178,8 @@ union {
   } flags;
   u32 any;
 } dirty;
-static u32 bindedvbo[BUFFER_NUM];
-static u32 enabledattribarray[ATTRIB_NUM];
+static array<u32,BUFFER_NUM> bindedbuffer;
+static array<u32,ATTRIB_NUM> enabledattribarray;
 static const struct shadertype *bindedshader = NULL;
 
 static const u32 TEX_NUM = 8;
@@ -445,12 +445,14 @@ u32 installtex(const char *texname, bool clamp) {
  -------------------------------------------------------------------------*/
 static const u32 glbufferbinding[BUFFER_NUM] = {
   GL_ARRAY_BUFFER,
-  GL_ELEMENT_ARRAY_BUFFER
+  GL_ELEMENT_ARRAY_BUFFER,
+  GL_TEXTURE_BUFFER,
+  GL_PIXEL_UNPACK_BUFFER
 };
 void bindbuffer(u32 target, u32 buffer) {
-  if (bindedvbo[target] != buffer) {
+  if (bindedbuffer[target] != buffer) {
     OGL(BindBuffer, glbufferbinding[target], buffer);
-    bindedvbo[target] = buffer;
+    bindedbuffer[target] = buffer;
   }
 }
 
@@ -986,7 +988,7 @@ void start(int w, int h) {
   text::start();
   imminit();
   loopi(ATTRIB_NUM) enabledattribarray[i] = 0;
-  loopi(BUFFER_NUM) bindedvbo[i] = 0;
+  loopi(BUFFER_NUM) bindedbuffer[i] = 0;
 
   coretexarray[TEX_UNUSED]       = 0;
   coretexarray[TEX_EXPLOSION]    = installtex("data/explosion.jpg");
