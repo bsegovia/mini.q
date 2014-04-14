@@ -65,7 +65,7 @@ static void setupscreen() {
   int winy = SDL_WINDOWPOS_UNDEFINED;
   int winw = sys::scrw;
   int winh = sys::scrh;
-  int flags = SDL_WINDOW_RESIZABLE;
+  int flags = 0;
   if (fullscreen) {
     winw = desktopw;
     winh = desktoph;
