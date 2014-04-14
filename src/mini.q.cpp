@@ -22,7 +22,7 @@ CMD(quit, ARG_1STR);
 } /* namespace q */
 
 namespace q {
-VARF(grabmouse, 0, 0, 1, SDL_SetRelativeMouseMode(grabmouse ? SDL_TRUE : SDL_FALSE));
+
 VARF(gamespeed, 10, 100, 1000, if (client::multiplayer()) gamespeed = 100);
 VARP(minmillis, 0, 5, 1000);
 VARP(fullscreen, 0, 0, 1);
@@ -39,6 +39,33 @@ static int desktopw = 0, desktoph = 0;
 static int renderw = 0, renderh = 0;
 static int screenw = 0, screenh = 0;
 static bool initwindowpos = false;
+
+VARP(relativemouse, 0, 1, 1);
+static bool canrelativemouse = true, isrelativemouse = false;
+static void inputgrab(bool on) {
+  if (on) {
+    SDL_ShowCursor(SDL_FALSE);
+    if (canrelativemouse && relativemouse) {
+      if (SDL_SetRelativeMouseMode(SDL_TRUE) >= 0) {
+        SDL_SetWindowGrab(screen, SDL_TRUE);
+        isrelativemouse = true;
+      } else {
+        SDL_SetWindowGrab(screen, SDL_FALSE);
+        canrelativemouse = false;
+        isrelativemouse = false;
+      }
+    }
+  } else {
+    SDL_ShowCursor(SDL_TRUE);
+    if (isrelativemouse) {
+      SDL_SetWindowGrab(screen, SDL_FALSE);
+      SDL_SetRelativeMouseMode(SDL_FALSE);
+      isrelativemouse = false;
+    }
+  }
+}
+
+VARF(grabmouse, 0, 1, 1, inputgrab(grabmouse!=0));
 
 static void setupscreen() {
   if (glcontext) {
@@ -213,7 +240,8 @@ void start(int argc, const char *argv[]) {
 
   con::out("localconnect");
   server::localconnect();
-  client::changemap("metl3");        // if this map is changed, also change depthcorrect()
+  client::changemap("metl3");
+  inputgrab(true);
 }
 
 static void playerpos(int x, int y, int z) {game::player1->o = vec3f(vec3i(x,y,z));}

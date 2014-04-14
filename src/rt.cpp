@@ -10,6 +10,7 @@
 #include "base/math.hpp"
 #include "base/console.hpp"
 #include "base/task.hpp"
+//#include "game.hpp" // XXX remove that from here!
 
 namespace q {
 namespace rt {
@@ -46,8 +47,8 @@ camera::camera(vec3f org, vec3f up, vec3f view, float fov, float ratio) :
 }
 
 #define NORMAL_ONLY 0
-
 #define RTVER avx
+
 //static const vec3f lpos(0.f, -4.f, 2.f);
 static const vec3f lpos(35.f, 10.f, 11.f);
 //static const vec3f lpos(0.f, 4.f, 0.f);
@@ -89,7 +90,9 @@ struct raycasttask : public task {
       RTVER::clear(tileorg, dim, pixels);
       totalraynum += TILESIZE*TILESIZE;
     } else {
-      RTVER::shadowpacket(pos, mask, lpos, shadow, occluded, TILESIZE*TILESIZE);
+      //const auto sec = game::lastmillis()/1000.f;
+      const auto newpos = lpos;// + vec3f(10.f*sin(sec),0.f, 10.f*cos(sec));
+      RTVER::shadowpacket(pos, mask, newpos, shadow, occluded, TILESIZE*TILESIZE);
       RTVER::occluded(*bvhisec, shadow, occluded);
       RTVER::writendotl(shadow, nor, occluded, tileorg, dim, pixels);
       totalraynum += shadow.raynum+TILESIZE*TILESIZE;
