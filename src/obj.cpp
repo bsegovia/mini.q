@@ -4,9 +4,10 @@
  -------------------------------------------------------------------------*/
 #include "obj.hpp"
 #include "base/sys.hpp"
+#include "base/map.hpp"
+#include "base/vector.hpp"
 
 #include <zlib.h>
-#include <map>// XXX replace it// XXX replace it
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
@@ -269,7 +270,7 @@ struct poly { int v[4]; int mat; int n; };
 
 bool obj::load(const char *filename) {
   objloader loader;
-  std::map<vertexkey, int> map;
+  map<vertexkey, int> map;
   vector<poly> polys;
   if (loader.loadobj(filename) == 0) return false;
 

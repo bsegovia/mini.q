@@ -4,6 +4,7 @@
  -------------------------------------------------------------------------*/
 #pragma once
 #include "base/sys.hpp"
+#include "base/vector.hpp"
 #include "base/stl.hpp"
 #include <GL/gl3.h>
 

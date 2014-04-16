@@ -13,9 +13,7 @@
 #include "base/stl.hpp"
 #include "base/sys.hpp"
 #include "base/sse.hpp"
-#if defined(__AVX__)
-#include "base/avx.hpp"
-#endif
+#include "base/vector.hpp"
 
 namespace q {
 namespace rt {

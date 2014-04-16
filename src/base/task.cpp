@@ -2,7 +2,8 @@
  - mini.q - a minimalistic multiplayer FPS
  - task.hpp -> implements multi-threaded tasking system
  -------------------------------------------------------------------------*/
-#include "task.hpp"
+#include "base/task.hpp"
+#include "base/vector.hpp"
 #include <SDL/SDL_thread.h>
 
 namespace q {

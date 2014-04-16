@@ -8,6 +8,116 @@
 
 namespace q {
 
+/*-------------------------------------------------------------------------
+ - type traits
+ -------------------------------------------------------------------------*/
+template<typename T> struct is_integral { enum { value = false }; };
+template<typename T> struct is_floating_point { enum { value = false }; };
+template<int TVal> struct int_to_type { enum { value = TVal }; };
+
+#define MAKE_INTEGRAL(TYPE) template<> struct is_integral<TYPE> { enum { value = true }; }
+MAKE_INTEGRAL(char);
+MAKE_INTEGRAL(unsigned char);
+MAKE_INTEGRAL(bool);
+MAKE_INTEGRAL(short);
+MAKE_INTEGRAL(unsigned short);
+MAKE_INTEGRAL(int);
+MAKE_INTEGRAL(unsigned int);
+MAKE_INTEGRAL(long);
+MAKE_INTEGRAL(unsigned long);
+MAKE_INTEGRAL(wchar_t);
+#undef MAKE_INTEGRAL
+
+template<> struct is_floating_point<float> { enum { value = true }; };
+template<> struct is_floating_point<double> { enum { value = true }; };
+template<typename T> struct is_pointer { enum { value = false }; };
+template<typename T> struct is_pointer<T*> { enum { value = true }; };
+template<typename T> struct is_pod { enum { value = false }; };
+template<typename T> struct is_fundamental {
+  enum {
+    value = is_integral<T>::value || is_floating_point<T>::value
+  };
+};
+template<typename T> struct has_trivial_constructor {
+  enum {
+    value = is_fundamental<T>::value || is_pointer<T>::value || is_pod<T>::value
+  };
+};
+template<typename T> struct has_trivial_copy {
+  enum {
+    value = is_fundamental<T>::value || is_pointer<T>::value || is_pod<T>::value
+  };
+};
+
+template<typename T> struct has_trivial_assign {
+  enum {
+    value = is_fundamental<T>::value || is_pointer<T>::value || is_pod<T>::value
+  };
+};
+template<typename T> struct has_trivial_destructor {
+  enum {
+    value = is_fundamental<T>::value || is_pointer<T>::value || is_pod<T>::value
+  };
+};
+template<typename T> struct has_cheap_compare {
+  enum {
+    value = has_trivial_copy<T>::value && sizeof(T) <= 4
+  };
+};
+template<class T> struct isclass {
+  template<class C> static char test(void (C::*)(void));
+  template<class C> static int test(...);
+  enum { yes = sizeof(test<T>(0)) == 1 ? 1 : 0, no = yes^1 };
+};
+
+/*-------------------------------------------------------------------------
+ - iterators
+ -------------------------------------------------------------------------*/
+struct input_iterator_tag {};
+struct output_iterator_tag {};
+struct forward_iterator_tag: public input_iterator_tag {};
+struct bidirectional_iterator_tag: public forward_iterator_tag {};
+struct random_access_iterator_tag: public bidirectional_iterator_tag {};
+
+template<typename IterT> struct iterator_traits {
+   typedef typename IterT::iterator_category iterator_category;
+};
+template<typename T> struct iterator_traits<T*> {
+   typedef random_access_iterator_tag iterator_category;
+};
+
+namespace internal {
+  template<typename TIter, typename TDist>
+  INLINE void distance(TIter first, TIter last, TDist& dist, q::random_access_iterator_tag) {
+    dist = TDist(last - first);
+  }
+  template<typename TIter, typename TDist>
+  INLINE void distance(TIter first, TIter last, TDist& dist, q::input_iterator_tag) {
+    dist = 0;
+    while (first != last) {
+      ++dist;
+      ++first;
+    }
+  }
+  template<typename TIter, typename TDist>
+  INLINE void advance(TIter& iter, TDist d, q::random_access_iterator_tag) {
+    iter += d;
+  }
+  template<typename TIter, typename TDist>
+  INLINE void advance(TIter& iter, TDist d, q::bidirectional_iterator_tag)
+  {
+    if (d >= 0)
+      while (d--) ++iter;
+    else
+      while (d++) --iter;
+  }
+  template<typename TIter, typename TDist>
+  INLINE void advance(TIter& iter, TDist d, q::input_iterator_tag) {
+    assert(d >= 0);
+    while (d--) ++iter;
+  }
+} // namespace internal
+
 // get the power larger or equal than x
 INLINE u32 nextpowerof2(u32 x) {
   --x;
@@ -165,6 +275,34 @@ struct DEFAULT_ALIGNED linear_allocator {
 };
 
 /*-------------------------------------------------------------------------
+ - allocator
+ -------------------------------------------------------------------------*/
+class allocator {
+public:
+  explicit allocator(const char* name = "DEFAULT"):  m_name(name) {}
+  ~allocator(void) {}
+  void *allocate(u32 bytes, int flags = 0);
+  void *allocate_aligned(u32 bytes, u32 alignment, int flags = 0);
+  void deallocate(void* ptr, u32 bytes);
+  const char *get_name(void) const { return m_name; }
+private:
+  const char *m_name;
+};
+
+INLINE bool operator==(const allocator&, const allocator&) {
+  return true;
+}
+INLINE bool operator!=(const allocator& lhs, const allocator& rhs) {
+  return !(lhs == rhs);
+}
+INLINE void* allocator::allocate(u32 bytes, int) {
+  return sys::memalloc(bytes, __FILE__, __LINE__);
+}
+INLINE void allocator::deallocate(void* ptr, u32) {
+  sys::memfree(ptr);
+}
+
+/*-------------------------------------------------------------------------
  - pair
  -------------------------------------------------------------------------*/
 template <typename T, typename U> struct pair {
@@ -206,157 +344,6 @@ template <typename T, u32 max_n=1024> struct hashtable : noncopyable {
   u32 hashes[max_n], n;
 };
 
-/*-------------------------------------------------------------------------
- - simple resizeable vector
- -------------------------------------------------------------------------*/
-template <class T> struct vector : noncopyable {
-  T *buf;
-  int alen, ulen;
-  INLINE vector(int len = 0) {
-    if (len) buf = (T*) MALLOC(len*sizeof(T)); else buf = NULL;
-    loopi(len) sys::callctor<T>(buf+i);
-    alen = ulen = len;
-  }
-  INLINE ~vector() { setsize(0); FREE(buf); }
-  INLINE void destroy() { vector<T>().moveto(*this); }
-  INLINE T &add(const T &x) {
-    const T copy(x);
-    if (ulen==alen) realloc();
-    sys::callctor<T>(buf+ulen, copy);
-    return buf[ulen++];
-  }
-  INLINE T &add() {
-    if (ulen==alen) realloc();
-    sys::callctor<T>(buf+ulen);
-    return buf[ulen++];
-  }
-  pair<T*,u32> move() {
-    const auto dst = makepair(buf,u32(ulen));
-    alen = ulen = 0;
-    buf = NULL;
-    return dst;
-  }
-  INLINE void moveto(vector<T> &other) {
-    other.~vector<T>();
-    other.alen = alen; alen = 0;
-    other.ulen = ulen; ulen = 0;
-    other.buf = buf; buf = NULL;
-  }
-  INLINE void memset(u8 v) {::memset(buf, v, sizeof(T)*ulen);}
-  T *begin() { return buf; }
-  T *end() { return buf+ulen; }
-  const T *begin() const { return buf; }
-  const T *end() const { return buf+ulen; }
-  INLINE T &pop() { return buf[--ulen]; }
-  INLINE T &last() { return buf[ulen-1]; }
-  INLINE bool empty() { return ulen==0; }
-  INLINE int length() const { return ulen; }
-  INLINE int size() const { return ulen*sizeof(T); }
-  INLINE bool empty() const { return size()==0; }
-  INLINE const T &operator[](int i) const { assert(i>=0 && i<ulen); return buf[i]; }
-  INLINE T &operator[](int i) { assert(i>=0 && i<ulen); return buf[i]; }
-  INLINE T *getbuf() { return buf; }
-  INLINE void prealloc(int len) {
-    if (len > alen) {
-      alen = nextpowerof2(len);
-      buf = (T*)REALLOC(buf, alen*sizeof(T));
-    }
-  }
-  INLINE void realloc() {
-    alen = 2*alen>1?2*alen:1;
-    buf = (T*)REALLOC(buf, alen*sizeof(T));
-  }
-
-  void setsize(int i) {
-    if (i<ulen)
-      for(; ulen>i; --ulen) buf[ulen-1].~T();
-    else if (i>ulen) {
-      prealloc(i);
-      for(; i>ulen; ++ulen) sys::callctor<T>(buf+ulen);
-    }
-  }
-
-  T remove(int i) {
-    assert(i<ulen);
-    T e = buf[i];
-    for(int p = i+1; p<ulen; p++) buf[p-1] = buf[p];
-    ulen--;
-    return e;
-  }
-
-  T removeunordered(int i) {
-    assert(i<ulen);
-    T e = buf[i];
-    ulen--;
-    if(ulen>0) buf[i] = buf[ulen];
-    return e;
-  }
-
-  void removeobj(const T &o) {loopi(ulen) if(buf[i]==o) remove(i--);}
-  T &insert(int i, const T &e) {
-    add(T());
-    for(int p = ulen-1; p>i; p--) buf[p] = buf[p-1];
-    buf[i] = e;
-    return buf[i];
-  }
-
-  // TODO remove this!
-  void sort(void *cf) {
-    qsort(buf, ulen, sizeof(T), (int (CDECL *)(const void *,const void *))cf);
-  }
-
-  static INLINE int heapparent(int i) { return (i - 1) >> 1; }
-  static INLINE int heapchild(int i) { return (i << 1) + 1; }
-
-  void buildheap() { for(int i = ulen/2; i >= 0; i--) downheap(i); }
-
-  int upheap(int i) {
-    auto score = buf[i];
-    while (i > 0) {
-      int pi = heapparent(i);
-      if (!(score < buf[pi])) break;
-      swap(buf[i], buf[pi]);
-      i = pi;
-    }
-    return i;
-  }
-
-  T &addheap(const T &x) {
-    add(x);
-    return buf[upheap(ulen-1)];
-  }
-
-  int downheap(int i) {
-    auto score = buf[i];
-    for (;;) {
-      int ci = heapchild(i);
-      if (ci >= ulen) break;
-      auto cscore = buf[ci];
-      if (cscore < score) {
-        if (ci+1 < ulen && buf[ci+1] < cscore) {
-          swap(buf[ci+1], buf[i]);
-          i = ci+1;
-        } else {
-          swap(buf[ci], buf[i]);
-          i = ci;
-        }
-      } else if (ci+1 < ulen && buf[ci+1] < score) {
-        swap(buf[ci+1], buf[i]);
-        i = ci+1;
-      } else
-        break;
-    }
-    return i;
-  }
-
-  T removeheap() {
-    T e = removeunordered(0);
-    if (ulen) downheap(0);
-    return e;
-  }
-};
-typedef vector<char *> cvector;
-typedef vector<int> ivector;
 
 /*-------------------------------------------------------------------------
  - simple intrusive list
@@ -377,7 +364,7 @@ struct intrusive_list_iterator {
   INLINE intrusive_list_iterator(): m_node(0) {}
   INLINE intrusive_list_iterator(pointer iterNode) : m_node(iterNode) {}
   INLINE reference operator*() const {
-    GBE_ASSERT(m_node);
+    GBE_assert(m_node);
     return *m_node;
   }
   INLINE pointer operator->() const { return m_node; }

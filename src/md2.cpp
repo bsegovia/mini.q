@@ -3,6 +3,7 @@
  - md2.cpp -> handles quake md2 models
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
+#include "base/vector.hpp"
 
 namespace q {
 #define SHADERNAME md2

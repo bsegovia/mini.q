@@ -4,6 +4,7 @@
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
 #include "enet/enet.h"
+#include "base/vector.hpp"
 
 namespace q {
 namespace client {

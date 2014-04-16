@@ -7,6 +7,7 @@
 #include "shaders.hxx"
 #include "base/stl.hpp"
 #include "base/sys.hpp"
+#include "base/vector.hpp"
 
 namespace q {
 namespace shaders {

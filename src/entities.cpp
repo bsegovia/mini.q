@@ -4,6 +4,7 @@
  - (monsters,players...)
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
+#include "base/vector.hpp"
 
 namespace q {
 namespace game {
