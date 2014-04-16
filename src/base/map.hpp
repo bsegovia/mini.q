@@ -1,3 +1,7 @@
+/*-------------------------------------------------------------------------
+ - mini.q - a minimalistic multiplayer FPS
+ - map.hpp -> exposes map structure using red black tree
+ -------------------------------------------------------------------------*/
 #pragma once
 #include "stl.hpp"
 #include "algorithm.hpp"

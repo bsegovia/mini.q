@@ -5,6 +5,7 @@
 #include "obj.hpp"
 #include "base/sys.hpp"
 #include "base/map.hpp"
+#include "base/set.hpp"
 #include "base/vector.hpp"
 
 #include <zlib.h>
