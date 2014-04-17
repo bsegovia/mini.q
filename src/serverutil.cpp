@@ -13,11 +13,11 @@ void finish() {}
 #endif
 namespace server {
 
-static string copyname;
+static fixedstring copyname;
 static int copysize;
 static u8 *copydata = NULL;
 
-void sendmaps(int n, string mapname, int mapsize, u8 *mapdata) {
+void sendmaps(int n, const char *mapname, int mapsize, u8 *mapdata) {
   if (mapsize <= 0 || mapsize > 256*256) return;
   strcpy_s(copyname, mapname);
   copysize = mapsize;

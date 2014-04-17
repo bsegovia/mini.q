@@ -28,7 +28,7 @@ struct identifier {
 // tab-completion of all idents
 static int completesize = 0, completeidx = 0;
 
-static void itoa(string &s, int i) { sprintf_s(s)("%d", i); }
+static void itoa(fixedstring &s, int i) { sprintf_s(s)("%d", i); }
 static char *exchangestr(char *o, const char *n) {
   FREE(o);
   return NEWSTRING(n);
@@ -103,7 +103,7 @@ static char *parseexp(char *&p, int right) {
   }
   char *s = NEWSTRING(word, p-word-1);
   if (left=='(') {
-    string t;
+    fixedstring t;
     itoa(t, execstring(s)); // evaluate () exps directly, and substitute result
     s = exchangestr(s, t);
   }
@@ -134,7 +134,7 @@ static char *parseword(char *&p) {
 static char *lookup(char *n) {
   identifier *id = idents->access(n+1);
   if (id) switch (id->type) {
-    case ID_VAR: string t; itoa(t, *(id->storage)); return exchangestr(n, t);
+    case ID_VAR: {fixedstring t; itoa(t, *(id->storage)); return exchangestr(n, t);}
     case ID_ALIAS: return exchangestr(n, id->action);
   }
   con::out("unknown alias lookup: %s", n+1);
@@ -211,7 +211,7 @@ int execstring(const char *pp, bool isdown) {
               if (isdown) val = ((int (CDECL *)(char *, char *))id->fun)(w[1], w[2]); break;
             case ARG_VARI:
               if (isdown) {
-                string r; // limit, remove
+                fixedstring r; // limit, remove
                 r[0] = 0;
                 for (int i = 1; i<numargs; i++) {
                   strcat_s(r, w[i]);  // make string-list out of all arguments
@@ -268,9 +268,9 @@ int execstring(const char *pp, bool isdown) {
 
 void resetcomplete(void) { completesize = 0; }
 
-void complete(string &s) {
+void complete(fixedstring &s) {
   if (*s!='/') {
-    string t;
+    fixedstring t;
     strcpy_s(t, s);
     strcpy_s(s, "/");
     strcat_s(s, t);
@@ -286,7 +286,7 @@ void complete(string &s) {
 }
 
 bool execfile(const char *cfgfile) {
-  string s;
+  fixedstring s;
   strcpy_s(s, cfgfile);
   char *buf = sys::loadfile(sys::path(s), NULL);
   if (!buf) return false;
@@ -317,7 +317,7 @@ CMD(writecfg, ARG_NONE);
 // below the commands that implement a small imperative language. thanks to the
 // semantics of () and [] expressions, any control construct can be defined
 // trivially.
-static void intset(const char *name, int v) { string b; itoa(b, v); alias(name, b); }
+static void intset(const char *name, int v) { fixedstring b; itoa(b, v); alias(name, b); }
 static void ifthen(char *cond, char *thenp, char *elsep) { execstring(cond[0]!='0' ? thenp : elsep); }
 static void loopa(char *times, char *body) { int t = atoi(times); loopi(t) { intset("i", i); execstring(body); } }
 static void whilea(char *cond, char *body) { while (execstring(cond)) execstring(body); } // can't get any simpler than this :)

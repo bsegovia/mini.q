@@ -15,12 +15,12 @@ static int connattempts = 0;
 static int disconnecting = 0;
 static int clientnum = -1; // our client id in the game
 static bool c2sinit = false; // whether we need to tell the other clients our stats
-static string ctext;
+static fixedstring ctext;
 static vector<ivector> messages; // collect c2s messages conveniently
 static int lastupdate = 0, lastping = 0;
-static string toservermap;
+static fixedstring toservermap;
 static bool senditemstoserver = false; // after a map change (server doesn't have map)
-static string clientpassword;
+static fixedstring clientpassword;
 
 int getclientnum(void) { return clientnum; }
 
@@ -73,7 +73,8 @@ CMDN(team, newteam, ARG_1STR);
 
 void writeclientinfo(FILE *f) {
   fprintf((FILE*) f, "name \"%s\"\nteam \"%s\"\n",
-    game::player1->name, game::player1->team);
+    (const char *) game::player1->name,
+    (const char *) game::player1->team);
 }
 
 void connect(const char *servername) {

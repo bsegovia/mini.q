@@ -90,17 +90,16 @@ static void savegame(const char *name) {
 CMD(savegame, ARG_1STR);
 
 static void loadstate(char *fn) {
+  fixedstring buf, mapname;
   stop();
   if (client::multiplayer()) return;
   f = gzopen(fn, "rb9");
   if (!f) { con::out("could not open %s", fn); return; }
 
-  string buf;
   gzread(f, buf, 8);
   if (strncmp(buf, "CUBESAVE", 8)) goto out;
   if (gzgetc(f)!=sys::islittleendian()) goto out;     // not supporting save->load accross incompatible architectures simpifies things a LOT
   if (gzgeti()!=SAVEGAMEVERSION || gzgeti()!=sizeof(game::dynent)) goto out;
-  string mapname;
   gzread(f, mapname, MAXDEFSTR);
   game::setnextmode(gzgeti());
   client::changemap(mapname); // continue below once map has been loaded and client & server have updated

@@ -30,7 +30,7 @@ struct gmenu {
 static vector<gmenu> menus;
 static int vmenu = -1;
 static ivector menustack;
-static string empty = "";
+static fixedstring empty = "";
 
 void set(int menu) {
   if ((vmenu = menu)>=1)

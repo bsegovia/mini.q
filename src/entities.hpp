@@ -78,7 +78,7 @@ struct dynent {
   int trigger; // millis at which transition to another monsterstate takes place
   vec3f attacktarget; // delayed attacks
   int anger; // how many times already hit by fellow monster
-  string name, team;
+  fixedstring name, team;
 };
 
 INLINE aabb getaabb(const dynent *d) {

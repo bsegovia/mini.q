@@ -77,7 +77,7 @@ void builder::setrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules)
   if (*desc.uniform) {
     auto &uni = **desc.uniform;
     loopv(uni) {
-      string rule;
+      fixedstring rule;
       if (uni[i].arraysize == NULL)
         sprintf_s(rule)("uniform %s %s;\n", uni[i].type, uni[i].name);
       else

@@ -21,7 +21,7 @@ void restoreserverstate(vector<game::entity> &ents);
 u8 *retrieveservers(u8 *buf, int buflen);
 void serverms(int mode, int numplayers, int minremain, char *smapname, int seconds, bool isfull);
 void servermsinit(const char *master, const char *sdesc, bool listen);
-void sendmaps(int n, string mapname, int mapsize, u8 *mapdata);
+void sendmaps(int n, const char *mapname, int mapsize, u8 *mapdata);
 ENetPacket *recvmap(int n);
 
 } /* namespace server */

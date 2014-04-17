@@ -23,10 +23,10 @@ struct ResolverResult {
 };
 
 struct ServerInfo {
-  string name;
-  string full;
-  string map;
-  string sdesc;
+  fixedstring name;
+  fixedstring full;
+  fixedstring map;
+  fixedstring sdesc;
   int mode, numplayers, ping, protocol, minremain;
   ENetAddress address;
 };
@@ -280,7 +280,7 @@ void writeservercfg(void) {
   FILE *f = fopen("servers.cfg", "w");
   if (!f) return;
   fprintf(f, "// servers connected to are added here automatically\n\n");
-  loopvrev(servers) fprintf(f, "addserver %s\n", servers[i].name);
+  loopvrev(servers) fprintf(f, "addserver %s\n", (const char*) servers[i].name);
   fclose(f);
 }
 CMD(updatefrommaster, ARG_NONE);

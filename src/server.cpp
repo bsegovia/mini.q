@@ -14,15 +14,15 @@ enum { ST_EMPTY, ST_LOCAL, ST_TCPIP };
 struct drawarray { // server side version of "dynent" type
   int type;
   ENetPeer *peer;
-  string hostname;
-  string mapvote;
-  string name;
+  fixedstring hostname;
+  fixedstring mapvote;
+  fixedstring name;
   int modevote;
 };
 
 static vector<drawarray> clients;
 static int maxclients = 8;
-static string smapname;
+static fixedstring smapname;
 
 struct server_entity { // server side version of "entity" type
   bool spawned;
@@ -92,7 +92,9 @@ void sendservmsg(const char *msg) {
 }
 
 void disconnect_client(int n, const char *reason) {
-  printf("client::disconnecting client (%s) [%s]\n", clients[n].hostname, reason);
+  printf("client::disconnecting client (%s) [%s]\n",
+    (const char*)(clients[n].hostname),
+    reason);
   enet_peer_disconnect(clients[n].peer);
   clients[n].type = ST_EMPTY;
   send2(true, -1, SV_CDIS, n);
@@ -201,7 +203,7 @@ void process(ENetPacket * packet, int sender) { // sender may be -1
     break;
     case SV_SENDMAP: {
       sgetstr();
-      int mapsize = getint(p);
+      const auto mapsize = getint(p);
       sendmaps(sender, text, mapsize, p);
     }
     return;
@@ -339,7 +341,7 @@ void slice(int seconds, unsigned int timeout) {
         c.peer->data = (void *)(&c-&clients[0]);
         char hn[1024];
         strcpy_s(c.hostname, (enet_address_get_host(&c.peer->address, hn, sizeof(hn))==0) ? hn : "localhost");
-        printf("client connected (%s)\n", c.hostname);
+        printf("client connected (%s)\n", (const char*)(c.hostname));
         send_welcome(lastconnect = &c-&clients[0]);
         break;
       }
@@ -350,7 +352,8 @@ void slice(int seconds, unsigned int timeout) {
       break;
       case ENET_EVENT_TYPE_DISCONNECT: 
         if ((intptr_t)event.peer->data<0) break;
-        printf("client::disconnected client (%s)\n", clients[(intptr_t)event.peer->data].hostname);
+        printf("client::disconnected client (%s)\n",
+          (const char*)(clients[(intptr_t)event.peer->data].hostname));
         clients[(intptr_t)event.peer->data].type = ST_EMPTY;
         send2(true, -1, SV_CDIS, (intptr_t)event.peer->data);
         event.peer->data = (void *)-1;

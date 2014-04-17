@@ -55,8 +55,8 @@ u8 *stripheader(u8 *b) {
 
 static ENetAddress masterserver = { ENET_HOST_ANY, 80 };
 static int updmaster = 0;
-static string masterbase;
-static string masterpath;
+static fixedstring masterbase;
+static fixedstring masterpath;
 static u8 masterrep[MAXTRANS];
 static ENetBuffer masterb;
 
@@ -89,7 +89,7 @@ u8 *retrieveservers(u8 *buf, int buflen) {
 }
 
 static ENetSocket pongsock = ENET_SOCKET_NULL;
-static string serverdesc;
+static fixedstring serverdesc;
 
 void serverms(int mode, int numplayers, int minremain, char *smapname, int seconds, bool isfull) {
   checkmasterreply();
@@ -111,7 +111,7 @@ void serverms(int mode, int numplayers, int minremain, char *smapname, int secon
     putint(p, mode);
     putint(p, numplayers);
     putint(p, minremain);
-    string mname;
+    fixedstring mname;
     strcpy_s(mname, isfull ? "[FULL] " : "");
     strcat_s(mname, smapname);
     sendstring(mname, p);

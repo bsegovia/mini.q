@@ -50,7 +50,7 @@ static void music(const char *name) {
   if (nosound) return;
   stop();
   if (soundvol && musicvol) {
-    string sn;
+    fixedstring sn;
     strcpy_s(sn, "packages/");
     strcat_s(sn, name);
     if ((mod = Mix_LoadMUS(sys::path(sn)))) {

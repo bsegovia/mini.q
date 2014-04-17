@@ -356,7 +356,7 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
 #define SPLITNUM 4
 
 static void deferredrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32 rule) {
-  string str;
+  fixedstring str;
   sprintf_s(str)("#define LIGHTNUM %d\n", rule+1);
   frag.insert(0, NEWSTRING(str));
   frag.add(NEWSTRING("vec3 shade(vec3 pos, vec3 nor) {\n"));

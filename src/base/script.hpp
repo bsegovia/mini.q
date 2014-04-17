@@ -38,7 +38,7 @@ bool execfile(const char *cfgfile);
 // stop completion
 void resetcomplete();
 // complete the given string
-void complete(string &s);
+void complete(fixedstring &s);
 // set an alias with given action
 void alias(const char *name, const char *action);
 // get the action string for the given variable

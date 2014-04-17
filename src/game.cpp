@@ -29,7 +29,7 @@ static void moden(int n) {client::addmsg(1,2,SV_GAMEMODE,nextmode_=n);}
 CMDN(mode, moden, ARG_1INT);
 
 static bool intermission = false;
-static string clientmap;
+static fixedstring clientmap;
 
 const char *getclientmap() { return clientmap; }
 
@@ -236,7 +236,7 @@ static void respawn() {
 }
 
 static int sleepwait = 0;
-static string sleepcmd;
+static fixedstring sleepcmd;
 static void sleepf(const char *msec, const char *cmd) {
   sleepwait = atoi(msec)+int(lastmillis());
   strcpy_s(sleepcmd, cmd);
@@ -520,7 +520,7 @@ void renderclients() {
       renderclient(d, isteam(player1->team, d->team), "monster/ogro", false, 1.f);
 }
 
-struct sline { string s; };
+struct sline { fixedstring s; };
 static vector<sline> scorelines;
 
 static void renderscore(dynent *d) {
@@ -535,7 +535,7 @@ static void renderscore(dynent *d) {
 static const int maxteams = 4;
 static char *teamname[maxteams];
 static int teamscore[maxteams], teamsused;
-static string teamscores;
+static fixedstring teamscores;
 
 static void addteamscore(dynent *d) {
   if (!d) return;

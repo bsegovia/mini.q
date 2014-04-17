@@ -18,7 +18,7 @@ static const int ndraw = 5;
 static const unsigned int WORDWRAP = 80;
 static int conskip = 0;
 static bool saycommandon = false;
-static string cmdbuf;
+static fixedstring cmdbuf;
 static cvector vhistory;
 static int histpos = 0;
 
@@ -85,7 +85,7 @@ void out(const char *s, ...) {
   s = sf;
   int n = 0;
   while (strlen(s)>WORDWRAP) { // cut strings to fit on screen
-    string t;
+    fixedstring t;
     strn0cpy(t, s, WORDWRAP+1);
     line(t, n++!=0);
     s += WORDWRAP;
@@ -141,7 +141,8 @@ static void history(int n) {
   static bool rec = false;
   if (!rec && n>=0 && n<vhistory.length()) {
     rec = true;
-    script::execstring(vhistory[vhistory.length()-n-1]);
+    const auto cmd = (const char*)(vhistory[vhistory.length()-n-1]);
+    script::execstring(cmd);
     rec = false;
   }
 }
@@ -195,7 +196,7 @@ void keypress(int code, bool isdown) {
     }
   }
 }
-const char *curcmd() { return saycommandon ? cmdbuf : NULL; }
+const char *curcmd() { return saycommandon ? (const char*)(cmdbuf) : NULL; }
 } /* namespace con */
 } /* namespace q */
 

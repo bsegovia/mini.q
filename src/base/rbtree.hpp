@@ -464,9 +464,17 @@ private:
   static node ms_sentinel;
 };
 
+#if defined(__CLANG__)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wuninitialized"
+#endif
 template<class TTreeTraits, class TAllocator>
-typename rb_tree_base<TTreeTraits, TAllocator>::node rb_tree_base<TTreeTraits, TAllocator>::ms_sentinel(
-  internal::rb_tree_base::black, &ms_sentinel, &ms_sentinel, &ms_sentinel);
+typename rb_tree_base<TTreeTraits, TAllocator>::node
+  rb_tree_base<TTreeTraits, TAllocator>::ms_sentinel(
+    internal::rb_tree_base::black, &ms_sentinel, &ms_sentinel, &ms_sentinel);
+#if defined(__CLANG__)
+#pragma clang diagnostic pop
+#endif
 
 template<typename TKey, class TAllocator = q::allocator>
 class rb_tree : public rb_tree_base<internal::rb_tree_traits<TKey>, TAllocator> {
