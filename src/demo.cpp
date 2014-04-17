@@ -161,7 +161,7 @@ static int playbacktime = 0;
 static int ddamage, bdamage;
 static vec3f dorig;
 
-static void record(char *name) {
+static void record(const char *name) {
   if (m_sp) {
     con::out("cannot record singleplayer games");
     return;
@@ -205,7 +205,7 @@ void incomingdata(u8 *buf, int len, bool extras) {
   }
 }
 
-static void demo(char *name) {
+static void demo(const char *name) {
   sprintf_sd(fn)("demos/%s.cdgz", name);
   loadstate(fn);
   demoloading = true;

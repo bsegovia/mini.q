@@ -10,19 +10,19 @@
 namespace q {
 namespace browser {
 
-struct ResolverThread {
+struct resolverthread {
   SDL_Thread *thread;
   char *query;
   int starttime;
   volatile bool alive;
 };
 
-struct ResolverResult {
+struct resolverresult {
   char *query;
   ENetAddress address;
 };
 
-struct ServerInfo {
+struct serverinfo {
   fixedstring name;
   fixedstring full;
   fixedstring map;
@@ -31,15 +31,15 @@ struct ServerInfo {
   ENetAddress address;
 };
 
-static vector<ResolverThread> ResolverThreads;
+static vector<resolverthread> resolverthreads;
 static vector<char *> resolverqueries;
-static vector<ResolverResult> ResolverResults;
+static vector<resolverresult> resolverresults;
 static SDL_mutex *resolvermutex = NULL;
 static SDL_sem *resolversem = NULL;
 static int resolverlimit = 1000;
 
 static int resolverloop(void * data) {
-  auto rt = (ResolverThread *) data;
+  auto rt = (resolverthread *) data;
   while (rt->alive) {
     SDL_SemWait(resolversem);
     SDL_LockMutex(resolvermutex);
@@ -53,7 +53,7 @@ static int resolverloop(void * data) {
     ENetAddress address = {ENET_HOST_ANY, CUBE_SERVINFO_PORT};
     enet_address_set_host(&address, rt->query);
     SDL_LockMutex(resolvermutex);
-    ResolverResult &rr = ResolverResults.add();
+    resolverresult &rr = resolverresults.add();
     rr.query = rt->query;
     rr.address = address;
     rt->query = NULL;
@@ -69,7 +69,7 @@ static void resolverinit(int threads, int limit) {
   resolvermutex = SDL_CreateMutex();
 
   while (threads > 0) {
-    ResolverThread &rt = ResolverThreads.add();
+    resolverthread &rt = resolverthreads.add();
     rt.query = NULL;
     rt.alive = true;
     rt.starttime = 0;
@@ -78,7 +78,7 @@ static void resolverinit(int threads, int limit) {
   }
 }
 
-static void resolverstop(ResolverThread &rt, bool restart) {
+static void resolverstop(resolverthread &rt, bool restart) {
   SDL_LockMutex(resolvermutex);
   int status = 0;
   rt.alive = false;
@@ -93,10 +93,10 @@ static void resolverstop(ResolverThread &rt, bool restart) {
 static void resolverclear(void) {
   SDL_LockMutex(resolvermutex);
   resolverqueries.setsize(0);
-  ResolverResults.setsize(0);
+  resolverresults.setsize(0);
   while (SDL_SemTryWait(resolversem) == 0);
-  loopv(ResolverThreads) {
-    ResolverThread &rt = ResolverThreads[i];
+  loopv(resolverthreads) {
+    resolverthread &rt = resolverthreads[i];
     resolverstop(rt, true);
   }
   SDL_UnlockMutex(resolvermutex);
@@ -111,15 +111,15 @@ static void resolverquery(char *name) {
 
 static bool resolvercheck(char **name, ENetAddress *address) {
   SDL_LockMutex(resolvermutex);
-  if (!ResolverResults.empty()) {
-    ResolverResult &rr = ResolverResults.pop();
+  if (!resolverresults.empty()) {
+    resolverresult &rr = resolverresults.pop();
     *name = rr.query;
     *address = rr.address;
     SDL_UnlockMutex(resolvermutex);
     return true;
   }
-  loopv(ResolverThreads) {
-    ResolverThread &rt = ResolverThreads[i];
+  loopv(resolverthreads) {
+    resolverthread &rt = resolverthreads[i];
       if (rt.query) {
         if (game::lastmillis() - rt.starttime > resolverlimit) {
           resolverstop(rt, true);
@@ -133,7 +133,7 @@ static bool resolvercheck(char **name, ENetAddress *address) {
     return false;
 }
 
-static vector<ServerInfo> servers;
+static vector<serverinfo> servers;
 static ENetSocket pingsock = ENET_SOCKET_NULL;
 static int lastinfo = 0;
 
@@ -141,9 +141,9 @@ const char *getservername(int n) { return servers[n].name; }
 
 void addserver(const char *servername) {
   loopv(servers) if (strcmp(servers[i].name, servername)==0) return;
-  // ServerInfo &si = servers.insert(0, ServerInfo());
-  servers.insert(0, ServerInfo());
-  ServerInfo &si = *servers.begin();
+  // serverinfo &si = servers.insert(0, serverinfo());
+  servers.insert(0, serverinfo());
+  serverinfo &si = *servers.begin();
   strcpy_s(si.name, servername);
   si.full[0] = 0;
   si.mode = 0;
@@ -163,7 +163,7 @@ static void pingservers(void) {
   u8 ping[MAXTRANS];
   u8 *p;
   loopv(servers) {
-    ServerInfo &si = servers[i];
+    serverinfo &si = servers[i];
     if (si.address.host == ENET_HOST_ANY) continue;
     p = ping;
     putint(p, int(game::lastmillis()));
@@ -180,7 +180,7 @@ static void checkresolver(void) {
   while (resolvercheck(&name, &addr)) {
     if (addr.host == ENET_HOST_ANY) continue;
     loopv(servers) {
-      ServerInfo &si = servers[i];
+      serverinfo &si = servers[i];
       if (name == si.name) {
         si.address = addr;
         addr.host = ENET_HOST_ANY;
@@ -201,7 +201,7 @@ static void checkpings(void) {
   while (enet_socket_wait(pingsock, &events, 0) >= 0 && events) {
     if (enet_socket_receive(pingsock, &addr, &buf, 1) <= 0) return;
     loopv(servers) {
-      ServerInfo &si = servers[i];
+      serverinfo &si = servers[i];
       if (addr.host == si.address.host) {
         p = ping;
         si.ping = int(game::lastmillis()) - getint(p);
@@ -220,7 +220,7 @@ static void checkpings(void) {
   }
 }
 
-int sicompare(const ServerInfo &a, const ServerInfo &b) {
+int sicompare(const serverinfo &a, const serverinfo &b) {
   return a.ping>b.ping ? 1 : (a.ping<b.ping ? -1 : strcmp(a.name, b.name));
 }
 
@@ -231,18 +231,20 @@ void refreshservers(void) {
   servers.sort((void*)sicompare);
   int maxmenu = 16;
   loopv(servers) {
-    ServerInfo &si = servers[i];
+    serverinfo &si = servers[i];
     if (si.address.host != ENET_HOST_ANY && si.ping != 9999) {
       if (si.protocol!=PROTOCOL_VERSION)
-        sprintf_s(si.full)("%s [different cube protocol]", si.name);
+        sprintf_s(si.full)("%s [different cube protocol]",
+          (const char*) si.name);
       else
         sprintf_s(si.full)("%d\t%d\t%s, %s: %s %s",
-          si.ping, si.numplayers, si.map[0] ? si.map : "[unknown]",
-          game::modestr(si.mode), si.name, si.sdesc);
+          si.ping, si.numplayers, si.map[0] ? (const char*) si.map : "[unknown]",
+          game::modestr(si.mode),
+          (const char*) si.name, (const char*) si.sdesc);
     } else
       sprintf_s(si.full)(si.address.host != ENET_HOST_ANY ?
         "%s [waiting for server response]" :
-        "%s [unknown host]\t", si.name);
+        "%s [unknown host]\t", (const char*) si.name);
     si.full[50] = 0; // cut off too long server descriptions
     menu::manual(1, i, si.full);
     if (!--maxmenu) return;
@@ -284,7 +286,6 @@ void writeservercfg(void) {
   fclose(f);
 }
 CMD(updatefrommaster, ARG_NONE);
-
 } /* namespace browser */
 } /* namespace q */
 

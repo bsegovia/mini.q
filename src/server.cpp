@@ -114,7 +114,7 @@ void pickup(u32 i, int sec, int sender) {
 
 void resetvotes() { loopv(clients) clients[i].mapvote[0] = 0; }
 
-bool vote(char *map, int reqmode, int sender) {
+static bool vote(const char *map, int reqmode, int sender) {
   strcpy_s(clients[sender].mapvote, map);
   clients[sender].modevote = reqmode;
   int yes = 0, no = 0; 
@@ -124,7 +124,7 @@ bool vote(char *map, int reqmode, int sender) {
   }
   if (yes==1 && no==0) return true;  // single player
   sprintf_sd(msg)("%s suggests %s on map %s (set map to vote)",
-    clients[sender].name, game::modestr(reqmode), map);
+    (const char*) clients[sender].name, game::modestr(reqmode), map);
   sendservmsg(msg);
   if (yes/(float)(yes+no) <= 0.5f) return false;
   sendservmsg("vote passed");
@@ -340,7 +340,8 @@ void slice(int seconds, unsigned int timeout) {
         c.peer = event.peer;
         c.peer->data = (void *)(&c-&clients[0]);
         char hn[1024];
-        strcpy_s(c.hostname, (enet_address_get_host(&c.peer->address, hn, sizeof(hn))==0) ? hn : "localhost");
+        const auto host = enet_address_get_host(&c.peer->address,hn,sizeof(hn))==0;
+        strcpy_s(c.hostname, host ? hn : "localhost");
         printf("client connected (%s)\n", (const char*)(c.hostname));
         send_welcome(lastconnect = &c-&clients[0]);
         break;
@@ -351,11 +352,11 @@ void slice(int seconds, unsigned int timeout) {
         if (event.packet->referenceCount==0) enet_packet_destroy(event.packet);
       break;
       case ENET_EVENT_TYPE_DISCONNECT: 
-        if ((intptr_t)event.peer->data<0) break;
+        if (intptr(event.peer->data)<0) break;
         printf("client::disconnected client (%s)\n",
-          (const char*)(clients[(intptr_t)event.peer->data].hostname));
-        clients[(intptr_t)event.peer->data].type = ST_EMPTY;
-        send2(true, -1, SV_CDIS, (intptr_t)event.peer->data);
+          (const char*)(clients[uintptr(event.peer->data)].hostname));
+        clients[uintptr(event.peer->data)].type = ST_EMPTY;
+        send2(true, -1, SV_CDIS, intptr(event.peer->data));
         event.peer->data = (void *)-1;
       break;
       default: break;

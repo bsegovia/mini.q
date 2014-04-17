@@ -145,7 +145,7 @@ INLINE char *strn0cpy(char *d, const char *s, int m) {strncpy(d,s,m); d[m-1]=0; 
 // easy safe string
 static const u32 MAXDEFSTR = 260, WORDWRAP = 80;
 struct fixedstring {
-  INLINE fixedstring() {}
+  INLINE fixedstring();
   INLINE fixedstring(const char *txt);
   operator const char *() const { return bytes; }
   operator char *() { return bytes; }
@@ -159,7 +159,8 @@ INLINE void strfmt_s(fixedstring &d, const char *fmt, va_list v) {
   vsnprintf(d, MAXDEFSTR, fmt, v);
   d[MAXDEFSTR-1] = 0;
 }
-fixedstring::fixedstring(const char *txt) { strcpy_cs(bytes,txt); }
+INLINE fixedstring::fixedstring() { bytes[0] = '\0'; }
+INLINE fixedstring::fixedstring(const char *txt) { strcpy_cs(bytes,txt); }
 char *newstring(const char *s, const char *filename, int linenum);
 char *newstring(const char *s, size_t sz, const char *filename, int linenum);
 char *newstringbuf(const char *s, const char *filename, int linenum);

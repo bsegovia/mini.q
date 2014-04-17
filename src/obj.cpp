@@ -189,7 +189,7 @@ bool objloader::loadmtl(const char *mtlfilename, const char *objfilename) {
       strncpy(currmat->mapbump, tokenize(NULL, " \"\t\r\n", saved), FILE_NAME_SZ);
     else if (strequal(tok, "illum") && material_open) {} // illumination type
     else printf("obj: unknown command : %s in material file %s at line %i, \"%s\"\n",
-                      tok, mtlfilename, lineno, currline);
+                tok, mtlfilename, lineno, currline);
   }
 
   fclose(mtlfile);

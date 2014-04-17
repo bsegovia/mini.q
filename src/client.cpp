@@ -72,7 +72,7 @@ static void newteam(const char *name) {
 CMDN(team, newteam, ARG_1STR);
 
 void writeclientinfo(FILE *f) {
-  fprintf((FILE*) f, "name \"%s\"\nteam \"%s\"\n",
+  fprintf(f, "name \"%s\"\nteam \"%s\"\n",
     (const char *) game::player1->name,
     (const char *) game::player1->team);
 }

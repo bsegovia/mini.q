@@ -609,9 +609,10 @@ INLINE size_t __bscf(size_t& v) {
 
 namespace q {
 template <u32 sz> struct ptrtype {};
-template <> struct ptrtype<4> { typedef u32 type; };
-template <> struct ptrtype<8> { typedef u64 type; };
-typedef typename ptrtype<sizeof(void*)>::type uintptr;
+template <> struct ptrtype<4> { typedef s32 stype; typedef u32 utype; };
+template <> struct ptrtype<8> { typedef s64 stype; typedef u64 utype; };
+typedef typename ptrtype<sizeof(void*)>::utype uintptr;
+typedef typename ptrtype<sizeof(void*)>::stype intptr;
 static struct niltype {niltype(){}} nil MAYBE_UNUSED;
 
 namespace sys {
