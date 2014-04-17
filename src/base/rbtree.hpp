@@ -45,8 +45,7 @@ public:
   };
 
   explicit INLINE rb_tree_base(const allocator_type& allocator = allocator_type())
-    : m_size(0), m_allocator(allocator)
-  {
+    : m_size(0), m_allocator(allocator) {
     ms_sentinel.color = black;
     ms_sentinel.left = &ms_sentinel;
     ms_sentinel.right = &ms_sentinel;
@@ -127,8 +126,7 @@ public:
 
     node* eraseChild = (toErase->left != &ms_sentinel ? toErase->left : toErase->right);
     eraseChild->parent = toErase->parent;
-    if (toErase->parent != &ms_sentinel)
-    {
+    if (toErase->parent != &ms_sentinel) {
       if (toErase == toErase->parent->left)
         toErase->parent->left = eraseChild;
       else
@@ -150,10 +148,8 @@ public:
     --m_size;
   }
 
-  void clear()
-  {
-    if (!empty())
-    {
+  void clear() {
+    if (!empty()) {
       free_node(m_root, true);
       m_root = &ms_sentinel;
       m_size = 0;
@@ -161,8 +157,7 @@ public:
   }
 
   // @NOTE: swapping trees with different allocator types results in undefined behavior.
-  void swap(rb_tree_base& other)
-  {
+  void swap(rb_tree_base& other) {
     if (&other != this) {
       validate();
       assert(m_allocator == other.m_allocator);
@@ -235,25 +230,19 @@ public:
   INLINE void rebalance(node* new_node) {
     assert(new_node->color == red);
     node* iter(new_node);
-    while (iter->parent->color == red)
-    {
+    while (iter->parent->color == red) {
       node* grandparent(iter->parent->parent);
-      if (iter->parent == grandparent->left)
-      {
+      if (iter->parent == grandparent->left) {
         node* uncle = grandparent->right;
         // Both parent and uncle are red.
         // Repaint both, make grandparent red.
-        if (uncle->color == red)
-        {
+        if (uncle->color == red) {
           iter->parent->color = black;
           uncle->color = black;
           grandparent->color = red;
           iter = grandparent;
-        }
-        else 
-        {
-          if (iter == iter->parent->right)
-          {
+        } else {
+          if (iter == iter->parent->right) {
             iter = iter->parent;
             rotate_left(iter);
           }
@@ -262,21 +251,15 @@ public:
           grandparent->color = red;
           rotate_right(grandparent);
         }
-      }
-      else
-      {
+      } else {
         node* uncle = grandparent->left;
-        if (uncle->color == red)
-        {
+        if (uncle->color == red) {
           grandparent->color = red;
           iter->parent->color = black;
           uncle->color = black;
           iter = grandparent;
-        }
-        else
-        {
-          if (iter == iter->parent->left)
-          {
+        } else {
+          if (iter == iter->parent->left) {
             iter = iter->parent;
             rotate_right(iter);
           }
@@ -293,28 +276,21 @@ public:
   void rebalance_after_erase(node* n)
   {
     node* iter(n);
-    while (iter != m_root && iter->color == black)
-    {
-      if (iter == iter->parent->left)
-      {
+    while (iter != m_root && iter->color == black) {
+      if (iter == iter->parent->left) {
         node* sibling = iter->parent->right;
-        if (sibling->color == red)
-        {
+        if (sibling->color == red) {
           sibling->color = black;
           iter->parent->color = red;
           rotate_left(iter->parent);
           sibling = iter->parent->right;
         }
         if (sibling->left->color == black &&
-            sibling->right->color == black)
-        {
+            sibling->right->color == black) {
           sibling->color = red;
           iter = iter->parent;
-        }
-        else
-        {
-          if (sibling->right->color == black)
-          {
+        } else {
+          if (sibling->right->color == black) {
             sibling->left->color = black;
             sibling->color = red;
             rotate_right(sibling);
@@ -326,27 +302,20 @@ public:
           rotate_left(iter->parent);
           iter = m_root;
         }
-      }
-      else // iter == right child
-      {
+      } else { // iter == right child
         node* sibling = iter->parent->left;
-        if (sibling->color == red)
-        {
+        if (sibling->color == red) {
           sibling->color = black;
           iter->parent->color = red;
           rotate_right(iter->parent);
           sibling = iter->parent->left;
         }
         if (sibling->left->color == black &&
-            sibling->right->color == black)
-        {
+            sibling->right->color == black) {
           sibling->color = red;
           iter = iter->parent;
-        }
-        else
-        {
-          if (sibling->left->color == black)
-          {
+        } else {
+          if (sibling->left->color == black) {
             sibling->right->color = black;
             sibling->color = red;
             rotate_left(sibling);
@@ -396,11 +365,8 @@ public:
     // n's right child replaces n
     rightChild->parent = n->parent;
     if (n->parent == &ms_sentinel)
-    {
       m_root = rightChild;
-    }
-    else
-    {
+    else {
       if (n == n->parent->left)
         n->parent->left = rightChild;
       else
@@ -409,8 +375,7 @@ public:
     rightChild->left = n;
     n->parent = rightChild;
   }
-  void rotate_right(node* n)
-  {
+  void rotate_right(node* n) {
     node* leftChild(n->left);
     n->left = leftChild->right;
     if (n->left != &ms_sentinel)
@@ -418,12 +383,8 @@ public:
 
     leftChild->parent = n->parent;
     if (n->parent == &ms_sentinel)
-    {
       m_root = leftChild;
-    }
-    else
-    {
-      // Substitute us in the parent list with left child.
+    else { // Substitute us in the parent list with left child.
       if (n == n->parent->left)
         n->parent->left = leftChild;
       else
@@ -432,22 +393,18 @@ public:
     leftChild->right = n;
     n->parent = leftChild;
   }
-  node* alloc_node()
-  {
+  node* alloc_node() {
     node* mem = (node*)m_allocator.allocate(sizeof(node));
     return new (mem) node();
   }
-  void free_node(node* n, bool recursive)
-  {
-    if (recursive)
-    {
+  void free_node(node* n, bool recursive) {
+    if (recursive) {
       if (n->left != &ms_sentinel)
         free_node(n->left, true);
       if (n->right != &ms_sentinel)
         free_node(n->right, true);
     }
-    if (n != &ms_sentinel)
-    {
+    if (n != &ms_sentinel) {
       n->~node();
       m_allocator.deallocate(n, sizeof(node));
     }

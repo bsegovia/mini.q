@@ -137,9 +137,12 @@ all: mini.q.server mini.q.rt mini.q importobj compress_chars importobj
 rtavx.o: rtavx.cpp
 	$(CXX) $(CXXFLAGS) -mavx -c rtavx.cpp -o rtavx.o
 
+-include $(MAYAOBJ_OBJS:.o=.d)
 -include $(CLIENT_OBJS:.o=.d)
 -include $(SERVER_OBJS:.o=.d)
 -include $(RT_OBJS:.o=.d)
+-include $(LUA_OBJS:.o=.d)
+-include $(GAME_OBJS:.o=.d)
 
 ## build embedded shader source
 shaders.hxx shaders.cxx: $(SHADERS)
