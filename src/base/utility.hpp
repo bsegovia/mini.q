@@ -1,6 +1,7 @@
 /*-------------------------------------------------------------------------
  - mini.q - a minimalistic multiplayer FPS
  - utility.hpp -> various utility functions and structures used by our stl
+ - mostly taken from https://code.google.com/p/rdestl/
  -------------------------------------------------------------------------*/
 #pragma once
 #include "sys.hpp"

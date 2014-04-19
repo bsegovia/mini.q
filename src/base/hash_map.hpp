@@ -1,6 +1,7 @@
 /*-------------------------------------------------------------------------
  - mini.q - a minimalistic multiplayer FPS
  - hash_map.hpp -> exposes hash map class (i.e. std::unordered_map like)
+ - mostly taken from https://code.google.com/p/rdestl/
  -------------------------------------------------------------------------*/
 #pragma once
 #include "algorithm.hpp"

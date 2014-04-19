@@ -1,6 +1,7 @@
 /*-------------------------------------------------------------------------
  - mini.q - a minimalistic multiplayer FPS
  - rbtree.hpp -> red/black tree implementation
+ - mostly taken from https://code.google.com/p/rdestl/
  -------------------------------------------------------------------------*/
 #pragma once
 #include "sys.hpp"

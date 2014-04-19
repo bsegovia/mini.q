@@ -1,6 +1,7 @@
 /*-------------------------------------------------------------------------
  - mini.q - a minimalistic multiplayer FPS
  - intrusive_list.cpp -> implements shared intrusive_list routines
+ - mostly taken from https://code.google.com/p/rdestl/
  -------------------------------------------------------------------------*/
 #include "intrusive_list.hpp"
 

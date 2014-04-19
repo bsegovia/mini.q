@@ -1,6 +1,7 @@
 /*-------------------------------------------------------------------------
  - mini.q - a minimalistic multiplayer FPS
  - algorithm.hpp -> various stl like algorithms
+ - mostly taken from https://code.google.com/p/rdestl/
  -------------------------------------------------------------------------*/
 #pragma once
 #include "utility.hpp"
