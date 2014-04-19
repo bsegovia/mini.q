@@ -5,6 +5,7 @@
 #pragma once
 #include "base/sys.hpp"
 #include "base/stl.hpp"
+#include "base/utility.hpp"
 
 namespace q {
 template <class T> struct vector : noncopyable {

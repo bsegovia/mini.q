@@ -5,6 +5,7 @@
 #pragma once
 #include "sys.hpp"
 #include "stl.hpp"
+#include "utility.hpp"
 
 namespace q {
 struct atomic : noncopyable {

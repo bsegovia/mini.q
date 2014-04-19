@@ -5,13 +5,13 @@
 #pragma once
 #include "base/sys.hpp"
 #include "base/math.hpp"
+#include "base/utility.hpp"
 
 namespace q {
 
 // generic 3d object file directly taken from wavefront .obj (but vertices are
 // processed and merged here)
-struct obj : noncopyable
-{
+struct obj : noncopyable {
   struct triangle {
     INLINE triangle(void) {}
     INLINE triangle(vec3i v, int m) : v(v), m(m) {}

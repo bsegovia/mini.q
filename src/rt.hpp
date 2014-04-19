@@ -4,6 +4,7 @@
  -------------------------------------------------------------------------*/
 #pragma once
 #include "base/math.hpp"
+#include "base/utility.hpp"
 
 namespace q {
 namespace rt {
