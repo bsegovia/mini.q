@@ -59,7 +59,7 @@ struct TypeList
 template <typename List>
 struct TypeListValues
 {
-  static std::string const tostring (bool)
+  static string const tostring (bool)
   {
     return "";
   }
@@ -79,11 +79,11 @@ struct TypeListValues <TypeList <Head, Tail> >
   {
   }
 
-  static std::string const tostring (bool comma = false)
+  static string const tostring (bool comma = false)
   {
-    std::string s;
+    string s;
     if (comma) s = ", ";
-    s = s + "TODO"; //typeid (Head).name ();
+    s.append("TODO"); //typeid (Head).name ();
     return s + TypeListValues <Tail>::tostring (true);
   }
 };
@@ -103,14 +103,14 @@ struct TypeListValues <TypeList <Head&, Tail> >
   {
   }
 
-  static std::string const tostring (bool comma = false)
+  static string const tostring (bool comma = false)
   {
-    std::string s;
+    string s;
 
     if (comma)
       s = ", ";
 
-    s = s + "TODO&"; //typeid (Head).name () + "&";
+    s.append("TODO&"); //typeid (Head).name () + "&";
 
     return s + TypeListValues <Tail>::tostring (true);
   }
@@ -127,14 +127,14 @@ struct TypeListValues <TypeList <Head const&, Tail> >
   {
   }
 
-  static std::string const tostring (bool comma = false)
+  static string const tostring (bool comma = false)
   {
-    std::string s;
+    string s;
 
     if (comma)
       s = ", ";
 
-    s = s + "TODO const& ";//typeid (Head).name () + " const&";
+    s.append("TODO const& ");//typeid (Head).name () + " const&";
 
     return s + TypeListValues <Tail>::tostring (true);
   }

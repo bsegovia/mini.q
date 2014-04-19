@@ -31,7 +31,7 @@ class LuaException : public std::exception
 {
 private:
   lua_State* m_L;
-  std::string m_what;
+  string m_what;
 
 public:
   //----------------------------------------------------------------------------

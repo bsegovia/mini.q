@@ -34,22 +34,22 @@
 // instead of in the individual header files.
 //
 #include <cassert>
-#include <string>
+#include "base/string.hpp"
+#include "base/lua/lua.h"
+#include "base/lua/lauxlib.h"
 
 #define LUABRIDGE_MAJOR_VERSION 2
 #define LUABRIDGE_MINOR_VERSION 0
 #define LUABRIDGE_VERSION 200
 
-namespace luabridge
-{
+namespace q {
+namespace luabridge {
 
 // Forward declaration
 //
 template <class T>
 struct Stack;
 
-#include "base/lua/lua.h"
-#include "base/lua/lauxlib.h"
 #include "detail/LuaHelpers.h"
 #include "detail/TypeTraits.h"
 #include "detail/TypeList.h"
@@ -133,7 +133,7 @@ inline void setHideMetatables (bool shouldHide)
 {
   Security::setHideMetatables (shouldHide);
 }
-
-}
+} /* namespace luabridge */
+} /* namespace q */
 
 #endif

@@ -730,14 +730,14 @@ public:
   /**
       converts to a string using luas tostring function
   */
-  std::string tostring() const
+  string tostring() const
   {
     lua_getglobal (m_L, "tostring");
     push (m_L);
     lua_call (m_L, 1, 1);
     const char* str = lua_tostring(m_L, 1);
     lua_pop(m_L, 1);
-    return std::string(str);
+    return string(str);
   }
 
   //----------------------------------------------------------------------------
@@ -763,7 +763,7 @@ public:
       break;
 
     case LUA_TSTRING:
-      printf("%s", cast <std::string> ().c_str());
+      printf("%s", cast <string> ().c_str());
       break;
 
     case LUA_TTABLE:

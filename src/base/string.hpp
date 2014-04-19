@@ -291,9 +291,8 @@ public:
   explicit basic_string(const allocator_type& allocator = allocator_type())
   : TStorage(allocator)
   {}
-  // yeah, EXPLICIT.
-  explicit basic_string(const value_type* str,
-                        const allocator_type& allocator = allocator_type())
+  basic_string(const value_type* str,
+               const allocator_type& allocator = allocator_type())
   : TStorage(str, allocator) {}
   basic_string(const value_type* str, size_type len,
                const allocator_type& allocator = allocator_type())
@@ -488,6 +487,15 @@ public:
 private:
   bool invariant() const { return TStorage::invariant(); }
 };
+
+template<typename E, class TStorage, class TAllocator>
+basic_string<E, TStorage, TAllocator>
+operator+(const basic_string<E, TStorage, TAllocator>& lhs,
+          const basic_string<E, TStorage, TAllocator>& rhs) {
+  basic_string<E, TStorage, TAllocator> dst(lhs);
+  dst.append(rhs);
+  return dst;
+}
 
 template<typename E, class TStorage, class TAllocator>
 bool operator==(const basic_string<E, TStorage, TAllocator>& lhs,

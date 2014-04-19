@@ -430,40 +430,40 @@ struct Stack <char const*>
 
 //------------------------------------------------------------------------------
 /**
-    Stack specialization for `std::string`.
+    Stack specialization for `string`.
 */
 template <>
-struct Stack <std::string>
+struct Stack <string>
 {
-  static inline void push (lua_State* L, std::string const& str)
+  static inline void push (lua_State* L, string const& str)
   {
-    lua_pushlstring (L, str.c_str (), str.size());
+    lua_pushlstring (L, str.c_str (), str.length());
   }
 
-  static inline std::string get (lua_State* L, int index)
+  static inline string get (lua_State* L, int index)
   {
     size_t len;
     const char *str = luaL_checklstring(L, index, &len);
-    return std::string (str, len);
+    return string (str, len);
   }
 };
 
 //------------------------------------------------------------------------------
 /**
-    Stack specialization for `std::string const&`.
+    Stack specialization for `string const&`.
 */
 template <>
-struct Stack <std::string const&>
+struct Stack <string const&>
 {
-  static inline void push (lua_State* L, std::string const& str)
+  static inline void push (lua_State* L, string const& str)
   {
-    lua_pushlstring (L, str.c_str(), str.size());
+    lua_pushlstring (L, str.c_str(), str.length());
   }
 
-  static inline std::string get (lua_State* L, int index)
+  static inline string get (lua_State* L, int index)
   {
     size_t len;
     const char *str = luaL_checklstring(L, index, &len);
-    return std::string (str, len);
+    return string (str, len);
   }
 };

@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 /*
   https://github.com/vinniefalco/LuaBridge
-  
+
   Copyright 2012, Vinnie Falco <vinnie.falco@gmail.com>
   Copyright 2007, Nathan Reed
 
@@ -48,10 +48,10 @@ private:
     VF: This function looks handy, why aren't we using it?
   */
 #if 0
-  static int luaError (lua_State* L, std::string message)
+  static int luaError (lua_State* L, string message)
   {
     assert (lua_isstring (L, lua_upvalueindex (1)));
-    std::string s;
+    string s;
 
     // Get information on the caller's caller to format the message,
     // so the error appears to originate from the Lua source.
@@ -261,7 +261,7 @@ private:
       lua_setmetatable (L, -2);
       lua_pushboolean (L, 1);
       lua_rawsetp (L, -2, getIdentityKey ());
-      lua_pushstring (L, (std::string ("const ") + name).c_str ());
+      lua_pushstring (L, (string ("const ") + string(name)).c_str ());
       rawsetfield (L, -2, "__type");
       lua_pushcfunction (L, &indexMetaMethod);
       rawsetfield (L, -2, "__index");
@@ -269,7 +269,7 @@ private:
       rawsetfield (L, -2, "__newindex");
       lua_newtable (L);
       rawsetfield (L, -2, "__propget");
-      
+
       if (Security::hideMetatables ())
       {
         lua_pushnil (L);
@@ -452,7 +452,7 @@ private:
 
       assert (lua_istable (L, -1));
       rawgetfield (L, -1, name);
-      
+
       if (lua_isnil (L, -1))
       {
         lua_pop (L, 1);
@@ -581,7 +581,7 @@ private:
     {
       typedef U (*get_t)();
       typedef void (*set_t)(U);
-      
+
       assert (lua_istable (L, -1));
 
       rawgetfield (L, -1, "__propget");
@@ -1026,7 +1026,7 @@ public:
 
     return *this;
   }
-  
+
   //----------------------------------------------------------------------------
   /**
       Add or replace a property.
