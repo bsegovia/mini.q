@@ -34,7 +34,6 @@ BASE_OBJS=\
   base/math.o\
   base/script.o\
   base/string.o\
-  base/stl.o\
   base/sys.o\
   base/sse.o\
   base/task.o
@@ -121,7 +120,6 @@ SERVER_OBJS=\
   $(LUA_OBJS)\
   $(ENET_OBJS)\
   base/math.o\
-  base/stl.o\
   base/sys.o\
   network.o\
   server.o\
@@ -130,7 +128,6 @@ SERVER_OBJS=\
 
 MAYAOBJ_OBJS=\
   base/sys.o\
-  base/stl.o\
   base/string.o\
   obj.o
 
