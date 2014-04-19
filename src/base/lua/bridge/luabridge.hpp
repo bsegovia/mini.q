@@ -34,7 +34,6 @@
 // instead of in the individual header files.
 //
 #include <cassert>
-#include <sstream>
 #include <string>
 
 #define LUABRIDGE_MAJOR_VERSION 2

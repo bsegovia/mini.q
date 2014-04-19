@@ -746,48 +746,48 @@ public:
 
       This is used for diagnostics.
   */
-  void print (std::ostream& os) const
+  void print (FILE *f) const
   {
     switch (type ())
     {
     case LUA_TNIL:
-      os << "nil";
+      printf("nil");
       break;
 
     case LUA_TNUMBER:
-      os << cast <lua_Number> ();
+      printf("%lf", cast <lua_Number> ());
       break;
 
     case LUA_TBOOLEAN:
-      os << (cast <bool> () ? "true" : "false");
+      printf("%s", cast <bool> () ? "true" : "false");
       break;
 
     case LUA_TSTRING:
-      os << '"' << cast <std::string> () << '"';
+      printf("%s", cast <std::string> ().c_str());
       break;
 
     case LUA_TTABLE:
-      os << "table: " << tostring();
+      printf("table: %s", tostring().c_str());
       break;
 
     case LUA_TFUNCTION:
-      os << "function: " << tostring();
+      printf("function: %s", tostring().c_str());
       break;
 
     case LUA_TUSERDATA:
-      os << "userdata: " << tostring();
+      printf("userdata: %s", tostring().c_str());
       break;
 
     case LUA_TTHREAD:
-      os << "thread: " << tostring();
+      printf("thread: %s", tostring().c_str());
       break;
 
     case LUA_TLIGHTUSERDATA:
-      os << "lightuserdata: " << tostring();
+      printf("lightuserdata: %s", tostring().c_str());
       break;
 
     default:
-      os << "unknown";
+      printf("unknown: %s", tostring().c_str());
       break;
     }
   }
@@ -1216,10 +1216,9 @@ inline LuaRef getGlobal (lua_State *L, char const* name)
 
     This allows LuaRef and table proxies to work with streams.
 */
-inline std::ostream& operator<< (std::ostream& os, LuaRef const& ref)
+inline void print(FILE *f, LuaRef const& ref)
 {
-  ref.print (os);
-  return os;
+  ref.print(f);
 }
 
 //------------------------------------------------------------------------------
