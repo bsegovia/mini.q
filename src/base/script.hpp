@@ -4,11 +4,15 @@
  -------------------------------------------------------------------------*/
 #pragma once
 #include "base/string.hpp"
+#include "base/lua/lua.h"
 
 // mini-scripting language implemented in q (mostly cvompatible with quake
 // script engine)
 namespace q {
 namespace script {
+
+// return complete lua state
+lua_State *getluastate();
 
 // function signatures for script functions
 enum {

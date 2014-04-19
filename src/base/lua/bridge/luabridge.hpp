@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 /*
   https://github.com/vinniefalco/LuaBridge
-  
+
   Copyright 2012, Vinnie Falco <vinnie.falco@gmail.com>
   Copyright 2007, Nathan Reed
 
@@ -35,9 +35,7 @@
 //
 #include <cassert>
 #include <sstream>
-#include <stdexcept>
 #include <string>
-#include <typeinfo>
 
 #define LUABRIDGE_MAJOR_VERSION 2
 #define LUABRIDGE_MINOR_VERSION 0
@@ -51,8 +49,9 @@ namespace luabridge
 template <class T>
 struct Stack;
 
+#include "base/lua/lua.h"
+#include "base/lua/lauxlib.h"
 #include "detail/LuaHelpers.h"
-
 #include "detail/TypeTraits.h"
 #include "detail/TypeList.h"
 #include "detail/FuncTraits.h"
@@ -62,7 +61,6 @@ struct Stack;
 
 class LuaRef;
 
-#include "detail/LuaException.h"
 #include "detail/LuaRef.h"
 #include "detail/Iterator.h"
 

@@ -415,7 +415,8 @@ private:
     LuaRef const operator() () const
     {
       push (m_L);
-      LuaException::pcall (m_L, 0, 1);
+      const auto code = lua_pcall (m_L, 0, 1, 0);
+      assert(code == LUABRIDGE_LUA_OK && "failed to run");
       return LuaRef (m_L, FromStack ());
     }
 
@@ -424,7 +425,8 @@ private:
     {
       push (m_L);
       Stack <P1>::push (m_L, p1);
-      LuaException::pcall (m_L, 1, 1);
+      const auto code = lua_pcall (m_L, 1, 1, 0);
+      assert(code == LUABRIDGE_LUA_OK && "failed to run");
       return LuaRef (m_L, FromStack ());
     }
 
@@ -434,7 +436,8 @@ private:
       push (m_L);
       Stack <P1>::push (m_L, p1);
       Stack <P2>::push (m_L, p2);
-      LuaException::pcall (m_L, 2, 1);
+      const auto code = lua_pcall (m_L, 2, 1, 0);
+      assert(code == LUABRIDGE_LUA_OK && "failed to run");
       return LuaRef (m_L, FromStack ());
     }
 
@@ -445,7 +448,8 @@ private:
       Stack <P1>::push (m_L, p1);
       Stack <P2>::push (m_L, p2);
       Stack <P3>::push (m_L, p3);
-      LuaException::pcall (m_L, 3, 1);
+      const auto code = lua_pcall (m_L, 3, 1, 0);
+      assert(code == LUABRIDGE_LUA_OK && "failed to run");
       return LuaRef (m_L, FromStack ());
     }
 
@@ -457,7 +461,8 @@ private:
       Stack <P2>::push (m_L, p2);
       Stack <P3>::push (m_L, p3);
       Stack <P4>::push (m_L, p4);
-      LuaException::pcall (m_L, 4, 1);
+      const auto code = lua_pcall (m_L, 4, 1, 0);
+      assert(code == LUABRIDGE_LUA_OK && "failed to run");
       return LuaRef (m_L, FromStack ());
     }
 
@@ -470,7 +475,8 @@ private:
       Stack <P3>::push (m_L, p3);
       Stack <P4>::push (m_L, p4);
       Stack <P5>::push (m_L, p5);
-      LuaException::pcall (m_L, 5, 1);
+      const auto code = lua_pcall (m_L, 5, 1, 0);
+      assert(code == LUABRIDGE_LUA_OK && "failed to run");
       return LuaRef (m_L, FromStack ());
     }
 
@@ -484,7 +490,8 @@ private:
       Stack <P4>::push (m_L, p4);
       Stack <P5>::push (m_L, p5);
       Stack <P6>::push (m_L, p6);
-      LuaException::pcall (m_L, 6, 1);
+      const auto code = lua_pcall (m_L, 6, 1, 0);
+      assert(code == LUABRIDGE_LUA_OK && "failed to run");
       return LuaRef (m_L, FromStack ());
     }
 
@@ -499,7 +506,8 @@ private:
       Stack <P5>::push (m_L, p5);
       Stack <P6>::push (m_L, p6);
       Stack <P7>::push (m_L, p7);
-      LuaException::pcall (m_L, 7, 1);
+      const auto code = lua_pcall (m_L, 7, 1, 0);
+      assert(code == LUABRIDGE_LUA_OK && "failed to run");
       return LuaRef (m_L, FromStack ());
     }
 
@@ -515,7 +523,8 @@ private:
       Stack <P6>::push (m_L, p6);
       Stack <P7>::push (m_L, p7);
       Stack <P8>::push (m_L, p8);
-      LuaException::pcall (m_L, 8, 1);
+      const auto code = lua_pcall (m_L, 8, 1, 0);
+      assert(code == LUABRIDGE_LUA_OK && "failed to run");
       return LuaRef (m_L, FromStack ());
     }
     /** @} */
@@ -1007,7 +1016,8 @@ public:
   LuaRef const operator() () const
   {
     push (m_L);
-    LuaException::pcall (m_L, 0, 1);
+    const auto code = lua_pcall (m_L, 0, 1, 0);
+    assert(code == LUABRIDGE_LUA_OK && "failed to run");
     return LuaRef (m_L, FromStack ());
   }
 
@@ -1016,7 +1026,8 @@ public:
   {
     push (m_L);
     Stack <P1>::push (m_L, p1);
-    LuaException::pcall (m_L, 1, 1);
+    const auto code = lua_pcall (m_L, 1, 1, 0);
+    assert(code == LUABRIDGE_LUA_OK && "failed to run");
     return LuaRef (m_L, FromStack ());
   }
 
@@ -1026,7 +1037,8 @@ public:
     push (m_L);
     Stack <P1>::push (m_L, p1);
     Stack <P2>::push (m_L, p2);
-    LuaException::pcall (m_L, 2, 1);
+    const auto code = lua_pcall (m_L, 2, 1, 0);
+    assert(code == LUABRIDGE_LUA_OK && "failed to run");
     return LuaRef (m_L, FromStack ());
   }
 
@@ -1037,7 +1049,8 @@ public:
     Stack <P1>::push (m_L, p1);
     Stack <P2>::push (m_L, p2);
     Stack <P3>::push (m_L, p3);
-    LuaException::pcall (m_L, 3, 1);
+    const auto code = lua_pcall (m_L, 3, 1, 0);
+    assert(code == LUABRIDGE_LUA_OK && "failed to run");
     return LuaRef (m_L, FromStack ());
   }
 
@@ -1049,7 +1062,8 @@ public:
     Stack <P2>::push (m_L, p2);
     Stack <P3>::push (m_L, p3);
     Stack <P4>::push (m_L, p4);
-    LuaException::pcall (m_L, 4, 1);
+    const auto code = lua_pcall (m_L, 4, 1, 0);
+    assert(code == LUABRIDGE_LUA_OK && "failed to run");
     return LuaRef (m_L, FromStack ());
   }
 
@@ -1062,7 +1076,8 @@ public:
     Stack <P3>::push (m_L, p3);
     Stack <P4>::push (m_L, p4);
     Stack <P5>::push (m_L, p5);
-    LuaException::pcall (m_L, 5, 1);
+    const auto code = lua_pcall (m_L, 5, 1, 0);
+    assert(code == LUABRIDGE_LUA_OK && "failed to run");
     return LuaRef (m_L, FromStack ());
   }
 
@@ -1076,7 +1091,8 @@ public:
     Stack <P4>::push (m_L, p4);
     Stack <P5>::push (m_L, p5);
     Stack <P6>::push (m_L, p6);
-    LuaException::pcall (m_L, 6, 1);
+    const auto code = lua_pcall (m_L, 6, 1, 0);
+    assert(code == LUABRIDGE_LUA_OK && "failed to run");
     return LuaRef (m_L, FromStack ());
   }
 
@@ -1091,7 +1107,8 @@ public:
     Stack <P5>::push (m_L, p5);
     Stack <P6>::push (m_L, p6);
     Stack <P7>::push (m_L, p7);
-    LuaException::pcall (m_L, 7, 1);
+    const auto code = lua_pcall (m_L, 7, 1, 0);
+    assert(code == LUABRIDGE_LUA_OK && "failed to run");
     return LuaRef (m_L, FromStack ());
   }
 
@@ -1107,7 +1124,8 @@ public:
     Stack <P6>::push (m_L, p6);
     Stack <P7>::push (m_L, p7);
     Stack <P8>::push (m_L, p8);
-    LuaException::pcall (m_L, 8, 1);
+    const auto code = lua_pcall (m_L, 8, 1, 0);
+    assert(code == LUABRIDGE_LUA_OK && "failed to run");
     return LuaRef (m_L, FromStack ());
   }
   /** @} */

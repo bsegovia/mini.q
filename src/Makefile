@@ -112,6 +112,7 @@ CLIENT_OBJS=\
   mini.q.o
 
 RT_OBJS=\
+  $(LUA_OBJS)\
   $(ENET_OBJS)\
   $(BASE_OBJS)\
   $(GAME_OBJS)\

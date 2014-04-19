@@ -82,12 +82,8 @@ struct TypeListValues <TypeList <Head, Tail> >
   static std::string const tostring (bool comma = false)
   {
     std::string s;
-
-    if (comma)
-      s = ", ";
-
-    s = s + typeid (Head).name ();
-
+    if (comma) s = ", ";
+    s = s + "TODO"; //typeid (Head).name ();
     return s + TypeListValues <Tail>::tostring (true);
   }
 };
@@ -114,7 +110,7 @@ struct TypeListValues <TypeList <Head&, Tail> >
     if (comma)
       s = ", ";
 
-    s = s + typeid (Head).name () + "&";
+    s = s + "TODO&"; //typeid (Head).name () + "&";
 
     return s + TypeListValues <Tail>::tostring (true);
   }
@@ -138,7 +134,7 @@ struct TypeListValues <TypeList <Head const&, Tail> >
     if (comma)
       s = ", ";
 
-    s = s + typeid (Head).name () + " const&";
+    s = s + "TODO const& ";//typeid (Head).name () + " const&";
 
     return s + TypeListValues <Tail>::tostring (true);
   }

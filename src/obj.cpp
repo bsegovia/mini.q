@@ -9,6 +9,7 @@
 #include "base/allocator.hpp"
 #include "base/string.hpp"
 #include "base/vector.hpp"
+#include "base/lua/bridge/luabridge.hpp"
 
 #include <zlib.h>
 #include <cstring>

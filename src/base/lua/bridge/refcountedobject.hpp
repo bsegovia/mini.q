@@ -29,7 +29,7 @@
   SOFTWARE.
 
   This file incorporates work covered by the following copyright and
-  permission notice:  
+  permission notice:
 
     This file is part of the JUCE library - "Jules' Utility Class Extensions"
     Copyright 2004-11 by Raw Material Software Ltd.
@@ -144,9 +144,9 @@ typedef RefCountedObjectType <int> RefCountedObject;
     abbreviate the full templated name - e.g.
 
     @code
-    
+
     typedef RefCountedObjectPtr <MyClass> MyClassPtr;
-    
+
     @endcode
 */
 template <class ReferenceCountedObjectClass>

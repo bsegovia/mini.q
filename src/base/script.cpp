@@ -12,7 +12,17 @@
 namespace q {
 namespace script {
 
+static lua_State *L = NULL;
+lua_State *getluastate() { return L; }
 enum { ID_VAR, ID_CMD, ID_ALIAS };
+
+static void *internalalloc(void*, void *ptr, size_t, size_t nsize) {
+  return sys::memrealloc(ptr, nsize, __FILE__, __LINE__);
+}
+
+static void initluastate() {
+  if (L == NULL) L = lua_newstate(internalalloc, NULL);
+}
 
 struct identifier {
   int type; // one of ID_* above
@@ -46,6 +56,7 @@ static identifier *access(const char *name) {
 }
 
 void finish(void) {
+  lua_close(L);
   for (auto it = idents->begin(); it != idents->end(); ++it) {
     if (it->second.type!=ID_ALIAS) continue;
     FREE((char*) it->second.name);
