@@ -109,7 +109,7 @@ struct setattribarray {
   do { \
     gl##NAME(__VA_ARGS__); \
     if (gl##GetError()) { \
-      sprintf_sd(err)("gl" #NAME " failed at line %i and file %s",__LINE__, __FILE__);\
+      fixedstring err(fmt, "gl" #NAME " failed at line %i and file %s",__LINE__, __FILE__);\
       sys::fatal(err); \
     } \
   } while (0)

@@ -85,7 +85,7 @@ bool render(void) {
 
   if (vmenu==1) browser::refreshservers();
   auto &m = menus[vmenu];
-  sprintf_sd(title)(vmenu>1 ? "- %s menu -" : "%s", m.name);
+  fixedstring title(fmt, vmenu>1 ? "- %s menu -" : "%s", m.name);
   const auto mdisp = m.items.length();
   auto w = 0.f;
   loopi(mdisp) w = max(w, text::width(m.items[i].text));

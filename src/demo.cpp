@@ -82,7 +82,7 @@ static void savegame(const char *name) {
     con::out("can only save classic sp games");
     return;
   }
-  sprintf_sd(fn)("savegames/%s.csgz", name);
+  fixedstring fn(fmt,"savegames/%s.csgz", name);
   savestate(fn.c_str());
   stop();
   con::out("wrote %s", fn);
@@ -111,7 +111,7 @@ out:
 }
 
 static void loadgame(char *name) {
-  sprintf_sd(fn)("savegames/%s.csgz", name);
+  fixedstring fn(fmt,"savegames/%s.csgz", name);
   loadstate(fn.c_str());
 }
 CMD(loadgame, ARG_1STR);
@@ -169,7 +169,7 @@ static void record(const char *name) {
   }
   int cn = client::getclientnum();
   if (cn<0) return;
-  sprintf_sd(fn)("demos/%s.cdgz", name);
+  fixedstring fn(fmt,"demos/%s.cdgz", name);
   savestate(fn.c_str());
   gzputi(cn);
   con::out("started recording demo to %s", fn);
@@ -207,7 +207,7 @@ void incomingdata(u8 *buf, int len, bool extras) {
 }
 
 static void demo(const char *name) {
-  sprintf_sd(fn)("demos/%s.cdgz", name);
+  fixedstring fn(fmt,"demos/%s.cdgz", name);
   loadstate(fn.c_str());
   demoloading = true;
 }

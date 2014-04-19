@@ -1,7 +1,7 @@
 /*-------------------------------------------------------------------------
- - mini.q - a minimalistic multiplayer fps
- - client.cpp -> implements client game routines
- -------------------------------------------------------------------------*/
+- mini.q - a minimalistic multiplayer fps
+- client.cpp -> implements client game routines
+-------------------------------------------------------------------------*/
 #include "mini.q.hpp"
 #include "enet/enet.h"
 #include "base/vector.hpp"
@@ -25,26 +25,26 @@ static fixedstring clientpassword;
 int getclientnum(void) { return clientnum; }
 
 bool multiplayer(void) {
-  if (clienthost) // check not correct on listen server?
-    con::out("operation not available in multiplayer");
-  return clienthost!=NULL;
+if (clienthost) // check not correct on listen server?
+  con::out("operation not available in multiplayer");
+return clienthost!=NULL;
 }
 
 void neterr(const char *s) {
-  con::out("illegal network message (%s)", s);
-  disconnect();
+con::out("illegal network message (%s)", s);
+disconnect();
 }
 
 bool allowedittoggle(void) {
-  const bool allow = !clienthost || game::mode()==1;
-  if (!allow)
-    con::out("editing in multiplayer requires coopedit mode (1)");
-  return allow; 
+const bool allow = !clienthost || game::mode()==1;
+if (!allow)
+  con::out("editing in multiplayer requires coopedit mode (1)");
+return allow; 
 }
 
 VARF(rate, 0, 0, 25000, 
-  if (clienthost && (!rate || rate>1000))
-    enet_host_bandwidth_limit (clienthost, rate, rate));
+if (clienthost && (!rate || rate>1000))
+  enet_host_bandwidth_limit (clienthost, rate, rate));
 
 static void throttle(void);
 VARF(throttle_interval, 0, 5, 30, throttle());
@@ -52,11 +52,11 @@ VARF(throttle_accel, 0, 2, 32, throttle());
 VARF(throttle_decel, 0, 2, 32, throttle());
 
 static void throttle(void) {
-  if (!clienthost || connecting) return;
-  assert(ENET_PEER_PACKET_THROTTLE_SCALE==32);
-  enet_peer_throttle_configure(clienthost->peers,
-                               throttle_interval*1000,
-                               throttle_accel, throttle_decel);
+if (!clienthost || connecting) return;
+assert(ENET_PEER_PACKET_THROTTLE_SCALE==32);
+enet_peer_throttle_configure(clienthost->peers,
+                             throttle_interval*1000,
+                             throttle_accel, throttle_decel);
 }
 
 static void newname(const char *name) {
@@ -162,8 +162,8 @@ CMD(echo, ARG_VARI);
 void addmsg(int rel, int num, int type, ...) {
   if (demo::playing()) return;
   if (num!=msgsizelookup(type)) {
-    sprintf_sd(s)("inconsistant msg size for %d (%d != %d)",
-      type, num, msgsizelookup(type));
+    const fixedstring s(fmt, "inconsistant msg size for %d (%d != %d)",
+                             type, num, msgsizelookup(type));
     sys::fatal(s.c_str());
   }
   if (messages.length()==128) {
@@ -413,7 +413,7 @@ void localservertoclient(u8 *buf, int len) {
 #if 0 // TODO
     case SV_MAPRELOAD: {
       getint(p);
-      sprintf_sd(nextmapalias)("nextmap_%s", game::getclientmap());
+      fixedstring nextmapalias(fmt, "nextmap_%s", game::getclientmap());
       char *map = script::getalias(nextmapalias); // look up map in the cycle
       changemap(map ? map : game::getclientmap());
     }

@@ -135,7 +135,7 @@ void play(int n, const vec3f *loc) {
   }
 
   if (!samples[n]) {
-    sprintf_sd(buf)("data/sounds/%s.wav", snames[n]);
+    fixedstring buf(fmt, "data/sounds/%s.wav", snames[n]);
     samples[n] = Mix_LoadWAV(sys::path(buf.c_str()));
     if (!samples[n]) {
       con::out("failed to load sample: %s", buf);

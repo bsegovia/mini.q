@@ -28,7 +28,7 @@ struct identifier {
 // tab-completion of all idents
 static int completesize = 0, completeidx = 0;
 
-static void itoa(fixedstring &s, int i) { sprintf_s(s)("%d", i); }
+static void itoa(fixedstring &s, int i) { s.fmt("%d", i); }
 static char *exchangestr(char *o, const char *n) {
   FREE(o);
   return NEWSTRING(n);
@@ -274,7 +274,7 @@ int execstring(const char *pp, bool isdown) {
         case ID_ALIAS:
           for (int i = 1; i<numargs; i++) {
             // set any arguments as (global) arg values so functions can access them
-            sprintf_sd(t)("arg%d", i);
+            fixedstring t(fmt, "arg%d", i);
             alias(t.c_str(), w[i]);
           }
           // create new string here because alias could rebind itself
@@ -306,7 +306,7 @@ void complete(fixedstring &s) {
   int idx = 0;
   for (auto it = idents->begin(); it != idents->end(); ++it)
     if (strncmp(it->first.c_str(), s.c_str()+1, completesize)==0 && idx++==completeidx)
-      sprintf_s(s)("/%s", it->first.c_str());
+      s.fmt("/%s", it->first.c_str());
   completeidx++;
   if (completeidx>=idx) completeidx = 0;
 }

@@ -44,5 +44,25 @@ bool contains(const char *haystack, const char *needle) {
   if (strstr(haystack, needle) == NULL) return false;
   return true;
 }
+
+void fixedstring::fmt(const char *txt, va_list va) {
+ vsnprintf(bytes, MAXDEFSTR, txt, va);
+ bytes[MAXDEFSTR-1] = 0;
+}
+
+void fixedstring::fmt(const char *txt, ...) {
+  va_list va;
+  va_start(va, txt);
+  fmt(txt, va);
+  va_end(va);
+}
+
+fixedstring::fixedstring(const char *txt, va_list va) { fmt(txt, va); }
+fixedstring::fixedstring(fmttype, const char *txt, ...) {
+  va_list va;
+  va_start(va, txt);
+  fmt(txt, va);
+  va_end(va);
+}
 } /* namespace q */
 

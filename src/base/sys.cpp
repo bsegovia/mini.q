@@ -73,8 +73,8 @@ static void memunlinkblock(memblock *node) {
 }
 
 #define MEMOUT(S,B)\
-  sprintf_sd(S)("file: %s, line %i, size %i bytes, alloc %i",\
-                (B)->file, (B)->linenum, (B)->size, (B)->allocnum)
+  fixedstring S(fmt, "file: %s, line %i, size %i bytes, alloc %i",\
+                     (B)->file, (B)->linenum, (B)->size, (B)->allocnum)
 static void memcheckbounds(memblock *node) {
   if (node->lbound() != 0xdeadc0de || node->rbound() != 0xdeadc0de) {
     fprintf(stderr, "memory corruption detected (alloc %i)\n", node->allocnum);
@@ -216,7 +216,7 @@ void quit(const char *msg) {
 
 void fatal(const char *s, const char *o) {
   assert(0);
-  sprintf_sd(m)("%s%s (%s)\n", s, o, SDL_GetError());
+  fixedstring m(fmt, "%s%s (%s)\n", s, o, SDL_GetError());
   quit(m.c_str());
 }
 

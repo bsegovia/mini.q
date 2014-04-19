@@ -128,7 +128,7 @@ static bool vote(const char *map, int reqmode, int sender) {
     else no++;
   }
   if (yes==1 && no==0) return true;  // single player
-  sprintf_sd(msg)("%s suggests %s on map %s (set map to vote)",
+  fixedstring msg(fmt, "%s suggests %s on map %s (set map to vote)",
     clients[sender].name.c_str(),
     game::modestr(reqmode), map);
   sendservmsg(msg.c_str());

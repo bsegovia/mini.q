@@ -220,10 +220,10 @@ static int modelnum = 0;
 
 static void delayedload(mdl *m, float scale, int snap) {
   if (m->loaded) return;
-  sprintf_sd(mdlpath)("data/models/%s/tris.md2", m->loadname);
+  fixedstring mdlpath(fmt, "data/models/%s/tris.md2", m->loadname);
   if (!m->load(sys::path(mdlpath.c_str()), scale, snap))
     sys::fatal("loadmodel: ", mdlpath.c_str());
-  sprintf_sd(texpath)("data/models/%s/skin.jpg", m->loadname);
+  fixedstring texpath(fmt, "data/models/%s/skin.jpg", m->loadname);
   m->tex = ogl::installtex(texpath.c_str());
   m->loaded = 1;
 }

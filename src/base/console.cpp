@@ -81,7 +81,7 @@ static void line(const char *sf, bool highlight) {
 }
 
 void out(const char *s, ...) {
-  sprintf_sdv(sf, s);
+  vasprintfsd(sf, s, s);
   s = sf.c_str();
   int n = 0;
   while (strlen(s)>WORDWRAP) { // cut strings to fit on screen

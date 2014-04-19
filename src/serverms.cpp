@@ -25,7 +25,7 @@ void httpgetsend(ENetAddress &ad, const char *hostname, const char *req,
   if (mssock==ENET_SOCKET_NULL) { printf("could not open socket\n"); return; }
   if (enet_socket_connect(mssock, &ad)<0) { printf("could not connect\n"); return; }
   ENetBuffer buf;
-  sprintf_sd(httpget)("GET %s HTTP/1.0\nHost: %s\nReferer: %s\nUser-Agent: %s\n\n", req, hostname, ref, agent);
+  fixedstring httpget(fmt, "GET %s HTTP/1.0\nHost: %s\nReferer: %s\nUser-Agent: %s\n\n", req, hostname, ref, agent);
   buf.data = httpget.c_str();
   buf.dataLength = strlen((const char*) buf.data);
   printf("sending request to %s...\n", hostname);
@@ -64,7 +64,7 @@ static ENetBuffer masterb;
 
 void updatemasterserver(int seconds) {
   if (seconds>updmaster) { // send alive signal to masterserver every hour of uptime
-    sprintf_sd(path)("%sregister.do?action=add", masterpath.c_str());
+    fixedstring path(fmt, "%sregister.do?action=add", masterpath.c_str());
     httpgetsend(masterserver, masterbase.c_str(), path.c_str(),
                 "mini.q.server", "mini.q server");
     masterrep[0] = 0;
@@ -82,7 +82,7 @@ void checkmasterreply(void) {
 }
 
 u8 *retrieveservers(u8 *buf, int buflen) {
-  sprintf_sd(path)("%sretrieve.do?item=list", masterpath.c_str());
+  fixedstring path(fmt, "%sretrieve.do?item=list", masterpath.c_str());
   httpgetsend(masterserver, masterbase.c_str(), path.c_str(),
               "mini.q.server", "mini.q server");
   ENetBuffer eb;

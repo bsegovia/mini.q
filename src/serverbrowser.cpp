@@ -234,14 +234,14 @@ void refreshservers(void) {
     serverinfo &si = servers[i];
     if (si.address.host != ENET_HOST_ANY && si.ping != 9999) {
       if (si.protocol!=PROTOCOL_VERSION)
-        sprintf_s(si.full)("%s [different cube protocol]", si.name.c_str());
+        si.full.fmt("%s [different cube protocol]", si.name.c_str());
       else
-        sprintf_s(si.full)("%d\t%d\t%s, %s: %s %s",
+        si.full.fmt("%d\t%d\t%s, %s: %s %s",
           si.ping, si.numplayers, si.map[0] ? si.map.c_str() : "[unknown]",
           game::modestr(si.mode),
           si.name.c_str(), si.sdesc.c_str());
     } else
-      sprintf_s(si.full)(si.address.host != ENET_HOST_ANY ?
+      si.full.fmt(si.address.host != ENET_HOST_ANY ?
         "%s [waiting for server response]" :
         "%s [unknown host]\t", si.name.c_str());
     si.full[50] = 0; // cut off too long server descriptions

@@ -83,12 +83,12 @@ float width(const char *str) {
 }
 
 void drawf(const char *fstr, vec2f pos, ...) {
-  sprintf_sdlv(str, pos, fstr);
+  vasprintfsd(str, pos, fstr);
   draw(str.c_str(), pos);
 }
 
 void drawf(const char *fstr, float x, float y, ...) {
-  sprintf_sdlv(str, y, fstr);
+  vasprintfsd(str, y, fstr);
   draw(str.c_str(), x, y);
 }
 

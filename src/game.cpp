@@ -526,11 +526,11 @@ struct sline { fixedstring s; };
 static vector<sline> scorelines;
 
 static void renderscore(dynent *d) {
-  sprintf_sd(lag)("%d", d->plag);
-  sprintf_sd(name) ("(%s)", d->name);
-  sprintf_s(scorelines.add().s)("%d\t%s\t%d\t%s\t%s",
-            d->frags, d->state==CS_LAGGED ? "LAG" : lag, d->ping,
-            d->team.c_str(), d->state==CS_DEAD ? name : d->name.c_str());
+  fixedstring lag(fmt, "%d", d->plag);
+  fixedstring name(fmt, "(%s)", d->name);
+  scorelines.add().s.fmt("%d\t%s\t%d\t%s\t%s",
+    d->frags, d->state==CS_LAGGED ? "LAG" : lag, d->ping,
+    d->team.c_str(), d->state==CS_DEAD ? name : d->name.c_str());
   menu::manual(0, scorelines.length()-1, scorelines.last().s.c_str());
 }
 
@@ -564,7 +564,7 @@ void renderscores() {
     if (!demo::playing()) addteamscore(player1);
     teamscores[0] = 0;
     loopj(teamsused) {
-      sprintf_sd(sc)("[ %s: %d ]", teamname[j], teamscore[j]);
+      fixedstring sc(fmt, "[ %s: %d ]", teamname[j], teamscore[j]);
       strcat_s(teamscores, sc.c_str());
     }
     menu::manual(0, scorelines.length(), "");

@@ -913,12 +913,12 @@ CMD(reloadshaders, ARG_NONE);
  - fixed pipeline
  -------------------------------------------------------------------------*/
 void fixedrules(shaderrules &vert, shaderrules &frag, u32 rule) {
-  sprintf_sd(str)("#define USE_COL %d\n"
-                  "#define USE_KEYFRAME %d\n"
-                  "#define USE_DIFFUSETEX %d\n",
-                  rule&FIXED_COLOR,
-                  rule&FIXED_KEYFRAME,
-                  rule&FIXED_DIFFUSETEX);
+  fixedstring str(fmt, "#define USE_COL %d\n"
+                       "#define USE_KEYFRAME %d\n"
+                       "#define USE_DIFFUSETEX %d\n",
+                       rule&FIXED_COLOR,
+                       rule&FIXED_KEYFRAME,
+                       rule&FIXED_DIFFUSETEX);
   vert.add(NEWSTRING(str.c_str()));
   frag.add(NEWSTRING(str.c_str()));
 }

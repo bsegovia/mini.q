@@ -121,6 +121,7 @@ SERVER_OBJS=\
   $(LUA_OBJS)\
   $(ENET_OBJS)\
   base/math.o\
+  base/string.o\
   base/sys.o\
   base/intrusive_list.o\
   network.o\
