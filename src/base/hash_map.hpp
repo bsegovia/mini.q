@@ -26,14 +26,14 @@ public:
 
 private:
   struct node {
-    static const hash_value_t kUnusedHash       = 0xFFFFFFFF;
-    static const hash_value_t kDeletedHash      = 0xFFFFFFFE;
+    static const hash_value_t kUnusedHash  = 0xFFFFFFFF;
+    static const hash_value_t kDeletedHash = 0xFFFFFFFE;
 
     node(): hash(kUnusedHash) {}
 
-    INLINE bool is_unused() const    { return hash == kUnusedHash; }
-    INLINE bool is_deleted() const     { return hash == kDeletedHash; }
-    INLINE bool is_occupied() const  { return hash < kDeletedHash; }
+    INLINE bool is_unused() const   { return hash == kUnusedHash; }
+    INLINE bool is_deleted() const  { return hash == kDeletedHash; }
+    INLINE bool is_occupied() const { return hash < kDeletedHash; }
 
     hash_value_t hash;
     value_type data;
@@ -106,7 +106,7 @@ public:
     m_capacity(0),
     m_capacityMask(0),
     m_numUsed(0) {
-    assert((kInitialCapacity & (kInitialCapacity - 1)) == 0);  // Must be power-of-two
+    assert((kInitialCapacity & (kInitialCapacity - 1)) == 0); // must be power-of-two
   }
   explicit hash_map(const allocator_type& allocator) : m_nodes(&ms_emptyNode),
     m_size(0),
@@ -155,8 +155,8 @@ public:
     it.move_to_next_occupied_node();
     return it;
   }
-  iterator end()              { return iterator(m_nodes + m_capacity, this); }
-  const_iterator end() const  { return const_iterator(m_nodes + m_capacity, this); }
+  iterator end()             { return iterator(m_nodes + m_capacity, this); }
+  const_iterator end() const { return const_iterator(m_nodes + m_capacity, this); }
 
   // @note:  added for compatiblity sake.
   // personally, i consider it "risky". use find/insert for more
@@ -275,15 +275,15 @@ public:
     if (newCapacity > m_capacity) grow(newCapacity);
   }
 
-  size_type bucket_count() const      { return m_capacity; }
+  size_type bucket_count() const  { return m_capacity; }
   size_type size() const          { return m_size; }
-  size_type empty() const          { return size() == 0; }
-  size_type nonempty_bucket_count() const  { return m_numUsed; }
+  size_type empty() const         { return size() == 0; }
+  size_type nonempty_bucket_count() const { return m_numUsed; }
   size_type used_memory() const {
     return bucket_count() * kNodeSize;
   }
 
-  const allocator_type& get_allocator() const  { return m_allocator; }
+  const allocator_type& get_allocator() const { return m_allocator; }
   void set_allocator(const allocator_type& allocator) {
     m_allocator = allocator;
   }
@@ -294,7 +294,7 @@ private:
     grow(newCapacity);
   }
   void grow(int new_capacity) {
-    assert((new_capacity & (new_capacity - 1)) == 0);  // Must be power-of-two
+    assert((new_capacity & (new_capacity - 1)) == 0); // must be power-of-two
     node* newNodes = allocate_nodes(new_capacity);
     rehash(new_capacity, newNodes, m_capacity, m_nodes, true);
     if (m_nodes != &ms_emptyNode)
