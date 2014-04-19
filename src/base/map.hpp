@@ -6,6 +6,7 @@
 #include "stl.hpp"
 #include "algorithm.hpp"
 #include "rbtree.hpp"
+#include "pair.hpp"
 
 namespace q {
 template<typename Tk, typename Tv, class TAllocator = q::allocator>
