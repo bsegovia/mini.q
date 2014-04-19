@@ -50,18 +50,18 @@ namespace luabridge {
 template <class T>
 struct Stack;
 
-#include "detail/LuaHelpers.h"
-#include "detail/TypeTraits.h"
-#include "detail/TypeList.h"
-#include "detail/FuncTraits.h"
-#include "detail/Constructor.h"
-#include "detail/Stack.h"
-#include "detail/ClassInfo.h"
+#include "detail/luahelpers.hpp"
+#include "detail/typetraits.hpp"
+#include "detail/typelist.hpp"
+#include "detail/functraits.hpp"
+#include "detail/constructor.hpp"
+#include "detail/stack.hpp"
+#include "detail/classinfo.hpp"
 
 class LuaRef;
 
-#include "detail/LuaRef.h"
-#include "detail/Iterator.h"
+#include "detail/luaref.hpp"
+#include "detail/iterator.hpp"
 
 //------------------------------------------------------------------------------
 /**
@@ -97,9 +97,9 @@ private:
   }
 };
 
-#include "detail/Userdata.h"
-#include "detail/CFunctions.h"
-#include "detail/Namespace.h"
+#include "detail/userdata.hpp"
+#include "detail/cfunctions.hpp"
+#include "detail/namespace.hpp"
 
 //------------------------------------------------------------------------------
 /**
