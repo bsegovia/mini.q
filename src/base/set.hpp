@@ -29,16 +29,14 @@ class set : private rb_tree<T, TAllocator> {
 
     TRef operator*() const {
       assert(m_node != 0);
-      return m_node->key;
+      return m_node->value.key;
     }
-    TPtr operator->() const { return &m_node->key; }
+    TPtr operator->() const { return &m_node->value.key; }
     TNodePtr node() const { return m_node; }
 
     node_iterator& operator++() {
       assert(m_node != 0);
-      TNodePtr next = m_node->next;
-      if (next == 0)
-        next = find_next_node(m_node);
+      TNodePtr next = find_next_node(m_node);
       m_node = next;
       return *this;
     }
@@ -58,7 +56,6 @@ class set : private rb_tree<T, TAllocator> {
     set* get_set() const { return m_set; }
   private:
     TNodePtr find_next_node(TNodePtr node) const { return 0; }
-
     TNodePtr m_node;
     set* m_set;
   };
@@ -99,5 +96,5 @@ public:
   using Base::empty;
   using Base::size;
 };
-} // q
+} /* namespace q */
 

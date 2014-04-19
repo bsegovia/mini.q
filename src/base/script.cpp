@@ -7,7 +7,10 @@
 #include "script.hpp"
 #include "client.hpp"
 #include "console.hpp"
+#include "hash_map.hpp"
 #include <cstdio>
+namespace q {
+}
 
 namespace q {
 namespace script {
@@ -35,7 +38,15 @@ static char *exchangestr(char *o, const char *n) {
 }
 
 // contains all vars/commands/aliases
-static hashtable<identifier> *idents = NULL;
+typedef hash_map<string_ref,identifier> identifier_map;
+static identifier_map *idents = NULL;
+static identifier *access(const char *name) {
+  const auto it = idents->find(name);
+  if (it != idents->end())
+    return &it->second;
+  else
+    return NULL;
+}
 
 void finish(void) {
   for (auto it = idents->begin(); it != idents->end(); ++it) {
@@ -48,18 +59,18 @@ void finish(void) {
 }
 
 static void initializeidents(void) {
-  if (!idents) idents = NEWE(hashtable<identifier>);
+  if (!idents) idents = NEWE(identifier_map);
 }
 
 void alias(const char *name, const char *action) {
-  auto b = idents->access(name);
-  if (!b) {
+  auto b = idents->find(name);
+  if (b == idents->end()) {
     name = NEWSTRING(name);
     const identifier b = {ID_ALIAS, name, 0, 0, 0, 0, 0, NEWSTRING(action), true};
-    idents->access(name, &b);
+    idents->insert(makepair(name, b));
   } else {
-    if (b->type==ID_ALIAS)
-      b->action = exchangestr(b->action, action);
+    if (b->second.type==ID_ALIAS)
+      b->second.action = exchangestr(b->second.action, action);
     else
       con::out("cannot redefine builtin %s with an alias", name);
   }
@@ -70,23 +81,34 @@ int variable(const char *name, int min, int cur, int max,
              int *storage, void (*fun)(), bool persist) {
   initializeidents();
   const identifier v = {ID_VAR, name, min, max, storage, fun, 0, 0, persist};
-  idents->access(name, &v);
+  idents->insert(makepair(name, v));
   return cur;
 }
 
-void setvar(const char *name, int i) { *idents->access(name)->storage = i; }
-int getvar(const char *name) { return *idents->access(name)->storage; }
-bool identexists(const char *name) { return idents->access(name)!=NULL; }
+void setvar(const char *name, int i) {
+  const auto it = idents->find(name);
+  assert(it != idents->end());
+  *it->second.storage = i;
+}
+int getvar(const char *name) {
+  const auto it = idents->find(name);
+  assert(it != idents->end());
+  return *it->second.storage;
+}
+bool identexists(const char *name) {
+  return idents->find(name) != idents->end();
+}
 
 char *getalias(const char *name) {
-  const identifier *i = idents->access(name);
-  return i && i->type==ID_ALIAS ? i->action : NULL;
+  const auto it = idents->find(name);
+  return (it != idents->end() && it->second.type==ID_ALIAS) ?
+    it->second.action : NULL;
 }
 
 bool addcommand(const char *name, void (*fun)(), int narg) {
   initializeidents();
   const identifier c = { ID_CMD, name, 0, 0, 0, fun, narg, 0, false };
-  idents->access(name, &c);
+  idents->insert(makepair(name, c));
   return false;
 }
 
@@ -132,7 +154,7 @@ static char *parseword(char *&p) {
 
 // find value of ident referenced with $ in exp
 static char *lookup(char *n) {
-  identifier *id = idents->access(n+1);
+  const auto id = access(n+1);
   if (id) switch (id->type) {
     case ID_VAR: {fixedstring t; itoa(t, *(id->storage)); return exchangestr(n, t);}
     case ID_ALIAS: return exchangestr(n, id->action);
@@ -169,7 +191,7 @@ int execstring(const char *pp, bool isdown) {
       continue;  // empty statement
     }
 
-    identifier *id = idents->access(c);
+    const auto id = access(c);
     if (!id) {
       val = ATOI(c);
       if (!val && *c!='0')
@@ -279,8 +301,8 @@ void complete(fixedstring &s) {
   if (!completesize) { completesize = int(strlen(s)-1); completeidx = 0; }
   int idx = 0;
   for (auto it = idents->begin(); it != idents->end(); ++it)
-    if (strncmp(it->first, s+1, completesize)==0 && idx++==completeidx)
-      sprintf_s(s)("/%s", it->first);
+    if (strncmp(it->first.c_str(), s+1, completesize)==0 && idx++==completeidx)
+      sprintf_s(s)("/%s", it->first.c_str());
   completeidx++;
   if (completeidx>=idx) completeidx = 0;
 }
@@ -308,7 +330,7 @@ void writecfg(void) {
              "// modify settings in game, or put settings in autoexec.cfg to override anything\n\n");
   for (auto it = idents->begin(); it != idents->end(); ++it)
     if (it->second.persist)
-      fprintf(f, "%s %d\n", it->first, *it->second.storage);
+      fprintf(f, "%s %d\n", it->first.c_str(), *it->second.storage);
   fclose(f);
 }
 

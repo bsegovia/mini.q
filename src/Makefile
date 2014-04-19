@@ -16,8 +16,8 @@ DEBUGFLAGS=-O0 -DMEMORY_DEBUGGER -g
 OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g -fsanitize=address
 RELFLAGS=-fomit-frame-pointer -O2 -DNDEBUG -DRELEASE
 
-CXXFLAGS=$(CXXCOMMONFLAGS) $(FLAGS) $(RELFLAGS)
-LIBS=`sdl2-config --libs` -lSDL2_image -lSDL2_mixer -lz -lm -lstdc++ #-fsanitize=address
+CXXFLAGS=$(CXXCOMMONFLAGS) $(FLAGS) $(OPTFLAGS)
+LIBS=`sdl2-config --libs` -lSDL2_image -lSDL2_mixer -lz -lm -lstdc++ -fsanitize=address
 
 ENET_OBJS=\
   enet/callbacks.o\
@@ -31,6 +31,7 @@ ENET_OBJS=\
 BASE_OBJS=\
   base/console.o\
   base/intrusive_list.o\
+  base/hash.o\
   base/math.o\
   base/script.o\
   base/string.o\
@@ -121,6 +122,7 @@ SERVER_OBJS=\
   $(ENET_OBJS)\
   base/math.o\
   base/sys.o\
+  base/intrusive_list.o\
   network.o\
   server.o\
   serverms.o\
@@ -129,6 +131,7 @@ SERVER_OBJS=\
 MAYAOBJ_OBJS=\
   base/sys.o\
   base/string.o\
+  base/intrusive_list.o\
   obj.o
 
 SHADERS=$(shell ls data/shaders/*[glsl,decl])
@@ -143,6 +146,7 @@ rtavx.o: rtavx.cpp
 -include $(RT_OBJS:.o=.d)
 -include $(LUA_OBJS:.o=.d)
 -include $(GAME_OBJS:.o=.d)
+-include $(BASE_OBJS:.o=.d)
 
 ## build embedded shader source
 shaders.hxx shaders.cxx: $(SHADERS)

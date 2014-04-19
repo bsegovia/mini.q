@@ -3,6 +3,7 @@
  - sys.cpp -> implements platform specific code, stdlib and main function
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
+#include "intrusive_list.hpp"
 #if defined(__UNIX__)
 #include <unistd.h>
 #endif
@@ -86,7 +87,7 @@ static void memoutputalloc(void) {
   if (memlist != NULL) {
     for (auto it = memlist->begin(); it != memlist->end(); ++it) {
       MEMOUT(unfreed, it);
-      fprintf(stderr, "unfreed allocation: %s\n", unfreed);
+      fprintf(stderr, "unfreed allocation: %s\n", (const char*) unfreed);
       sz += it->size;
     }
     if (sz > 0) fprintf(stderr, "total unfreed: %fKB \n", float(sz)/1000.f);

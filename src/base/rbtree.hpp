@@ -5,31 +5,31 @@
 
 namespace q {
 namespace internal {
-  struct rb_tree_base {
-    typedef int size_type;
-    enum color_e {
-      red,
-      black
-    };
+struct rb_tree_base {
+  typedef int size_type;
+  enum color_e {
+    red,
+    black
   };
-  template<typename TKey>
-  struct rb_tree_key_wrapper {
-    TKey key;
-    rb_tree_key_wrapper() {}
-    rb_tree_key_wrapper(const TKey& key_): key(key_) {}
-    const TKey& get_key() const { return key; }
-  };
-  template<typename TKey>
-  struct rb_tree_traits {
-    typedef TKey key_type;
-    typedef rb_tree_key_wrapper<TKey> value_type;
-  };
-} // internal
+};
+template<typename TKey>
+struct rb_tree_key_wrapper {
+  TKey key;
+  rb_tree_key_wrapper() {}
+  rb_tree_key_wrapper(const TKey& key_): key(key_) {}
+  const TKey& get_key() const { return key; }
+};
+template<typename TKey>
+struct rb_tree_traits {
+  typedef TKey key_type;
+  typedef rb_tree_key_wrapper<TKey> value_type;
+};
+} /* internal */
 
 template<class TTreeTraits, class TAllocator = q::allocator>
 class rb_tree_base : public internal::rb_tree_base {
 public:
-  typedef typename TTreeTraits::key_type  key_type;
+  typedef typename TTreeTraits::key_type key_type;
   typedef typename TTreeTraits::value_type value_type;
   typedef TAllocator allocator_type;
 
@@ -51,7 +51,7 @@ public:
     ms_sentinel.left = &ms_sentinel;
     ms_sentinel.right = &ms_sentinel;
     ms_sentinel.parent = &ms_sentinel;
-    m_root    = &ms_sentinel;
+    m_root = &ms_sentinel;
   }
   INLINE ~rb_tree_base() { clear(); }
 

@@ -79,8 +79,7 @@ bool contains(const char *haystack, const char *needle);
  - string storage for regular strings
  -------------------------------------------------------------------------*/
 template<typename E, class TAllocator>
-class simple_string_storage
-{
+class simple_string_storage {
 public:
   typedef E value_type;
   typedef int size_type;
@@ -214,25 +213,22 @@ public:
   typedef typename TStorage::const_iterator  const_iterator;
   typedef typename TStorage::allocator_type  allocator_type;
 
-    //For find
-    static const size_type npos = size_type(-1);
+  //For find
+  static const size_type npos = size_type(-1);
 
   explicit basic_string(const allocator_type& allocator = allocator_type())
   : TStorage(allocator)
   {}
   // yeah, EXPLICIT.
   explicit basic_string(const value_type* str,
-    const allocator_type& allocator = allocator_type())
-  : TStorage(str, allocator)
-  {}
+                        const allocator_type& allocator = allocator_type())
+  : TStorage(str, allocator) {}
   basic_string(const value_type* str, size_type len,
-    const allocator_type& allocator = allocator_type())
-  :  TStorage(str, len, allocator)
-  {}
+               const allocator_type& allocator = allocator_type())
+  : TStorage(str, len, allocator) {}
   basic_string(const basic_string& str,
-    const allocator_type& allocator = allocator_type())
-  :  TStorage(str, allocator)
-  {}
+               const allocator_type& allocator = allocator_type())
+  : TStorage(str, allocator) {}
   ~basic_string() {}
 
   size_type capacity() const { return TStorage::capacity(); }
@@ -292,14 +288,14 @@ public:
       return -1;
     if (thisLen > strLen)
       return 1;
-    return strcompare(c_str(), str, thisLen);
+    return strcmp(c_str(), str);
   }
   int compare(const basic_string& rhs) const {
     const size_type thisLen = length();
     const size_type rhsLen = rhs.length();
     if (thisLen < rhsLen) return -1;
     if (thisLen > rhsLen) return 1;
-    return strcompare(c_str(), rhs.c_str(), thisLen);
+    return strcmp(c_str(), rhs.c_str());
   }
 
   // @note: do NOT const_cast!
@@ -459,6 +455,38 @@ struct hash<basic_string<E, TAllocator, TStorage> > {
     for (auto p = 0u; p < x.length(); ++p)
       h = x[p] + (h<<6) + (h<<16) - h;
     return h & 0x7FFFFFFF;
+  }
+};
+
+/*-------------------------------------------------------------------------
+ - hash_map/set/map compatible raw string wrapper
+ -------------------------------------------------------------------------*/
+struct string_ref {
+  INLINE string_ref() {bytes=NULL;}
+  INLINE string_ref(const char *str) {bytes=const_cast<char*>(str);}
+  INLINE string_ref(char *str) {bytes=str;}
+  INLINE string_ref(const string_ref &other) : bytes(other.bytes) {}
+  INLINE string_ref &operator= (const string_ref &other) {
+    bytes = other.bytes;
+    return *this;
+  }
+  INLINE char *c_str()             {assert(NULL!=bytes);return bytes;}
+  INLINE const char *c_str() const {assert(NULL!=bytes);return bytes;}
+  char *bytes;
+};
+INLINE bool operator== (const string_ref &x, const string_ref &y) {
+  return x.c_str() == y.c_str() || strcmp(x.c_str(), y.c_str()) == 0;
+}
+INLINE bool operator!= (const string_ref &x, const string_ref &y) {
+  return !(x==y);
+}
+INLINE bool operator< (const string_ref &x, const string_ref &y) {
+  return strcmp(x.c_str(), y.c_str());
+}
+template<>
+struct hash<string_ref> {
+  INLINE hash_value_t operator()(const string_ref &str) const {
+    return murmurhash2(str.c_str(), strlen(str.c_str()));
   }
 };
 } /* namespace q */

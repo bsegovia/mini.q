@@ -172,6 +172,9 @@ private:
 template <typename T, typename U> struct pair {
   INLINE pair() {}
   INLINE pair(T t, U u) : first(t), second(u) {}
+  template <typename T0, typename U0>
+  INLINE pair(const pair<T0, U0> &other) :
+    first(T(other.first)), second(U(other.second)) {}
   T first; U second;
 };
 template <typename T, typename U>
@@ -180,32 +183,5 @@ INLINE bool operator==(const pair<T,U> &x0, const pair<T,U> &x1) {
 }
 template <typename T, typename U>
 INLINE pair<T,U> makepair(const T &t, const U &u){return pair<T,U>(t,u);}
-
-/*-------------------------------------------------------------------------
- - very simple fixed size hash table (linear probing)
- -------------------------------------------------------------------------*/
-template <typename T, u32 max_n=1024> struct hashtable : noncopyable {
-  hashtable() : n(0) {}
-  INLINE pair<const char*, T> *begin() { return items; }
-  INLINE pair<const char*, T> *end() { return items+n; }
-  INLINE void remove(pair<const char*, T> *it) {
-    assert(it >= begin() && it < end());
-    *it = items[(n--)-1];
-  }
-  T *access(const char *key, const T *value = NULL) {
-    u32 h = 5381, i = 0;
-    for (u32 k; (k = key[i]) != 0; ++i) h = ((h << 5) + h) ^ k;
-    for (i = 0; i<n; ++i) if (h == hashes[i] && !strcmp(key, items[i].first)) break;
-    if (value != NULL) {
-      if (i>=max_n) sys::fatal("out-of-memory");
-      items[i] = makepair(key,*value);
-      hashes[i] = h;
-      n = u32(i+1)>n?u32(i+1):n;
-    }
-    return i==n ? NULL : &items[i].second;
-  }
-  pair<const char*, T> items[max_n];
-  u32 hashes[max_n], n;
-};
 } /* namespace q */
 

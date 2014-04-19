@@ -4,6 +4,7 @@
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
 #include "base/vector.hpp"
+#include "base/hash_map.hpp"
 
 namespace q {
 #define SHADERNAME md2
@@ -214,7 +215,7 @@ void mdl::render(int frame, int range,
 }
 
 static vector<mdl*> mapmodels;
-static hashtable<mdl*> mdllookup;
+static hash_map<string_ref,mdl*> mdllookup;
 static int modelnum = 0;
 
 static void delayedload(mdl *m, float scale, int snap) {
@@ -231,19 +232,20 @@ static void delayedload(mdl *m, float scale, int snap) {
 void start() {}
 #if !defined(RELEASE)
 void finish() {
- // for (auto &m : mdllookup) DEL(m.second);
-  for (auto it = mdllookup.begin(); it != mdllookup.end(); ++it) DEL(it->second);
+  for (auto it = mdllookup.begin(); it != mdllookup.end(); ++it)
+    DEL(it->second);
 }
 #endif
 
 mdl *loadmodel(const char *name) {
-  auto mm = mdllookup.access(name);
-  if (mm && *mm) return *mm;
-  auto m = NEWE(mdl);
+  const auto mm = mdllookup.find(name);
+  if (mm != mdllookup.end() && NULL != mm->first.c_str())
+    return mm->second;
+  const auto m = NEWE(mdl);
   m->mdlnum = modelnum++;
   m->mmi = {2, 2, 0, 0, ""};
   m->loadname = NEWSTRING(name);
-  mdllookup.access(m->loadname, &m);
+  mdllookup.insert(makepair((const char*)(m->loadname), m));
   return m;
 }
 

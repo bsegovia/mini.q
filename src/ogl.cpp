@@ -9,6 +9,7 @@
 #include "base/math.hpp"
 #include "base/script.hpp"
 #include "base/console.hpp"
+#include "base/set.hpp"
 #include "base/sys.hpp"
 
 #include "GL/glext.h"
@@ -46,32 +47,28 @@ static PFNGLGETSTRINGIPROC GetStringi;
 static u32 vao = 0;
 
 struct glext {
-  ~glext() { for (auto item : glexts) FREE(item.second); }
+  ~glext() {}
   void parse() {
     if (glversion >= 300) {
       GLint numexts = 0;
       ogl::GetIntegerv(GL_NUM_EXTENSIONS, &numexts);
       loopi(numexts) {
         const auto ext = (const char*) ogl::GetStringi(GL_EXTENSIONS, i);
-        const auto str = NEWSTRING(ext);
-        glexts.access(str,&str);
+        glexts.insert(string(ext));
       }
     } else {
-      const char *exts = (const char*) ogl::GetString(GL_EXTENSIONS);
+      auto exts = (const char*) ogl::GetString(GL_EXTENSIONS);
       for(;;) {
         while (*exts == ' ') exts++;
         if (!*exts) break;
         const char *ext = exts;
         while (*exts && *exts != ' ') exts++;
-        if (exts > ext) {
-          const auto str = NEWSTRING(ext, size_t(exts-ext));
-          glexts.access(str,&str);
-        }
+        if (exts > ext) glexts.insert(string(ext, size_t(exts-ext)));
       }
     }
   }
-  bool has(const char *ext) {return glexts.access(ext)!=NULL;}
-  hashtable<char*> glexts;
+  bool has(const char *ext) {return glexts.find(string(ext))!=glexts.end();}
+  set<string> glexts;
 };
 
 static void startgl() {

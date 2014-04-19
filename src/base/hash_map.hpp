@@ -158,8 +158,8 @@ public:
   iterator end()             { return iterator(m_nodes + m_capacity, this); }
   const_iterator end() const { return const_iterator(m_nodes + m_capacity, this); }
 
-  // @note:  added for compatiblity sake.
-  // personally, i consider it "risky". use find/insert for more
+  // @note: added for compatiblity sake.
+  // personally, I consider it "risky". use find/insert for more
   // explicit operations.
   mapped_type& operator[](const key_type& key) {
     hash_value_t hash;
@@ -168,8 +168,8 @@ public:
       return insert_at(value_type(key, TValue()), n, hash).first->second;
     return n->data.second;
   }
-  // @note:  Doesn't copy allocator.
-  hash_map& operator=(const hash_map& rhs) {
+  // @note: does not copy allocator.
+  hash_map& operator=(const hash_map &rhs) {
     assert(invariant());
     if (&rhs != this) {
       clear();
@@ -207,8 +207,8 @@ public:
     if (m_numUsed * TLoadFactor4 >= m_capacity * 4)
       grow();
 
-    hash_value_t hash;
-    node* n = find_for_insert(v.first, &hash);
+    hash_value_t hash=0;
+    node *n = find_for_insert(v.first, &hash);
     if (n->is_occupied()) {
       assert(hash == n->hash && m_keyEqualFunc(v.first, n->data.first));
       return ret_type_t(iterator(n, this), false);
@@ -260,8 +260,8 @@ public:
       if (iter) {
         if (iter->is_occupied())
           q::destruct(&iter->data);
-        // We can make them unused, because we clear whole hash_map,
-        // so we can guarantee there'll be no holes.
+        // we can make them unused, because we clear whole hash_map, so we can
+        // guarantee there'll be no holes.
         iter->hash = node::kUnusedHash;
       }
     }
