@@ -54,7 +54,7 @@ static void music(const char *name) {
     fixedstring sn;
     strcpy_s(sn, "packages/");
     strcat_s(sn, name);
-    if ((mod = Mix_LoadMUS(sys::path(sn)))) {
+    if ((mod = Mix_LoadMUS(sys::path(sn.c_str())))) {
       Mix_PlayMusic(mod, -1);
       Mix_VolumeMusic((musicvol*MAXVOL)/255);
     }
@@ -136,7 +136,7 @@ void play(int n, const vec3f *loc) {
 
   if (!samples[n]) {
     sprintf_sd(buf)("data/sounds/%s.wav", snames[n]);
-    samples[n] = Mix_LoadWAV(sys::path(buf));
+    samples[n] = Mix_LoadWAV(sys::path(buf.c_str()));
     if (!samples[n]) {
       con::out("failed to load sample: %s", buf);
       return;

@@ -87,7 +87,7 @@ static void memoutputalloc(void) {
   if (memlist != NULL) {
     for (auto it = memlist->begin(); it != memlist->end(); ++it) {
       MEMOUT(unfreed, it);
-      fprintf(stderr, "unfreed allocation: %s\n", (const char*) unfreed);
+      fprintf(stderr, "unfreed allocation: %s\n", unfreed.c_str());
       sz += it->size;
     }
     if (sz > 0) fprintf(stderr, "total unfreed: %fKB \n", float(sz)/1000.f);
@@ -217,7 +217,7 @@ void quit(const char *msg) {
 void fatal(const char *s, const char *o) {
   assert(0);
   sprintf_sd(m)("%s%s (%s)\n", s, o, SDL_GetError());
-  quit(m);
+  quit(m.c_str());
 }
 
 void keyrepeat(bool on) {

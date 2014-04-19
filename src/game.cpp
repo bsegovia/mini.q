@@ -31,7 +31,7 @@ CMDN(mode, moden, ARG_1INT);
 static bool intermission = false;
 static fixedstring clientmap;
 
-const char *getclientmap() { return clientmap; }
+const char *getclientmap() { return clientmap.c_str(); }
 
 INLINE mat4x4f viewportxfm(float w, float h) {
   return mat4x4f(vec4f(2.f/w,0.f,  0.f,0.f),
@@ -162,9 +162,9 @@ CMD(showscores, ARG_DOWN);
 void arenacount(dynent *d, int &alive, int &dead, char *&lastteam, bool &oneteam) {
   if (d->state!=CS_DEAD) {
     alive++;
-    if (lastteam && strcmp(lastteam, d->team))
+    if (lastteam && strcmp(lastteam, d->team.c_str()))
       oneteam = false;
-    lastteam = d->team;
+    lastteam = d->team.c_str();
   } else
     dead++;
 }
@@ -228,9 +228,10 @@ static void respawn() {
     }
     if (m_sp) {
       setnextmode(gamemode);
-      client::changemap(clientmap);
+      client::changemap(clientmap.c_str());
       return;
-    } // if we die in SP we try the same map again
+    }
+    // if we die in SP we try the same map again
     respawnself();
   }
 }
@@ -248,7 +249,7 @@ void updateworld(int millis) {
     setcurtime(millis - lastmillis());
     if (sleepwait && lastmillis()>sleepwait) {
       sleepwait = 0;
-      script::execstring(sleepcmd);
+      script::execstring(sleepcmd.c_str());
     }
     physics::frame();
     checkquad(int(curtime()));
@@ -390,7 +391,7 @@ void selfdamage(int damage, int actor, dynent *act) {
     } else {
       dynent *a = getclient(actor);
       if (a) {
-        if (isteam(a->team, player1->team))
+        if (isteam(a->team.c_str(), player1->team.c_str()))
           con::out("you got fragged by a teammate (%s)", a->name);
         else
           con::out("you got fragged by %s", a->name);
@@ -517,7 +518,8 @@ void renderclients() {
   dynent *d;
   loopv(players)
     if ((d = players[i]) && (!demo::playing() || i!=demo::clientnum()))
-      renderclient(d, isteam(player1->team, d->team), "monster/ogro", false, 1.f);
+      renderclient(d, isteam(player1->team.c_str(), d->team.c_str()),
+                   "monster/ogro", false, 1.f);
 }
 
 struct sline { fixedstring s; };
@@ -527,9 +529,9 @@ static void renderscore(dynent *d) {
   sprintf_sd(lag)("%d", d->plag);
   sprintf_sd(name) ("(%s)", d->name);
   sprintf_s(scorelines.add().s)("%d\t%s\t%d\t%s\t%s",
-            d->frags, d->state==CS_LAGGED ? "LAG" : lag,
-            d->ping, d->team, d->state==CS_DEAD ? name : d->name);
-  menu::manual(0, scorelines.length()-1, scorelines.last().s);
+            d->frags, d->state==CS_LAGGED ? "LAG" : lag, d->ping,
+            d->team.c_str(), d->state==CS_DEAD ? name : d->name.c_str());
+  menu::manual(0, scorelines.length()-1, scorelines.last().s.c_str());
 }
 
 static const int maxteams = 4;
@@ -539,12 +541,12 @@ static fixedstring teamscores;
 
 static void addteamscore(dynent *d) {
   if (!d) return;
-  loopi(teamsused) if (strcmp(teamname[i], d->team)==0) {
+  loopi(teamsused) if (strcmp(teamname[i], d->team.c_str())==0) {
     teamscore[i] += d->frags;
     return;
   }
   if (teamsused==maxteams) return;
-  teamname[teamsused] = d->team;
+  teamname[teamsused] = d->team.c_str();
   teamscore[teamsused++] = d->frags;
 }
 
@@ -563,10 +565,10 @@ void renderscores() {
     teamscores[0] = 0;
     loopj(teamsused) {
       sprintf_sd(sc)("[ %s: %d ]", teamname[j], teamscore[j]);
-      strcat_s(teamscores, sc);
+      strcat_s(teamscores, sc.c_str());
     }
-    menu::manual(0, scorelines.length(), (char*) "");
-    menu::manual(0, scorelines.length()+1, teamscores);
+    menu::manual(0, scorelines.length(), "");
+    menu::manual(0, scorelines.length()+1, teamscores.c_str());
   }
 }
 

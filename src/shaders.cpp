@@ -84,16 +84,16 @@ void builder::setrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules)
       else
         sprintf_s(rule)("uniform %s %s[%s];\n", uni[i].type, uni[i].name, uni[i].arraysize);
       if (uni[i].vertex)
-        vertrules.add(NEWSTRING(rule));
+        vertrules.add(NEWSTRING(rule.c_str()));
       else
-        fragrules.add(NEWSTRING(rule));
+        fragrules.add(NEWSTRING(rule.c_str()));
     }
   }
   if (*desc.attrib) {
     auto &att = **desc.attrib;
     loopv(att) {
       sprintf_sd(rule)("VS_IN %s %s;\n", att[i].type, att[i].name);
-      vertrules.add(NEWSTRING(rule));
+      vertrules.add(NEWSTRING(rule.c_str()));
     }
   }
 #if !defined(__WEBGL__)
@@ -101,7 +101,7 @@ void builder::setrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules)
     auto &fd = **desc.fragdata;
     loopv(fd) {
       sprintf_sd(rule)("out %s %s;\n", fd[i].type, fd[i].name);
-      fragrules.add(NEWSTRING(rule));
+      fragrules.add(NEWSTRING(rule.c_str()));
     }
   }
 #endif

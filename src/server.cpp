@@ -93,7 +93,7 @@ void sendservmsg(const char *msg) {
 
 void disconnect_client(int n, const char *reason) {
   printf("client::disconnecting client (%s) [%s]\n",
-    (const char*)(clients[n].hostname),
+    clients[n].hostname.c_str(),
     reason);
   enet_peer_disconnect(clients[n].peer);
   clients[n].type = ST_EMPTY;
@@ -119,13 +119,19 @@ static bool vote(const char *map, int reqmode, int sender) {
   clients[sender].modevote = reqmode;
   int yes = 0, no = 0; 
   loopv(clients) if (clients[i].type!=ST_EMPTY) {
-    if (clients[i].mapvote[0]) { if (strcmp(clients[i].mapvote, map)==0 && clients[i].modevote==reqmode) yes++; else no++; }
+    if (clients[i].mapvote[0]) {
+      if (strcmp(clients[i].mapvote.c_str(), map)==0 && clients[i].modevote==reqmode)
+        yes++;
+      else
+        no++;
+    }
     else no++;
   }
   if (yes==1 && no==0) return true;  // single player
   sprintf_sd(msg)("%s suggests %s on map %s (set map to vote)",
-    (const char*) clients[sender].name, game::modestr(reqmode), map);
-  sendservmsg(msg);
+    clients[sender].name.c_str(),
+    game::modestr(reqmode), map);
+  sendservmsg(msg.c_str());
   if (yes/(float)(yes+no) <= 0.5f) return false;
   sendservmsg("vote passed");
   resetvotes();
@@ -236,7 +242,7 @@ void send_welcome(int n) {
   putint(p, clients.length()>maxclients);
   if (smapname[0]) {
     putint(p, SV_MAPCHANGE);
-    sendstring(smapname, p);
+    sendstring(smapname.c_str(), p);
     putint(p, mode);
     putint(p, SV_ITEMLIST);
     loopv(sents) if (sents[i].spawned) putint(p, i);
@@ -319,7 +325,8 @@ void slice(int seconds, unsigned int timeout) {
 
   int numplayers = 0;
   loopv(clients) if (clients[i].type!=ST_EMPTY) ++numplayers;
-  serverms(mode, numplayers, minremain, smapname, seconds, clients.length()>=maxclients);
+  serverms(mode, numplayers, minremain, smapname.c_str(),
+           seconds, clients.length()>=maxclients);
 
   if (seconds-laststatus>60) { // display bandwidth stats, useful for server ops
     nonlocalclients = 0;
@@ -342,7 +349,7 @@ void slice(int seconds, unsigned int timeout) {
         char hn[1024];
         const auto host = enet_address_get_host(&c.peer->address,hn,sizeof(hn))==0;
         strcpy_s(c.hostname, host ? hn : "localhost");
-        printf("client connected (%s)\n", (const char*)(c.hostname));
+        printf("client connected (%s)\n", c.hostname.c_str());
         send_welcome(lastconnect = &c-&clients[0]);
         break;
       }
@@ -354,7 +361,7 @@ void slice(int seconds, unsigned int timeout) {
       case ENET_EVENT_TYPE_DISCONNECT: 
         if (intptr(event.peer->data)<0) break;
         printf("client::disconnected client (%s)\n",
-          (const char*)(clients[uintptr(event.peer->data)].hostname));
+          clients[uintptr(event.peer->data)].hostname.c_str());
         clients[uintptr(event.peer->data)].type = ST_EMPTY;
         send2(true, -1, SV_CDIS, intptr(event.peer->data));
         event.peer->data = (void *)-1;

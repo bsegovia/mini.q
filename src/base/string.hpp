@@ -16,26 +16,21 @@ static const u32 MAXDEFSTR = 260, WORDWRAP = 80;
 struct fixedstring {
   INLINE fixedstring();
   INLINE fixedstring(const char *txt);
-#if 0
-  char *operator[] (int idx) { return bytes[idx]; }
-  const char *operator[] (int idx) const { return bytes[idx]; }
+  char &operator[] (int idx) { return bytes[idx]; }
+  char operator[] (int idx) const { return bytes[idx]; }
   const char *c_str() const { return &bytes[0]; }
   char *c_str() { return &bytes[0]; }
-#else
-  operator const char *() const { return bytes; }
-  operator char *() { return bytes; }
-#endif
   char bytes[MAXDEFSTR];
 };
 
 // more string operations
 INLINE char *strn0cpy(char *d, const char *s, int m) {strncpy(d,s,m); d[m-1]=0; return d;}
 INLINE void strcpy_cs(char *d, const char *s) { strn0cpy(d,s,MAXDEFSTR); }
-INLINE void strcat_cs(char *d, const char *s) { size_t n = strlen(d); strn0cpy(d+n,s,MAXDEFSTR-n); }
-INLINE void strcpy_s(fixedstring &d, const char *s) { strcpy_cs(d,s); }
-INLINE void strcat_s(fixedstring &d, const char *s) { strcat_cs(d,s); }
+INLINE void strcat_cs(char *d, const char *s) { const auto n = strlen(d); strn0cpy(d+n,s,MAXDEFSTR-n); }
+INLINE void strcpy_s(fixedstring &d, const char *s) { strcpy_cs(d.c_str(),s); }
+INLINE void strcat_s(fixedstring &d, const char *s) { strcat_cs(d.c_str(),s); }
 INLINE void strfmt_s(fixedstring &d, const char *fmt, va_list v) {
-  vsnprintf(d, MAXDEFSTR, fmt, v);
+  vsnprintf(d.c_str(), MAXDEFSTR, fmt, v);
   d[MAXDEFSTR-1] = 0;
 }
 INLINE fixedstring::fixedstring() { bytes[0] = '\0'; }
@@ -46,7 +41,7 @@ struct sprintfmt_s {
   void operator()(const char *fmt, ...) {
     va_list v;
     va_start(v, fmt);
-    vsnprintf(d, MAXDEFSTR, fmt, v);
+    vsnprintf(d.c_str(), MAXDEFSTR, fmt, v);
     va_end(v);
     d[MAXDEFSTR-1] = 0;
   }
@@ -208,10 +203,10 @@ template<typename E,
   typename TStorage = q::simple_string_storage<E, TAllocator>>
 class basic_string : private TStorage {
 public:
-  typedef typename TStorage::value_type    value_type;
-  typedef typename TStorage::size_type    size_type;
-  typedef typename TStorage::const_iterator  const_iterator;
-  typedef typename TStorage::allocator_type  allocator_type;
+  typedef typename TStorage::value_type value_type;
+  typedef typename TStorage::size_type size_type;
+  typedef typename TStorage::const_iterator const_iterator;
+  typedef typename TStorage::allocator_type allocator_type;
 
   //For find
   static const size_type npos = size_type(-1);
@@ -269,7 +264,7 @@ public:
   }
 
   void append(const value_type* str, size_type len) {
-    if ( !str || len == 0 || *str == 0 )
+    if (!str || len == 0 || *str == 0)
       return;
     TStorage::append(str, len);
   }
@@ -378,7 +373,7 @@ public:
           ++n;
           ++x;
         }
-        if ( match == strlen(needle) )
+        if (match == strlen(needle))
           return si;
       }
       ++s;
@@ -402,12 +397,12 @@ public:
         const value_type* n = needle;
         size_type match = 0;
         while (*x && *n) {
-          if ( *n == *x )
+          if (*n == *x)
             ++match;
           ++n;
           ++x;
         }
-        if ( match == strlen(needle) )
+        if (match == strlen(needle))
           return si;
       }
     }

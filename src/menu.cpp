@@ -89,7 +89,7 @@ bool render(void) {
   const auto mdisp = m.items.length();
   auto w = 0.f;
   loopi(mdisp) w = max(w, text::width(m.items[i].text));
-  w = max(w, text::width(title));
+  w = max(w, text::width(title.c_str()));
 
   const auto fh = text::displaydim().y;
   const auto step = fh*5.f/4.f;
@@ -99,7 +99,7 @@ bool render(void) {
 
   rr::blendbox(x-fh/2.f*3.f, y-h, x+w+fh/2.f*3.f, y+2.f*fh, true);
   OGL(VertexAttrib4f,ogl::ATTRIB_COL,1.f,1.f,1.f,1.f);
-  text::draw(title,x,y);
+  text::draw(title.c_str(),x,y);
   y -= fh*2.f;
 
   if (vmenu) {
@@ -122,11 +122,11 @@ void newm(const char *name) {
 }
 CMDN(newmenu, newm, ARG_1STR);
 
-void manual(int m, int n, char *text) {
+void manual(int m, int n, const char *text) {
   if (!n) menus[m].items.setsize(0);
   auto &mi = menus[m].items.add();
-  mi.text = text;
-  mi.action = empty;
+  mi.text = const_cast<char*>(text);
+  mi.action = empty.c_str();
   mi.manual = 1;
 }
 

@@ -61,20 +61,20 @@ static void throttle(void) {
 
 static void newname(const char *name) {
   c2sinit = false;
-  strn0cpy(game::player1->name, name, 16);
+  strn0cpy(game::player1->name.c_str(), name, 16);
 }
 CMDN(name, newname, ARG_1STR);
 
 static void newteam(const char *name) {
   c2sinit = false;
-  strn0cpy(game::player1->team, name, 5);
+  strn0cpy(game::player1->team.c_str(), name, 5);
 }
 CMDN(team, newteam, ARG_1STR);
 
 void writeclientinfo(FILE *f) {
   fprintf(f, "name \"%s\"\nteam \"%s\"\n",
-    (const char *) game::player1->name,
-    (const char *) game::player1->team);
+    game::player1->name.c_str(),
+    game::player1->team.c_str());
 }
 
 void connect(const char *servername) {
@@ -152,7 +152,7 @@ CMDN(disconnect, trydisconnect, ARG_NONE);
 
 void toserver(const char *text) {
   con::out("%s:\f %s", game::player1->name, text);
-  strn0cpy(ctext, text, 80);
+  strn0cpy(ctext.c_str(), text, 80);
 }
 CMDN(say, toserver, ARG_VARI);
 
@@ -164,7 +164,7 @@ void addmsg(int rel, int num, int type, ...) {
   if (num!=msgsizelookup(type)) {
     sprintf_sd(s)("inconsistant msg size for %d (%d != %d)",
       type, num, msgsizelookup(type));
-    sys::fatal(s);
+    sys::fatal(s.c_str());
   }
   if (messages.length()==128) {
     con::out("command flood protection (type %d)", type);
@@ -223,7 +223,7 @@ void c2sinfo(const game::dynent *d) {
     // do this exclusively as map change may invalidate rest of update
     packet->flags = ENET_PACKET_FLAG_RELIABLE;
     putint(p, SV_MAPCHANGE);
-    sendstring(toservermap, p);
+    sendstring(toservermap.c_str(), p);
     toservermap[0] = 0;
     putint(p, game::nextmode());
   } else {
@@ -258,7 +258,7 @@ void c2sinfo(const game::dynent *d) {
     if (ctext[0]) {
       packet->flags = ENET_PACKET_FLAG_RELIABLE;
       putint(p, SV_TEXT);
-      sendstring(ctext, p);
+      sendstring(ctext.c_str(), p);
       ctext[0] = 0;
     }
     // tell other clients who I am
@@ -266,8 +266,8 @@ void c2sinfo(const game::dynent *d) {
       packet->flags = ENET_PACKET_FLAG_RELIABLE;
       c2sinit = true;
       putint(p, SV_INITC2S);
-      sendstring(game::player1->name, p);
-      sendstring(game::player1->team, p);
+      sendstring(game::player1->name.c_str(), p);
+      sendstring(game::player1->team.c_str(), p);
       putint(p, game::player1->lifesequence);
     }
     // send messages collected during the previous frames
@@ -356,7 +356,7 @@ void localservertoclient(u8 *buf, int len) {
       if (!getint(p)) // we are the first client on this server, set map
       strcpy_s(toservermap, game::getclientmap());
       sgetstr();
-      if (text[0] && strcmp(text, clientpassword)) {
+      if (text[0] && strcmp(text, clientpassword.c_str())) {
         con::out("you need to set the correct password to join this server!");
         disconnect();
         return;
@@ -422,7 +422,7 @@ void localservertoclient(u8 *buf, int len) {
     case SV_INITC2S: {
       sgetstr();
       if (d->name[0]) { // already connected
-        if (strcmp(d->name, text))
+        if (strcmp(d->name.c_str(), text))
           con::out("%s is now known as %s", d->name, text);
       } else { // new client
         c2sinit = false; // send new players my info again 
@@ -465,7 +465,7 @@ void localservertoclient(u8 *buf, int len) {
         con::out("%s suicided", d->name);
       else if (actor==clientnum) {
         int frags;
-        if (isteam(game::player1->team, d->team)) {
+        if (isteam(game::player1->team.c_str(), d->team.c_str())) {
           frags = -1;
           con::out("you fragged a teammate (%s)", d->name);
         } else {
@@ -476,7 +476,7 @@ void localservertoclient(u8 *buf, int len) {
       } else {
         const game::dynent * const a = game::getclient(actor);
         if (a) {
-          if (isteam(a->team, d->name))
+          if (isteam(a->team.c_str(), d->name.c_str()))
             con::out("%s fragged his teammate (%s)", a->name, d->name);
           else
             con::out("%s fragged %s", a->name, d->name);

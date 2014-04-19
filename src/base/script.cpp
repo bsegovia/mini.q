@@ -124,7 +124,7 @@ static char *parseexp(char *&p, int right) {
   if (left=='(') {
     fixedstring t;
     itoa(t, execstring(s)); // evaluate () exps directly, and substitute result
-    s = exchangestr(s, t);
+    s = exchangestr(s, t.c_str());
   }
   return s;
 }
@@ -153,7 +153,11 @@ static char *parseword(char *&p) {
 static char *lookup(char *n) {
   const auto id = access(n+1);
   if (id) switch (id->type) {
-    case ID_VAR: {fixedstring t; itoa(t, *(id->storage)); return exchangestr(n, t);}
+    case ID_VAR: {
+      fixedstring t;
+      itoa(t, *(id->storage));
+      return exchangestr(n, t.c_str());
+    }
     case ID_ALIAS: return exchangestr(n, id->action);
   }
   con::out("unknown alias lookup: %s", n+1);
@@ -237,7 +241,7 @@ int execstring(const char *pp, bool isdown) {
                   if (i==numargs-1) break;
                   strcat_s(r, " ");
                 }
-                ((void (CDECL *)(char *))id->fun)(r);
+                ((void (CDECL *)(char *))id->fun)(r.c_str());
                 break;
               }
           }
@@ -271,7 +275,7 @@ int execstring(const char *pp, bool isdown) {
           for (int i = 1; i<numargs; i++) {
             // set any arguments as (global) arg values so functions can access them
             sprintf_sd(t)("arg%d", i);
-            alias(t, w[i]);
+            alias(t.c_str(), w[i]);
           }
           // create new string here because alias could rebind itself
           char *action = NEWSTRING(id->action);
@@ -288,17 +292,20 @@ int execstring(const char *pp, bool isdown) {
 void resetcomplete(void) { completesize = 0; }
 
 void complete(fixedstring &s) {
-  if (*s!='/') {
+  if (*s.c_str()!='/') {
     fixedstring t;
-    strcpy_s(t, s);
+    strcpy_s(t, s.c_str());
     strcpy_s(s, "/");
-    strcat_s(s, t);
+    strcat_s(s, t.c_str());
   }
   if (!s[1]) return;
-  if (!completesize) { completesize = int(strlen(s)-1); completeidx = 0; }
+  if (!completesize) {
+    completesize = int(strlen(s.c_str())-1);
+    completeidx = 0;
+  }
   int idx = 0;
   for (auto it = idents->begin(); it != idents->end(); ++it)
-    if (strncmp(it->first.c_str(), s+1, completesize)==0 && idx++==completeidx)
+    if (strncmp(it->first.c_str(), s.c_str()+1, completesize)==0 && idx++==completeidx)
       sprintf_s(s)("/%s", it->first.c_str());
   completeidx++;
   if (completeidx>=idx) completeidx = 0;
@@ -307,7 +314,7 @@ void complete(fixedstring &s) {
 bool execfile(const char *cfgfile) {
   fixedstring s;
   strcpy_s(s, cfgfile);
-  char *buf = sys::loadfile(sys::path(s), NULL);
+  char *buf = sys::loadfile(sys::path(s.c_str()), NULL);
   if (!buf) return false;
   execstring(buf);
   FREE(buf);
@@ -336,7 +343,7 @@ CMD(writecfg, ARG_NONE);
 // below the commands that implement a small imperative language. thanks to the
 // semantics of () and [] expressions, any control construct can be defined
 // trivially.
-static void intset(const char *name, int v) { fixedstring b; itoa(b, v); alias(name, b); }
+static void intset(const char *name, int v) { fixedstring b; itoa(b, v); alias(name, b.c_str()); }
 static void ifthen(char *cond, char *thenp, char *elsep) { execstring(cond[0]!='0' ? thenp : elsep); }
 static void loopa(char *times, char *body) { int t = atoi(times); loopi(t) { intset("i", i); execstring(body); } }
 static void whilea(char *cond, char *body) { while (execstring(cond)) execstring(body); } // can't get any simpler than this :)

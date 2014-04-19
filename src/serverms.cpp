@@ -12,7 +12,9 @@ namespace server {
 
 static ENetSocket mssock = ENET_SOCKET_NULL;
 
-void httpgetsend(ENetAddress &ad, const char *hostname, const char *req, const char *ref, const char *agent) {
+void httpgetsend(ENetAddress &ad, const char *hostname, const char *req,
+                 const char *ref, const char *agent)
+{
   if (ad.host==ENET_HOST_ANY) {
     printf("looking up %s...\n", hostname);
     enet_address_set_host(&ad, hostname);
@@ -24,8 +26,8 @@ void httpgetsend(ENetAddress &ad, const char *hostname, const char *req, const c
   if (enet_socket_connect(mssock, &ad)<0) { printf("could not connect\n"); return; }
   ENetBuffer buf;
   sprintf_sd(httpget)("GET %s HTTP/1.0\nHost: %s\nReferer: %s\nUser-Agent: %s\n\n", req, hostname, ref, agent);
-  buf.data = httpget;
-  buf.dataLength = strlen((char *)buf.data);
+  buf.data = httpget.c_str();
+  buf.dataLength = strlen((const char*) buf.data);
   printf("sending request to %s...\n", hostname);
   enet_socket_send(mssock, NULL, &buf, 1);
 }
@@ -62,8 +64,9 @@ static ENetBuffer masterb;
 
 void updatemasterserver(int seconds) {
   if (seconds>updmaster) { // send alive signal to masterserver every hour of uptime
-    sprintf_sd(path)("%sregister.do?action=add", (const char*) masterpath);
-    httpgetsend(masterserver, masterbase, path, "cubeserver", "Cube Server");
+    sprintf_sd(path)("%sregister.do?action=add", masterpath.c_str());
+    httpgetsend(masterserver, masterbase.c_str(), path.c_str(),
+                "mini.q.server", "mini.q server");
     masterrep[0] = 0;
     masterb.data = masterrep;
     masterb.dataLength = MAXTRANS-1;
@@ -79,8 +82,9 @@ void checkmasterreply(void) {
 }
 
 u8 *retrieveservers(u8 *buf, int buflen) {
-  sprintf_sd(path)("%sretrieve.do?item=list", (const char*) masterpath);
-  httpgetsend(masterserver, masterbase, path, "cubeserver", "Cube Server");
+  sprintf_sd(path)("%sretrieve.do?item=list", masterpath.c_str());
+  httpgetsend(masterserver, masterbase.c_str(), path.c_str(),
+              "mini.q.server", "mini.q server");
   ENetBuffer eb;
   buf[0] = 0;
   eb.data = buf;
@@ -115,8 +119,8 @@ void serverms(int mode, int numplayers, int minremain, char *smapname, int secon
     fixedstring mname;
     strcpy_s(mname, isfull ? "[FULL] " : "");
     strcat_s(mname, smapname);
-    sendstring(mname, p);
-    sendstring(serverdesc, p);
+    sendstring(mname.c_str(), p);
+    sendstring(serverdesc.c_str(), p);
     buf.dataLength = p - pong;
     enet_socket_send(pongsock, &addr, &buf, 1);
   }
@@ -126,7 +130,7 @@ void servermsinit(const char *master, const char *sdesc, bool listen) {
   const char *mid = strstr(master, "/");
   if (!mid) mid = master;
   strcpy_s(masterpath, mid);
-  strn0cpy(masterbase, master, mid-master+1);
+  strn0cpy(masterbase.c_str(), master, mid-master+1);
   strcpy_s(serverdesc, sdesc);
 
   if (listen) {

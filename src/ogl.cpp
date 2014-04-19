@@ -919,8 +919,8 @@ void fixedrules(shaderrules &vert, shaderrules &frag, u32 rule) {
                   rule&FIXED_COLOR,
                   rule&FIXED_KEYFRAME,
                   rule&FIXED_DIFFUSETEX);
-  vert.add(NEWSTRING(str));
-  frag.add(NEWSTRING(str));
+  vert.add(NEWSTRING(str.c_str()));
+  frag.add(NEWSTRING(str.c_str()));
 }
 
 #define RULES fixedrules

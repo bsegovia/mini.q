@@ -83,7 +83,7 @@ static void savegame(const char *name) {
     return;
   }
   sprintf_sd(fn)("savegames/%s.csgz", name);
-  savestate(fn);
+  savestate(fn.c_str());
   stop();
   con::out("wrote %s", fn);
 }
@@ -96,13 +96,14 @@ static void loadstate(char *fn) {
   f = gzopen(fn, "rb9");
   if (!f) { con::out("could not open %s", fn); return; }
 
-  gzread(f, buf, 8);
-  if (strncmp(buf, "CUBESAVE", 8)) goto out;
+  gzread(f, buf.c_str(), 8);
+  if (strncmp(buf.c_str(), "CUBESAVE", 8)) goto out;
   if (gzgetc(f)!=sys::islittleendian()) goto out;     // not supporting save->load accross incompatible architectures simpifies things a LOT
   if (gzgeti()!=SAVEGAMEVERSION || gzgeti()!=sizeof(game::dynent)) goto out;
-  gzread(f, mapname, MAXDEFSTR);
+  gzread(f, mapname.c_str(), MAXDEFSTR);
   game::setnextmode(gzgeti());
-  client::changemap(mapname); // continue below once map has been loaded and client & server have updated
+  // continue below once map has been loaded and client & server have updated
+  client::changemap(mapname.c_str());
   return;
 out:
   con::out("aborting: savegame/demo from a different version of cube or cpu architecture");
@@ -111,7 +112,7 @@ out:
 
 static void loadgame(char *name) {
   sprintf_sd(fn)("savegames/%s.csgz", name);
-  loadstate(fn);
+  loadstate(fn.c_str());
 }
 CMD(loadgame, ARG_1STR);
 
@@ -169,7 +170,7 @@ static void record(const char *name) {
   int cn = client::getclientnum();
   if (cn<0) return;
   sprintf_sd(fn)("demos/%s.cdgz", name);
-  savestate(fn);
+  savestate(fn.c_str());
   gzputi(cn);
   con::out("started recording demo to %s", fn);
   demorecording = true;
@@ -207,7 +208,7 @@ void incomingdata(u8 *buf, int len, bool extras) {
 
 static void demo(const char *name) {
   sprintf_sd(fn)("demos/%s.cdgz", name);
-  loadstate(fn);
+  loadstate(fn.c_str());
   demoloading = true;
 }
 CMD(demo, ARG_1STR);

@@ -82,12 +82,12 @@ static void line(const char *sf, bool highlight) {
 
 void out(const char *s, ...) {
   sprintf_sdv(sf, s);
-  s = sf;
+  s = sf.c_str();
   int n = 0;
   while (strlen(s)>WORDWRAP) { // cut strings to fit on screen
     fixedstring t;
-    strn0cpy(t, s, WORDWRAP+1);
-    line(t, n++!=0);
+    strn0cpy(t.c_str(), s, WORDWRAP+1);
+    line(t.c_str(), n++!=0);
     s += WORDWRAP;
   }
   line(s, n!=0);
@@ -177,13 +177,13 @@ void keypress(int code, bool isdown) {
     } else {
       if (code==SDLK_RETURN) {
         if (cmdbuf[0]) {
-          if (vhistory.empty() || strcmp(vhistory.last(), cmdbuf))
-            vhistory.add(NEWSTRING(cmdbuf));  // cap this?
+          if (vhistory.empty() || strcmp(vhistory.last(), cmdbuf.c_str()))
+            vhistory.add(NEWSTRING(cmdbuf.c_str()));  // cap this?
           histpos = vhistory.length();
           if (cmdbuf[0]=='/')
-            script::execstring(cmdbuf, true);
+            script::execstring(cmdbuf.c_str(), true);
           else
-            client::toserver(cmdbuf);
+            client::toserver(cmdbuf.c_str());
         }
         saycommand(NULL);
       } else if (code==SDLK_ESCAPE)
@@ -196,7 +196,7 @@ void keypress(int code, bool isdown) {
     }
   }
 }
-const char *curcmd() { return saycommandon ? (const char*)(cmdbuf) : NULL; }
+const char *curcmd() { return saycommandon ? cmdbuf.c_str() : NULL; }
 } /* namespace con */
 } /* namespace q */
 

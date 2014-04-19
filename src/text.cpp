@@ -84,12 +84,12 @@ float width(const char *str) {
 
 void drawf(const char *fstr, vec2f pos, ...) {
   sprintf_sdlv(str, pos, fstr);
-  draw(str, pos);
+  draw(str.c_str(), pos);
 }
 
 void drawf(const char *fstr, float x, float y, ...) {
   sprintf_sdlv(str, y, fstr);
-  draw(str, x, y);
+  draw(str.c_str(), x, y);
 }
 
 void draw(const char *str, vec2f pos) {

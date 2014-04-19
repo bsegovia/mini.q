@@ -219,14 +219,13 @@ static hash_map<string_ref,mdl*> mdllookup;
 static int modelnum = 0;
 
 static void delayedload(mdl *m, float scale, int snap) {
-  if (!m->loaded) {
-    sprintf_sd(mdlpath)("data/models/%s/tris.md2", m->loadname);
-    if (!m->load(sys::path(mdlpath), scale, snap))
-      sys::fatal("loadmodel: ", mdlpath);
-    sprintf_sd(texpath)("data/models/%s/skin.jpg", m->loadname);
-    m->tex = ogl::installtex(texpath);
-    m->loaded = 1;
-  }
+  if (m->loaded) return;
+  sprintf_sd(mdlpath)("data/models/%s/tris.md2", m->loadname);
+  if (!m->load(sys::path(mdlpath.c_str()), scale, snap))
+    sys::fatal("loadmodel: ", mdlpath.c_str());
+  sprintf_sd(texpath)("data/models/%s/skin.jpg", m->loadname);
+  m->tex = ogl::installtex(texpath.c_str());
+  m->loaded = 1;
 }
 
 void start() {}

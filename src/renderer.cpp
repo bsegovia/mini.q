@@ -358,12 +358,12 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
 static void deferredrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32 rule) {
   fixedstring str;
   sprintf_s(str)("#define LIGHTNUM %d\n", rule+1);
-  frag.insert(0, NEWSTRING(str));
+  frag.insert(0, NEWSTRING(str.c_str()));
   frag.add(NEWSTRING("vec3 shade(vec3 pos, vec3 nor) {\n"));
   frag.add(NEWSTRING("  vec3 outcol = diffuse(pos,nor,u_lightpos[0],u_lightpow[0]);\n"));
   loopi(int(rule)) {
     sprintf_s(str)("  outcol += diffuse(pos,nor,u_lightpos[%d],u_lightpow[%d]);\n",i+1,i+1);
-    frag.add(NEWSTRING(str));
+    frag.add(NEWSTRING(str.c_str()));
   }
   frag.add(NEWSTRING("  return outcol;\n}\n"));
 }
@@ -378,8 +378,8 @@ static void deferredrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32 ru
 
 static void rules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32 rule) {
   sprintf_sd(str)("#define SPLITNUM %f\n", float(SPLITNUM));
-  vert.add(NEWSTRING(str));
-  frag.add(NEWSTRING(str));
+  vert.add(NEWSTRING(str.c_str()));
+  frag.add(NEWSTRING(str.c_str()));
 }
 
 #define RULES rules

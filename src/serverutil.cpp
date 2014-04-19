@@ -32,7 +32,7 @@ ENetPacket *recvmap(int n) {
   u8 *start = packet->data;
   u8 *p = start+2;
   putint(p, SV_RECVMAP);
-  sendstring(copyname, p);
+  sendstring(copyname.c_str(), p);
   putint(p, copysize);
   memcpy(p, copydata, copysize);
   p += copysize;

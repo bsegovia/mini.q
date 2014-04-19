@@ -137,10 +137,10 @@ static vector<serverinfo> servers;
 static ENetSocket pingsock = ENET_SOCKET_NULL;
 static int lastinfo = 0;
 
-const char *getservername(int n) { return servers[n].name; }
+const char *getservername(int n) { return servers[n].name.c_str(); }
 
 void addserver(const char *servername) {
-  loopv(servers) if (strcmp(servers[i].name, servername)==0) return;
+  loopv(servers) if (strcmp(servers[i].name.c_str(), servername)==0) return;
   // serverinfo &si = servers.insert(0, serverinfo());
   servers.insert(0, serverinfo());
   serverinfo &si = *servers.begin();
@@ -181,7 +181,7 @@ static void checkresolver(void) {
     if (addr.host == ENET_HOST_ANY) continue;
     loopv(servers) {
       serverinfo &si = servers[i];
-      if (name == si.name) {
+      if (name == si.name.c_str()) {
         si.address = addr;
         addr.host = ENET_HOST_ANY;
         break;
@@ -221,7 +221,7 @@ static void checkpings(void) {
 }
 
 int sicompare(const serverinfo &a, const serverinfo &b) {
-  return a.ping>b.ping ? 1 : (a.ping<b.ping ? -1 : strcmp(a.name, b.name));
+  return a.ping>b.ping ? 1 : (a.ping<b.ping ? -1 : strcmp(a.name.c_str(), b.name.c_str()));
 }
 
 void refreshservers(void) {
@@ -234,19 +234,18 @@ void refreshservers(void) {
     serverinfo &si = servers[i];
     if (si.address.host != ENET_HOST_ANY && si.ping != 9999) {
       if (si.protocol!=PROTOCOL_VERSION)
-        sprintf_s(si.full)("%s [different cube protocol]",
-          (const char*) si.name);
+        sprintf_s(si.full)("%s [different cube protocol]", si.name.c_str());
       else
         sprintf_s(si.full)("%d\t%d\t%s, %s: %s %s",
-          si.ping, si.numplayers, si.map[0] ? (const char*) si.map : "[unknown]",
+          si.ping, si.numplayers, si.map[0] ? si.map.c_str() : "[unknown]",
           game::modestr(si.mode),
-          (const char*) si.name, (const char*) si.sdesc);
+          si.name.c_str(), si.sdesc.c_str());
     } else
       sprintf_s(si.full)(si.address.host != ENET_HOST_ANY ?
         "%s [waiting for server response]" :
-        "%s [unknown host]\t", (const char*) si.name);
+        "%s [unknown host]\t", si.name.c_str());
     si.full[50] = 0; // cut off too long server descriptions
-    menu::manual(1, i, si.full);
+    menu::manual(1, i, si.full.c_str());
     if (!--maxmenu) return;
   }
 }
@@ -257,7 +256,7 @@ static void servermenu(void) {
     resolverinit(1, 1000);
   }
   resolverclear();
-  loopv(servers) resolverquery(servers[i].name);
+  loopv(servers) resolverquery(servers[i].name.c_str());
   refreshservers();
   menu::set(1);
 }
@@ -282,7 +281,7 @@ void writeservercfg(void) {
   FILE *f = fopen("servers.cfg", "w");
   if (!f) return;
   fprintf(f, "// servers connected to are added here automatically\n\n");
-  loopvrev(servers) fprintf(f, "addserver %s\n", (const char*) servers[i].name);
+  loopvrev(servers) fprintf(f, "addserver %s\n", servers[i].name.c_str());
   fclose(f);
 }
 CMD(updatefrommaster, ARG_NONE);
