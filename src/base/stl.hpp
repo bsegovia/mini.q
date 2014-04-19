@@ -28,6 +28,7 @@ MAKE_INTEGRAL(unsigned long);
 MAKE_INTEGRAL(wchar_t);
 #undef MAKE_INTEGRAL
 
+static const struct noinitializetype {noinitializetype() {}} noinitialize;
 template<> struct is_floating_point<float> { enum { value = true }; };
 template<> struct is_floating_point<double> { enum { value = true }; };
 template<typename T> struct is_pointer { enum { value = false }; };
@@ -134,6 +135,21 @@ INLINE u32 ilog2(u32 x) {
   while (x >>= 1) ++l;
   return l;
 }
+
+template<typename T>
+struct less {
+  INLINE bool operator()(const T& lhs, const T& rhs) const {return lhs < rhs;}
+};
+
+template<typename T>
+struct greater {
+  INLINE bool operator()(const T& lhs, const T& rhs) const {return lhs > rhs;}
+};
+
+template<typename T>
+struct equal_to {
+  INLINE bool operator()(const T& lhs, const T& rhs) const {return lhs == rhs;}
+};
 
 // fast 32 bits murmur hash and its generic version
 u32 murmurhash2(const void *key, int len, u32 seed = 0xffffffffu);
