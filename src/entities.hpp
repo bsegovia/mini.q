@@ -5,6 +5,7 @@
 #pragma once
 #include "sound.hpp"
 #include "base/vector.hpp"
+#include "base/string.hpp"
 #include "base/stl.hpp"
 
 namespace q {

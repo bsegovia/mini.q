@@ -4,6 +4,7 @@
  -------------------------------------------------------------------------*/
 #include "base/task.hpp"
 #include "base/vector.hpp"
+#include "base/intrusive_list.hpp"
 #include <SDL/SDL_thread.h>
 
 namespace q {

@@ -30,8 +30,10 @@ ENET_OBJS=\
 
 BASE_OBJS=\
   base/console.o\
+  base/intrusive_list.o\
   base/math.o\
   base/script.o\
+  base/string.o\
   base/stl.o\
   base/sys.o\
   base/sse.o\
@@ -129,6 +131,7 @@ SERVER_OBJS=\
 MAYAOBJ_OBJS=\
   base/sys.o\
   base/stl.o\
+  base/string.o\
   obj.o
 
 SHADERS=$(shell ls data/shaders/*[glsl,decl])

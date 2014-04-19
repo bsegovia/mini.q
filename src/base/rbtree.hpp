@@ -1,6 +1,7 @@
 #pragma once
 #include "sys.hpp"
 #include "stl.hpp"
+#include "allocator.hpp"
 
 namespace q {
 namespace internal {

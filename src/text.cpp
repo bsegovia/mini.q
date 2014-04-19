@@ -7,6 +7,7 @@
 #include "renderer.hpp"
 #include "shaders.hpp"
 #include "base/math.hpp"
+#include "base/string.hpp"
 #include "base/stl.hpp"
 
 namespace q {

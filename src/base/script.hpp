@@ -3,6 +3,7 @@
  - script.hpp -> exposes embedded script / con language
  -------------------------------------------------------------------------*/
 #pragma once
+#include "base/string.hpp"
 
 // mini-scripting language implemented in q (mostly cvompatible with quake
 // script engine)

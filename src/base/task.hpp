@@ -5,6 +5,7 @@
 #pragma once
 #include "stl.hpp"
 #include "sys.hpp"
+#include "ref.hpp"
 
 namespace q {
 class CACHE_LINE_ALIGNED task : public noncopyable, public refcount {

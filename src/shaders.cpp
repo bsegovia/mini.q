@@ -3,6 +3,7 @@
  - shaders.cpp -> implements the shader system
  -------------------------------------------------------------------------*/
 #include "shaders.hpp"
+#include "base/string.hpp"
 
 namespace q {
 namespace shaders {

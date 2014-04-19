@@ -1,3 +1,7 @@
+/*-------------------------------------------------------------------------
+ - mini.q - a minimalistic multiplayer FPS
+ - utility.hpp -> various utility functions and structures used by our stl
+ -------------------------------------------------------------------------*/
 #pragma once
 #include "sys.hpp"
 #include <new>

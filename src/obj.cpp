@@ -6,6 +6,8 @@
 #include "base/sys.hpp"
 #include "base/map.hpp"
 #include "base/set.hpp"
+#include "base/allocator.hpp"
+#include "base/string.hpp"
 #include "base/vector.hpp"
 
 #include <zlib.h>
