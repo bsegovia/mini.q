@@ -11,7 +11,6 @@
 #include "base/console.hpp"
 #include "base/script.hpp"
 #include "base/math.hpp"
-#include "base/stl.hpp"
 #include "base/sys.hpp"
 #include "base/sse.hpp"
 #include "base/vector.hpp"

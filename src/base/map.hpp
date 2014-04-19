@@ -3,7 +3,6 @@
  - map.hpp -> exposes map structure using red black tree
  -------------------------------------------------------------------------*/
 #pragma once
-#include "stl.hpp"
 #include "algorithm.hpp"
 #include "rbtree.hpp"
 #include "pair.hpp"

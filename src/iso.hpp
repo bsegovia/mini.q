@@ -5,7 +5,6 @@
 #pragma once
 #include "csg.hpp"
 #include "base/sys.hpp"
-#include "base/stl.hpp"
 #include "base/math.hpp"
 
 namespace q {

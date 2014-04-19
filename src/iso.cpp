@@ -5,7 +5,6 @@
 #include "iso.hpp"
 #include "csg.hpp"
 #include "qef.hpp"
-#include "base/stl.hpp"
 #include "base/vector.hpp"
 #include "base/task.hpp"
 

@@ -1,6 +1,9 @@
+/*-------------------------------------------------------------------------
+ - mini.q - a minimalistic multiplayer FPS
+ - rbtree.hpp -> red/black tree implementation
+ -------------------------------------------------------------------------*/
 #pragma once
 #include "sys.hpp"
-#include "stl.hpp"
 #include "allocator.hpp"
 
 namespace q {

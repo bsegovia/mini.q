@@ -26,7 +26,6 @@
 #include "base/console.hpp"
 #include "base/math.hpp"
 #include "base/script.hpp"
-#include "base/stl.hpp"
 #include "base/sys.hpp"
 #include "base/task.hpp"
 

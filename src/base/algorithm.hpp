@@ -1,5 +1,8 @@
+/*-------------------------------------------------------------------------
+ - mini.q - a minimalistic multiplayer FPS
+ - algorithm.hpp -> various stl like algorithms
+ -------------------------------------------------------------------------*/
 #pragma once
-#include "stl.hpp"
 #include "utility.hpp"
 
 namespace q {

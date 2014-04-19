@@ -6,7 +6,6 @@
 #include "ogl.hpp"
 #include "text.hpp"
 #include "base/sys.hpp"
-#include "base/stl.hpp"
 #include "base/math.hpp"
 #include "base/vector.hpp"
 
