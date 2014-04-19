@@ -455,6 +455,9 @@ struct segment {u32 start, num, mat;};
 
 int main(int argc, const char *argv[]) {
   using namespace q;
+  string hop("ddd");
+  string de = hop;
+  de.append("DD");
   if (argc != 4) {
     printf("usage: %s objname binary scale\n", argv[0]);
     return 1;
