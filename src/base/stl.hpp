@@ -151,10 +151,6 @@ struct equal_to {
   INLINE bool operator()(const T& lhs, const T& rhs) const {return lhs == rhs;}
 };
 
-// fast 32 bits murmur hash and its generic version
-u32 murmurhash2(const void *key, int len, u32 seed = 0xffffffffu);
-template <typename T> INLINE u32 murmurhash2(const T &x) { return murmurhash2(&x, sizeof(T)); }
-
 // global variable with proper constructor
 #define GLOBAL(TYPE, NAME) static TYPE &NAME() {static TYPE var; return var;}
 
