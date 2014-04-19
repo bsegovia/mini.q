@@ -11,7 +11,7 @@
 namespace q {
 
 /*-------------------------------------------------------------------------
- - string allocation
+ - raw string allocation
  -------------------------------------------------------------------------*/
 char *newstring(const char *s, const char *filename, int linenum);
 char *newstring(const char *s, size_t sz, const char *filename, int linenum);
