@@ -22,13 +22,13 @@ template<typename T>
 struct hash {
   hash_value_t operator()(const T& t) const {
     hash_value_t a = extract_int_key_value(t);
-        a = (a+0x7ed55d16) + (a<<12);
-        a = (a^0xc761c23c) ^ (a>>19);
-        a = (a+0x165667b1) + (a<<5);
-        a = (a+0xd3a2646c) ^ (a<<9);
-        a = (a+0xfd7046c5) + (a<<3);
-        a = (a^0xb55a4f09) ^ (a>>16);
-        return a;
+    a = (a+0x7ed55d16) + (a<<12);
+    a = (a^0xc761c23c) ^ (a>>19);
+    a = (a+0x165667b1) + (a<<5);
+    a = (a+0xd3a2646c) ^ (a<<9);
+    a = (a+0xfd7046c5) + (a<<3);
+    a = (a^0xb55a4f09) ^ (a>>16);
+    return a;
   }
 };
 } /* namespace q */

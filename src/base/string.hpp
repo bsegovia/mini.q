@@ -5,6 +5,7 @@
 #pragma once
 #include "sys.hpp"
 #include "allocator.hpp"
+#include "hash.hpp"
 
 namespace q {
 
@@ -444,5 +445,21 @@ bool operator>(const basic_string<E, TStorage, TAllocator>& lhs,
                const basic_string<E, TStorage, TAllocator>& rhs) {
   return lhs.compare(rhs) > 0;
 }
+
+/*-------------------------------------------------------------------------
+ - std::string like string
+ -------------------------------------------------------------------------*/
+typedef basic_string<char> string;
+template<typename E, class TAllocator, typename TStorage>
+struct hash<basic_string<E, TAllocator, TStorage> > {
+  hash_value_t operator()(const basic_string<E, TAllocator, TStorage>& x) const {
+    // Derived from:
+    // http://blade.nagaokaut.ac.jp/cgi-bin/scat.rb/ruby/ruby-talk/142054
+    hash_value_t h = 0;
+    for (auto p = 0u; p < x.length(); ++p)
+      h = x[p] + (h<<6) + (h<<16) - h;
+    return h & 0x7FFFFFFF;
+  }
+};
 } /* namespace q */
 

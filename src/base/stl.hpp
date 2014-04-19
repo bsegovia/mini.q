@@ -88,36 +88,36 @@ template<typename T> struct iterator_traits<T*> {
 };
 
 namespace internal {
-  template<typename TIter, typename TDist>
-  INLINE void distance(TIter first, TIter last, TDist& dist, q::random_access_iterator_tag) {
-    dist = TDist(last - first);
+template<typename TIter, typename TDist>
+INLINE void distance(TIter first, TIter last, TDist& dist, q::random_access_iterator_tag) {
+  dist = TDist(last - first);
+}
+template<typename TIter, typename TDist>
+INLINE void distance(TIter first, TIter last, TDist& dist, q::input_iterator_tag) {
+  dist = 0;
+  while (first != last) {
+    ++dist;
+    ++first;
   }
-  template<typename TIter, typename TDist>
-  INLINE void distance(TIter first, TIter last, TDist& dist, q::input_iterator_tag) {
-    dist = 0;
-    while (first != last) {
-      ++dist;
-      ++first;
-    }
-  }
-  template<typename TIter, typename TDist>
-  INLINE void advance(TIter& iter, TDist d, q::random_access_iterator_tag) {
-    iter += d;
-  }
-  template<typename TIter, typename TDist>
-  INLINE void advance(TIter& iter, TDist d, q::bidirectional_iterator_tag)
-  {
-    if (d >= 0)
-      while (d--) ++iter;
-    else
-      while (d++) --iter;
-  }
-  template<typename TIter, typename TDist>
-  INLINE void advance(TIter& iter, TDist d, q::input_iterator_tag) {
-    assert(d >= 0);
+}
+template<typename TIter, typename TDist>
+INLINE void advance(TIter& iter, TDist d, q::random_access_iterator_tag) {
+  iter += d;
+}
+template<typename TIter, typename TDist>
+INLINE void advance(TIter& iter, TDist d, q::bidirectional_iterator_tag)
+{
+  if (d >= 0)
     while (d--) ++iter;
-  }
-} // namespace internal
+  else
+    while (d++) --iter;
+}
+template<typename TIter, typename TDist>
+INLINE void advance(TIter& iter, TDist d, q::input_iterator_tag) {
+  assert(d >= 0);
+  while (d--) ++iter;
+}
+} /* namespace internal */
 
 // get the power larger or equal than x
 INLINE u32 nextpowerof2(u32 x) {
