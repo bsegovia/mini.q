@@ -51,7 +51,7 @@ static void run(int argc, const char *argv[]) {
   iso::start();
 
   // load everything
-  script::execfile(argv[1]);
+  script::execscript(argv[1]);
 
   const auto pos = game::player1->o;
   const auto ypr = game::player1->ypr;

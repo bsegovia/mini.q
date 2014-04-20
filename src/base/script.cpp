@@ -162,6 +162,28 @@ void execscript(const char *cfgfile) {
 }
 CMD(execscript, ARG_1STR);
 
+void resetcomplete(void) { completesize = 0; }
+
+void complete(fixedstring &s) {
+  if (*s.c_str()!='/') {
+    fixedstring t;
+    strcpy_s(t, s.c_str());
+    strcpy_s(s, "/");
+    strcat_s(s, t.c_str());
+  }
+  if (!s[1]) return;
+  if (!completesize) {
+    completesize = int(strlen(s.c_str())-1);
+    completeidx = 0;
+  }
+  int idx = 0;
+  for (auto it = idents->begin(); it != idents->end(); ++it)
+    if (strncmp(it->first.c_str(), s.c_str()+1, completesize)==0 && idx++==completeidx)
+      s.fmt("/%s", it->first.c_str());
+  completeidx++;
+  if (completeidx>=idx) completeidx = 0;
+}
+#if 0
 // parse any nested set of () or []
 static char *parseexp(char *&p, int right) {
   int left = *p++;
@@ -342,28 +364,6 @@ int execstring(const char *pp, bool isdown) {
   return val;
 }
 
-void resetcomplete(void) { completesize = 0; }
-
-void complete(fixedstring &s) {
-  if (*s.c_str()!='/') {
-    fixedstring t;
-    strcpy_s(t, s.c_str());
-    strcpy_s(s, "/");
-    strcat_s(s, t.c_str());
-  }
-  if (!s[1]) return;
-  if (!completesize) {
-    completesize = int(strlen(s.c_str())-1);
-    completeidx = 0;
-  }
-  int idx = 0;
-  for (auto it = idents->begin(); it != idents->end(); ++it)
-    if (strncmp(it->first.c_str(), s.c_str()+1, completesize)==0 && idx++==completeidx)
-      s.fmt("/%s", it->first.c_str());
-  completeidx++;
-  if (completeidx>=idx) completeidx = 0;
-}
-
 bool execfile(const char *cfgfile) {
   fixedstring s;
   strcpy_s(s, cfgfile);
@@ -444,6 +444,7 @@ static int lt(int a, int b)    { return (int)(a<b); }  CMDN(<, lt, ARG_2EXP);
 static int gt(int a, int b)    { return (int)(a>b); }  CMDN(>, gt, ARG_2EXP);
 static int rndn(int a)         { return a>0 ? rnd(a) : 0; }  CMDN(rnd, rndn, ARG_1EXP);
 static int strcmpa(char *a, char *b) { return strcmp(a,b)==0; }  CMDN(strcmp, strcmpa, ARG_2EST);
+#endif
 } /* namespace cmd */
 } /* namespace q */
 

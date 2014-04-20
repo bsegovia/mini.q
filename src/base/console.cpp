@@ -145,7 +145,7 @@ static void history(int n) {
   if (!rec && n>=0 && n<vhistory.length()) {
     rec = true;
     const auto cmd = (const char*)(vhistory[vhistory.length()-n-1]);
-    script::execstring(cmd);
+    script::executelua(cmd);
     rec = false;
   }
 }

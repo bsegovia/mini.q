@@ -249,7 +249,7 @@ void updateworld(int millis) {
     setcurtime(millis - lastmillis());
     if (sleepwait && lastmillis()>sleepwait) {
       sleepwait = 0;
-      script::execstring(sleepcmd.c_str());
+      script::executelua(sleepcmd.c_str());
     }
     physics::frame();
     checkquad(int(curtime()));

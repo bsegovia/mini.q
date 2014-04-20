@@ -272,7 +272,7 @@ static void updatefrommaster(void) {
     con::out("master server not replying");
   else {
     servers.setsize(0);
-    script::execstring(reply);
+    script::executelua(reply);
   }
   servermenu();
 }

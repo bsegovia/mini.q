@@ -250,16 +250,16 @@ CMD(playerpos, ARG_3INT);
 CMD(playerypr, ARG_3INT);
 VAR(savepos, 0, 1, 1);
 
-static void debug() {script::execfile("debug.q");}
+static void debug() {script::execscript("debug.lua");}
 CMD(debug, ARG_NONE);
 
 void finish() {
   if (savepos) {
-    auto f = fopen("pos.q", "wb");
+    auto f = fopen("pos.lua", "wb");
     const auto pos = vec3i(game::player1->o);
     const auto ypr = vec3i(game::player1->ypr);
-    fprintf(f, "playerpos %d %d %d\n", pos.x, pos.y, pos.z);
-    fprintf(f, "playerypr %d %d %d\n", ypr.x, ypr.y, ypr.z);
+    fprintf(f, "playerpos(%d, %d, %d)\n", pos.x, pos.y, pos.z);
+    fprintf(f, "playerypr(%d, %d, %d)\n", ypr.x, ypr.y, ypr.z);
     fclose(f);
   }
 #if !defined(RELEASE)
