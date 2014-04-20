@@ -4,7 +4,7 @@
  -------------------------------------------------------------------------*/
 #pragma once
 #include "base/string.hpp"
-#include "base/lua/lua.h"
+#include "base/lua/bridge/luabridge.hpp"
 
 // mini-scripting language implemented in q (mostly cvompatible with quake
 // script engine)
@@ -64,7 +64,7 @@ void finish();
 
 // a persistent variable
 #define VARP(name, min, cur, max) \
-  int name = q::script::variable(#name, min, cur, max, &name, NULL, true)
+  int name = q::script::variable(#name, min, cur, max, &name, NULL, true);
 
 // a non-persistent variable
 #define VAR(name, min, cur, max) \

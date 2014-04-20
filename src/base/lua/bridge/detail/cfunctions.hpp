@@ -198,6 +198,30 @@ struct CFunc
 
   //----------------------------------------------------------------------------
   /**
+      lua_CFunction to set a variable with a minimum and a maximum value
+  */
+  template <class T>
+  static int setRangeVariable (lua_State* L)
+  {
+    assert (lua_islightuserdata (L, lua_upvalueindex (4)));
+    assert (lua_islightuserdata (L, lua_upvalueindex (3)));
+    assert (lua_isnumber (L, lua_upvalueindex (2)));
+    assert (lua_isnumber (L, lua_upvalueindex (1)));
+    T* ptr = static_cast <T*> (lua_touserdata (L, lua_upvalueindex (4)));
+    VariableCallBack fun = (VariableCallBack) (lua_touserdata(L, lua_upvalueindex (3)));
+    T maxvalue = T(lua_tonumber (L, lua_upvalueindex (2)));
+    T minvalue = T(lua_tonumber (L, lua_upvalueindex (1)));
+    assert (ptr != 0);
+    T value = Stack <T>::get (L, 1);
+    if (minvalue > maxvalue || (value >= minvalue && value <= maxvalue))
+      *ptr = value;
+    if (fun != 0)
+      fun();
+    return 0;
+  }
+
+  //----------------------------------------------------------------------------
+  /**
       lua_CFunction to call a function with a return value.
 
       This is used for global functions, global properties, class static methods,

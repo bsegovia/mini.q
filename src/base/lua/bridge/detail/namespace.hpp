@@ -1011,13 +1011,10 @@ public:
 
     rawgetfield (L, -1, "__propset");
     assert (lua_istable (L, -1));
-    if (isWritable)
-    {
+    if (isWritable) {
       lua_pushlightuserdata (L, pt);
       lua_pushcclosure (L, &CFunc::setVariable <T>, 1);
-    }
-    else
-    {
+    } else {
       lua_pushstring (L, name);
       lua_pushcclosure (L, &CFunc::readOnlyError, 1);
     }
@@ -1026,6 +1023,36 @@ public:
 
     return *this;
   }
+
+  //----------------------------------------------------------------------------
+  /**
+      Add or replace a variable with min/max range with an optional callback
+  */
+  template <class T>
+  Namespace& addVariable (char const* name, T* pt, T minvalue, T maxvalue, VariableCallBack fun = NULL)
+  {
+    assert (lua_istable (L, -1));
+
+    rawgetfield (L, -1, "__propget");
+    assert (lua_istable (L, -1));
+    lua_pushlightuserdata (L, pt);
+    lua_pushcclosure (L, &CFunc::getVariable <T>, 1);
+    rawsetfield (L, -2, name);
+    lua_pop (L, 1);
+
+    rawgetfield (L, -1, "__propset");
+    assert (lua_istable (L, -1));
+    lua_pushnumber (L, lua_Number(minvalue));
+    lua_pushnumber (L, lua_Number(maxvalue));
+    lua_pushlightuserdata (L, (void*) fun);
+    lua_pushlightuserdata (L, (void*) pt);
+    lua_pushcclosure (L, &CFunc::setRangeVariable <T>, 4);
+    rawsetfield (L, -2, name);
+    lua_pop (L, 1);
+
+    return *this;
+  }
+
 
   //----------------------------------------------------------------------------
   /**

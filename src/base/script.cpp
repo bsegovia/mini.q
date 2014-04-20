@@ -7,21 +7,25 @@
 #include "client.hpp"
 #include "console.hpp"
 #include "hash_map.hpp"
+#include "base/lua/lualib.h"
 #include <cstdio>
 
 namespace q {
 namespace script {
 
-static lua_State *L = NULL;
-lua_State *getluastate() { return L; }
 enum { ID_VAR, ID_CMD, ID_ALIAS };
 
 static void *internalalloc(void*, void *ptr, size_t, size_t nsize) {
   return sys::memrealloc(ptr, nsize, __FILE__, __LINE__);
 }
 
-static void initluastate() {
-  if (L == NULL) L = lua_newstate(internalalloc, NULL);
+lua_State *getluastate() {
+  static lua_State *L = NULL;
+  if (L == NULL) {
+    L = lua_newstate(internalalloc, NULL);
+    luaL_openlibs(L);
+  }
+  return L;
 }
 
 struct identifier {
@@ -56,7 +60,7 @@ static identifier *access(const char *name) {
 }
 
 void finish(void) {
-  lua_close(L);
+  lua_close(getluastate());
   for (auto it = idents->begin(); it != idents->end(); ++it) {
     if (it->second.type!=ID_ALIAS) continue;
     FREE((char*) it->second.name);
@@ -90,6 +94,12 @@ int variable(const char *name, int min, int cur, int max,
   initializeidents();
   const identifier v = {ID_VAR, name, min, max, storage, fun, 0, 0, persist};
   idents->insert(makepair(name, v));
+#if 0
+  luabridge::getGlobalNamespace(getluastate())
+    .beginNamespace("var")
+      .addVariable(name, storage)
+    .endNamespace();
+#endif
   return cur;
 }
 

@@ -168,3 +168,11 @@ struct ArgList <TypeList <Head, Tail>, Start>
   {
   }
 };
+
+//==============================================================================
+/**
+  Used to execute arbitrary code when setting a global variable
+*/
+
+typedef void (*VariableCallBack)();
+
