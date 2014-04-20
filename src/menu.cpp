@@ -131,7 +131,7 @@ void manual(int m, int n, const char *text) {
   mi.manual = 1;
 }
 
-void item(char *text, char *action) {
+static void item(const char *text, const char *action) {
   auto &menu = menus.last();
   auto &mi = menu.items.add();
   mi.text = NEWSTRING(text);
@@ -158,13 +158,13 @@ bool key(int code, bool isdown) {
     menus[vmenu].menusel = menusel;
   } else {
     if (code==SDLK_RETURN || code==-2) {
-      char *action = menus[vmenu].items[menusel].action;
+      const auto action = menus[vmenu].items[menusel].action;
       if (vmenu==1)
         client::connect(browser::getservername(menusel));
       menustack.add(vmenu);
       set(-1);
       con::setkeydownflag(true);
-      script::execluascript(action);
+      script::executelua(action);
     }
   }
   return true;

@@ -141,15 +141,16 @@ static int luareport(int ret) {
 int executelua(const char *p) {
   auto L = luastate();
   if (luareport(luaL_loadstring(L, p))) return 0;
-  //lua_getglobal(L, "_G");
-  //lua_setupvalue(L, -2, 1);
   return luareport(lua_pcall(L, 0, 0, 0));
 }
 
 bool execluascript(const char *cfgfile) {
   fixedstring s(cfgfile);
   const auto buf = sys::loadfile(sys::path(s.c_str()), NULL);
-  if (!buf) return false;
+  if (!buf) {
+    con::out("unable to find %s", cfgfile);
+    return false;
+  }
   executelua(buf);
   FREE(buf);
   return true;

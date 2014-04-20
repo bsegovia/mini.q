@@ -235,7 +235,7 @@ void start(int argc, const char *argv[]) {
   menu::newm("frags\tpj\tping\tteam\tname");
   menu::newm("ping\tplr\tserver");
   script::execscript("data/keymap.lua");
-  script::execfile("data/menus.q");
+  script::execscript("data/menus.lua");
   script::execscript("data/sounds.lua");
   script::execscript("data/autoexec.lua");
 
