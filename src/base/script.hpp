@@ -6,14 +6,11 @@
 #include "base/string.hpp"
 #include "base/lua/bridge/luabridge.hpp"
 
-// mini-scripting language implemented in q (mostly cvompatible with quake
-// script engine)
 namespace q {
 namespace script {
 
 // return complete lua state
 lua_State *luastate();
-
 // register a console variable (done through globals)
 int variable(const char *name, int min, int cur, int max, int *storage, void (*fun)(), bool persist);
 // register a new command
@@ -33,13 +30,10 @@ int executelua(const char *p);
 void execscript(const char *cfgfile);
 // execute a file and says if this succeeded
 bool execluascript(const char *cfgfile);
-
 } /* namespace script */
 } /* namespace q */
 
-struct luainitializer {
-  template <typename T> luainitializer(T) {}
-};
+struct luainitializer { template <typename T> luainitializer(T) {} };
 
 // register a command with a given name
 #define CMDN(name, fun) \
@@ -63,13 +57,13 @@ struct luainitializer {
 
 // a non-persistent variable with custom code to run when changed
 #define VARF(name, min, cur, max, body) \
-  void var_##name(); \
+  static void var_##name(); \
   int name = q::script::variable(#name, min, cur, max, &name, var_##name, false); \
-  void var_##name() { body; }
+  static void var_##name() { body; }
 
 // a persistent variable with custom code to run when changed
 #define VARFP(name, min, cur, max, body) \
-  void var_##name(); \
+  static void var_##name(); \
   int name = q::script::variable(#name, min, cur, max, &name, var_##name, true); \
-  void var_##name() { body; }
+  static void var_##name() { body; }
 

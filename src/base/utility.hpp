@@ -167,7 +167,6 @@ INLINE void copy_construct(T* mem, const T& orig, int_to_type<true>) {
 
 template<typename T>
 void construct_n(T* to, size_t count, int_to_type<false>) {
-  sizeof(to);
   for (size_t i = 0; i < count; ++i)
     new (to + i) T();
 }
