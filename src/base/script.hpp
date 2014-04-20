@@ -26,28 +26,12 @@ enum {
 };
 // register a console variable (done through globals)
 int variable(const char *name, int min, int cur, int max, int *storage, void (*fun)(), bool persist);
-// set the integer value for a variable
-void setvar(const char *name, int i);
-// set the value of a variable
-int getvar(const char *name);
-// says if the variable exists (i.e. is registered)
-bool identexists(const char *name);
 // register a new command
-bool addcommand(const char *name, void (*fun)(), int narg);
-// execute a given string
-int execstring(const char *p, bool down = true);
-// execute a given file and print any error
-void exec(const char *cfgfile);
-// execute a file and says if this succeeded
-bool execfile(const char *cfgfile);
+bool addcommand(const char *name);
 // stop completion
 void resetcomplete();
 // complete the given string
 void complete(fixedstring &s);
-// set an alias with given action
-void alias(const char *name, const char *action);
-// get the action string for the given variable
-char *getalias(const char *name);
 // write all commands, variables and alias to config.cfg
 void writecfg();
 // free all resources needed by the command system
@@ -69,7 +53,7 @@ struct luainitializer {
 
 // register a command with a given name
 #define CMDN(name, fun, nargs) \
-  static auto __dummy_##fun = q::script::addcommand(#name, (void (*)())fun, script::nargs);\
+  static auto __dummy_##fun = q::script::addcommand(#name);\
   static auto __dummy_##fun##_lua =\
   luainitializer(q::luabridge::getGlobalNamespace(q::script::luastate())\
     .beginNamespace("q")\

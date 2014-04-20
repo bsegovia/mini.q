@@ -453,7 +453,7 @@ void startmap(const char *name) {
   resetspawns();
   strcpy_s(clientmap, name);
   if (edit::mode()) edit::toggleedit();
-  script::setvar("gamespeed", 100);
+  script::executelua("q.gamespeed=100");
   showscores(false);
   intermission = false;
   con::out("game mode is %s", modestr(mode()));
