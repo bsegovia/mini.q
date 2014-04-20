@@ -165,7 +165,7 @@ bool key(int code, bool isdown) {
       menustack.add(vmenu);
       set(-1);
       con::setkeydownflag(true);
-      script::executelua(action);
+      script::execstring(action);
     }
   }
   return true;

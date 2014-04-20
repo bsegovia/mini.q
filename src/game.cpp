@@ -249,7 +249,7 @@ void updateworld(int millis) {
     setcurtime(millis - lastmillis());
     if (sleepwait && lastmillis()>sleepwait) {
       sleepwait = 0;
-      script::executelua(sleepcmd.c_str());
+      script::execstring(sleepcmd.c_str());
     }
     physics::frame();
     checkquad(int(curtime()));
@@ -453,7 +453,7 @@ void startmap(const char *name) {
   resetspawns();
   strcpy_s(clientmap, name);
   if (edit::mode()) edit::toggleedit();
-  script::executelua("q.gamespeed=100");
+  script::execstring("q.gamespeed=100");
   showscores(false);
   intermission = false;
   con::out("game mode is %s", modestr(mode()));

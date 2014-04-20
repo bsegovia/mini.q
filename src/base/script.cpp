@@ -77,26 +77,26 @@ static int luareport(int ret) {
   return ret;
 }
 
-int executelua(const char *p) {
+int execstring(const char *p) {
   auto L = luastate();
   if (luareport(luaL_loadstring(L, p))) return 0;
   return luareport(lua_pcall(L, 0, 0, 0));
 }
 
-bool execluascript(const char *cfgfile) {
+bool execfile(const char *cfgfile) {
   fixedstring s(cfgfile);
   const auto buf = sys::loadfile(sys::path(s.c_str()), NULL);
   if (!buf) {
     con::out("unable to find %s", cfgfile);
     return false;
   }
-  executelua(buf);
+  execstring(buf);
   FREE(buf);
   return true;
 }
 
 void execscript(const char *cfgfile) {
-  if (!execluascript(cfgfile))
+  if (!execfile(cfgfile))
     con::out("could not read \"%s\"", cfgfile);
 }
 CMD(execscript);

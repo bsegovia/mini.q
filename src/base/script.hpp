@@ -25,11 +25,11 @@ void writecfg();
 void finish();
 
 // execute a given string
-int executelua(const char *p);
-// execute a given file and print any error
+int execstring(const char *p);
+// execute a given file and print any error in console output
 void execscript(const char *cfgfile);
 // execute a file and says if this succeeded
-bool execluascript(const char *cfgfile);
+bool execfile(const char *cfgfile);
 } /* namespace script */
 } /* namespace q */
 

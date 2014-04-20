@@ -145,7 +145,7 @@ static void history(int n) {
   if (!rec && n>=0 && n<vhistory.length()) {
     rec = true;
     const auto cmd = (const char*)(vhistory[vhistory.length()-n-1]);
-    script::executelua(cmd);
+    script::execstring(cmd);
     rec = false;
   }
 }
@@ -189,7 +189,7 @@ void keypress(int code, bool isdown) {
           histpos = vhistory.length();
           if (cmdbuf[0]=='/') {
             setkeydownflag(true);
-            script::executelua(cmdbuf.c_str()+1);
+            script::execstring(cmdbuf.c_str()+1);
           } else
             client::toserver(cmdbuf.c_str());
         }
@@ -200,7 +200,7 @@ void keypress(int code, bool isdown) {
   } else if (!menu::key(code, isdown)) { // keystrokes go to menu
     loopi(numkm) if (keyms[i].code==code) { // keystrokes go to game, lookup in keymap and execute
       setkeydownflag(isdown);
-      script::executelua(keyms[i].action);
+      script::execstring(keyms[i].action);
       return;
     }
   }

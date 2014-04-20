@@ -32,7 +32,7 @@ struct serverinfo {
 };
 
 static vector<resolverthread> resolverthreads;
-static vector<char *> resolverqueries;
+static vector<char*> resolverqueries;
 static vector<resolverresult> resolverresults;
 static SDL_mutex *resolvermutex = NULL;
 static SDL_sem *resolversem = NULL;
@@ -267,12 +267,12 @@ static void updatefrommaster(void) {
   u8 buf[MAXUPD];
   auto reply = (char*) server::retrieveservers(buf, MAXUPD);
   if (!*reply ||
-      strstr((char *)reply, "<html>") ||
-      strstr((char *)reply, "<HTML>"))
+      strstr(reply, "<html>") ||
+      strstr(reply, "<HTML>"))
     con::out("master server not replying");
   else {
     servers.setsize(0);
-    script::executelua(reply);
+    script::execstring(reply);
   }
   servermenu();
 }
