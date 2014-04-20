@@ -99,7 +99,7 @@ void execscript(const char *cfgfile) {
   if (!execluascript(cfgfile))
     con::out("could not read \"%s\"", cfgfile);
 }
-CMD(execscript, ARG_1STR);
+CMD(execscript);
 
 void resetcomplete(void) { completesize = 0; }
 void complete(fixedstring &s) {
@@ -133,7 +133,7 @@ void writecfg(void) {
       fprintf(f, "q.%s = %d\n", it->first.c_str(), *it->second.storage);
   fclose(f);
 }
-CMD(writecfg, ARG_NONE);
+CMD(writecfg);
 } /* namespace cmd */
 } /* namespace q */
 

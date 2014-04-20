@@ -14,16 +14,6 @@ namespace script {
 // return complete lua state
 lua_State *luastate();
 
-// function signatures for script functions
-enum {
-  ARG_1INT, ARG_2INT, ARG_3INT, ARG_4INT,
-  ARG_NONE,
-  ARG_1STR, ARG_2STR, ARG_3STR, ARG_5STR,
-  ARG_DOWN, ARG_DWN1,
-  ARG_1EXP, ARG_2EXP,
-  ARG_1EST, ARG_2EST,
-  ARG_VARI
-};
 // register a console variable (done through globals)
 int variable(const char *name, int min, int cur, int max, int *storage, void (*fun)(), bool persist);
 // register a new command
@@ -52,7 +42,7 @@ struct luainitializer {
 };
 
 // register a command with a given name
-#define CMDN(name, fun, nargs) \
+#define CMDN(name, fun) \
   static auto __dummy_##fun = q::script::addcommand(#name);\
   static auto __dummy_##fun##_lua =\
   luainitializer(q::luabridge::getGlobalNamespace(q::script::luastate())\
@@ -61,7 +51,7 @@ struct luainitializer {
     .endNamespace())
 
 // register a command with a name given by the function name
-#define CMD(name, nargs) CMDN(name, name, nargs)
+#define CMD(name) CMDN(name, name)
 
 // a persistent variable
 #define VARP(name, min, cur, max) \

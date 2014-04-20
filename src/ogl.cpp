@@ -906,7 +906,7 @@ static void reloadshaders() {
     s.first->build(*s.second, shaderfromfile, false);
   }
 }
-CMD(reloadshaders, ARG_NONE);
+CMD(reloadshaders);
 #endif
 
 /*-------------------------------------------------------------------------

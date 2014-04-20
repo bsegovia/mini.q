@@ -40,12 +40,13 @@ void set(int menu) {
 }
 
 static void show(const char *name) {
+  if (!con::iskeydown()) return;
   loopv(menus) if (i>1 && strcmp(menus[i].name, name)==0) {
     set(i);
     return;
   }
 }
-CMDN(showmenu, show, ARG_1STR);
+CMDN(showmenu, show);
 
 #if !defined(RELEASE)
 void finish(void) {
@@ -121,7 +122,7 @@ void newm(const char *name) {
   menu.name = NEWSTRING(name);
   menu.menusel = 0;
 }
-CMDN(newmenu, newm, ARG_1STR);
+CMDN(newmenu, newm);
 
 void manual(int m, int n, const char *text) {
   if (!n) menus[m].items.setsize(0);
@@ -138,7 +139,7 @@ static void item(const char *text, const char *action) {
   mi.action = action[0] ? NEWSTRING(action) : NEWSTRING(text);
   mi.manual = 0;
 }
-CMDN(menuitem, item, ARG_2STR);
+CMDN(menuitem, item);
 
 bool key(int code, bool isdown) {
   if (vmenu<=0) return false;

@@ -26,7 +26,7 @@ VARP(sensitivityscale, 1, 1, 10000);
 VARP(invmouse, 0, 0, 1);
 
 static void moden(int n) {client::addmsg(1,2,SV_GAMEMODE,nextmode_=n);}
-CMDN(mode, moden, ARG_1INT);
+CMDN(mode, moden);
 
 static bool intermission = false;
 static fixedstring clientmap;
@@ -157,7 +157,7 @@ static void respawnself() {
   spawnplayer(player1);
   showscores(false);
 }
-CMD(showscores, ARG_DOWN);
+CMD(showscores);
 
 void arenacount(dynent *d, int &alive, int &dead, char *&lastteam, bool &oneteam) {
   if (d->state!=CS_DEAD) {
@@ -242,7 +242,7 @@ static void sleepf(const char *msec, const char *cmd) {
   sleepwait = atoi(msec)+int(lastmillis());
   strcpy_s(sleepcmd, cmd);
 }
-CMDN(sleep, sleepf, ARG_2STR);
+CMDN(sleep, sleepf);
 
 void updateworld(int millis) {
   if (lastmillis()) {
@@ -328,7 +328,7 @@ void name(bool isdown) { \
   player1->v = con::iskeydown()? d : (player1->os ? -(d) : 0); \
   player1->lastmove = int(lastmillis()); \
 }\
-CMD(name, ARG_DOWN);
+CMD(name);
 DIRECTION(backward, move,   -1, k_down,  k_up);
 DIRECTION(forward,  move,    1, k_up,    k_down);
 DIRECTION(left,     strafe,  1, k_left,  k_right);
@@ -343,13 +343,13 @@ static void attack(bool on) {
   else if ((player1->attacking = con::iskeydown()) != 0)
     respawn();
 }
-CMD(attack, ARG_DOWN);
+CMD(attack);
 
 static void jumpn(bool on) {
   if (!con::iskeydown()) return;
   if (!intermission && (player1->jumpnext = con::iskeydown())) respawn();
 }
-CMDN(jump, jumpn, ARG_DOWN);
+CMDN(jump, jumpn);
 
 void fixplayer1range() {
   const float MAXPITCH = 90.0f;

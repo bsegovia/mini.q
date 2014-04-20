@@ -29,7 +29,7 @@ void toggleedit(void) {
   // selset = false;
   editing = editmode;
 }
-CMDN(edittoggle, toggleedit, ARG_NONE);
+CMDN(edittoggle, toggleedit);
 
 void pruneundos(int maxremain) {}
 

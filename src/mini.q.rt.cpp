@@ -12,8 +12,8 @@ VARP(fov, 30, 70, 160);
 void finish() {}
 static void playerpos(int x, int y, int z) {game::player1->o = vec3f(vec3i(x,y,z));}
 static void playerypr(int x, int y, int z) {game::player1->ypr = vec3f(vec3i(x,y,z));}
-CMD(playerpos, ARG_3INT);
-CMD(playerypr, ARG_3INT);
+CMD(playerpos);
+CMD(playerypr);
 static void loadworld(const char *name) {
   iso::mesh m;
   con::out("init: loading %s", name);
@@ -38,7 +38,7 @@ static void loadworld(const char *name) {
   con::out("init: %s loaded in %.2f ms", name, float(sys::millis()-start));
   rt::buildbvh(m.m_pos, m.m_index, m.m_indexnum);
 }
-CMD(loadworld, ARG_1STR);
+CMD(loadworld);
 
 static void run(int argc, const char *argv[]) {
   con::out("init: memory debugger");

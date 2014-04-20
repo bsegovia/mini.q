@@ -27,7 +27,7 @@ static void setconskip(int n) {
   conskip += n;
   if (conskip < 0) conskip = 0;
 }
-CMDN(conskip, setconskip, ARG_1INT);
+CMDN(conskip, setconskip);
 
 // keymap is defined externally in keymap.q
 struct keym { int code; char *name; char *action; } keyms[256];
@@ -38,7 +38,7 @@ static void keymap(const char *code, const char *key, const char *action) {
   keyms[numkm].name = NEWSTRING(key);
   keyms[numkm++].action = NEWSTRINGBUF(action);
 }
-CMD(keymap, ARG_3STR);
+CMD(keymap);
 
 static void bindkey(const char *key, const char *action) {
   fixedstring upper;
@@ -51,7 +51,7 @@ static void bindkey(const char *key, const char *action) {
   }
   out("unknown key \"%s\"", key);
 }
-CMDN(bind, bindkey, ARG_2STR);
+CMDN(bind, bindkey);
 
 #if !defined(RELEASE)
 void finish() {
@@ -138,7 +138,7 @@ static void saycommand(const char *init) {
   if (!init) init = "";
   strcpy_s(cmdbuf, init);
 }
-CMD(saycommand, ARG_1STR);
+CMD(saycommand);
 
 static void history(int n) {
   static bool rec = false;
@@ -149,7 +149,7 @@ static void history(int n) {
     rec = false;
   }
 }
-CMD(history, ARG_1INT);
+CMD(history);
 
 void processtextinput(const char *str) {
   script::resetcomplete();

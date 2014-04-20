@@ -151,9 +151,9 @@ void play(int n, const vec3f *loc) {
 
 static void sound(int n) { play(n, NULL); }
 
-CMD(music, ARG_1STR);
-CMD(registersound, ARG_1STR);
-CMD(sound, ARG_1INT);
+CMD(music);
+CMD(registersound);
+CMD(sound);
 } /* namespace sound */
 } /* namespace q */
 

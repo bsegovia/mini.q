@@ -63,13 +63,13 @@ static void newname(const char *name) {
   c2sinit = false;
   strn0cpy(game::player1->name.c_str(), name, 16);
 }
-CMDN(name, newname, ARG_1STR);
+CMDN(name, newname);
 
 static void newteam(const char *name) {
   c2sinit = false;
   strn0cpy(game::player1->team.c_str(), name, 5);
 }
-CMDN(team, newteam, ARG_1STR);
+CMDN(team, newteam);
 
 void writeclientinfo(FILE *f) {
   fprintf(f, "name \"%s\"\nteam \"%s\"\n",
@@ -99,7 +99,7 @@ void connect(const char *servername) {
     disconnect();
   }
 }
-CMD(connect, ARG_1STR);
+CMD(connect);
 
 void disconnect(int onlyclean, int async) {
   if (clienthost) {
@@ -148,16 +148,16 @@ void trydisconnect(void) {
   con::out("attempting to disconnect...");
   disconnect(0, !disconnecting);
 }
-CMDN(disconnect, trydisconnect, ARG_NONE);
+CMDN(disconnect, trydisconnect);
 
 void toserver(const char *text) {
   con::out("%s:\f %s", game::player1->name, text);
   strn0cpy(ctext.c_str(), text, 80);
 }
-CMDN(say, toserver, ARG_VARI);
+CMDN(say, toserver);
 
 static void echo(const char *text) { con::out("%s", text); }
-CMD(echo, ARG_VARI);
+CMD(echo);
 
 void addmsg(int rel, int num, int type, ...) {
   if (demo::playing()) return;
@@ -186,7 +186,7 @@ void server_err(void) {
 }
 
 void password(const char *p) { strcpy_s(clientpassword, p); }
-CMD(password, ARG_1STR);
+CMD(password);
 
 bool netmapstart(void) {
   senditemstoserver = true;
@@ -635,7 +635,7 @@ void gets2c(void) {
 }
 
 void changemap(const char *name) { strcpy_s(toservermap, name); }
-CMDN(map, changemap, ARG_1STR);
+CMDN(map, changemap);
 } /* namespace client */
 } /* namespace q */
 

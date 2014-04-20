@@ -87,7 +87,7 @@ static void savegame(const char *name) {
   stop();
   con::out("wrote %s", fn);
 }
-CMD(savegame, ARG_1STR);
+CMD(savegame);
 
 static void loadstate(char *fn) {
   fixedstring buf, mapname;
@@ -114,7 +114,7 @@ static void loadgame(char *name) {
   fixedstring fn(fmt,"savegames/%s.csgz", name);
   loadstate(fn.c_str());
 }
-CMD(loadgame, ARG_1STR);
+CMD(loadgame);
 
 static void loadgameout(void) {
   stop();
@@ -177,7 +177,7 @@ static void record(const char *name) {
   starttime = int(game::lastmillis());
   ddamage = bdamage = 0;
 }
-CMD(record, ARG_1STR);
+CMD(record);
 
 void damage(int damage, vec3f &o) { ddamage = damage; dorig = o; }
 void blend(int damage) { bdamage = damage; }
@@ -211,7 +211,7 @@ static void demo(const char *name) {
   loadstate(fn.c_str());
   demoloading = true;
 }
-CMD(demo, ARG_1STR);
+CMD(demo);
 
 static void stopreset(void) {
   con::out("demo stopped (%d msec elapsed)", game::lastmillis()-starttime);
@@ -344,11 +344,11 @@ void playbackstep(void) {
   }
 }
 
-static void stopn(void) {
+static void stopn() {
   if (demoplayback) stopreset(); else stop();
   con::out("demo stopped");
 }
-CMDN(stop, stopn, ARG_NONE);
+CMDN(stop, stopn);
 } /* namespace demo */
 } /* namespace q */
 

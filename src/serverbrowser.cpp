@@ -156,7 +156,7 @@ void addserver(const char *servername) {
   si.address.host = ENET_HOST_ANY;
   si.address.port = CUBE_SERVINFO_PORT;
 }
-CMD(addserver, ARG_1STR);
+CMD(addserver);
 
 static void pingservers(void) {
   ENetBuffer buf;
@@ -260,7 +260,7 @@ static void servermenu(void) {
   refreshservers();
   menu::set(1);
 }
-CMD(servermenu, ARG_NONE);
+CMD(servermenu);
 
 static void updatefrommaster(void) {
   const int MAXUPD = 32000;
@@ -284,7 +284,7 @@ void writeservercfg(void) {
   loopvrev(servers) fprintf(f, "addserver %s\n", servers[i].name.c_str());
   fclose(f);
 }
-CMD(updatefrommaster, ARG_NONE);
+CMD(updatefrommaster);
 } /* namespace browser */
 } /* namespace q */
 

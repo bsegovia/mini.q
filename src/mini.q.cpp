@@ -17,7 +17,7 @@
 #endif
 namespace q {
 namespace sys {
-CMD(quit, ARG_1STR);
+CMD(quit);
 } /* namespace sys */
 } /* namespace q */
 
@@ -246,12 +246,12 @@ void start(int argc, const char *argv[]) {
 
 static void playerpos(int x, int y, int z) {game::player1->o = vec3f(vec3i(x,y,z));}
 static void playerypr(int x, int y, int z) {game::player1->ypr = vec3f(vec3i(x,y,z));}
-CMD(playerpos, ARG_3INT);
-CMD(playerypr, ARG_3INT);
+CMD(playerpos);
+CMD(playerypr);
 VAR(savepos, 0, 1, 1);
 
 static void debug() {script::execscript("debug.lua");}
-CMD(debug, ARG_NONE);
+CMD(debug);
 
 void finish() {
   if (savepos) {
