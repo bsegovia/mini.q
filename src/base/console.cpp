@@ -40,13 +40,16 @@ static void keymap(const char *code, const char *key, const char *action) {
 }
 CMD(keymap, ARG_3STR);
 
-static void bindkey(char *key, char *action) {
-  for (char *x = key; *x; x++) *x = toupper(*x);
-  loopi(numkm) if (strcmp(keyms[i].name, key)==0) {
+static void bindkey(const char *key, const char *action) {
+  fixedstring upper;
+  char *dst = upper.c_str();
+  for (auto *src = key; *src; ++src, ++dst) *dst = toupper(*src);
+  *dst = 0;
+  loopi(numkm) if (strcmp(keyms[i].name, upper.c_str())==0) {
     strcpy_cs(keyms[i].action, action);
     return;
   }
-  con::out("unknown key \"%s\"", key);
+  out("unknown key \"%s\"", key);
 }
 CMDN(bind, bindkey, ARG_2STR);
 

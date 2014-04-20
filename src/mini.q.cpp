@@ -233,10 +233,10 @@ void start(int argc, const char *argv[]) {
   con::out("script");
   menu::newm("frags\tpj\tping\tteam\tname");
   menu::newm("ping\tplr\tserver");
-  script::execfile("data/keymap.q");
+  script::execscript("data/keymap.lua");
   script::execfile("data/menus.q");
-  script::execfile("data/sounds.q");
-  script::execfile("data/autoexec.q");
+  script::execscript("data/sounds.lua");
+  script::execscript("data/autoexec.lua");
 
   con::out("localconnect");
   server::localconnect();

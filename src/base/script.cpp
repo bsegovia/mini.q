@@ -19,7 +19,7 @@ static void *internalalloc(void*, void *ptr, size_t, size_t nsize) {
   return sys::memrealloc(ptr, nsize, __FILE__, __LINE__);
 }
 
-lua_State *getluastate() {
+lua_State *luastate() {
   static lua_State *L = NULL;
   if (L == NULL) {
     L = lua_newstate(internalalloc, NULL);
@@ -60,7 +60,7 @@ static identifier *access(const char *name) {
 }
 
 void finish(void) {
-  lua_close(getluastate());
+  lua_close(luastate());
   for (auto it = idents->begin(); it != idents->end(); ++it) {
     if (it->second.type!=ID_ALIAS) continue;
     FREE((char*) it->second.name);
@@ -94,12 +94,10 @@ int variable(const char *name, int min, int cur, int max,
   initializeidents();
   const identifier v = {ID_VAR, name, min, max, storage, fun, 0, 0, persist};
   idents->insert(makepair(name, v));
-#if 0
-  luabridge::getGlobalNamespace(getluastate())
+  luabridge::getGlobalNamespace(luastate())
     .beginNamespace("var")
-      .addVariable(name, storage)
+      .addVariable(name, storage, min, max, fun)
     .endNamespace();
-#endif
   return cur;
 }
 
@@ -128,6 +126,38 @@ bool addcommand(const char *name, void (*fun)(), int narg) {
   const identifier c = { ID_CMD, name, 0, 0, 0, fun, narg, 0, false };
   idents->insert(makepair(name, c));
   return false;
+}
+
+static int luareport(int ret) {
+  auto L = luastate();
+  if (ret && !lua_isnil(L, -1)) {
+    const char *msg = lua_tostring(L, -1);
+    if (msg != NULL) con::out("lua script failed with %s", msg);
+    lua_pop(L, 1);
+  }
+  return ret;
+}
+
+int executelua(const char *p, bool down) {
+  auto L = luastate();
+  if (luareport(luaL_loadstring(L, p))) return 0;
+  //lua_getglobal(L, "_G");
+  //lua_setupvalue(L, -2, 1);
+  return luareport(lua_pcall(L, 0, 0, 0));
+}
+
+bool execluascript(const char *cfgfile) {
+  fixedstring s(cfgfile);
+  const auto buf = sys::loadfile(sys::path(s.c_str()), NULL);
+  if (!buf) return false;
+  executelua(buf);
+  FREE(buf);
+  return true;
+}
+
+void execscript(const char *cfgfile) {
+  if (!execluascript(cfgfile))
+    con::out("could not read \"%s\"", cfgfile);
 }
 
 // parse any nested set of () or []

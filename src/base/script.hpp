@@ -12,7 +12,7 @@ namespace q {
 namespace script {
 
 // return complete lua state
-lua_State *getluastate();
+lua_State *luastate();
 
 // function signatures for script functions
 enum {
@@ -52,12 +52,27 @@ char *getalias(const char *name);
 void writecfg();
 // free all resources needed by the command system
 void finish();
+
+// execute a given string
+int executelua(const char *p, bool down = true);
+// execute a given file and print any error
+void execscript(const char *cfgfile);
+// execute a file and says if this succeeded
+bool execluascript(const char *cfgfile);
+
 } /* namespace script */
 } /* namespace q */
 
+struct luainitializer {
+  template <typename T> luainitializer(T) {}
+};
+
 // register a command with a given name
 #define CMDN(name, fun, nargs) \
-  bool __dummy_##fun = q::script::addcommand(#name, (void (*)())fun, script::nargs)
+  static auto __dummy_##fun = q::script::addcommand(#name, (void (*)())fun, script::nargs);\
+  static auto __dummy_##fun##_lua =\
+  luainitializer(q::luabridge::getGlobalNamespace(q::script::luastate())\
+      .addFunction(#name, fun));
 
 // register a command with a name given by the function name
 #define CMD(name, nargs) CMDN(name, name, nargs)
