@@ -65,7 +65,7 @@ static void inputgrab(bool on) {
   }
 }
 
-VARF(grabmouse, 0, 1, 1, inputgrab(grabmouse!=0));
+VARF(grabmouse, 0, 0, 1, inputgrab(grabmouse!=0));
 
 static void setupscreen() {
   if (glcontext) {
@@ -229,6 +229,7 @@ void start(int argc, const char *argv[]) {
   rr::start();
   con::out("init: isosurface module");
   iso::start();
+  inputgrab(false);
 
   con::out("script");
   menu::newm("frags\tpj\tping\tteam\tname");
@@ -241,7 +242,6 @@ void start(int argc, const char *argv[]) {
   con::out("localconnect");
   server::localconnect();
   client::changemap("metl3");
-  inputgrab(true);
 }
 
 static void playerpos(int x, int y, int z) {game::player1->o = vec3f(vec3i(x,y,z));}

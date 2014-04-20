@@ -194,7 +194,7 @@ void arenarespawn() {
       else
         con::out("everyone died!");
       arenarespawnwait = int(lastmillis())+5000;
-	  arenadetectwait = int(lastmillis()) + 10000;
+      arenadetectwait = int(lastmillis()) + 10000;
       player1->ypr.z = 0.f ;
     }
   }
@@ -324,8 +324,8 @@ void spawnplayer(dynent *d) {
 
 #define DIRECTION(name,v,d,s,os) \
 void name(bool isdown) { \
-  player1->s = isdown; \
-  player1->v = isdown ? d : (player1->os ? -(d) : 0); \
+  player1->s = con::iskeydown(); \
+  player1->v = con::iskeydown()? d : (player1->os ? -(d) : 0); \
   player1->lastmove = int(lastmillis()); \
 }\
 CMD(name, ARG_DOWN);
@@ -339,14 +339,15 @@ static void attack(bool on) {
   if (intermission)
     return;
   if (edit::mode())
-    edit::editdrag(on);
-  else if ((player1->attacking = on) != 0)
+    edit::editdrag(con::iskeydown());
+  else if ((player1->attacking = con::iskeydown()) != 0)
     respawn();
 }
 CMD(attack, ARG_DOWN);
 
 static void jumpn(bool on) {
-  if (!intermission && (player1->jumpnext = on)) respawn();
+  if (!con::iskeydown()) return;
+  if (!intermission && (player1->jumpnext = con::iskeydown())) respawn();
 }
 CMDN(jump, jumpn, ARG_DOWN);
 

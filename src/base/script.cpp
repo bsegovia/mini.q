@@ -96,7 +96,7 @@ int variable(const char *name, int min, int cur, int max,
   idents->insert(makepair(name, v));
   luabridge::getGlobalNamespace(luastate())
     .beginNamespace("var")
-      .addVariable(name, storage, min, max, fun)
+    .addVariable(name, storage, min, max, fun)
     .endNamespace();
   return cur;
 }
@@ -138,7 +138,7 @@ static int luareport(int ret) {
   return ret;
 }
 
-int executelua(const char *p, bool down) {
+int executelua(const char *p) {
   auto L = luastate();
   if (luareport(luaL_loadstring(L, p))) return 0;
   //lua_getglobal(L, "_G");
@@ -159,6 +159,7 @@ void execscript(const char *cfgfile) {
   if (!execluascript(cfgfile))
     con::out("could not read \"%s\"", cfgfile);
 }
+CMD(execscript, ARG_1STR);
 
 // parse any nested set of () or []
 static char *parseexp(char *&p, int right) {

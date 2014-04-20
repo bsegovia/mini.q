@@ -54,7 +54,7 @@ void writecfg();
 void finish();
 
 // execute a given string
-int executelua(const char *p, bool down = true);
+int executelua(const char *p);
 // execute a given file and print any error
 void execscript(const char *cfgfile);
 // execute a file and says if this succeeded
@@ -72,7 +72,9 @@ struct luainitializer {
   static auto __dummy_##fun = q::script::addcommand(#name, (void (*)())fun, script::nargs);\
   static auto __dummy_##fun##_lua =\
   luainitializer(q::luabridge::getGlobalNamespace(q::script::luastate())\
-      .addFunction(#name, fun));
+    .beginNamespace("q")\
+    .addFunction(#name, fun)\
+    .endNamespace())
 
 // register a command with a name given by the function name
 #define CMD(name, nargs) CMDN(name, name, nargs)

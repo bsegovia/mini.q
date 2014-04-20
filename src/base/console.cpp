@@ -156,6 +156,10 @@ void processtextinput(const char *str) {
   strcat_s(cmdbuf, str);
 }
 
+static bool iskeydownflag = false;
+void setkeydownflag(bool on) { iskeydownflag = on; }
+bool iskeydown() { return iskeydownflag; }
+
 void keypress(int code, bool isdown) {
   if (saycommandon) { // keystrokes go to commandline
     if (isdown) {
@@ -183,9 +187,10 @@ void keypress(int code, bool isdown) {
           if (vhistory.empty() || strcmp(vhistory.last(), cmdbuf.c_str()))
             vhistory.add(NEWSTRING(cmdbuf.c_str()));  // cap this?
           histpos = vhistory.length();
-          if (cmdbuf[0]=='/')
-            script::execstring(cmdbuf.c_str(), true);
-          else
+          if (cmdbuf[0]=='/') {
+            setkeydownflag(true);
+            script::executelua(cmdbuf.c_str()+1);
+          } else
             client::toserver(cmdbuf.c_str());
         }
         saycommand(NULL);
@@ -194,7 +199,8 @@ void keypress(int code, bool isdown) {
     }
   } else if (!menu::key(code, isdown)) { // keystrokes go to menu
     loopi(numkm) if (keyms[i].code==code) { // keystrokes go to game, lookup in keymap and execute
-      script::execstring(keyms[i].action, isdown);
+      setkeydownflag(isdown);
+      script::executelua(keyms[i].action);
       return;
     }
   }

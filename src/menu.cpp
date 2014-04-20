@@ -9,6 +9,7 @@
 #include "renderer.hpp"
 #include "text.hpp"
 #include "serverbrowser.hpp"
+#include "base/console.hpp"
 #include "base/script.hpp"
 #include "base/sys.hpp"
 #include <SDL2/SDL.h>
@@ -162,7 +163,8 @@ bool key(int code, bool isdown) {
         client::connect(browser::getservername(menusel));
       menustack.add(vmenu);
       set(-1);
-      script::execstring(action, true);
+      con::setkeydownflag(true);
+      script::execluascript(action);
     }
   }
   return true;
