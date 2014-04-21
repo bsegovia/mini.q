@@ -20,15 +20,19 @@ static intersector *world = NULL;
 void buildbvh(vec3f *v, u32 *idx, u32 idxnum) {
   const auto start = sys::millis();
   const auto trinum = idxnum/3;
-  const auto prim = NEWAE(primitive, trinum);
+  auto prim = NEWAE(primitive, trinum);
   loopi(trinum) {
     loopj(3) prim[i].v[j] = v[idx[3*i+j]];
     prim[i].type = primitive::TRI;
   }
   world = create(prim, trinum);
   const auto ms = sys::millis() - start;
+  SAFE_DELA(prim);
   con::out("bvh: elapsed %f ms", float(ms));
 }
+
+// void start() {}
+void finish() {destroy(world);}
 
 camera::camera(vec3f org, vec3f up, vec3f view, float fov, float ratio) :
   org(org), up(up), view(view), fov(fov), ratio(ratio)

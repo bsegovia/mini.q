@@ -3,6 +3,7 @@
  - mini.q.cpp -> stub to run the game
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
+#include "rt.hpp"
 #include "enet/enet.h"
 #include <time.h>
 #include <SDL2/SDL_image.h>
@@ -269,6 +270,7 @@ void finish() {
 #if !defined(RELEASE)
   game::zapdynent(game::player1);
   game::cleanmonsters();
+  rt::finish();
   iso::finish();
   rr::finish();
   md2::finish();
