@@ -8,7 +8,6 @@
 
 namespace q {
 namespace script {
-
 // return complete lua state
 lua_State *luastate();
 // register a console variable (done through globals)
@@ -23,7 +22,6 @@ void complete(fixedstring &s);
 void writecfg();
 // free all resources needed by the command system
 void finish();
-
 // execute a given string
 int execstring(const char *p);
 // execute a given file and print any error in console output
@@ -39,10 +37,10 @@ struct luainitializer { template <typename T> luainitializer(T) {} };
 #define CMDN(name, fun) \
   static auto __dummy_##fun = q::script::addcommand(#name);\
   static auto __dummy_##fun##_lua =\
-  luainitializer(q::luabridge::getGlobalNamespace(q::script::luastate())\
-    .beginNamespace("q")\
-    .addFunction(#name, fun)\
-    .endNamespace())
+    luainitializer(q::luabridge::getGlobalNamespace(q::script::luastate())\
+      .beginNamespace("q")\
+        .addFunction(#name, fun)\
+      .endNamespace())
 
 // register a command with a name given by the function name
 #define CMD(name) CMDN(name, name)

@@ -35,6 +35,7 @@
 //
 #include <cassert>
 #include "base/string.hpp"
+#include "base/ref.hpp"
 #include "base/lua/lua.h"
 #include "base/lua/lauxlib.h"
 
@@ -133,6 +134,14 @@ inline void setHideMetatables (bool shouldHide)
 {
   Security::setHideMetatables (shouldHide);
 }
+
+// traits for reference counted objects
+template <class T>
+struct ContainerTraits <ref<T>>
+{
+  typedef T Type;
+  static T* get (ref<T> const& c) { return c.ptr; }
+};
 } /* namespace luabridge */
 } /* namespace q */
 
