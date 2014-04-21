@@ -232,7 +232,7 @@ void start(int argc, const char *argv[]) {
 
   con::out("init: csg module");
   csg::start();
-  script::execscript("csg.lua");
+  script::execscript("data/csg.lua");
   inputgrab(false);
 
   con::out("script");
