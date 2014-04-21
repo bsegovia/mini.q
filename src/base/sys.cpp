@@ -338,7 +338,7 @@ bool hasfeature(cpufeature feature) {
     case CPU_AVX2:  return hasex<7, 5,ebx>();
     case CPU_BMI1:  return hasex<7, 3,ebx>();
     case CPU_BMI2:  return hasex<7, 8,ebx>();
-    case CPU_LZCNT: return has<0x80000001,5,ecx>();
+    case CPU_LZCNT: return has<int(0x80000001),5,ecx>();
     case CPU_FMA:   return has<1,12,ecx>();
     case CPU_F16C:  return has<1,29,ecx>();
     case CPU_YMM:   return check_xcr0_ymm();
