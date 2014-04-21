@@ -603,6 +603,7 @@ static void makescene() {
   // create the indexed mesh from the scene description
   const auto start = sys::millis();
   const auto node = csg::makescene();
+  assert(node != NULL);
   const auto m = iso::dc_mesh_mt(vec3f(0.15f), 4096, CELLSIZE, *node);
   segment = m.m_segment;
   segmentnum = m.m_segmentnum;

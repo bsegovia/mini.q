@@ -35,6 +35,7 @@
 //
 #include <cassert>
 #include "base/string.hpp"
+#include "base/sys.hpp"
 #include "base/ref.hpp"
 #include "base/lua/lua.h"
 #include "base/lua/lauxlib.h"

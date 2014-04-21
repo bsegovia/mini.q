@@ -3,8 +3,9 @@
  - csg.cpp -> implements csg routines
  -------------------------------------------------------------------------*/
 #include "csg.hpp"
-#include "base/sys.hpp"
 #include "base/math.hpp"
+#include "base/script.hpp"
+#include "base/sys.hpp"
 
 namespace q {
 namespace csg {
@@ -12,17 +13,27 @@ namespace csg {
 /*--------------------------------------------------------------------------
  - implements all basic CSG nodes
  -------------------------------------------------------------------------*/
+struct emptynode : node {
+  INLINE emptynode() : node(C_EMPTY) {}
+};
+// we need to be careful with null nods
+static INLINE aabb fixedaabb(const ref<node> &n) {
+  return n.ptr?n->box:aabb::empty();
+}
+static INLINE ref<node> fixednode(const ref<node> &n) {
+  return NULL!=n.ptr?n:NEWE(emptynode);
+}
+
 #define BINARY(NAME,TYPE,C_BOX) \
 struct NAME : node { \
-  INLINE NAME(node *nleft, node *nright) :\
-    node(TYPE, C_BOX), left(nleft), right(nright) {}\
-  virtual ~NAME() {SAFE_DEL(left); SAFE_DEL(right);}\
-  node *left, *right; \
+  INLINE NAME(const ref<node> &nleft, const ref<node> &nright) :\
+    node(TYPE, C_BOX), left(fixednode(nleft)), right(fixednode(nright)) {}\
+  ref<node> left, right; \
 };
-BINARY(U,C_UNION, sum(nleft->box, nright->box))
-BINARY(D,C_DIFFERENCE, nleft->box)
-BINARY(I,C_INTERSECTION, intersection(nleft->box, nright->box))
-BINARY(R,C_REPLACE, nleft->box);
+BINARY(U, C_UNION, sum(fixedaabb(nleft), fixedaabb(nright)))
+BINARY(D, C_DIFFERENCE, fixedaabb(nleft))
+BINARY(I, C_INTERSECTION, intersection(fixedaabb(nleft), fixedaabb(nright)))
+BINARY(R, C_REPLACE, fixedaabb(nleft));
 #undef BINARY
 
 struct materialnode : node {
@@ -34,11 +45,15 @@ struct materialnode : node {
 struct box : materialnode {
   INLINE box(const vec3f &extent, u32 matindex = MAT_SIMPLE_INDEX) :
     materialnode(C_BOX, aabb(-extent,+extent), matindex), extent(extent) {}
+  INLINE box(float x, float y, float z, u32 matindex = MAT_SIMPLE_INDEX) :
+    box(vec3f(x,y,z), matindex) {}
   vec3f extent;
 };
 struct plane : materialnode {
   INLINE plane(const vec4f &p, u32 matindex = MAT_SIMPLE_INDEX) :
     materialnode(C_PLANE, aabb::all(), matindex), p(p) {}
+  INLINE plane(float a, float b, float c, float d, u32 matindex = MAT_SIMPLE_INDEX) :
+    plane(vec4f(a,b,c,d), matindex) {}
   vec4f p;
 };
 struct sphere : materialnode {
@@ -63,135 +78,46 @@ INLINE aabb cxybox(const vec2f &cxy, float r) {
 struct cylinderxz : materialnode {
   INLINE cylinderxz(const vec2f &cxz, float r, u32 matindex = MAT_SIMPLE_INDEX) :
     materialnode(C_CYLINDERXZ, cxzbox(cxz,r), matindex), cxz(cxz), r(r) {}
+  INLINE cylinderxz(float x, float z, float r, u32 matindex = MAT_SIMPLE_INDEX) :
+    cylinderxz(vec2f(x,z), r, matindex) {}
   vec2f cxz;
   float r;
 };
 struct cylinderxy : materialnode {
   INLINE cylinderxy(const vec2f &cxy, float r, u32 matindex = MAT_SIMPLE_INDEX) :
     materialnode(C_CYLINDERXY, cxybox(cxy,r), matindex), cxy(cxy), r(r) {}
+  INLINE cylinderxy(float x, float y, float r, u32 matindex = MAT_SIMPLE_INDEX) :
+    cylinderxy(vec2f(x,y), r, matindex) {}
   vec2f cxy;
   float r;
 };
 struct cylinderyz : materialnode {
   INLINE cylinderyz(const vec2f &cyz, float r, u32 matindex = MAT_SIMPLE_INDEX) :
-    materialnode(C_CYLINDERYZ, cyzbox(cyz,r), matindex), cyz(cyz), r(r)
-  {}
+    materialnode(C_CYLINDERYZ, cyzbox(cyz,r), matindex), cyz(cyz), r(r) {}
+  INLINE cylinderyz(float y, float z, float r, u32 matindex = MAT_SIMPLE_INDEX) :
+    cylinderyz(vec2f(y,z), r, matindex) {}
   vec2f cyz;
   float r;
 };
 struct translation : node {
-  INLINE translation(const vec3f &p, node *n) :
-    node(C_TRANSLATION, aabb(p+n->box.pmin, p+n->box.pmax)), p(p), n(n) {}
-  virtual ~translation() { SAFE_DEL(n); }
+  INLINE translation(const vec3f &p, const ref<node> &n) :
+    node(C_TRANSLATION, aabb(p+fixedaabb(n).pmin, p+fixedaabb(n).pmax)), p(p),
+    n(fixednode(n)) {}
+  INLINE translation(float x, float y, float z, const ref<node> &n) :
+    translation(vec3f(x,y,z), n) {}
   vec3f p;
-  node *n;
+  ref<node> n;
 };
 struct rotation : node {
-  INLINE rotation(const quat3f &q, node *n) :
-    node(C_ROTATION, aabb::all()), q(q), n(n) {}
-  virtual ~rotation() { SAFE_DEL(n); }
+  INLINE rotation(const quat3f &q, const ref<node> &n) :
+    node(C_ROTATION, aabb::all()), q(q),
+    n(fixednode(n)) {}
+  INLINE rotation(float deg0, float deg1, float deg2, const ref<node> &n) :
+    rotation(quat3f(deg2rad(deg0),deg2rad(deg1),deg2rad(deg2)),n) {}
   quat3f q;
-  node *n;
+  ref<node> n;
 };
 
-node *capped_cylinder(const vec2f &cxz, const vec3f &ryminymax, u32 matindex = MAT_SIMPLE_INDEX) {
-  const auto r = ryminymax.x;
-  const auto ymin = ryminymax.y;
-  const auto ymax = ryminymax.z;
-  const auto cyl = NEW(cylinderxz, cxz, r, matindex);
-  const auto plane0 = NEW(plane, vec4f(0.f,1.f,0.f,-ymin), matindex);
-  const auto plane1 = NEW(plane, vec4f(0.f,-1.f,0.f,ymax), matindex);
-  const auto ccyl = NEW(D, NEW(D, cyl, plane0), plane1);
-  ccyl->box.pmin = vec3f(cxz.x-r,ymin,cxz.y-r);
-  ccyl->box.pmax = vec3f(cxz.x+r,ymax,cxz.y+r);
-  return ccyl;
-}
-#if 1
-static node *makescene0() {
-  const auto t = vec3f(7.f, 5.f, 7.f);
-  const auto s = NEW(sphere, 4.2f);
-  const auto q = quat3f(deg2rad(0.0f),deg2rad(25.f),0.f);
-  const auto b0 = NEW(rotation, q, NEW(box, vec3f(4.f)));
-//  const auto b0 = NEW(box, vec3f(4.f));
-  const auto d0 = NEW(translation, t, s);
-  const auto d1 = NEW(translation, t, b0);
-  node *c = NEW(D, d1, d0);
-  loopi(16) {
-    const auto center = vec2f(2.f,2.f+2.f*float(i));
-    const auto ryminymax = vec3f(1.f,1.f,2*float(i)+2.f);
-    if (c == NULL)
-        c = capped_cylinder(center, ryminymax, MAT_SNOISE_INDEX);
-      else
-        c = NEW(U, c, capped_cylinder(center, ryminymax, MAT_SNOISE_INDEX));
-  }
-  const auto b = NEW(box, vec3f(3.5f, 4.f, 3.5f));
-  const auto scene0 = NEW(D, c, NEW(translation, vec3f(2.f,5.f,18.f), b));
-
-  // build an arcade here
-  node *big = NEW(box, vec3f(3.f, 4.0f, 20.f));
-  node *cut = NEW(translation, vec3f(0.f,-2.f,0.f), NEW(box, vec3f(2.f, 2.f, 20.f)));
-  big = NEW(D, big, cut);
-  node *cxy = NEW(cylinderxy, vec2f(zero), 2.f);
-  // cxy = NEW(translation, vec3f(16.f, 4.f, 10.f), *cxy);
-  node *arcade = NEW(D, big, cxy);
-  // arcade = NEW(rotation, quat3f(20.f,0.f,0.f), arcade);
-  arcade = NEW(translation, vec3f(16.f,4.f,10.f), arcade);
-  loopi(7) {
-    const auto pos = vec3f(16.f,3.5f,7.f+3.f*float(i));
-    const auto hole = NEW(box, vec3f(3.f,1.f,1.f));
-    arcade = NEW(D, arcade, NEW(translation, pos, hole));
-  }
-
-  // add a ground box
-  const auto groundbox = NEW(box, vec3f(50.f, 4.f, 50.f), MAT_SIMPLE_INDEX);
-  //const auto groundbox = NEW(box, vec3f(2.f, 4.f, 2.f), MAT_SIMPLE_INDEX);
-  const auto ground = NEW(translation, vec3f(0.f,-3.f,0.f), groundbox);
-
-  // just make a union of them
-  const auto world = NEW(U, ground, NEW(U, scene0, arcade));
-  //const auto world = ground;
-  //return world;
-  // add nested cylinder
-  node *c0 = capped_cylinder(vec2f(30.f,30.f), vec3f(2.f, 0.f, 2.f), MAT_SIMPLE_INDEX);
-  node *c1 = capped_cylinder(vec2f(30.f,30.f), vec3f(1.f, 0.f, 2.f), MAT_SIMPLE_INDEX);
-  node *c2 = capped_cylinder(vec2f(30.f,30.f), vec3f(1.f, 0.f, 2.f), MAT_SNOISE_INDEX);
-  c0 = NEW(U, NEW(D, c0, c1), c2);
-  // change the material just to see
-  const auto remove = NEW(translation, vec3f(18.f,3.f,7.f), NEW(sphere, 4.2f));
-#if 1
-  node *newmat0 = NEW(translation, vec3f(30.f,3.f,7.f), NEW(cylinderxz, vec2f(zero), 4.2f, MAT_SNOISE_INDEX));
-#else
-  node *newmat0 = NEW(translation, vec3f(30.f,3.3f,7.f), NEW(sphere, 4.2f, MAT_SNOISE_INDEX));
-#endif
-  node *newmat1 = NEW(translation, vec3f(30.f,3.f,10.f), NEW(cylinderxz, vec2f(zero), 4.2f, MAT_SNOISE_INDEX));
-  return NEW(U, c0, NEW(D, NEW(R, NEW(R, world, newmat0), newmat1), remove));
-}
-#elif 1
-static node *makescene0() {
-  const auto groundbox = NEW(box, vec3f(50.f, 4.f, 50.f), MAT_SIMPLE_INDEX);
-  const auto ground = NEW(translation, vec3f(0.f,-3.f,0.f), groundbox);
-  const auto small = NEW(box, vec3f(5.f, 2.f, 5.f), MAT_SIMPLE_INDEX);
-  //return NEW(U, NEW(translation, vec3f(10.f, 0.f, 10.f), small), ground);
-  return NEW(translation, vec3f(10.f, 5.f, 10.f), small);
-}
-#else
-static node *makescene0() {
-  const auto b0 = NEW(box, vec3f(40.f, 4.f, 40.f));
-  const auto b1 = NEW(box, vec3f(2.f, 8.f, 2.f));
-  const auto t = NEW(translation, vec3f(20.f,0.f,20.f), b1);
-  const auto d = NEW(translation, vec3f(0.f,-3.f,0.f), NEW(U, b0, t));
-  return d;
-}
-#endif
-
-node *makescene() {
-  node *s0 = makescene0();
-  loopi(1) loopj(1) loopk(1)
-  s0 = NEW(U, s0, NEW(translation, vec3f(float(i)*30.f,float(k)*40.f,float(j)*20.f), makescene0()));
-  return s0;
-}
-
-void destroyscene(node *n) { SAFE_DEL(n); }
 void distr(const node *n, const vec3f * RESTRICT pos, const float * RESTRICT normaldist,
            float * RESTRICT dist, u32 * RESTRICT matindex, int num,
            const aabb &box)
@@ -350,6 +276,7 @@ void distr(const node *n, const vec3f * RESTRICT pos, const float * RESTRICT nor
       }
     }
     break;
+    case C_EMPTY: break;
     case C_INVALID: assert("unreachable" && false);
   }
 }
@@ -422,9 +349,61 @@ float dist(const node *n, const vec3f &pos, const aabb &box) {
       const auto dist = min(max(d.x,max(d.y,d.z)),0.0f)+length(max(d,vec3f(zero)));
       return dist;
     }
+    case C_EMPTY: return FLT_MAX;
     default: assert("unreachable" && false); return FLT_MAX;
   }
 }
+
+static ref<node> root;
+static void setroot(const ref<node> &node) {root = node;}
+node *makescene() {
+  return root.ptr;
+}
+
+void destroyscene(node *n) {
+  assert(n == root.ptr);
+  root = NULL;
+}
+
+void start() {
+#define ENUM(NAMESPACE,NAME,VALUE)\
+  static const u32 NAME = VALUE;\
+  luabridge::getGlobalNamespace(script::luastate())\
+  .beginNamespace(#NAMESPACE)\
+    .addVariable(#NAME, const_cast<u32*>(&NAME), false)\
+  .endNamespace()
+  ENUM(csg, mat_air_index, MAT_AIR_INDEX);
+  ENUM(csg, mat_simple_index, MAT_SIMPLE_INDEX);
+  ENUM(csg, mat_snoise_index, MAT_SNOISE_INDEX);
+#undef ENUM
+
+#define ADDCLASS(NAME, CONSTRUCTOR) \
+  .deriveClass<NAME,node>(#NAME)\
+    .addConstructor<CONSTRUCTOR, ref<NAME>>()\
+  .endClass()
+  luabridge::getGlobalNamespace(script::luastate())
+  .beginNamespace("csg")
+    .addFunction("setroot", setroot)
+    .beginClass<node>("node")
+      .addFunction("setmin", &node::setmin)
+      .addFunction("setmax", &node::setmax)
+    .endClass()
+    ADDCLASS(U,void(*)(const ref<node>&, const ref<node>&))
+    ADDCLASS(D,void(*)(const ref<node>&, const ref<node>&))
+    ADDCLASS(I,void(*)(const ref<node>&, const ref<node>&))
+    ADDCLASS(R,void(*)(const ref<node>&, const ref<node>&))
+    ADDCLASS(box,void(*)(float,float,float,u32))
+    ADDCLASS(plane,void(*)(float,float,float,float,u32))
+    ADDCLASS(sphere,void(*)(float,u32))
+    ADDCLASS(cylinderxz,void(*)(float,float,float,u32))
+    ADDCLASS(cylinderxy,void(*)(float,float,float,u32))
+    ADDCLASS(cylinderyz,void(*)(float,float,float,u32))
+    ADDCLASS(translation,void(*)(float,float,float,const ref<node>&))
+    ADDCLASS(rotation,void(*)(float,float,float,const ref<node>&))
+  .endNamespace();
+#undef ADDCLASS
+}
+void finish() {}
 } /* namespace csg */
 } /* namespace q */
 

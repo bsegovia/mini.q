@@ -229,6 +229,10 @@ void start(int argc, const char *argv[]) {
   rr::start();
   con::out("init: isosurface module");
   iso::start();
+
+  con::out("init: csg module");
+  csg::start();
+  script::execscript("csg.lua");
   inputgrab(false);
 
   con::out("script");
