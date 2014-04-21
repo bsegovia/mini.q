@@ -305,6 +305,66 @@ void writebmp(const int *data, int w, int h, const char *filename) {
   FREE(raw);
 }
 
+enum {eax=0, ebx=1, ecx=2, edx=3};
+template <int lvl, int bit, int reg> static INLINE bool has() {
+  int flags[]={0,0,0,0};
+  __cpuid(flags, lvl);
+  return (flags[reg] & (1<bit)) != 0;
+}
+template <int lvl, int bit, int reg> static INLINE bool hasex() {
+  int flags[]={0,0,0,0};
+  __cpuid_count(flags, lvl, 0);
+  return (flags[reg] & (1<bit)) != 0;
+}
+static INLINE int check_xcr0_ymm() {
+  u32 xcr0;
+#if defined(__MSVC__)
+  xcr0 = u32(_xgetbv(0))
+#else
+  asm ("xgetbv" : "=a" (xcr0) : "c" (0) : "%edx" );
+#endif
+  return ((xcr0 & 6) == 6); // checking if xmm and ymm state are enabled in XCR0
+}
+
+bool hasfeature(cpufeature feature) {
+  switch (feature) {
+    case CPU_SSE:   return has<1,25,edx>();
+    case CPU_SSE2:  return has<1,26,edx>();
+    case CPU_SSE3:  return has<1, 0,ecx>();
+    case CPU_SSSE3: return has<1, 9,ecx>();
+    case CPU_SSE41: return has<1,19,ecx>();
+    case CPU_SSE42: return has<1,20,ecx>();
+    case CPU_AVX:   return has<1,28,ecx>();
+    case CPU_AVX2:  return hasex<7, 5,ebx>();
+    case CPU_BMI1:  return hasex<7, 3,ebx>();
+    case CPU_BMI2:  return hasex<7, 8,ebx>();
+    case CPU_LZCNT: return has<0x80000001,5,ecx>();
+    case CPU_FMA:   return has<1,12,ecx>();
+    case CPU_F16C:  return has<1,29,ecx>();
+    case CPU_YMM:   return check_xcr0_ymm();
+    default: return false;
+  }
+}
+const char *featurename(cpufeature feature) {
+  switch (feature) {
+    case CPU_SSE:   return "sse";
+    case CPU_SSE2:  return "sse2";
+    case CPU_SSE3:  return "sse3";
+    case CPU_SSSE3: return "ssse3";
+    case CPU_SSE41: return "sse4.1";
+    case CPU_SSE42: return "sse4.2";
+    case CPU_AVX:   return "avx";
+    case CPU_AVX2:  return "avx2";
+    case CPU_BMI1:  return "bmi1";
+    case CPU_BMI2:  return "bmi2";
+    case CPU_LZCNT: return "lzcnt";
+    case CPU_FMA:   return "fma";
+    case CPU_F16C:  return "f16c";
+    case CPU_YMM:   return "ymmstate";
+    default:        return "unknown";
+  };
+}
+
 void textinput(bool on) {
   if(on)
     SDL_StartTextInput();

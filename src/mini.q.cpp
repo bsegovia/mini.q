@@ -138,6 +138,18 @@ static void setupscreen() {
   renderh = min(sys::scrh, screenh);
 }
 
+static void outputcpufeatures() {
+  using namespace sys;
+  fixedstring features("cpu: ");
+  loopi(CPU_FEATURE_NUM) {
+    const auto name = featurename(cpufeature(i));
+    const auto hasit = hasfeature(cpufeature(i));
+    strcat_s(features, hasit ? name : "");
+    if (hasit && i != int(CPU_FEATURE_NUM)-1) strcat_s(features, " ");
+  }
+  con::out(features.c_str());
+}
+
 // static const float CELLSIZE = 0.2f;
 void start(int argc, const char *argv[]) {
   bool dedicated = false;
@@ -171,9 +183,11 @@ void start(int argc, const char *argv[]) {
     sys::fatal("init: failed to initialize SDL");
 
  SDL_SetHint(SDL_HINT_GRAB_KEYBOARD, "0");
- #if !defined(WIN32) && !defined(__APPLE__)
+#if !defined(WIN32) && !defined(__APPLE__)
  SDL_SetHint(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0");
- #endif
+#endif
+
+ outputcpufeatures();
 
   // load support for the JPG and PNG image formats
   con::out("init: sdl image");

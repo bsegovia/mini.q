@@ -255,6 +255,15 @@ void set##NAME(TYPE x) { VARNAME = x; }
 extern TYPE NAME(void);\
 extern void set##NAME(TYPE x);
 
+#if !defined(__X86__) && !defined(__X86_64__)
+INLINE void __cpuid(int out[4], int op) {
+  out[0]=out[1]=out[2]=out[3]=0;
+}
+INLINE void __cpuid_count(int out[4], int op1, int op2) {
+  out[0]=out[1]=out[2]=out[3]=0;
+}
+#endif
+
 /*-------------------------------------------------------------------------
  - standard types and some simple type traits
  -------------------------------------------------------------------------*/
@@ -416,6 +425,10 @@ INLINE size_t __bscf(size_t& v) {
   v &= v-1;
   return i;
 }
+
+INLINE void __cpuid_count(int out[4], int op1, int op2) {
+  return __cpuidex(out, op1, op2);
+}
 #endif
 #endif
 
@@ -441,7 +454,7 @@ INLINE void __cpuid_count(int out[4], int op1, int op2) {
                 : "0" (op1), "2" (op2));
 }
 
-#else
+#elif defined(__X86_64__)
 
 INLINE void __cpuid(int out[4], int op) {
   asm volatile ("cpuid" : "=a"(out[0]), "=b"(out[1]), "=c"(out[2]), "=d"(out[3]) : "a"(op));
@@ -450,7 +463,6 @@ INLINE void __cpuid(int out[4], int op) {
 INLINE void __cpuid_count(int out[4], int op1, int op2) {
   asm volatile ("cpuid" : "=a"(out[0]), "=b"(out[1]), "=c"(out[2]), "=d"(out[3]) : "a"(op1), "c"(op2));
 }
-
 #endif
 
 INLINE q::u64 __rdtsc()  {
@@ -633,6 +645,18 @@ void endianswap(void *memory, int stride, int length);
 u32 threadnumber();
 void writebmp(const int *data, int w, int h, const char *filename);
 void textinput(bool on);
+
+/*-------------------------------------------------------------------------
+ - CPU features
+ -------------------------------------------------------------------------*/
+enum cpufeature {
+  CPU_SSE, CPU_SSE2, CPU_SSE3, CPU_SSSE3, CPU_SSE41,
+  CPU_SSE42, CPU_AVX, CPU_AVX2, CPU_BMI1, CPU_BMI2,
+  CPU_LZCNT, CPU_FMA, CPU_F16C, CPU_YMM,
+  CPU_FEATURE_NUM
+};
+bool hasfeature(cpufeature feature);
+const char *featurename(cpufeature feature);
 
 /*-------------------------------------------------------------------------
  - memory debugging / tracking facilities

@@ -118,7 +118,8 @@ struct rotation : node {
   ref<node> n;
 };
 
-void distr(const node *n, const vec3f * RESTRICT pos, const float * RESTRICT normaldist,
+void distr(const node *n, const vec3f * RESTRICT pos,
+           const float * RESTRICT normaldist,
            float * RESTRICT dist, u32 * RESTRICT matindex, int num,
            const aabb &box)
 {
