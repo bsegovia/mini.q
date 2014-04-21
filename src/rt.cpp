@@ -10,7 +10,6 @@
 #include "base/math.hpp"
 #include "base/console.hpp"
 #include "base/task.hpp"
-//#include "game.hpp" // XXX remove that from here!
 
 namespace q {
 namespace rt {
@@ -134,7 +133,6 @@ void raytrace(const char *bmp, const vec3f &pos, const vec3f &ypr,
   const auto duration = float(sys::millis()-start);
   con::out("rt: %i ms, %f Mray/s", int(duration), 1000.f*(float(totalraynum)*1e-6f)/duration);
   sys::writebmp(pixels, w, h, bmp);
-  //FREE(pixels);
 }
 } /* namespace rt */
 } /* namespace q */
