@@ -66,7 +66,8 @@ void start() {
   }
 }
 void finish() {
-  if (allshaders) loopv(*allshaders) ogl::destroyshader(*(*allshaders)[i].s);
+  if (allshaders) loopv(*allshaders)
+    ogl::destroyshader(*(*allshaders)[i].s);
   SAFE_DEL(allshaders);
 }
 

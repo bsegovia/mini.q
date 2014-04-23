@@ -50,20 +50,20 @@ static void run(int argc, const char *argv[]) {
 
   // load everything
   script::execscript(argv[1]);
-
   const auto pos = game::player1->o;
   const auto ypr = game::player1->ypr;
   loopi(16) rt::raytrace(argv[2], pos, ypr, 1920, 1080, fov, 1.f);
-  //loopi(16) rt::raytrace(argv[2], pos, ypr, 1920, 1080, fov, 1.f);
 }
 } /* namespace q */
 
 int main(int argc, const char *argv[]) {
   if (argc != 3) {
     q::con::out("usage: %s script outname", argv[0]);
+    q::finish();
     return 1;
   }
   q::run(argc, argv);
+  q::finish();
   return 0;
 }
 

@@ -469,12 +469,12 @@ static void initdeferred() {
 
 #if !defined(RELEASE)
 static void cleandeferred() {
-  ogl::deletetextures(1, &gdiffusetex);
-  ogl::deletetextures(1, &gnortex);
-  ogl::deletetextures(1, &gdepthtex);
-  ogl::deletetextures(1, &finaltex);
-  ogl::deleteframebuffers(1, &gbuffer);
-  ogl::deleteframebuffers(1, &shadedbuffer);
+  if (gdiffusetex) ogl::deletetextures(1, &gdiffusetex);
+  if (gnortex) ogl::deletetextures(1, &gnortex);
+  if (gdepthtex) ogl::deletetextures(1, &gdepthtex);
+  if (finaltex) ogl::deletetextures(1, &finaltex);
+  if (gbuffer) ogl::deleteframebuffers(1, &gbuffer);
+  if (shadedbuffer) ogl::deleteframebuffers(1, &shadedbuffer);
 }
 #endif
 
@@ -510,8 +510,8 @@ static void initrt() {
 
 #if !defined(RELEASE)
 static void cleanrt() {
-  ogl::deletetextures(1, &rttex);
-  ogl::deletebuffers(1, &rtpbo);
+  if (rttex) ogl::deletetextures(1, &rttex);
+  if (rtpbo) ogl::deletebuffers(1, &rtpbo);
 }
 #endif
 

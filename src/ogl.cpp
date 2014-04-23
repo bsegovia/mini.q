@@ -480,8 +480,8 @@ static void imminit() {
 
 #if !defined(RELEASE)
 static void immdestroy() {
-  ogl::deletebuffers(1, &bigibo);
-  ogl::deletebuffers(1, &bigvbo);
+  if (bigibo) ogl::deletebuffers(1, &bigibo);
+  if (bigvbo) ogl::deletebuffers(1, &bigvbo);
 }
 #endif
 
@@ -885,8 +885,10 @@ void bindshader(const shadertype &shader) {
 }
 
 void destroyshader(shadertype &s) {
-  deleteprogram(s.program);
-  s.program = 0;
+  if (s.program) {
+    deleteprogram(s.program);
+    s.program = 0;
+  }
 }
 
 VAR(shaderfromfile, 0, 1, 1);
