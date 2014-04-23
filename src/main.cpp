@@ -1,3 +1,7 @@
+/*-------------------------------------------------------------------------
+ - mini.q - a minimalistic multiplayer FPS
+ - main.cpp -> main entry point for the client
+ -------------------------------------------------------------------------*/
 #include "base/sys.hpp"
 #include "base/math.hpp"
 #include "game.hpp"
