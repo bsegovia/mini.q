@@ -53,8 +53,8 @@ camera::camera(vec3f org, vec3f up, vec3f view, float fov, float ratio) :
 #define RTVER avx
 
 //static const vec3f lpos(0.f, -4.f, 2.f);
-static const vec3f lpos(35.f, 10.f, 11.f);
-//static const vec3f lpos(0.f, 4.f, 0.f);
+//static const vec3f lpos(35.f, 10.f, 11.f);
+static const vec3f lpos(0.f, 4.f, 0.f);
 static atomic totalraynum;
 struct raycasttask : public task {
   raycasttask(intersector *bvhisec, const camera &cam, int *pixels, vec2i dim, vec2i tile) :

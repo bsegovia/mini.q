@@ -1,6 +1,6 @@
 q.savepos = 1
 q.showstats = 1
-q.grabmouse = 1
+q.grabmouse = 0
 q.soundvol = 100
 q.editing = 1
 q.bind('L', [[

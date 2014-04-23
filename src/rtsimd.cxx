@@ -10,19 +10,19 @@
 #include "base/avx.hpp"
 #include "bvh.hpp"
 #include "bvhinternal.hpp"
+#include "soa.hpp"
 #include "rt.hpp"
 
-//TODO * tester culling en premier
-//TODO * enlever le code scalaire dans initextra
-//TODO * faire IA en simd
-
+// TODO * tester culling en premier
+// TODO * enlever le code scalaire dans initextra
+// TODO * faire IA en simd
 namespace q {
 namespace rt {
 namespace NAMESPACE {
 struct raypacketextra {
-  array3f rdir;                    // used by ray/box intersection
+  array3f rdir;             // used by ray/box intersection
   interval3f iaorg, iardir; // only used when INTERVALARITH is set
-  float iaminlen, iamaxlen;        // only used when INTERVALARITH is set
+  float iaminlen, iamaxlen; // only used when INTERVALARITH is set
 };
 static const u32 waldmodulo[] = {1,2,0,1};
 INLINE bool cullia(const aabb &box, const raypacket &p, const raypacketextra &extra) {
@@ -35,59 +35,6 @@ INLINE bool culliaco(const aabb &box, const raypacket &p, const raypacketextra &
   const vec3f pmax = box.pmax - p.sharedorg;
   const auto txyz = makeinterval(pmin,pmax)*extra.iardir;
   return empty(I(txyz.x,txyz.y,txyz.z,intervalf(extra.iaminlen,extra.iamaxlen)));
-}
-
-#if defined(__AVX__)
-typedef avxf soaf;
-typedef avxi soai;
-typedef avxb soab;
-INLINE void store(void *ptr, const soai &x) {store8i(ptr, x);}
-INLINE void store(void *ptr, const soaf &x) {store8f(ptr, x);}
-INLINE void store(void *ptr, const soab &x) {store8b(ptr, x);}
-INLINE void storeu(void *ptr, const soaf &x) {storeu8f(ptr, x);}
-INLINE void storeui(void *ptr, const soai &x) {storeu8i(ptr, x);}
-INLINE void storent(void *ptr, const soai &x) {store8i_nt(ptr, x);}
-INLINE void maskstore(const soab &m, void *ptr, const soaf &x) {store8f(m, ptr, x);}
-INLINE soaf splat(const soaf &v) {
-  const auto p = shuffle<0,0>(v);
-  const auto s = shuffle<0,0,0,0>(p,p);
-  return s;
-}
-#elif defined(__SSE__)
-typedef ssef soaf;
-typedef ssei soai;
-typedef sseb soab;
-INLINE void store(void *ptr, const soai &x) {store4i(ptr, x);}
-INLINE void store(void *ptr, const soaf &x) {store4f(ptr, x);}
-INLINE void store(void *ptr, const soab &x) {store4b(ptr, x);}
-INLINE void storent(void *ptr, const soai &x) {store4i_nt(ptr, x);}
-INLINE void storeu(void *ptr, const soaf &x) {storeu4f(ptr, x);}
-INLINE void storeui(void *ptr, const soai &x) {storeu4i(ptr, x);}
-INLINE void maskstore(const soab &m, void *ptr, const soaf &x) {store4f(m, ptr, x);}
-INLINE soaf splat(const soaf &v) {return shuffle<0,0,0,0>(v,v);}
-#else
-#error "unsupported SIMD"
-#endif
-
-typedef vec3<soai> soa3i;
-typedef vec3<soaf> soa3f;
-typedef vec2<soaf> soa2f;
-
-INLINE soaf get(const arrayf &x, u32 idx) {
-  return soaf::load(&x[idx*soaf::size]);
-}
-
-INLINE soa3f get(const array3f &v, u32 idx) {
-  const soaf x = get(v[0], idx);
-  const soaf y = get(v[1], idx);
-  const soaf z = get(v[2], idx);
-  return soa3f(x,y,z);
-}
-
-INLINE void set(array3f &out, const soa3f &v, u32 idx) {
-  store(&out[0][idx*soaf::size], v.x);
-  store(&out[1][idx*soaf::size], v.y);
-  store(&out[2][idx*soaf::size], v.z);
 }
 
 struct soaisec {

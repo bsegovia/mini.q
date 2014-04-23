@@ -8,8 +8,6 @@
 #include <zlib.h>
 
 namespace q {
-VARP(fov, 30, 70, 160);
-void finish() {}
 static void playerpos(int x, int y, int z) {game::player1->o = vec3f(vec3i(x,y,z));}
 static void playerypr(int x, int y, int z) {game::player1->ypr = vec3f(vec3i(x,y,z));}
 CMD(playerpos);
@@ -44,7 +42,7 @@ static void run(int argc, const char *argv[]) {
   con::out("init: memory debugger");
   sys::memstart();
   con::out("init: tasking system");
-  const u32 threadnum = 0;//sys::threadnumber() - 1;
+  const u32 threadnum = sys::threadnumber() - 1;
   con::out("init: tasking system: %d threads created", threadnum);
   task::start(&threadnum, 1);
   con::out("init: isosurface module");

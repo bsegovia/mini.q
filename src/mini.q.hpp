@@ -30,8 +30,9 @@
 #include "base/task.hpp"
 
 namespace q {
-extern int fov, farplane;
-void start();
+extern int fov, farplane, gamespeed, minmillis;
+void start(int argc, const char *argv[]);
 void finish();
+void swap();
 }
 

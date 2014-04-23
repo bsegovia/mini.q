@@ -16,7 +16,7 @@ DEBUGFLAGS=-O0 -DMEMORY_DEBUGGER -g
 OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g #-fsanitize=address
 RELFLAGS=-fomit-frame-pointer -O2 -DNDEBUG -DRELEASE
 
-CXXFLAGS=$(CXXCOMMONFLAGS) $(FLAGS) $(DEBUGFLAGS)
+CXXFLAGS=$(CXXCOMMONFLAGS) $(FLAGS) $(OPTFLAGS)
 LIBS=`sdl2-config --libs` -lSDL2_image -lSDL2_mixer -lz -lm -lstdc++ #-fsanitize=address
 
 ENET_OBJS=\
@@ -82,6 +82,7 @@ GAME_OBJS=\
   iso.o\
   md2.o\
   menu.o\
+  mini.q.o\
   monster.o\
   network.o\
   ogl.o\
@@ -109,7 +110,7 @@ CLIENT_OBJS=\
   $(ENET_OBJS)\
   $(BASE_OBJS)\
   $(GAME_OBJS)\
-  mini.q.o
+  main.o
 
 RT_OBJS=\
   $(LUA_OBJS)\
@@ -117,6 +118,13 @@ RT_OBJS=\
   $(BASE_OBJS)\
   $(GAME_OBJS)\
   mini.q.rt.o
+
+ISO_OBJS=\
+  $(LUA_OBJS)\
+  $(ENET_OBJS)\
+  $(BASE_OBJS)\
+  $(GAME_OBJS)\
+  mini.q.iso.o
 
 SERVER_OBJS=\
   $(LUA_OBJS)\
@@ -137,7 +145,7 @@ MAYAOBJ_OBJS=\
   obj.o
 
 SHADERS=$(shell ls data/shaders/*[glsl,decl])
-all: mini.q.server mini.q.rt mini.q importobj compress_chars importobj
+all: mini.q.server mini.q.rt mini.q.iso mini.q importobj compress_chars importobj
 
 rtavx.o: rtavx.cpp
 	$(CXX) $(CXXFLAGS) -mavx -c rtavx.cpp -o rtavx.o
@@ -146,6 +154,7 @@ rtavx.o: rtavx.cpp
 -include $(CLIENT_OBJS:.o=.d)
 -include $(SERVER_OBJS:.o=.d)
 -include $(RT_OBJS:.o=.d)
+-include $(ISO_OBJS:.o=.d)
 -include $(LUA_OBJS:.o=.d)
 -include $(GAME_OBJS:.o=.d)
 -include $(BASE_OBJS:.o=.d)
@@ -163,6 +172,9 @@ mini.q: $(CLIENT_OBJS)
 
 mini.q.rt: $(RT_OBJS)
 	$(CXX) $(CXXFLAGS) -o mini.q.rt $(RT_OBJS) $(LIBS)
+
+mini.q.iso: $(ISO_OBJS)
+	$(CXX) $(CXXFLAGS) -o mini.q.iso $(ISO_OBJS) $(LIBS)
 
 mini.q.server: $(SERVER_OBJS)
 	$(CXX) $(CXXFLAGS) -o mini.q.server $(SERVER_OBJS) $(LIBS)
