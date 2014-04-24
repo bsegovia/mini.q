@@ -4,6 +4,8 @@
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
 #include "rt.hpp"
+#include "iso.hpp"
+#include "csg.hpp"
 #include "enet/enet.h"
 #include <time.h>
 #include <SDL2/SDL_image.h>

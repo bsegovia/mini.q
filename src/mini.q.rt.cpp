@@ -5,6 +5,8 @@
 #include "mini.q.hpp"
 #include "bvh.hpp"
 #include "rt.hpp"
+#include "iso.hpp"
+#include "csg.hpp"
 #include <zlib.h>
 
 namespace q {

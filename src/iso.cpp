@@ -89,10 +89,10 @@ struct edgeitem {
 };
 
 struct edgestack {
-  array<edgeitem,64> it;
-  array<vec3f,64> p, pos;
-  array<float,64> d, nd;
-  array<u32,64> m;
+  array<edgeitem,csg::MAXPOINTNUM> it;
+  csg::array3f p, pos;
+  csg::arrayf d, nd;
+  csg::arrayi m;
 };
 
 /*-------------------------------------------------------------------------
@@ -205,14 +205,14 @@ struct dc_gridbuilder {
     const vec3i org(-1), dim(SUBGRID+3);
     stepxyz(org, dim, vec3i(4)) {
       // use edgestack here
-      vec3f pos[64];
-      float d[64];
-      u32 m[64];
+      csg::array3f pos;
+      csg::arrayf d;
+      csg::arrayi m;
       const auto p = vertex(sxyz);
       const aabb box = aabb(p-2.f*m_cellsize, p+6.f*m_cellsize);
       int index = 0;
       const auto end = min(sxyz+4,dim);
-      loopxyz(sxyz, end) pos[index++] = vertex(xyz);
+      loopxyz(sxyz, end) csg::set(pos, vertex(xyz), index++);
       assert(index == 64);
       csg::dist(m_node, pos, NULL, d, m, index, box);
       index = 0;
@@ -268,31 +268,34 @@ struct dc_gridbuilder {
     loopk(MAX_STEPS) {
       auto box = aabb::empty();
       loopi(num) {
-        p[i] = (it[i].p0 + it[i].p1) * 0.5f;
-        pos[i] = it[i].org+m_cellsize*p[i];
-        box.pmin = min(pos[i], box.pmin);
-        box.pmax = max(pos[i], box.pmax);
+        const auto mid = (it[i].p0 + it[i].p1) * 0.5f;
+        const auto worldmid = it[i].org+m_cellsize*mid;
+        csg::set(p, mid, i);
+        csg::set(pos, worldmid, i);
+        box.pmin = min(worldmid, box.pmin);
+        box.pmax = max(worldmid, box.pmax);
       }
       box.pmin -= 3.f * m_cellsize;
       box.pmax += 3.f * m_cellsize;
-      csg::dist(m_node, &pos[0], NULL, &d[0], &m[0], num, box);
+      csg::dist(m_node, pos, NULL, d, m, num, box);
       if (k != MAX_STEPS-1) {
         loopi(num) {
           assert(!isnan(d[i]));
-          if (m[i] == it[i].m0) {
-            it[i].p0 = p[i];
+          if (m[i] == int(it[i].m0)) {
+            it[i].p0 = csg::get(p,i);
             it[i].v0 = d[i];
           } else {
-            it[i].p1 = p[i];
+            it[i].p1 = csg::get(p,i);
             it[i].v1 = d[i];
           }
         }
       } else {
         loopi(num) {
-          it[i].p0 = p[i];
+          const auto src = csg::get(p,i);
+          it[i].p0 = src;
 #if !defined(NDEBUG)
-          assert(!isnan(p[i].x)&&!isnan(p[i].y)&&!isnan(p[i].z));
-          assert(!isinf(p[i].x)&&!isinf(p[i].y)&&!isinf(p[i].z));
+          assert(!isnan(src.x)&&!isnan(src.y)&&!isnan(src.z));
+          assert(!isinf(src.x)&&!isinf(src.y)&&!isinf(src.z));
 #endif
         }
       }
@@ -338,18 +341,19 @@ struct dc_gridbuilder {
       const auto dz = vec3f(0.f, 0.f, DEFAULT_GRAD_STEP);
       for (int j = 0; j < num; j += 16) {
         const int subnum = min(num-j, 16);
-        auto p = &m_stack->p[0];
-        auto d = &m_stack->d[0];
-        auto m = &m_stack->m[0];
-        auto nd = &m_stack->nd[0];
+        auto p = m_stack->p;
+        auto d = m_stack->d;
+        auto m = m_stack->m;
+        auto nd = m_stack->nd;
         auto box = aabb::empty();
         loopk(subnum) {
-          p[4*k]   = it[j+k].org + it[j+k].p0 * m_cellsize;
-          p[4*k+1] = p[4*k]-dx;
-          p[4*k+2] = p[4*k]-dy;
-          p[4*k+3] = p[4*k]-dz;
-          box.pmin = min(p[4*k], box.pmin);
-          box.pmax = max(p[4*k], box.pmax);
+          const auto center = it[j+k].org + it[j+k].p0 * m_cellsize;
+          csg::set(p, center,    4*k+0);
+          csg::set(p, center-dx, 4*k+1);
+          csg::set(p, center-dy, 4*k+2);
+          csg::set(p, center-dz, 4*k+3);
+          box.pmin = min(center, box.pmin);
+          box.pmax = max(center, box.pmax);
         }
         box.pmin -= 3.f * m_cellsize;
         box.pmax += 3.f * m_cellsize;
@@ -360,7 +364,7 @@ struct dc_gridbuilder {
           bool const solidsolid = m0 != csg::MAT_AIR_INDEX && m1 != csg::MAT_AIR_INDEX;
           nd[k] = solidsolid ? m_cellsize : 0.f;
         }
-        csg::dist(m_node, p, nd, d, m, 4*subnum, box);
+        csg::dist(m_node, p, &nd, d, m, 4*subnum, box);
         STATS_ADD(iso_num, 4*subnum);
         STATS_ADD(iso_gradient_num, 4*subnum);
 

@@ -118,10 +118,13 @@ struct rotation : node {
   ref<node> n;
 };
 
-void distr(const node *n, const vec3f * RESTRICT pos,
-           const float * RESTRICT normaldist,
-           float * RESTRICT dist, u32 * RESTRICT matindex, int num,
-           const aabb &box)
+INLINE vec3f get(const array3f &v, u32 idx) {
+  return vec3f(v[0][idx], v[1][idx], v[2][idx]);
+}
+
+static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
+                  const arrayf *RESTRICT normaldist, arrayf &RESTRICT dist,
+                  arrayi &RESTRICT matindex, int num, const aabb &RESTRICT box)
 {
   switch (n->type) {
     case C_UNION: {
@@ -132,8 +135,8 @@ void distr(const node *n, const vec3f * RESTRICT pos,
       const auto goright = all(le(isecright.pmin, isecright.pmax));
       if (goleft && goright) {
         distr(u->left, pos, normaldist, dist, matindex, num, box);
-        float tempdist[64];
-        u32 tempmatindex[64];
+        arrayf tempdist;
+        arrayi tempmatindex;
         loopi(num) {
           tempdist[i] = FLT_MAX;
           tempmatindex[i] = MAT_AIR_INDEX;
@@ -142,7 +145,9 @@ void distr(const node *n, const vec3f * RESTRICT pos,
         loopi(num) matindex[i] = max(matindex[i], tempmatindex[i]);
         if (normaldist)
           loopi(num)
-            dist[i] = abs(tempdist[i]) < normaldist[i] ? tempdist[i] : min(dist[i], tempdist[i]);
+            dist[i] = abs(tempdist[i]) < (*normaldist)[i] ?
+              tempdist[i] :
+              min(dist[i], tempdist[i]);
         else
           loopi(num) dist[i] = min(dist[i], tempdist[i]);
       } else if (goleft)
@@ -160,8 +165,8 @@ void distr(const node *n, const vec3f * RESTRICT pos,
       const auto isecright = intersection(r->right->box, box);
       const auto goright = all(le(isecright.pmin, isecright.pmax));
       if (!goright) return;
-      float tempdist[64];
-      u32 tempmatindex[64];
+      arrayf tempdist;
+      arrayi tempmatindex;
       loopi(num) {
         tempdist[i] = FLT_MAX;
         tempmatindex[i] = MAT_AIR_INDEX;
@@ -173,7 +178,7 @@ void distr(const node *n, const vec3f * RESTRICT pos,
       }
       if (normaldist)
         loopi(num)
-          dist[i] = dist[i] < 0.f && abs(tempdist[i]) < normaldist[i] ?
+          dist[i] = dist[i] < 0.f && abs(tempdist[i]) < (*normaldist)[i] ?
             tempdist[i] : dist[i];
     }
     break;
@@ -184,7 +189,7 @@ void distr(const node *n, const vec3f * RESTRICT pos,
       const auto isecright = intersection(in->right->box, box);
       if (!all(le(isecright.pmin, isecright.pmax))) break;
       distr(in->left, pos, normaldist, dist, matindex, num, box);
-      float tempdist[64];
+      arrayf tempdist;
       loopi(num) tempdist[i] = FLT_MAX;
       distr(in->right, pos, normaldist, tempdist, matindex, num, box);
       loopi(num) {
@@ -201,8 +206,8 @@ void distr(const node *n, const vec3f * RESTRICT pos,
 
       const auto isecright = intersection(d->right->box, box);
       if (!all(le(isecright.pmin, isecright.pmax))) break;
-      float tempdist[64];
-      u32 tempmatindex[64];
+      arrayf tempdist;
+      arrayi tempmatindex;
       loopi(num) tempdist[i] = FLT_MAX;
       distr(d->right, pos, normaldist, tempdist, tempmatindex, num, box);
       loopi(num) {
@@ -215,8 +220,8 @@ void distr(const node *n, const vec3f * RESTRICT pos,
       const auto isec = intersection(n->box, box);
       if (any(gt(isec.pmin, isec.pmax))) break;
       const auto t = static_cast<const translation*>(n);
-      vec3f tpos[64];
-      loopi(num) tpos[i] = pos[i] - t->p;
+      array3f tpos;
+      loopi(num) set(tpos, get(pos,i) - t->p, i);
       const aabb tbox(box.pmin-t->p, box.pmax-t->p);
       distr(t->n, tpos, normaldist, dist, matindex, num, tbox);
     }
@@ -225,8 +230,8 @@ void distr(const node *n, const vec3f * RESTRICT pos,
       const auto isec = intersection(n->box, box);
       if (any(gt(isec.pmin, isec.pmax))) break;
       const auto r = static_cast<const rotation*>(n);
-      vec3f tpos[64];
-      loopi(num) tpos[i] = xfmpoint(conj(r->q), pos[i]);
+      array3f tpos;
+      loopi(num) set(tpos, xfmpoint(conj(r->q), get(pos,i)), i);
       distr(r->n, tpos, normaldist, dist, matindex, num, aabb::all());
     }
     break;
@@ -235,7 +240,7 @@ void distr(const node *n, const vec3f * RESTRICT pos,
       if (any(gt(isec.pmin, isec.pmax))) break;
       const auto p = static_cast<const plane*>(n);
       loopi(num) {
-        dist[i] = dot(pos[i], p->p.xyz()) + p->p.w;
+        dist[i] = dot(get(pos,i), p->p.xyz()) + p->p.w;
         matindex[i] = dist[i] < 0.f ? p->matindex : matindex[i];
       }
     }
@@ -247,7 +252,7 @@ void distr(const node *n, const vec3f * RESTRICT pos,
     if (any(gt(isec.pmin, isec.pmax))) break;\
     const auto c = static_cast<const cylinder##COORD*>(n);\
     loopi(num) {\
-      dist[i] = length(pos[i].COORD()-c->c##COORD) - c->r;\
+      dist[i] = length(get(pos,i).COORD()-c->c##COORD) - c->r;\
       matindex[i] = dist[i] < 0.f ? c->matindex : matindex[i];\
     }\
   }\
@@ -260,7 +265,7 @@ void distr(const node *n, const vec3f * RESTRICT pos,
       if (any(gt(isec.pmin, isec.pmax))) break;
       const auto s = static_cast<const sphere*>(n);
       loopi(num) {
-        dist[i] = length(pos[i]) - s->r;
+        dist[i] = length(get(pos,i)) - s->r;
         matindex[i] = dist[i] < 0.f ? s->matindex : matindex[i];
       }
     }
@@ -271,7 +276,7 @@ void distr(const node *n, const vec3f * RESTRICT pos,
       const auto b = static_cast<const struct box*>(n);
       const auto extent = b->extent;
       loopi(num) {
-        const auto pd = abs(pos[i])-extent;
+        const auto pd = abs(get(pos,i))-extent;
         dist[i] = min(max(pd.x,max(pd.y,pd.z)),0.0f) + length(max(pd,vec3f(zero)));
         matindex[i] = dist[i] < 0.f ? b->matindex : matindex[i];
       }
@@ -282,8 +287,9 @@ void distr(const node *n, const vec3f * RESTRICT pos,
   }
 }
 
-void dist(const node *n, const vec3f *pos, const float *normaldist,
-          float *d, u32 *mat, int num, const aabb &box)
+void dist(const node *RESTRICT n, const array3f &RESTRICT pos,
+          const arrayf *RESTRICT normaldist, arrayf &RESTRICT d,
+          arrayi &RESTRICT mat, int num, const aabb &RESTRICT box)
 {
   assert(num <= 64);
   loopi(num) d[i] = FLT_MAX;

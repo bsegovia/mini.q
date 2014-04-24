@@ -5,6 +5,7 @@
 #pragma once
 #include "base/ref.hpp"
 #include "base/math.hpp"
+#include "soa.hpp"
 
 namespace q {
 namespace csg {
@@ -55,8 +56,26 @@ struct node : refcount {
 node *makescene();
 void destroyscene(node *n);
 
+/*--------------------------------------------------------------------------
+ - for soa computations
+ -------------------------------------------------------------------------*/
+static const u32 MAXPOINTNUM = 64u;
+typedef CACHE_LINE_ALIGNED q::arrayi<MAXPOINTNUM> arrayi;
+typedef CACHE_LINE_ALIGNED q::arrayf<MAXPOINTNUM> arrayf;
+typedef CACHE_LINE_ALIGNED q::array2f<MAXPOINTNUM> array2f;
+typedef CACHE_LINE_ALIGNED q::array3f<MAXPOINTNUM> array3f;
+typedef CACHE_LINE_ALIGNED q::array4f<MAXPOINTNUM> array4f;
+INLINE void set(array3f &v, vec3f u, u32 idx) {
+  v[0][idx]=u.x; v[1][idx]=u.y; v[2][idx]=u.z;
+}
+INLINE vec3f get(array3f &v, u32 idx) {
+  return vec3f(v[0][idx], v[1][idx], v[2][idx]);
+}
+
 float dist(const node*, const vec3f&, const aabb &box = aabb::all());
-void dist(const node*, const vec3f*, const float *normaldist, float *d, u32 *mat, int num, const aabb&);
+void dist(const node *RESTRICT, const array3f &RESTRICT,
+          const arrayf *RESTRICT, arrayf &RESTRICT, arrayi &RESTRICT,
+          int num, const aabb &RESTRICT);
 } /* namespace csg */
 } /* namespace q */
 

@@ -8,7 +8,6 @@
 #include "entities.hpp"
 #include "editing.hpp"
 #include "game.hpp"
-#include "iso.hpp"
 #include "md2.hpp"
 #include "menu.hpp"
 #include "monster.hpp"
