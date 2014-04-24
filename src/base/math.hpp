@@ -6,6 +6,7 @@
 #include "sys.hpp"
 #include <cmath>
 #include <cfloat>
+#include <cstdlib>
 
 namespace q {
 #define TNOINLINE template <typename T> NOINLINE

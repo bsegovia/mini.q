@@ -7,7 +7,9 @@
 #if defined(__UNIX__)
 #include <unistd.h>
 #endif
+#if !defined(__APPLE__)
 #include <malloc.h>
+#endif
 
 namespace q {
 namespace sys {
