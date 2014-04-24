@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------
  - mini.q - a minimalistic multiplayer fps
- - bvhsimd.cpp -> implements intersection routines using SIMD instructions
+ - rtsimd.cpp -> implements intersection routines using SIMD instructions
  -------------------------------------------------------------------------*/
 #include <cstring>
 #include <cfloat>

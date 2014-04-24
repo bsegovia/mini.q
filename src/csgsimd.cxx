@@ -1,8 +1,11 @@
 /*-------------------------------------------------------------------------
  - mini.q - a minimalistic multiplayer fps
- - rtavx.cpp -> instantiates avx routines
+ - csgsimd.cpp -> implements csg evaluation using SIMD instructions
  -------------------------------------------------------------------------*/
-#define NAMESPACE avx
-#include "rtsimd.cxx"
-#undef avx
+namespace q {
+namespace csg {
+namespace NAMESPACE {
 
+} /* namespace NAMESPACE */
+} /* namespace rt */
+} /* namespace q */

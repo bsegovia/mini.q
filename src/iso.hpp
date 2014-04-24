@@ -20,7 +20,7 @@ struct mesh {
               segment *seg=NULL, u32 vn=0, u32 idxn=0, u32 segn=0) :
     m_pos(pos), m_nor(nor), m_index(index), m_segment(seg),
     m_vertnum(vn), m_indexnum(idxn), m_segmentnum(segn) {}
-  ~mesh();
+  void destroy();
   vec3f *m_pos, *m_nor;
   u32 *m_index;
   segment *m_segment;
@@ -28,6 +28,10 @@ struct mesh {
   u32 m_indexnum;
   u32 m_segmentnum;
 };
+
+// load/store the mesh in the given stream
+void store(const char *filename, const mesh &m);
+bool load(const char *filename, mesh &m);
 
 // tesselate along a grid the distance field with dual contouring algorithm
 mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d);

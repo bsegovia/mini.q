@@ -33,12 +33,13 @@ static void stats() {
 
 namespace q {
 namespace iso {
-mesh::~mesh() {
-  if (m_pos) FREE(m_pos);
-  if (m_nor) FREE(m_nor);
-  if (m_index) FREE(m_index);
-}
+void mesh::destroy() {
+  if (m_pos) {FREE(m_pos); m_pos=NULL;}
+  if (m_nor) {FREE(m_nor); m_nor=NULL;}
+  if (m_index) {FREE(m_index); m_index=NULL;}
+  if (m_segment) {FREE(m_segment); m_segment=NULL;}
 
+}
 static const auto DEFAULT_GRAD_STEP = 1e-3f;
 static const int MAX_STEPS = 8;
 static const float SHARP_EDGE_THRESHOLD = 0.2f;
@@ -1286,6 +1287,37 @@ mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &
   stats();
 #endif
   return buildmesh(o, cellsize);
+}
+void store(const char *filename, const mesh &m) {
+  auto f = fopen(filename, "wb");
+  assert(f);
+  fwrite(&m.m_vertnum, sizeof(u32), 1, f);
+  fwrite(&m.m_indexnum, sizeof(u32), 1, f);
+  fwrite(&m.m_segmentnum, sizeof(u32), 1, f);
+  fwrite(m.m_pos, sizeof(vec3f) * m.m_vertnum, 1, f);
+  fwrite(m.m_nor, sizeof(vec3f) * m.m_vertnum, 1, f);
+  fwrite(m.m_index, sizeof(u32) * m.m_indexnum, 1, f);
+  fwrite(m.m_segment, sizeof(segment) * m.m_segmentnum, 1, f);
+  fclose(f);
+}
+
+bool load(const char *filename, mesh &m) {
+  auto f = fopen(filename, "rb");
+  if (f==NULL) return false;
+  m.destroy();
+  fread(&m.m_vertnum, sizeof(u32), 1, f);
+  fread(&m.m_indexnum, sizeof(u32), 1, f);
+  fread(&m.m_segmentnum, sizeof(u32), 1, f);
+  m.m_pos = (vec3f*) MALLOC(sizeof(vec3f) * m.m_vertnum);
+  m.m_nor = (vec3f*) MALLOC(sizeof(vec3f) * m.m_vertnum);
+  m.m_index = (u32*) MALLOC(sizeof(u32) * m.m_indexnum);
+  m.m_segment = (segment*) MALLOC(sizeof(segment) * m.m_segmentnum);
+  fread(m.m_pos, sizeof(vec3f) * m.m_vertnum, 1, f);
+  fread(m.m_nor, sizeof(vec3f) * m.m_vertnum, 1, f);
+  fread(m.m_index, sizeof(u32) * m.m_indexnum, 1, f);
+  fread(m.m_segment, sizeof(segment) * m.m_segmentnum, 1, f);
+  fclose(f);
+  return true;
 }
 
 void start() { ctx = NEWE(context); }
