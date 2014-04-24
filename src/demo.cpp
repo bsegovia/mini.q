@@ -85,7 +85,7 @@ static void savegame(const char *name) {
   fixedstring fn(fmt,"savegames/%s.csgz", name);
   savestate(fn.c_str());
   stop();
-  con::out("wrote %s", fn);
+  con::out("wrote %s", fn.c_str());
 }
 CMD(savegame);
 
@@ -172,7 +172,7 @@ static void record(const char *name) {
   fixedstring fn(fmt,"demos/%s.cdgz", name);
   savestate(fn.c_str());
   gzputi(cn);
-  con::out("started recording demo to %s", fn);
+  con::out("started recording demo to %s", fn.c_str());
   demorecording = true;
   starttime = int(game::lastmillis());
   ddamage = bdamage = 0;

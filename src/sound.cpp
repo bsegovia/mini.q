@@ -138,7 +138,7 @@ void play(int n, const vec3f *loc) {
     fixedstring buf(fmt, "data/sounds/%s.wav", snames[n]);
     samples[n] = Mix_LoadWAV(sys::path(buf.c_str()));
     if (!samples[n]) {
-      con::out("failed to load sample: %s", buf);
+      con::out("failed to load sample: %s", buf.c_str());
       return;
     }
   }

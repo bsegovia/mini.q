@@ -384,7 +384,7 @@ void selfdamage(int damage, int actor, dynent *act) {
     (player1->ypr.z<0 ? -droll : (rnd(2) ? droll : -droll));
   if ((player1->health -= damage)<=0) {
     if (actor==-2)
-      con::out("you got killed by %s!", act->name);
+      con::out("you got killed by %s!", act->name.c_str());
     else if (actor==-1) {
       actor = client::getclientnum();
       con::out("you suicided!");
@@ -393,9 +393,9 @@ void selfdamage(int damage, int actor, dynent *act) {
       dynent *a = getclient(actor);
       if (a) {
         if (isteam(a->team.c_str(), player1->team.c_str()))
-          con::out("you got fragged by a teammate (%s)", a->name);
+          con::out("you got fragged by a teammate (%s)", a->name.c_str());
         else
-          con::out("you got fragged by %s", a->name);
+          con::out("you got fragged by %s", a->name.c_str());
       }
     }
     showscores(true);
@@ -528,10 +528,10 @@ static vector<sline> scorelines;
 
 static void renderscore(dynent *d) {
   fixedstring lag(fmt, "%d", d->plag);
-  fixedstring name(fmt, "(%s)", d->name);
+  fixedstring name(fmt, "(%s)", d->name.c_str());
   scorelines.add().s.fmt("%d\t%s\t%d\t%s\t%s",
-    d->frags, d->state==CS_LAGGED ? "LAG" : lag, d->ping,
-    d->team.c_str(), d->state==CS_DEAD ? name : d->name.c_str());
+    d->frags, d->state==CS_LAGGED ? "LAG" : lag.c_str(), d->ping,
+    d->team.c_str(), d->state==CS_DEAD ? name.c_str() : d->name.c_str());
   menu::manual(0, scorelines.length()-1, scorelines.last().s.c_str());
 }
 
