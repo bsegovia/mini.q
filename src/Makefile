@@ -75,6 +75,7 @@ GAME_OBJS=\
   client.o\
   bvh.o\
   csg.o\
+  csgscalar.o\
   demo.o\
   editing.o\
   entities.o\

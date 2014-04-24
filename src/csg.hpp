@@ -71,11 +71,6 @@ INLINE void set(array3f &v, vec3f u, u32 idx) {
 INLINE vec3f get(array3f &v, u32 idx) {
   return vec3f(v[0][idx], v[1][idx], v[2][idx]);
 }
-
-float dist(const node*, const vec3f&, const aabb &box = aabb::all());
-void dist(const node *RESTRICT, const array3f &RESTRICT,
-          const arrayf *RESTRICT, arrayf &RESTRICT, arrayi &RESTRICT,
-          int num, const aabb &RESTRICT);
 } /* namespace csg */
 } /* namespace q */
 
