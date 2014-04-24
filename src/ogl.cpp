@@ -145,7 +145,7 @@ static void startgl() {
   ogl::GetIntegerv(GL_MAX_DRAW_BUFFERS, &drawbufs);
   if (drawbufs < 4) sys::fatal("OpenGL: hardware does not support at least 4 draw buffers.");
 
-  if (!ext.has("GL_ARB_texture_rectangle"))
+  if (glversion < 310 && !ext.has("GL_ARB_texture_rectangle"))
     sys::fatal("OpenGL: GL_ARB_texture_rectangle extension is required");
   if (ext.has("GL_EXT_timer_query") || ext.has("GL_ARB_timer_query")) {
     if(ext.has("GL_EXT_timer_query")) {
