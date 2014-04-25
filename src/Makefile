@@ -16,7 +16,9 @@ DEBUGFLAGS=-O0 -DMEMORY_DEBUGGER -g
 OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g #-fsanitize=address
 RELFLAGS=-fomit-frame-pointer -O3 -DNDEBUG -DRELEASE
 
-CXXFLAGS=$(CXXCOMMONFLAGS) $(FLAGS) $(DEBUGFLAGS)
+CXXFLAGS=$(CXXCOMMONFLAGS) $(FLAGS) $(RELFLAGS)
+CXXSSEFLAGS=$(CXXFLAGS) -msse -msse2
+CXXAVXFLAGS=$(CXXFLAGS) -mavx
 LIBS=`sdl2-config --libs` -lSDL2_image -lSDL2_mixer -lz -lm -lstdc++ #-fsanitize=address
 
 ENET_OBJS=\
@@ -76,6 +78,8 @@ GAME_OBJS=\
   bvh.o\
   csg.o\
   csgscalar.o\
+  csgsse.o\
+  csgavx.o\
   demo.o\
   editing.o\
   entities.o\
@@ -148,8 +152,11 @@ MAYAOBJ_OBJS=\
 SHADERS=$(shell ls data/shaders/*[glsl,decl])
 all: mini.q.server mini.q.rt mini.q.iso mini.q importobj compress_chars importobj
 
-rtavx.o: rtavx.cpp
-	$(CXX) $(CXXFLAGS) -mavx -c rtavx.cpp -o rtavx.o
+%.o: %.cpp
+	$(CXX) $(CXXSSEFLAGS) -c $< -o $@
+
+%avx.o: %avx.cpp
+	$(CXX) $(CXXAVXFLAGS) -c $< -o $@
 
 -include $(MAYAOBJ_OBJS:.o=.d)
 -include $(CLIENT_OBJS:.o=.d)

@@ -65,12 +65,6 @@ typedef CACHE_LINE_ALIGNED q::arrayf<MAXPOINTNUM> arrayf;
 typedef CACHE_LINE_ALIGNED q::array2f<MAXPOINTNUM> array2f;
 typedef CACHE_LINE_ALIGNED q::array3f<MAXPOINTNUM> array3f;
 typedef CACHE_LINE_ALIGNED q::array4f<MAXPOINTNUM> array4f;
-INLINE void set(array3f &v, vec3f u, u32 idx) {
-  v[0][idx]=u.x; v[1][idx]=u.y; v[2][idx]=u.z;
-}
-INLINE vec3f get(array3f &v, u32 idx) {
-  return vec3f(v[0][idx], v[1][idx], v[2][idx]);
-}
 } /* namespace csg */
 } /* namespace q */
 

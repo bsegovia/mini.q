@@ -3,6 +3,7 @@
  - csgscalar.cpp -> implements csg evaluation in plain C (no simd)
  -------------------------------------------------------------------------*/
 #include "csg.hpp"
+#include "csgscalar.hpp"
 #include "csginternal.hpp"
 
 namespace q {
@@ -176,7 +177,6 @@ void dist(const node *RESTRICT n, const array3f &RESTRICT pos,
           const arrayf *RESTRICT normaldist, arrayf &RESTRICT d,
           arrayi &RESTRICT mat, int num, const aabb &RESTRICT box)
 {
-  assert(num <= 64);
   loopi(num) d[i] = FLT_MAX;
   loopi(num) mat[i] = MAT_AIR_INDEX;
   distr(n, pos, normaldist, d, mat, num, box);

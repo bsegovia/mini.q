@@ -8,6 +8,7 @@
 #include "csgscalar.hpp"
 #include "base/vector.hpp"
 #include "base/task.hpp"
+#include "base/console.hpp" // XXX remove that
 
 STATS(iso_num);
 STATS(iso_edgepos_num);
@@ -1271,6 +1272,7 @@ static mesh buildmesh(octree &o, float cellsize) {
 }
 
 mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d) {
+  const auto start = sys::millis();
   octree o(cellnum);
   ctx->m_work.setsize(0);
   mt_builder r(d, org, cellsize, cellnum);
@@ -1282,11 +1284,13 @@ mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &
   ref<task> job = NEW(isotask, ctx->m_work.length());
   job->scheduled();
   job->wait();
-
+  con::out("elapsed %f ms", sys::millis()-start);
+  exit(EXIT_SUCCESS);
 #if !defined(RELEASE)
   stats();
 #endif
-  return buildmesh(o, cellsize);
+  const auto m = buildmesh(o, cellsize);
+  return m;
 }
 void store(const char *filename, const mesh &m) {
   auto f = fopen(filename, "wb");

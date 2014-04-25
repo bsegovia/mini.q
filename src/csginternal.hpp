@@ -111,10 +111,6 @@ struct rotation : node {
   quat3f q;
   ref<node> n;
 };
-
-INLINE vec3f get(const array3f &v, u32 idx) {
-  return vec3f(v[0][idx], v[1][idx], v[2][idx]);
-}
 } /* namespace csg */
 } /* namespace q */
 
