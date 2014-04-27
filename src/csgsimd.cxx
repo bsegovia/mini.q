@@ -24,15 +24,21 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
       const auto goright = all(le(isecright.pmin, isecright.pmax));
       if (goleft && goright) {
         distr(u->left, pos, normaldist, dist, matindex, packetnum, box);
-        arrayf tempdist;
-        arrayi tempmatindex;
+        CACHE_LINE_ALIGNED arrayf tempdist;
+        CACHE_LINE_ALIGNED arrayi tempmatindex;
         loopi(packetnum) {
           const auto idx = i*soaf::size;
           store(&tempdist[idx], soaf(FLT_MAX));
           store(&tempmatindex[idx], soai(MAT_AIR_INDEX));
         }
         distr(u->right, pos, normaldist, tempdist, tempmatindex, packetnum, box);
-        loopi(packetnum) matindex[i] = max(matindex[i], tempmatindex[i]);
+        loopi(packetnum) {
+          const auto idx = i*soaf::size;
+          const auto old = soai::load(&matindex[idx]);
+          const auto tmp = soai::load(&tempmatindex[idx]);
+          const auto newindex = select(old > tmp, old, tmp);
+          store(&matindex[idx], newindex);
+        }
         if (normaldist) loopi(packetnum) {
           const auto idx = i*soaf::size;
           const auto d = soaf::load(&dist[idx]);
@@ -62,8 +68,8 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
       const auto isecright = intersection(r->right->box, box);
       const auto goright = all(le(isecright.pmin, isecright.pmax));
       if (!goright) return;
-      arrayf tempdist;
-      arrayi tempmatindex;
+      CACHE_LINE_ALIGNED arrayf tempdist;
+      CACHE_LINE_ALIGNED arrayi tempmatindex;
       loopi(packetnum) {
         const auto idx = i*soaf::size;
         store(&tempdist[idx], soaf(FLT_MAX));
@@ -97,7 +103,7 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
       const auto isecright = intersection(in->right->box, box);
       if (!all(le(isecright.pmin, isecright.pmax))) break;
       distr(in->left, pos, normaldist, dist, matindex, packetnum, box);
-      arrayf tempdist;
+      CACHE_LINE_ALIGNED arrayf tempdist;
       loopi(packetnum) store(&tempdist[i*soaf::size], soaf(FLT_MAX));
       distr(in->right, pos, normaldist, tempdist, matindex, packetnum, box);
       loopi(packetnum) {
@@ -105,9 +111,9 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
         const auto d = soaf::load(&dist[idx]);
         const auto td = soaf::load(&tempdist[idx]);
         const auto md = max(d,td);
-        const auto oldindex = soai::load(&matindex[i]);
+        const auto oldindex = soai::load(&matindex[idx]);
         const auto airindex = soai(MAT_AIR_INDEX);
-        const auto newindex = select(d>=soaf(zero), airindex, oldindex);
+        const auto newindex = select(md>=soaf(zero), airindex, oldindex);
         store(&dist[idx], md);
         store(&matindex[idx], newindex);
       }
@@ -121,8 +127,8 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
 
       const auto isecright = intersection(d->right->box, box);
       if (!all(le(isecright.pmin, isecright.pmax))) break;
-      arrayf tempdist;
-      arrayi tempmatindex;
+      CACHE_LINE_ALIGNED arrayf tempdist;
+      CACHE_LINE_ALIGNED arrayi tempmatindex;
       loopi(packetnum) store(&tempdist[i*soaf::size], soaf(FLT_MAX));
       distr(d->right, pos, normaldist, tempdist, tempmatindex, packetnum, box);
       loopi(packetnum) {
@@ -130,9 +136,9 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
         const auto d = soaf::load(&dist[idx]);
         const auto td = soaf::load(&tempdist[idx]);
         const auto md = max(d,-td);
-        const auto oldindex = soai::load(&matindex[i]);
+        const auto oldindex = soai::load(&matindex[idx]);
         const auto airindex = soai(MAT_AIR_INDEX);
-        const auto newindex = select(d>=soaf(zero), airindex, oldindex);
+        const auto newindex = select(md>=soaf(zero), airindex, oldindex);
         store(&dist[idx], md);
         store(&matindex[idx], newindex);
       }
@@ -143,7 +149,7 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
       if (any(gt(isec.pmin, isec.pmax))) break;
       const auto t = static_cast<const translation*>(n);
       const auto tp = soa3f(t->p);
-      array3f tpos;
+      CACHE_LINE_ALIGNED array3f tpos;
       loopi(packetnum) sset(tpos, sget(pos,i) - tp, i);
       const aabb tbox(box.pmin-t->p, box.pmax-t->p);
       distr(t->n, tpos, normaldist, dist, matindex, packetnum, tbox);
@@ -154,7 +160,7 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
       if (any(gt(isec.pmin, isec.pmax))) break;
       const auto r = static_cast<const rotation*>(n);
       const auto rq = quat<soaf>(conj(r->q));
-      array3f tpos;
+      CACHE_LINE_ALIGNED array3f tpos;
       loopi(packetnum) sset(tpos, xfmpoint(rq, sget(pos,i)), i);
       distr(r->n, tpos, normaldist, dist, matindex, packetnum, aabb::all());
     }

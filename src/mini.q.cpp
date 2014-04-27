@@ -205,7 +205,7 @@ void start(int argc, const char *argv[]) {
   // flush to zero and no denormals
   _mm_setcsr(_mm_getcsr() | (1<<15) | (1<<6));
 #endif
-  const u32 threadnum = sys::threadnumber() - 1;
+  const u32 threadnum = 0; //sys::threadnumber() - 1;
   con::out("init: tasking system: %d threads created", threadnum);
   task::start(&threadnum, 1);
 

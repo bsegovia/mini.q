@@ -34,6 +34,8 @@ static void stats() {
 }
 #endif
 
+#define CSGVER csg::avx
+
 namespace q {
 namespace iso {
 void mesh::destroy() {
@@ -94,10 +96,10 @@ struct edgeitem {
 };
 
 struct edgestack {
-  array<edgeitem,csg::MAXPOINTNUM> it;
-  csg::array3f p, pos;
-  csg::arrayf d, nd;
-  csg::arrayi m;
+  CACHE_LINE_ALIGNED array<edgeitem,csg::MAXPOINTNUM> it;
+  CACHE_LINE_ALIGNED csg::array3f p, pos;
+  CACHE_LINE_ALIGNED csg::arrayf d, nd;
+  CACHE_LINE_ALIGNED csg::arrayi m;
 };
 
 /*-------------------------------------------------------------------------
@@ -168,13 +170,13 @@ struct dc_gridbuilder {
     m_field(FIELDNUM),
     m_qef_index(QEFNUM),
     m_edge_index(6*FIELDNUM),
-    m_stack(NEWE(edgestack)),
+    m_stack((edgestack*)ALIGNEDMALLOC(sizeof(edgestack), CACHE_LINE_ALIGNMENT)),
     m_octree(NULL),
     m_iorg(zero),
     m_maxlevel(0),
     m_level(0)
   {}
-  ~dc_gridbuilder() { DEL(m_stack); }
+  ~dc_gridbuilder() { ALIGNEDFREE(m_stack); }
 
   struct qef_output {
     INLINE qef_output(vec3f p, vec3f n, bool valid):p(p),n(n),valid(valid){}
@@ -209,17 +211,18 @@ struct dc_gridbuilder {
   void initfield() {
     const vec3i org(-1), dim(SUBGRID+3);
     stepxyz(org, dim, vec3i(4)) {
-      // use edgestack here
-      csg::array3f pos;
-      csg::arrayf d;
-      csg::arrayi m;
+      // XXX use edgestack here
+      CACHE_LINE_ALIGNED csg::array3f pos;
+      CACHE_LINE_ALIGNED csg::arrayf d;
+      CACHE_LINE_ALIGNED csg::arrayi m;
       const auto p = vertex(sxyz);
       const aabb box = aabb(p-2.f*m_cellsize, p+6.f*m_cellsize);
       int index = 0;
       const auto end = min(sxyz+4,dim);
       loopxyz(sxyz, end) csg::set(pos, vertex(xyz), index++);
       assert(index == 64);
-      csg::dist(m_node, pos, NULL, d, m, index, box);
+      CSGVER::dist(m_node, pos, NULL, d, m, index, box);
+      //csg::dist(m_node, pos, NULL, d, m, index, box);
       index = 0;
 #if !defined(NDEBUG)
       loopi(64) assert(d[i] <= 0.f || m[i] == csg::MAT_AIR_INDEX);
@@ -282,7 +285,8 @@ struct dc_gridbuilder {
       }
       box.pmin -= 3.f * m_cellsize;
       box.pmax += 3.f * m_cellsize;
-      csg::dist(m_node, pos, NULL, d, m, num, box);
+      //csg::dist(m_node, pos, NULL, d, m, num, box);
+      CSGVER::dist(m_node, pos, NULL, d, m, num, box);
       if (k != MAX_STEPS-1) {
         loopi(num) {
           assert(!isnan(d[i]));
@@ -346,10 +350,10 @@ struct dc_gridbuilder {
       const auto dz = vec3f(0.f, 0.f, DEFAULT_GRAD_STEP);
       for (int j = 0; j < num; j += 16) {
         const int subnum = min(num-j, 16);
-        auto p = m_stack->p;
-        auto d = m_stack->d;
-        auto m = m_stack->m;
-        auto nd = m_stack->nd;
+        auto &p = m_stack->p;
+        auto &d = m_stack->d;
+        auto &m = m_stack->m;
+        auto &nd = m_stack->nd;
         auto box = aabb::empty();
         loopk(subnum) {
           const auto center = it[j+k].org + it[j+k].p0 * m_cellsize;
@@ -369,7 +373,8 @@ struct dc_gridbuilder {
           bool const solidsolid = m0 != csg::MAT_AIR_INDEX && m1 != csg::MAT_AIR_INDEX;
           nd[k] = solidsolid ? m_cellsize : 0.f;
         }
-        csg::dist(m_node, p, &nd, d, m, 4*subnum, box);
+        //csg::dist(m_node, p, &nd, d, m, 4*subnum, box);
+        CSGVER::dist(m_node, p, &nd, d, m, 4*subnum, box);
         STATS_ADD(iso_num, 4*subnum);
         STATS_ADD(iso_gradient_num, 4*subnum);
 
@@ -1287,7 +1292,6 @@ mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &
   job->scheduled();
   job->wait();
   con::out("elapsed %f ms", sys::millis()-start);
-  exit(EXIT_SUCCESS);
 #if !defined(RELEASE)
   stats();
 #endif

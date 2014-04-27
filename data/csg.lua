@@ -71,6 +71,7 @@ function complexscene()
   return U(c0, D(R(R(world, newmat0), newmat1), remove))
  -- return U(scene0, arc);
 end
+
 local env = {
   capped_cylinder=capped_cylinder,
   arcade=arcade
