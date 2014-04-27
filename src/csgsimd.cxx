@@ -166,7 +166,7 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
       const auto pp = soa3f(p->p.xyz());
       const auto d = soaf(p->p.w);
       loopi(packetnum) {
-        const auto idx = soaf::size * i;
+        const auto idx = i*soaf::size;
         const auto nd = dot(sget(pos,i), pp) + d;
         const auto oldindex = soai::load(&matindex[idx]);
         const auto newindex = soai(p->matindex);
@@ -185,7 +185,7 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
     const auto cc = soa2f(c->c##COORD);\
     const auto r = soaf(c->r);\
     loopi(packetnum) {\
-      const auto idx = soaf::size * i;\
+      const auto idx = i*soaf::size;\
       const auto p = sget(pos,i).COORD();\
       const auto nd = length(p - cc) - r;\
       const auto oldindex = soai::load(&matindex[idx]);\
@@ -205,7 +205,7 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
       const auto s = static_cast<const sphere*>(n);
       const auto r = soaf(s->r);
       loopi(packetnum) {
-        const auto idx = soaf::size * i;
+        const auto idx = i*soaf::size;
         const auto oldindex = soai::load(&matindex[idx]);
         const auto newindex = soai(s->matindex);
         const auto nd = length(sget(pos,i)) - r;
@@ -221,7 +221,7 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
       const auto b = static_cast<const struct box*>(n);
       const auto extent = soa3f(b->extent);
       loopi(packetnum) {
-        const auto idx = soaf::size * i;
+        const auto idx = i*soaf::size;
         const auto oldindex = soai::load(&matindex[idx]);
         const auto newindex = soai(b->matindex);
         const auto pd = abs(sget(pos,i))-extent;
