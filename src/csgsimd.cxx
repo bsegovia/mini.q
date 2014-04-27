@@ -25,7 +25,6 @@ INLINE bool empty(const ssebox &box) {
   return (movemask(box.pmin>box.pmax)&0x7) != 0;
 }
 
-#if 1
 static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
                   const arrayf *RESTRICT normaldist, arrayf &RESTRICT dist,
                   arrayi &RESTRICT matindex, int packetnum,
@@ -272,7 +271,6 @@ void dist(const node *RESTRICT n, const array3f &RESTRICT pos,
   distr(n, pos, normaldist, d, mat, packetnum, ssebox(box));
   AVX_ZERO_UPPER();
 }
-#endif
 } /* namespace NAMESPACE */
 } /* namespace rt */
 } /* namespace q */
