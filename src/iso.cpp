@@ -702,66 +702,6 @@ static void buildmesh(const octree &o, procmesh &pm) {
 /*-------------------------------------------------------------------------
  - run mesh decimation on a regular "to-process" mesh
  -------------------------------------------------------------------------*/
-struct qem {
-  INLINE qem() {ZERO(this); next=-1;}
-  INLINE qem(vec3f v0, vec3f v1, vec3f v2) : timestamp(0), next(-1) {
-    init(cross(v0-v1,v0-v2), v0);
-  }
-  INLINE qem(vec3f d, vec3f p) : timestamp(0), next(-1) { init(d,p); }
-  INLINE void init(const vec3f &d, const vec3f &p) {
-    const auto len = double(length(d));
-    if (len != 0.) {
-      // slightly bias the error to make the error function returning very small
-      // negative value. this will be cleanly clamped to zero. zero errors are
-      // useful since they will map to fully flat surface that we can then
-      // handle specifically.
-      const auto dp = vec3d(p);
-      const auto n = vec3d(d)/len;
-      const auto d = -dot(n, dp);
-      const auto a = n.x, b = n.y, c = n.z;
-
-      // weight the qem with the triangle area given by the length of
-      // unormalized normal vector
-      aa = a*a*len; bb = b*b*len; cc = c*c*len; dd = d*d*len;
-      ab = a*b*len; ac = a*c*len; ad = a*d*len;
-      bc = b*c*len; bd = b*d*len;
-      cd = c*d*len;
-    } else
-      init(zero);
-  }
-  INLINE void init(zerotype) {
-    aa = bb = cc = dd = 0.0;
-    ab = ac = ad = 0.0;
-    bc = bd = 0.0;
-    cd = 0.0;
-  }
-  INLINE qem operator+= (const qem &q) {
-    aa+=q.aa; bb+=q.bb; cc+=q.cc; dd+=q.dd;
-    ab+=q.ab; ac+=q.ac; ad+=q.ad;
-    bc+=q.bc; bd+=q.bd;
-    cd+=q.cd;
-    return *this;
-  }
-  double error(const vec3f &v) const {
-    const auto x = double(v.x), y = double(v.y), z = double(v.z);
-    const auto err = x*x*aa + 2.0*x*y*ab + 2.0*x*z*ac + 2.0*x*ad +
-                     y*y*bb + 2.0*y*z*bc + 2.0*y*bd
-                            + z*z*cc     + 2.0*z*cd + dd;
-    return err < QEM_MIN_ERROR ? 0.0 : err;
-  }
-  double aa, bb, cc, dd;
-  double ab, ac, ad;
-  double bc, bd;
-  double cd;
-  int timestamp, next;
-};
-
-INLINE qem operator+ (const qem &q0, const qem &q1) {
-  qem q = q0;
-  q += q1;
-  return q;
-}
-
 struct qemedge {
   INLINE qemedge() {}
   INLINE qemedge(int i0, int i1, int mat) : mat(mat), best(0), num(1) {
@@ -792,14 +732,15 @@ INLINE bool operator< (const qemheapitem &i0, const qemheapitem &i1) {
 struct qemcontext {
   vector<int> vidx; // list of triangle per vertex
   vector<pair<int,int>> vtri; // <trinum, firstidx> triangle list per vertex
-  vector<qem> vqem; // qem per vertex
+  vector<qef::qem> vqem; // qem per vertex
   vector<qemedge> eqem; // qem information per edge
   vector<qemheapitem> heap; // heap to decimate the mesh
   vector<int> mergelist; // temporary structure when merging triangle lists
 };
 
-static void extraplane(const procmesh &pm, const qemedge &edge, int tri, qem &q0, qem &q1) {
-
+static void extraplane(const procmesh &pm, const qemedge &edge, int tri,
+                       qef::qem &q0, qef::qem &q1)
+{
   // need to find which vertex is the third one
   const auto t = &pm.idx[3*tri];
   const auto i0 = edge.idx[0], i1 = edge.idx[1];
@@ -813,7 +754,7 @@ static void extraplane(const procmesh &pm, const qemedge &edge, int tri, qem &q0
   const auto d = cross(n0, p[i1]-p[i0]);
   const auto len2 = length2(d);
   if (len2 != 0.f) {
-    const auto q = qem(d*rsqrt(len2),p[i0]);
+    const auto q = qef::qem(d*rsqrt(len2),p[i0]);
     q0 += q;
     q1 += q;
   }
@@ -899,13 +840,6 @@ static void buildedges(qemcontext &ctx, const procmesh &pm) {
   }
 }
 
-INLINE pair<double,int>
-findbest(const qem &q0, const qem &q1, const vec3f &p0, const vec3f &p1) {
-  const auto q = q0 + q1;
-  const auto error0 = q.error(p0), error1 = q.error(p1);
-  return error0 < error1 ? makepair(error0, 0) : makepair(error1, 1);
-}
-
 static void buildheap(qemcontext &ctx, procmesh &pm) {
   auto &h = ctx.heap;
   auto &e = ctx.eqem;
@@ -916,7 +850,7 @@ static void buildheap(qemcontext &ctx, procmesh &pm) {
     const auto idx0 = e[i].idx[0], idx1 = e[i].idx[1];
     const auto &p0 = p[idx0], &p1 = p[idx1];
     const auto &q0 = v[idx0], &q1 = v[idx1];
-    const auto best = findbest(q0,q1,p0,p1);
+    const auto best = qef::findbest(q0,q1,p0,p1,QEM_MIN_ERROR);
     e[i].best = best.second;
     h[i].cost = best.first;
     h[i].len2 = distance2(p0,p1);
@@ -925,7 +859,7 @@ static void buildheap(qemcontext &ctx, procmesh &pm) {
   h.buildheap();
 }
 
-INLINE int uncollapsedidx(vector<qem> &v, int idx) {
+INLINE int uncollapsedidx(vector<qef::qem> &v, int idx) {
   while (v[idx].next != -1) idx = v[idx].next;
   return idx;
 }
@@ -1036,7 +970,7 @@ static void decimatemesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
       // need to update it properly here
       auto &q0 = vqem[idx0], &q1 = vqem[idx1];
       if (q0.timestamp != edge.timestamp[0] || q1.timestamp != edge.timestamp[1]) {
-        edge.best = findbest(q0,q1,p0,p1).second;
+        edge.best = qef::findbest(q0,q1,p0,p1,QEM_MIN_ERROR).second;
         edge.timestamp[0] = q0.timestamp;
         edge.timestamp[1] = q1.timestamp;
       }
@@ -1073,7 +1007,7 @@ static void decimatemesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
     }
 
     // edge is too old. we need to update its cost and reinsert it
-    const auto best = findbest(q0,q1,p0,p1);
+    const auto best = qef::findbest(q0,q1,p0,p1,QEM_MIN_ERROR);
     const qemheapitem newitem = {best.first, distance2(p0,p1), item.idx};
     edge.best = best.second;
     edge.timestamp[0] = timestamp0;
@@ -1118,7 +1052,7 @@ static void buildqem(qemcontext &ctx, procmesh &pm) {
     const auto v0 = pm.pos[i0];
     const auto v1 = pm.pos[i1];
     const auto v2 = pm.pos[i2];
-    const qem q(v0,v1,v2);
+    const qef::qem q(v0,v1,v2);
     v[i0] += q;
     v[i1] += q;
     v[i2] += q;
