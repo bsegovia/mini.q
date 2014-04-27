@@ -34,7 +34,9 @@ static void stats() {
 }
 #endif
 
-#define CSGVER csg::avx
+//#define CSGVER csg::avx
+#define CSGVER csg::sse
+//#define CSGVER csg
 
 namespace q {
 namespace iso {

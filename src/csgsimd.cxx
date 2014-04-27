@@ -9,19 +9,35 @@
 namespace q {
 namespace csg {
 namespace NAMESPACE {
+struct ssebox {
+  ssebox(const ssef &pmin, const ssef &pmax) : pmin(pmin), pmax(pmax) {}
+  ssebox(const aabb &box) {
+    pmin = ssef::loadu(&box.pmin);
+    pmax = ssef::loadu(&box.pmax);
+  }
+  ssef pmin,pmax;
+};
+
+INLINE ssebox intersection(const ssebox &b0, const ssebox &b1) {
+  return ssebox(max(b0.pmin,b1.pmin), min(b0.pmax,b1.pmax));
+}
+INLINE bool empty(const ssebox &box) {
+  return (movemask(box.pmin>box.pmax)&0x7) != 0;
+}
+
 #if 1
 static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
                   const arrayf *RESTRICT normaldist, arrayf &RESTRICT dist,
                   arrayi &RESTRICT matindex, int packetnum,
-                  const aabb &RESTRICT box)
+                  const ssebox & RESTRICT box)
 {
   switch (n->type) {
     case C_UNION: {
       const auto u = static_cast<const U*>(n);
-      const auto isecleft = intersection(u->left->box, box);
-      const auto isecright = intersection(u->right->box, box);
-      const auto goleft = all(le(isecleft.pmin, isecleft.pmax));
-      const auto goright = all(le(isecright.pmin, isecright.pmax));
+      const auto isecleft = intersection(ssebox(u->left->box), box);
+      const auto isecright = intersection(ssebox(u->right->box), box);
+      const auto goleft = !empty(isecleft);
+      const auto goright = !empty(isecright);
       if (goleft && goright) {
         distr(u->left, pos, normaldist, dist, matindex, packetnum, box);
         CACHE_LINE_ALIGNED arrayf tempdist;
@@ -61,12 +77,12 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
     break;
     case C_REPLACE: {
       const auto r = static_cast<const R*>(n);
-      const auto isecleft = intersection(r->left->box, box);
-      const auto goleft = all(le(isecleft.pmin, isecleft.pmax));
+      const auto isecleft = intersection(ssebox(r->left->box), box);
+      const auto goleft = !empty(isecleft);
       if (!goleft) return;
       distr(r->left, pos, normaldist, dist, matindex, packetnum, box);
-      const auto isecright = intersection(r->right->box, box);
-      const auto goright = all(le(isecright.pmin, isecright.pmax));
+      const auto isecright = intersection(ssebox(r->right->box), box);
+      const auto goright = !empty(isecright);
       if (!goright) return;
       CACHE_LINE_ALIGNED arrayf tempdist;
       CACHE_LINE_ALIGNED arrayi tempmatindex;
@@ -98,10 +114,10 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
     break;
     case C_INTERSECTION: {
       const auto in = static_cast<const I*>(n);
-      const auto isecleft = intersection(in->left->box, box);
-      if (!all(le(isecleft.pmin, isecleft.pmax))) break;
-      const auto isecright = intersection(in->right->box, box);
-      if (!all(le(isecright.pmin, isecright.pmax))) break;
+      const auto isecleft = intersection(ssebox(in->left->box), box);
+      if (empty(isecleft)) return;
+      const auto isecright = intersection(ssebox(in->right->box), box);
+      if (empty(isecright)) return;
       distr(in->left, pos, normaldist, dist, matindex, packetnum, box);
       CACHE_LINE_ALIGNED arrayf tempdist;
       loopi(packetnum) store(&tempdist[i*soaf::size], soaf(FLT_MAX));
@@ -121,12 +137,12 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
     break;
     case C_DIFFERENCE: {
       const auto d = static_cast<const D*>(n);
-      const auto isecleft = intersection(d->left->box, box);
-      if (!all(le(isecleft.pmin, isecleft.pmax))) break;
+      const auto isecleft = intersection(ssebox(d->left->box), box);
+      if (empty(isecleft)) break;
       distr(d->left, pos, normaldist, dist, matindex, packetnum, box);
 
-      const auto isecright = intersection(d->right->box, box);
-      if (!all(le(isecright.pmin, isecright.pmax))) break;
+      const auto isecright = intersection(ssebox(d->right->box), box);
+      if (empty(isecright)) break;
       CACHE_LINE_ALIGNED arrayf tempdist;
       CACHE_LINE_ALIGNED arrayi tempmatindex;
       loopi(packetnum) store(&tempdist[i*soaf::size], soaf(FLT_MAX));
@@ -145,19 +161,20 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
     }
     break;
     case C_TRANSLATION: {
-      const auto isec = intersection(n->box, box);
-      if (any(gt(isec.pmin, isec.pmax))) break;
+      const auto isec = intersection(ssebox(n->box), box);
+      if (empty(isec)) break;
       const auto t = static_cast<const translation*>(n);
       const auto tp = soa3f(t->p);
       CACHE_LINE_ALIGNED array3f tpos;
       loopi(packetnum) sset(tpos, sget(pos,i) - tp, i);
-      const aabb tbox(box.pmin-t->p, box.pmax-t->p);
+      const auto ssep = ssef::loadu(&t->p);
+      const ssebox tbox(box.pmin-ssep, box.pmax-ssep);
       distr(t->n, tpos, normaldist, dist, matindex, packetnum, tbox);
     }
     break;
     case C_ROTATION: {
-      const auto isec = intersection(n->box, box);
-      if (any(gt(isec.pmin, isec.pmax))) break;
+      const auto isec = intersection(ssebox(n->box), box);
+      if (empty(isec)) break;
       const auto r = static_cast<const rotation*>(n);
       const auto rq = quat<soaf>(conj(r->q));
       CACHE_LINE_ALIGNED array3f tpos;
@@ -166,8 +183,8 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
     }
     break;
     case C_PLANE: {
-      const auto isec = intersection(n->box, box);
-      if (any(gt(isec.pmin, isec.pmax))) break;
+      const auto isec = intersection(ssebox(n->box), box);
+      if (empty(isec)) break;
       const auto p = static_cast<const plane*>(n);
       const auto pp = soa3f(p->p.xyz());
       const auto d = soaf(p->p.w);
@@ -185,8 +202,8 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
 
 #define CYL(NAME, COORD)\
   case C_CYLINDER##NAME: {\
-    const auto isec = intersection(n->box, box);\
-    if (any(gt(isec.pmin, isec.pmax))) break;\
+    const auto isec = intersection(ssebox(n->box), box);\
+    if (empty(isec)) break;\
     const auto c = static_cast<const cylinder##COORD*>(n);\
     const auto cc = soa2f(c->c##COORD);\
     const auto r = soaf(c->r);\
@@ -206,8 +223,8 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
 #undef CYL
 
     case C_SPHERE: {
-      const auto isec = intersection(n->box, box);
-      if (any(gt(isec.pmin, isec.pmax))) break;
+      const auto isec = intersection(ssebox(n->box), box);
+      if (empty(isec)) break;
       const auto s = static_cast<const sphere*>(n);
       const auto r = soaf(s->r);
       loopi(packetnum) {
@@ -222,8 +239,8 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
     }
     break;
     case C_BOX: {
-      const auto isec = intersection(n->box, box);
-      if (any(gt(isec.pmin, isec.pmax))) break;
+      const auto isec = intersection(ssebox(n->box), box);
+      if (empty(isec)) break;
       const auto b = static_cast<const struct box*>(n);
       const auto extent = soa3f(b->extent);
       loopi(packetnum) {
@@ -252,7 +269,7 @@ void dist(const node *RESTRICT n, const array3f &RESTRICT pos,
     store(&d[i*soaf::size], soaf(FLT_MAX));
     store(&mat[i*soaf::size], soai(MAT_AIR_INDEX));
   }
-  distr(n, pos, normaldist, d, mat, packetnum, box);
+  distr(n, pos, normaldist, d, mat, packetnum, ssebox(box));
 }
 #endif
 } /* namespace NAMESPACE */
