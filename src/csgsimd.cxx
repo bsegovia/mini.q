@@ -270,6 +270,7 @@ void dist(const node *RESTRICT n, const array3f &RESTRICT pos,
     store(&mat[i*soaf::size], soai(MAT_AIR_INDEX));
   }
   distr(n, pos, normaldist, d, mat, packetnum, ssebox(box));
+  AVX_ZERO_UPPER();
 }
 #endif
 } /* namespace NAMESPACE */

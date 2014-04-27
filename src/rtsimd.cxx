@@ -558,6 +558,7 @@ void occluded(const intersector &bvhtree, const raypacket &p, packetshadow &s) {
   // be careful and reset the number of rays we initially got in the packet
   // before any padding
   const_cast<raypacket&>(p).raynum = initialnum;
+  AVX_ZERO_UPPER();
 }
 #undef CASE
 #undef CASE4
@@ -625,6 +626,7 @@ void visibilitypacket(const camera &RESTRICT cam,
   p.raynum = TILESIZE*TILESIZE;
   p.sharedorg = cam.org;
   p.flags = raypacket::SHAREDORG|raypacket::CORNERRAYS;
+  AVX_ZERO_UPPER();
 }
 
 void clearpackethit(packethit &hit) {
@@ -633,6 +635,7 @@ void clearpackethit(packethit &hit) {
     store(&hit.id[i*soaf::size], soaf(asfloat(~0x0u)));
     store(&hit.t[i*soaf::size],  soaf(FLT_MAX));
   }
+  AVX_ZERO_UPPER();
 }
 
 u32 primarypoint(const raypacket &RESTRICT p,
@@ -663,6 +666,7 @@ u32 primarypoint(const raypacket &RESTRICT p,
     sset(nor, normal, i);
     sset(pos, position, i);
   }
+  AVX_ZERO_UPPER();
   return valid;
 }
 
@@ -710,6 +714,7 @@ void shadowpacket(const array3f &RESTRICT pos,
   shadow.sharedorg = lpos;
   shadow.raynum = curr;
   shadow.flags = raypacket::SHAREDORG;
+  AVX_ZERO_UPPER();
 }
 
 /*-------------------------------------------------------------------------
@@ -745,6 +750,7 @@ void writenormal(const packethit &RESTRICT hit,
 #endif
     }
   }
+  AVX_ZERO_UPPER();
 }
 
 void writendotl(const raypacket &RESTRICT shadow,
@@ -802,6 +808,7 @@ void writendotl(const raypacket &RESTRICT shadow,
 #endif
     }
   }
+  AVX_ZERO_UPPER();
 }
 
 void clear(const vec2i &RESTRICT tileorg,
@@ -813,6 +820,7 @@ void clear(const vec2i &RESTRICT tileorg,
   for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y, yoffset+=w)
     for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size)
       storeu(pixels+yoffset+x, soaf(zero));
+  AVX_ZERO_UPPER();
 }
 } /* namespace NAMESPACE */
 } /* namespace rt */

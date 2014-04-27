@@ -34,8 +34,8 @@ static void stats() {
 }
 #endif
 
-//#define CSGVER csg::avx
-#define CSGVER csg::sse
+#define CSGVER csg::avx
+//#define CSGVER csg::sse
 //#define CSGVER csg
 
 namespace q {
@@ -1294,6 +1294,7 @@ mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &
   job->scheduled();
   job->wait();
   con::out("elapsed %f ms", sys::millis()-start);
+  exit(EXIT_SUCCESS);
 #if !defined(RELEASE)
   stats();
 #endif

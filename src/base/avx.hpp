@@ -28,11 +28,15 @@ namespace q {
 } /* namespace q */
 
 #include "avxb.hpp"
+
 #if defined (__AVX2__)
 #include "avxi.hpp"
 #else
 #include "avxi_emu.hpp"
 #endif
 #include "avxf.hpp"
+#define AVX_ZERO_UPPER() _mm256_zeroupper()
+#else
+#define AVX_ZERO_UPPER()
 #endif
 
