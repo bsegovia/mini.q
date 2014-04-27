@@ -578,6 +578,10 @@ template<typename T> struct quat {
   INLINE quat(const T &yaw, const T &pitch, const T &roll);
   INLINE quat(zerotype) : r(zero), i(zero), j(zero), k(zero) {}
   INLINE quat(onetype) : r(one), i(zero), j(zero), k(zero) {}
+  template <typename U>
+  INLINE explicit quat(const quat<U> &other) {
+    r=T(other.r); i=T(other.i); j=T(other.j); k=T(other.k);
+  }
   static INLINE quat rotate(v3arg u, const T &r) {
     return q3(cos(T(0.5)*r),sin(T(0.5)*r)*normalize(u));
   }

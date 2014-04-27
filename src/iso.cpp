@@ -6,6 +6,8 @@
 #include "csg.hpp"
 #include "qef.hpp"
 #include "csgscalar.hpp"
+#include "csgsse.hpp"
+#include "csgavx.hpp"
 #include "base/vector.hpp"
 #include "base/task.hpp"
 #include "base/console.hpp" // XXX remove that

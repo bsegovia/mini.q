@@ -9,7 +9,7 @@
 namespace q {
 namespace csg {
 namespace NAMESPACE {
-#if 0
+#if 1
 static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
                   const arrayf *RESTRICT normaldist, arrayf &RESTRICT dist,
                   arrayi &RESTRICT matindex, int packetnum,
@@ -144,7 +144,7 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
       const auto t = static_cast<const translation*>(n);
       const auto tp = soa3f(t->p);
       array3f tpos;
-      loopi(packetnum) set(tpos, get(pos,i) - t->p, i);
+      loopi(packetnum) sset(tpos, sget(pos,i) - tp, i);
       const aabb tbox(box.pmin-t->p, box.pmax-t->p);
       distr(t->n, tpos, normaldist, dist, matindex, packetnum, tbox);
     }
@@ -153,8 +153,9 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
       const auto isec = intersection(n->box, box);
       if (any(gt(isec.pmin, isec.pmax))) break;
       const auto r = static_cast<const rotation*>(n);
+      const auto rq = quat<soaf>(conj(r->q));
       array3f tpos;
-      loopi(packetnum) set(tpos, xfmpoint(conj(r->q), get(pos,i)), i);
+      loopi(packetnum) sset(tpos, xfmpoint(rq, sget(pos,i)), i);
       distr(r->n, tpos, normaldist, dist, matindex, packetnum, aabb::all());
     }
     break;
@@ -165,8 +166,13 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
       const auto pp = soa3f(p->p.xyz());
       const auto d = soaf(p->p.w);
       loopi(packetnum) {
-        dist[i] = dot(get(pos,i), pp) + d;
-        matindex[i] = dist[i] < 0.f ? p->matindex : matindex[i];
+        const auto idx = soaf::size * i;
+        const auto nd = dot(sget(pos,i), pp) + d;
+        const auto oldindex = soai::load(&matindex[idx]);
+        const auto newindex = soai(p->matindex);
+        const auto m = nd<soaf(zero);
+        store(&dist[idx], nd);
+        store(&matindex[idx], select(m, newindex, oldindex));
       }
     }
     break;
@@ -176,9 +182,17 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
     const auto isec = intersection(n->box, box);\
     if (any(gt(isec.pmin, isec.pmax))) break;\
     const auto c = static_cast<const cylinder##COORD*>(n);\
+    const auto cc = soa2f(c->c##COORD);\
+    const auto r = soaf(c->r);\
     loopi(packetnum) {\
-      dist[i] = length(get(pos,i).COORD()-c->c##COORD) - c->r;\
-      matindex[i] = dist[i] < 0.f ? c->matindex : matindex[i];\
+      const auto idx = soaf::size * i;\
+      const auto p = sget(pos,i).COORD();\
+      const auto nd = length(p - cc) - r;\
+      const auto oldindex = soai::load(&matindex[idx]);\
+      const auto newindex = soai(c->matindex);\
+      const auto m = nd<soaf(zero);\
+      store(&dist[idx], nd);\
+      store(&matindex[idx], select(m, newindex, oldindex));\
     }\
   }\
   break;
@@ -189,9 +203,15 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
       const auto isec = intersection(n->box, box);
       if (any(gt(isec.pmin, isec.pmax))) break;
       const auto s = static_cast<const sphere*>(n);
+      const auto r = soaf(s->r);
       loopi(packetnum) {
-        dist[i] = length(get(pos,i)) - s->r;
-        matindex[i] = dist[i] < 0.f ? s->matindex : matindex[i];
+        const auto idx = soaf::size * i;
+        const auto oldindex = soai::load(&matindex[idx]);
+        const auto newindex = soai(s->matindex);
+        const auto nd = length(sget(pos,i)) - r;
+        const auto m = nd<soaf(zero);
+        store(&dist[idx], nd);
+        store(&matindex[idx], select(m, newindex, oldindex));
       }
     }
     break;
@@ -199,11 +219,16 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
       const auto isec = intersection(n->box, box);
       if (any(gt(isec.pmin, isec.pmax))) break;
       const auto b = static_cast<const struct box*>(n);
-      const auto extent = b->extent;
+      const auto extent = soa3f(b->extent);
       loopi(packetnum) {
-        const auto pd = abs(get(pos,i))-extent;
-        dist[i] = min(max(pd.x,max(pd.y,pd.z)),0.0f) + length(max(pd,vec3f(zero)));
-        matindex[i] = dist[i] < 0.f ? b->matindex : matindex[i];
+        const auto idx = soaf::size * i;
+        const auto oldindex = soai::load(&matindex[idx]);
+        const auto newindex = soai(b->matindex);
+        const auto pd = abs(sget(pos,i))-extent;
+        const auto nd = min(max(pd.x,max(pd.y,pd.z)),soaf(zero)) + length(max(pd,soa3f(zero)));
+        const auto m = nd<soaf(zero);
+        store(&dist[idx], nd);
+        store(&matindex[idx], select(m, newindex, oldindex));
       }
     }
     break;
@@ -227,3 +252,4 @@ void dist(const node *RESTRICT n, const array3f &RESTRICT pos,
 } /* namespace NAMESPACE */
 } /* namespace rt */
 } /* namespace q */
+
