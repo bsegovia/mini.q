@@ -224,7 +224,6 @@ struct dc_gridbuilder {
       loopxyz(sxyz, end) csg::set(pos, vertex(xyz), index++);
       assert(index == 64);
       CSGVER::dist(m_node, pos, NULL, d, m, index, box);
-      //csg::dist(m_node, pos, NULL, d, m, index, box);
       index = 0;
 #if !defined(NDEBUG)
       loopi(64) assert(d[i] <= 0.f || m[i] == csg::MAT_AIR_INDEX);
@@ -287,7 +286,6 @@ struct dc_gridbuilder {
       }
       box.pmin -= 3.f * m_cellsize;
       box.pmax += 3.f * m_cellsize;
-      //csg::dist(m_node, pos, NULL, d, m, num, box);
       CSGVER::dist(m_node, pos, NULL, d, m, num, box);
       if (k != MAX_STEPS-1) {
         loopi(num) {
@@ -564,7 +562,7 @@ struct mt_builder {
     const auto dist = csg::dist(m_node, center, aabb(pmin,pmax));
     STATS_INC(iso_octree_num);
     STATS_INC(iso_num);
-    if (abs(dist) > sqrt(3.f) * m_cellsize * float(cellnum/2)) {
+    if (abs(dist) > sqrt(3.f) * m_cellsize * float(cellnum/2+1)) {
       node.m_isleaf = node.m_empty = 1;
       return;
     }
@@ -1294,7 +1292,7 @@ mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &
   job->scheduled();
   job->wait();
   con::out("elapsed %f ms", sys::millis()-start);
-  exit(EXIT_SUCCESS);
+  //exit(EXIT_SUCCESS);
 #if !defined(RELEASE)
   stats();
 #endif
