@@ -10,7 +10,7 @@
 #include "csgavx.hpp"
 #include "base/vector.hpp"
 #include "base/task.hpp"
-#include "base/console.hpp" // XXX remove that
+// #include "base/console.hpp" // XXX remove that
 
 STATS(iso_num);
 STATS(iso_edgepos_num);
@@ -161,7 +161,7 @@ INLINE pair<vec3i,int> getedge(const vec3i &start, const vec3i &end) {
 }
 
 // TODO find less expensive storage for it
-struct quad {vec3i index[4]; u32 matindex;};
+struct quad {vec3<char> index[4]; vec3i org; u32 matindex;};
 
 /*-------------------------------------------------------------------------
  - iso surface extraction is done here
@@ -478,7 +478,7 @@ struct dc_gridbuilder {
         if (outside) continue;
         const auto qor = startsign==1 ? quadorder : quadorder_cc;
         const quad q = {
-          {m_iorg+p[qor[0]],m_iorg+p[qor[1]],m_iorg+p[qor[2]],m_iorg+p[qor[3]]},
+          {p[qor[0]],p[qor[1]],p[qor[2]],p[qor[3]]}, m_iorg,
           max(startfield.m, endfield.m)
         };
         m_quad_buffer.add(q);
@@ -562,7 +562,7 @@ struct mt_builder {
     const auto dist = csg::dist(m_node, center, aabb(pmin,pmax));
     STATS_INC(iso_octree_num);
     STATS_INC(iso_num);
-    if (abs(dist) > sqrt(3.f) * m_cellsize * float(cellnum/2+1)) {
+    if (abs(dist) > sqrt(3.f) * m_cellsize * float(cellnum/2+2)) {
       node.m_isleaf = node.m_empty = 1;
       return;
     }
@@ -671,9 +671,10 @@ static void buildmesh(const octree &o, procmesh &pm) {
       const auto quadmat = q.matindex;
       octree::qefpoint *pt[4];
       loopk(4) {
-        const auto leaf = o.findleaf(q.index[k]);
+        const auto ipos = vec3i(q.index[k]) + q.org;
+        const auto leaf = o.findleaf(ipos);
         assert(leaf != NULL && leaf->qef != NULL);
-        const auto idx = q.index[k] % vec3i(SUBGRID);
+        const auto idx = ipos % vec3i(SUBGRID);
         const auto qefidx = idx.x+SUBGRID*(idx.y+SUBGRID*idx.z);
         pt[k] = leaf->qef+qefidx;
       }
@@ -1291,7 +1292,7 @@ mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &
   ref<task> job = NEW(isotask, ctx->m_work.length());
   job->scheduled();
   job->wait();
-  con::out("elapsed %f ms", sys::millis()-start);
+  //con::out("elapsed %f ms", sys::millis()-start);
   //exit(EXIT_SUCCESS);
 #if !defined(RELEASE)
   stats();
