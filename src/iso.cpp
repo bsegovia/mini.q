@@ -107,25 +107,32 @@ struct edgestack {
 /*-------------------------------------------------------------------------
  - spatial segmentation used for iso surface extraction
  -------------------------------------------------------------------------*/
+// TODO find less expensive storage for it
+struct quad {vec3<char> index[4]; vec3i org; u32 matindex;};
+
 struct octree {
   struct qefpoint {
     vec3f pos;
     int idx;
   };
+  struct leaf {
+    vector<quad> quads;
+    vector<qefpoint> qef;
+  };
   struct node {
-    INLINE node() : children(NULL), m_level(0), m_isleaf(0), m_empty(0) {}
+    INLINE node() : children(NULL), level(0), isleaf(0), m_empty(0) {}
     ~node() {
-      if (m_isleaf)
-        SAFE_DELA(qef);
+      if (isleaf)
+        SAFE_DEL(leafdata);
       else
         SAFE_DELA(children);
     }
     union {
       node *children;
-      qefpoint *qef;
+      leaf *leafdata;
     };
-    u32 m_level:30;
-    u32 m_isleaf:1, m_empty:1;
+    u32 level:30;
+    u32 isleaf:1, m_empty:1;
   };
 
   INLINE octree(u32 dim) : m_dim(dim), m_logdim(ilog2(dim)) {}
@@ -134,7 +141,7 @@ struct octree {
     int level = 0;
     const node *node = &m_root;
     for (;;) {
-      if (node->m_isleaf) return node;
+      if (node->isleaf) return node;
       assert(m_logdim > u32(level));
       const auto logsize = vec3i(m_logdim-level-1);
       const auto bits = xyz >> logsize;
@@ -160,9 +167,6 @@ INLINE pair<vec3i,int> getedge(const vec3i &start, const vec3i &end) {
   return makepair(lower, delta.y+2*delta.z);
 }
 
-// TODO find less expensive storage for it
-struct quad {vec3<char> index[4]; vec3i org; u32 matindex;};
-
 /*-------------------------------------------------------------------------
  - iso surface extraction is done here
  -------------------------------------------------------------------------*/
@@ -176,7 +180,7 @@ struct dc_gridbuilder {
     m_octree(NULL),
     m_iorg(zero),
     m_maxlevel(0),
-    m_level(0)
+    level(0)
   {}
   ~dc_gridbuilder() { ALIGNEDFREE(m_stack); }
 
@@ -187,7 +191,7 @@ struct dc_gridbuilder {
   };
 
   INLINE vec3f vertex(const vec3i &p) {
-    const vec3i ipos = m_iorg+(p<<(int(m_maxlevel-m_level)));
+    const vec3i ipos = m_iorg+(p<<(int(m_maxlevel-level)));
     return vec3f(ipos)*m_cellsize;
   }
   INLINE void setoctree(const octree &o) { m_octree = &o; }
@@ -373,7 +377,6 @@ struct dc_gridbuilder {
           bool const solidsolid = m0 != csg::MAT_AIR_INDEX && m1 != csg::MAT_AIR_INDEX;
           nd[k] = solidsolid ? m_cellsize : 0.f;
         }
-        //csg::dist(m_node, p, &nd, d, m, 4*subnum, box);
         CSGVER::dist(m_node, p, &nd, d, m, 4*subnum, box);
         STATS_ADD(iso_num, 4*subnum);
         STATS_ADD(iso_gradient_num, 4*subnum);
@@ -432,13 +435,13 @@ struct dc_gridbuilder {
       const auto qef = vertex(xyz) + pos*m_cellsize;;
       if (all(ge(xyz,vec3i(zero))) && all(lt(xyz,vec3i(SUBGRID)))) {
         const auto idx = xyz.x+SUBGRID*(xyz.y+xyz.z*SUBGRID);
-        node.qef[idx].pos = qef;
-        node.qef[idx].idx = -1;
+        node.leafdata->qef[idx].pos = qef;
+        node.leafdata->qef[idx].idx = -1;
       }
     }
   }
 
-  void tesselate() {
+  void tesselate(octree::node &node) {
     const vec3i org(zero), dim(SUBGRID+1);
     loopxyz(org, dim) {
       const auto startfield = field(xyz);
@@ -481,7 +484,7 @@ struct dc_gridbuilder {
           {p[qor[0]],p[qor[1]],p[qor[2]],p[qor[3]]}, m_iorg,
           max(startfield.m, endfield.m)
         };
-        m_quad_buffer.add(q);
+        node.leafdata->quads.add(q);
       }
     }
   }
@@ -490,14 +493,13 @@ struct dc_gridbuilder {
     initfield();
     initedge();
     initqef();
-    tesselate();
+    tesselate(node);
     finishedges();
     finishvertices(node);
   }
 
   const csg::node *m_node;
   vector<fielditem> m_field;
-  vector<quad> m_quad_buffer;
   vector<u32> m_qef_index;
   vector<u32> m_edge_index;
   vector<pair<vec3f,vec3f>> m_edges;
@@ -509,7 +511,7 @@ struct dc_gridbuilder {
   vec3i m_iorg;
   float m_cellsize;
   u32 m_qefnum;
-  u32 m_maxlevel, m_level;
+  u32 m_maxlevel, level;
 };
 
 /*-------------------------------------------------------------------------
@@ -522,7 +524,7 @@ struct jobdata {
   octree *m_octree;
   vec3i m_iorg;
   vec3f m_org;
-  int m_level;
+  int level;
   int m_maxlevel;
   float m_cellsize;
 };
@@ -548,7 +550,7 @@ struct mt_builder {
   INLINE void setoctree(octree &o) {m_octree=&o;}
 
   void build(octree::node &node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
-    node.m_level = level;
+    node.level = level;
 
     // bounding box of this octree cell
     const auto lod = m_maxlevel - level;
@@ -563,12 +565,13 @@ struct mt_builder {
     STATS_INC(iso_octree_num);
     STATS_INC(iso_num);
     if (abs(dist) > sqrt(3.f) * m_cellsize * float(cellnum/2+2)) {
-      node.m_isleaf = node.m_empty = 1;
+      node.isleaf = node.m_empty = 1;
       return;
     }
     if (cellnum == SUBGRID) {
-      node.qef = NEWAE(octree::qefpoint, SUBGRID*SUBGRID*SUBGRID);
-      node.m_isleaf = 1;
+      node.leafdata = NEWE(octree::leaf);
+      node.leafdata->qef.setsize(SUBGRID*SUBGRID*SUBGRID); // XXX to big remove it
+      node.isleaf = 1;
     } else {
       node.children = NEWAE(octree::node, 8);
       loopi(8) {
@@ -579,21 +582,21 @@ struct mt_builder {
   }
 
   void preparejobs(octree::node &node, const vec3i &xyz = vec3i(zero)) {
-    if (node.m_isleaf && !node.m_empty) {
+    if (node.isleaf && !node.m_empty) {
       jobdata job;
       job.m_octree = m_octree;
       job.m_octree_node = &node;
       job.m_csg_node = m_node;
       job.m_iorg = xyz;
       job.m_maxlevel = m_maxlevel;
-      job.m_level = node.m_level;
-      job.m_cellsize = float(1<<(m_maxlevel-node.m_level)) * m_cellsize;
+      job.level = node.level;
+      job.m_cellsize = float(1<<(m_maxlevel-node.level)) * m_cellsize;
       job.m_org = pos(xyz);
       ctx->m_work.add(job);
       return;
-    } else if (!node.m_isleaf) {
+    } else if (!node.isleaf) {
       loopi(8) {
-        const auto cellnum = m_dim >> node.m_level;
+        const auto cellnum = m_dim >> node.level;
         const auto childxyz = xyz+int(cellnum/2)*icubev[i];
         preparejobs(node.children[i], childxyz);
       }
@@ -620,7 +623,7 @@ struct isotask : public task {
     const auto &job = ctx->m_work[idx];
     localbuilder->m_octree = job.m_octree;
     localbuilder->m_iorg = job.m_iorg;
-    localbuilder->m_level = job.m_octree_node->m_level;
+    localbuilder->level = job.m_octree_node->level;
     localbuilder->m_maxlevel = job.m_maxlevel;
     localbuilder->setcellsize(job.m_cellsize);
     localbuilder->setnode(job.m_csg_node);
@@ -656,44 +659,41 @@ struct procmesh {
   INLINE int trinum() const {return idx.length()/3;}
 };
 
-static void buildmesh(const octree &o, procmesh &pm) {
+static void buildmesh(const octree &o, const octree::node &node, procmesh &pm) {
+  if (!node.isleaf) {
+    loopi(8) buildmesh(o, node.children[i], pm);
+    return;
+  } else if (node.leafdata == NULL)
+    return;
 
-  // merge all builder vertex buffers
-  loopv(ctx->m_builders) {
-    const auto &b = *ctx->m_builders[i];
-    const auto quadlen = b.m_quad_buffer.length();
+  loopv(node.leafdata->quads) {
+    // get four points
+    const auto &q = node.leafdata->quads[i];
+    const auto quadmat = q.matindex;
+    octree::qefpoint *pt[4];
+    loopk(4) {
+      const auto ipos = vec3i(q.index[k]) + q.org;
+      const auto leaf = o.findleaf(ipos);
+      assert(leaf != NULL && leaf->leafdata != NULL);
+      const auto idx = ipos % vec3i(SUBGRID);
+      const auto qefidx = idx.x+SUBGRID*(idx.y+SUBGRID*idx.z);
+      pt[k] = &leaf->leafdata->qef[0]+qefidx;
+    }
 
-    // loop over all quads and build triangle mesh
-    loopj(quadlen) {
+    // get the right convex configuration
+    const auto tri = findbestmesh(pt).tri;
 
-      // get four points
-      const auto &q = b.m_quad_buffer[j];
-      const auto quadmat = q.matindex;
-      octree::qefpoint *pt[4];
-      loopk(4) {
-        const auto ipos = vec3i(q.index[k]) + q.org;
-        const auto leaf = o.findleaf(ipos);
-        assert(leaf != NULL && leaf->qef != NULL);
-        const auto idx = ipos % vec3i(SUBGRID);
-        const auto qefidx = idx.x+SUBGRID*(idx.y+SUBGRID*idx.z);
-        pt[k] = leaf->qef+qefidx;
-      }
-
-      // get the right convex configuration
-      const auto tri = findbestmesh(pt).tri;
-
-      // append positions in the vertex buffer and the index buffer
-      loopk(2) {
-        const auto t = tri[k];
-        pm.mat.add(quadmat);
-        loopl(3) {
-          const auto qef = pt[t[l]];
-          if (qef->idx == -1) {
-            qef->idx = pm.pos.length();
-            pm.pos.add(qef->pos);
-          }
-          pm.idx.add(qef->idx);
+    // append positions in the vertex buffer and the index buffer
+    loopk(2) {
+      const auto t = tri[k];
+      pm.mat.add(quadmat);
+      loopl(3) {
+        const auto qef = pt[t[l]];
+        if (qef->idx == -1) {
+          qef->idx = pm.pos.length();
+          pm.pos.add(qef->pos);
         }
+        pm.idx.add(qef->idx);
       }
     }
   }
@@ -982,7 +982,6 @@ static void decimatemesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
 
   // we remove zero cost edges
   for (;;) {
-  //while (0) {
     const auto item = heap.removeheap();
     if (item.len2 > MAX_EDGE_LEN*MAX_EDGE_LEN) continue;
     auto &edge = eqem[item.idx];
@@ -1180,7 +1179,7 @@ static mesh buildmesh(octree &o, float cellsize) {
 
   // build the mesh
   procmesh pm;
-  buildmesh(o, pm);
+  buildmesh(o, o.m_root, pm);
 
   // decimate the edges and remove degenrate triangles
   loopi(2) decimatemesh(pm, cellsize);
