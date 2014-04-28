@@ -118,6 +118,7 @@ struct octree {
   struct leaf {
     vector<quad> quads;
     vector<qefpoint> qef;
+    vector<u16> index;
   };
   struct node {
     INLINE node() : children(NULL), level(0), isleaf(0), m_empty(0) {}
@@ -396,6 +397,7 @@ struct dc_gridbuilder {
   }
 
   void finishvertices(octree::node &node) {
+    const auto ld = node.leafdata;
     loopv(m_delayed_qef) {
       const auto &item = m_delayed_qef[i];
       const auto xyz = item.first;
@@ -435,8 +437,8 @@ struct dc_gridbuilder {
       const auto qef = vertex(xyz) + pos*m_cellsize;;
       if (all(ge(xyz,vec3i(zero))) && all(lt(xyz,vec3i(SUBGRID)))) {
         const auto idx = xyz.x+SUBGRID*(xyz.y+xyz.z*SUBGRID);
-        node.leafdata->qef[idx].pos = qef;
-        node.leafdata->qef[idx].idx = -1;
+        ld->index[idx] = ld->qef.length();
+        ld->qef.add({qef,-1});
       }
     }
   }
@@ -570,7 +572,7 @@ struct mt_builder {
     }
     if (cellnum == SUBGRID) {
       node.leafdata = NEWE(octree::leaf);
-      node.leafdata->qef.setsize(SUBGRID*SUBGRID*SUBGRID); // XXX to big remove it
+      node.leafdata->index.setsize(SUBGRID*SUBGRID*SUBGRID);
       node.isleaf = 1;
     } else {
       node.children = NEWAE(octree::node, 8);
@@ -675,9 +677,10 @@ static void buildmesh(const octree &o, const octree::node &node, procmesh &pm) {
       const auto ipos = vec3i(q.index[k]) + q.org;
       const auto leaf = o.findleaf(ipos);
       assert(leaf != NULL && leaf->leafdata != NULL);
-      const auto idx = ipos % vec3i(SUBGRID);
-      const auto qefidx = idx.x+SUBGRID*(idx.y+SUBGRID*idx.z);
-      pt[k] = &leaf->leafdata->qef[0]+qefidx;
+      const auto vidx = ipos % vec3i(SUBGRID);
+      const auto idx = vidx.x+SUBGRID*(vidx.y+SUBGRID*vidx.z);
+      const auto qefidx = leaf->leafdata->index[idx];
+      pt[k] = &leaf->leafdata->qef[qefidx];
     }
 
     // get the right convex configuration
