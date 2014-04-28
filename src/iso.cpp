@@ -108,7 +108,7 @@ struct edgestack {
  - spatial segmentation used for iso surface extraction
  -------------------------------------------------------------------------*/
 // TODO find less expensive storage for it
-struct quad {vec3<char> index[4]; vec3i org; u32 matindex;};
+struct quad {vec3<char> index[4]; u32 matindex;};
 
 struct octree {
   struct qefpoint {
@@ -132,6 +132,7 @@ struct octree {
       node *children;
       leaf *leafdata;
     };
+    vec3i org;
     u32 level:30;
     u32 isleaf:1, m_empty:1;
   };
@@ -483,7 +484,7 @@ struct dc_gridbuilder {
         if (outside) continue;
         const auto qor = startsign==1 ? quadorder : quadorder_cc;
         const quad q = {
-          {p[qor[0]],p[qor[1]],p[qor[2]],p[qor[3]]}, m_iorg,
+          {p[qor[0]],p[qor[1]],p[qor[2]],p[qor[3]]},
           max(startfield.m, endfield.m)
         };
         node.leafdata->quads.add(q);
@@ -553,6 +554,7 @@ struct mt_builder {
 
   void build(octree::node &node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
     node.level = level;
+    node.org = xyz;
 
     // bounding box of this octree cell
     const auto lod = m_maxlevel - level;
@@ -674,7 +676,7 @@ static void buildmesh(const octree &o, const octree::node &node, procmesh &pm) {
     const auto quadmat = q.matindex;
     octree::qefpoint *pt[4];
     loopk(4) {
-      const auto ipos = vec3i(q.index[k]) + q.org;
+      const auto ipos = vec3i(q.index[k]) + node.org;
       const auto leaf = o.findleaf(ipos);
       assert(leaf != NULL && leaf->leafdata != NULL);
       const auto vidx = ipos % vec3i(SUBGRID);
