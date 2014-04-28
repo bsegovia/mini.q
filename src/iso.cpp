@@ -236,10 +236,9 @@ struct dc_gridbuilder {
   void initfield() {
     const vec3i org(-1), dim(SUBGRID+3);
     stepxyz(org, dim, vec3i(4)) {
-      // XXX use edgestack here
-      CACHE_LINE_ALIGNED csg::array3f pos;
-      CACHE_LINE_ALIGNED csg::arrayf d;
-      CACHE_LINE_ALIGNED csg::arrayi m;
+      auto &pos = m_stack->p;
+      auto &d = m_stack->d;
+      auto &m = m_stack->m;
       const auto p = vertex(sxyz);
       const aabb box = aabb(p-2.f*m_cellsize, p+6.f*m_cellsize);
       int index = 0;
