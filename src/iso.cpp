@@ -10,7 +10,7 @@
 #include "csgavx.hpp"
 #include "base/vector.hpp"
 #include "base/task.hpp"
-// #include "base/console.hpp" // XXX remove that
+#include "base/console.hpp"
 
 STATS(iso_num);
 STATS(iso_edgepos_num);
@@ -107,7 +107,6 @@ struct edgestack {
 /*-------------------------------------------------------------------------
  - spatial segmentation used for iso surface extraction
  -------------------------------------------------------------------------*/
-// TODO find less expensive storage for it
 struct quad {vec3<char> index[4]; u32 matindex;};
 
 struct octree {
@@ -168,6 +167,24 @@ INLINE pair<vec3i,int> getedge(const vec3i &start, const vec3i &end) {
   assert(reduceadd(delta) == 1);
   return makepair(lower, delta.y+2*delta.z);
 }
+
+/*-------------------------------------------------------------------------
+ - temporary structure to handle *leaf* mesh data before merging similar
+ - vertices using qem
+ -------------------------------------------------------------------------*/
+struct procleaf {
+  procleaf() : index(SUBGRID*SUBGRID*SUBGRID) {}
+  void init() {
+    index.memset(0xff);
+    quads.setsize(0);
+    qef.setsize(0);
+    qem.setsize(0);
+  }
+  vector<u16> index;
+  vector<quad> quads;
+  vector<octree::qefpoint> qef;
+  vector<qef::qem> qem;
+};
 
 /*-------------------------------------------------------------------------
  - iso surface extraction is done here
@@ -1185,6 +1202,8 @@ static mesh buildmesh(octree &o, float cellsize) {
   // build the mesh
   procmesh pm;
   buildmesh(o, o.m_root, pm);
+  con::out("iso: procmesh: %d vertices", pm.pos.length());
+  con::out("iso: procmesh: %d triangles", pm.idx.length()/3);
 
   // decimate the edges and remove degenrate triangles
   loopi(2) decimatemesh(pm, cellsize);
@@ -1214,6 +1233,8 @@ static mesh buildmesh(octree &o, float cellsize) {
   const auto n = pm.nor.move();
   const auto idx = pm.idx.move();
   const auto s = seg.move();
+  con::out("iso: final: %d vertices", p.second);
+  con::out("iso: final: %d triangles", idx.second/3);
   return mesh(p.first, n.first, idx.first, s.first, p.second, idx.second, s.second);
 }
 
@@ -1230,8 +1251,7 @@ mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &
   ref<task> job = NEW(isotask, ctx->m_work.length());
   job->scheduled();
   job->wait();
-  //con::out("elapsed %f ms", sys::millis()-start);
-  //exit(EXIT_SUCCESS);
+  con::out("iso: contouring time: %f ms", sys::millis()-start);
 #if !defined(RELEASE)
   stats();
 #endif
