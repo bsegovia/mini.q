@@ -85,10 +85,9 @@ static const int interptable[12][2] = {
 static const u32 octreechildmap[8] = {0, 4, 3, 7, 1, 5, 2, 6};
 
 static const u32 SUBGRID = 16;
-static const u32 FIELDDIM = SUBGRID+4;
-static const u32 QEFDIM = SUBGRID+2;
+static const u32 FIELDDIM = SUBGRID+2;
 static const u32 FIELDNUM = FIELDDIM*FIELDDIM*FIELDDIM;
-static const u32 QEFNUM = QEFDIM*QEFDIM*QEFDIM;
+static const u32 QEFNUM = SUBGRID*SUBGRID*SUBGRID;
 static const u32 NOINDEX = ~0x0u;
 
 struct edgeitem {
@@ -97,11 +96,11 @@ struct edgeitem {
   u32 m0, m1;
 };
 
-struct edgestack {
-  CACHE_LINE_ALIGNED array<edgeitem,csg::MAXPOINTNUM> it;
-  CACHE_LINE_ALIGNED csg::array3f p, pos;
-  CACHE_LINE_ALIGNED csg::arrayf d, nd;
-  CACHE_LINE_ALIGNED csg::arrayi m;
+struct CACHE_LINE_ALIGNED edgestack {
+  array<edgeitem,csg::MAXPOINTNUM> it;
+  csg::array3f p, pos;
+  csg::arrayf d, nd;
+  csg::arrayi m;
 };
 
 /*-------------------------------------------------------------------------
@@ -218,45 +217,42 @@ struct dc_gridbuilder {
   INLINE void setcellsize(float size) { m_cellsize = size; }
   INLINE void setnode(const csg::node *node) { m_node = node; }
   INLINE u32 qef_index(const vec3i &xyz) const {
-    const vec3i p = xyz + 1;
-    return p.x + (p.y + p.z * QEFDIM) * QEFDIM;
+    assert(all(ge(xyz,vec3i(zero))) && all(lt(xyz,vec3i(SUBGRID))));
+    return xyz.x + (xyz.y + xyz.z * SUBGRID) * SUBGRID;
   }
   INLINE u32 field_index(const vec3i &xyz) {
-    const vec3i p = xyz + 1;
-    return p.x + (p.y + p.z * FIELDDIM) * FIELDDIM;
+    assert(all(ge(xyz,vec3i(zero))) && all(lt(xyz,vec3i(FIELDDIM))));
+    return xyz.x + (xyz.y + xyz.z * FIELDDIM) * FIELDDIM;
   }
   INLINE u32 edge_index(const vec3i &start, int edge) {
-    const auto p = start + 1;
-    const auto offset = p.x + (p.y + p.z * FIELDDIM) * FIELDDIM;
+    assert(all(ge(start,vec3i(zero))) && all(lt(start,vec3i(FIELDDIM))));
+    const auto offset = start.x + (start.y + start.z * FIELDDIM) * FIELDDIM;
     return offset + edge * FIELDNUM;
   }
-
   INLINE fielditem &field(const vec3i &xyz) {return m_field[field_index(xyz)];}
 
   void initfield() {
-    const vec3i org(-1), dim(SUBGRID+3);
-    stepxyz(org, dim, vec3i(4)) {
+    stepxyz(vec3i(zero), vec3i(FIELDDIM), vec3i(4)) {
       auto &pos = m_stack->p;
       auto &d = m_stack->d;
       auto &m = m_stack->m;
       const auto p = vertex(sxyz);
       const aabb box = aabb(p-2.f*m_cellsize, p+6.f*m_cellsize);
       int index = 0;
-      const auto end = min(sxyz+4,dim);
+      const auto end = min(sxyz+4,vec3i(FIELDDIM));
       loopxyz(sxyz, end) csg::set(pos, vertex(xyz), index++);
-      assert(index == 64);
       CSGVER::dist(m_node, pos, NULL, d, m, index, box);
-      index = 0;
 #if !defined(NDEBUG)
-      loopi(64) assert(d[i] <= 0.f || m[i] == csg::MAT_AIR_INDEX);
-      loopi(64) assert(d[i] >= 0.f || m[i] != csg::MAT_AIR_INDEX);
-#endif
+      loopi(index) assert(d[i] <= 0.f || m[i] == csg::MAT_AIR_INDEX);
+      loopi(index) assert(d[i] >= 0.f || m[i] != csg::MAT_AIR_INDEX);
+#endif /* NDEBUG */
+      STATS_ADD(iso_num, index);
+      STATS_ADD(iso_grid_num, index);
+      index = 0;
       loopxyz(sxyz, end) {
         field(xyz) = fielditem(d[index], m[index]);
         ++index;
       }
-      STATS_ADD(iso_num, 64);
-      STATS_ADD(iso_grid_num, 64);
     }
   }
 
@@ -284,7 +280,7 @@ struct dc_gridbuilder {
         idx = m_delayed_edges.length();
         m_delayed_edges.add(makepair(xyz, vec4i(idx0, idx1, m0, m1)));
       }
-      edgemap |= (1<<i);
+      edgemap |= 1<<i;
     }
     return edgemap;
   }
@@ -341,7 +337,7 @@ struct dc_gridbuilder {
     for (int i = 0; i < len; i += 64) {
       auto &it = m_stack->it;
 
-      // step 1 - run false position with packets of (up-to) 64 points. we need
+      // step 1 - run bisection with packets of (up-to) 64 points. we need
       // to be careful FP wise. We ensure here that the position computation is
       // invariant from grids to grids such that neighbor grids will output the
       // exact same result
@@ -461,8 +457,7 @@ struct dc_gridbuilder {
   }
 
   void tesselate(octree::node &node) {
-    const vec3i org(zero), dim(SUBGRID+1);
-    loopxyz(org, dim) {
+    loopxyz(vec3i(zero), vec3i(FIELDDIM)) {
       const auto startfield = field(xyz);
       const auto startsign = startfield.d < 0.f ? 1 : 0;
       if (abs(field(xyz).d) > 2.f*m_cellsize) continue;
@@ -476,6 +471,7 @@ struct dc_gridbuilder {
 
         // is it an actual edge?
         const auto end = xyz+axis[i];
+        if (any(ge(end,vec3i(FIELDDIM)))) continue;
         const auto endfield = field(end);
         const int endsign = endfield.d < 0.f ? 1 : 0;
         if (startsign == endsign) continue;
@@ -486,6 +482,8 @@ struct dc_gridbuilder {
         const vec3i p[] = {xyz, xyz-axis0, xyz-axis0-axis1, xyz-axis1};
         loopj(4) {
           const auto np = p[j];
+          if (any(lt(np,vec3i(zero))) || any(ge(np,vec3i(SUBGRID))))
+            continue;
           const auto idx = qef_index(np);
           if (m_qef_index[idx] == NOINDEX) {
             mcell cell;
@@ -591,6 +589,10 @@ struct mt_builder {
     if (cellnum == SUBGRID) {
       node.leafdata = NEWE(octree::leaf);
       node.leafdata->index.setsize(SUBGRID*SUBGRID*SUBGRID);
+#if !defined(RELEASE)
+      // clear it such we ensure we do not miss any piece when looking it up
+      node.leafdata->index.memset(0xff);
+#endif
       node.isleaf = 1;
     } else {
       node.children = NEWAE(octree::node, 8);

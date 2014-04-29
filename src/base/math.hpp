@@ -92,6 +92,7 @@ TINLINE T deg2rad(T x) {return x * T(1.74532925199432957692e-2);}
 TINLINE T rad2deg(T x) {return x * T(5.72957795130823208768e1);}
 TINLINE T sin2cos(T x) {return sqrt(max(T(zero),T(one)-x*x));}
 TINLINE T cos2sin(T x) {return sin2cos(x);}
+INLINE int ilog2(int x) {return __bsr(x);}
 
 /*-------------------------------------------------------------------------
  - 3D graphics related linear algebra (vectors, matrices)
