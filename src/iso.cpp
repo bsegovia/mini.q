@@ -106,7 +106,10 @@ struct CACHE_LINE_ALIGNED edgestack {
 /*-------------------------------------------------------------------------
  - spatial segmentation used for iso surface extraction
  -------------------------------------------------------------------------*/
-struct quad {vec3<char> index[4]; u32 matindex;};
+struct quad {
+  vec3<char> index[4];
+  u32 matindex;
+};
 
 struct octree {
   struct qefpoint {
@@ -172,17 +175,23 @@ INLINE pair<vec3i,int> getedge(const vec3i &start, const vec3i &end) {
  - vertices using qem
  -------------------------------------------------------------------------*/
 struct procleaf {
-  procleaf() : index(SUBGRID*SUBGRID*SUBGRID) {}
+  struct vertex {
+    vec3f pos;
+    qef::qem qem;
+    vec3<char> xyz;
+    int idx;
+    int mat:31;
+    int multimat:1;
+  };
   void init() {
+    index.setsize(SUBGRID*SUBGRID*SUBGRID);
     index.memset(0xff);
     quads.setsize(0);
-    qef.setsize(0);
-    qem.setsize(0);
+    pts.setsize(0);
   }
   vector<u16> index;
   vector<quad> quads;
-  vector<octree::qefpoint> qef;
-  vector<qef::qem> qem;
+  vector<vertex> pts;
 };
 
 /*-------------------------------------------------------------------------
@@ -201,6 +210,11 @@ struct dc_gridbuilder {
     level(0)
   {}
   ~dc_gridbuilder() { ALIGNEDFREE(m_stack); }
+
+  struct edge {
+    vec3f p, n;
+    vec2i mat;
+  };
 
   struct qef_output {
     INLINE qef_output(vec3f p, vec3f n, bool valid):p(p),n(n),valid(valid){}
@@ -256,13 +270,13 @@ struct dc_gridbuilder {
     }
   }
 
-  NOINLINE void initedge() {
+  void initedge() {
     m_edge_index.memset(0xff);
     m_edges.setsize(0);
     m_delayed_edges.setsize(0);
   }
 
-  NOINLINE void initqef() {
+  void initqef() {
     m_qefnum = 0;
     m_qef_index.memset(0xff);
     m_delayed_qef.setsize(0);
@@ -285,7 +299,7 @@ struct dc_gridbuilder {
     return edgemap;
   }
 
-  INLINE void edgepos(const csg::node *node, edgestack &stack, int num) {
+  void edgepos(const csg::node *node, edgestack &stack, int num) {
     assert(num <= 64);
     auto &it = stack.it;
     auto &pos = stack.pos, &p = stack.p;
@@ -403,14 +417,13 @@ struct dc_gridbuilder {
           const auto grad = vec3f(c-dfdx, c-dfdy, c-dfdz);
           const auto n = grad==vec3f(zero) ? vec3f(zero) : normalize(grad);
           const auto p = it[j+k].p0;
-          m_edges.add(makepair(p,n));
+          m_edges.add({p,n,vec2i(it[j+k].m0,it[j+k].m1)});
         }
       }
     }
   }
 
-  void finishvertices(octree::node &node) {
-    const auto ld = node.leafdata;
+  void finishvertices() {
     loopv(m_delayed_qef) {
       const auto &item = m_delayed_qef[i];
       const auto xyz = item.first;
@@ -420,17 +433,28 @@ struct dc_gridbuilder {
       if ((xyz.x|xyz.y|xyz.z)>>31) continue;
 
       // get the intersection points between the surface and the cube edges
+      qef::qem q;
       vec3f p[12], n[12], mass(zero);
       vec3f nor = zero;
       int num = 0;
+      int mat = csg::MAT_AIR_INDEX, multimat = 0;
       loopi(12) {
         if ((edgemap & (1<<i)) == 0) continue;
         const auto idx0 = interptable[i][0], idx1 = interptable[i][1];
         const auto e = getedge(icubev[idx0], icubev[idx1]);
         const auto idx = m_edge_index[edge_index(xyz+e.first, e.second)];
         assert(idx != NOINDEX);
-        p[num] = m_edges[idx].first+vec3f(e.first);
-        n[num] = m_edges[idx].second;
+        loopj(2) {
+          const auto edgemap = m_edges[idx].mat[j];
+          if (mat != csg::MAT_AIR_INDEX && edgemap != csg::MAT_AIR_INDEX) {
+            if (mat != edgemap)
+              multimat = 1;
+          } else if (edgemap != csg::MAT_AIR_INDEX)
+            mat = edgemap;
+        }
+        p[num] = m_edges[idx].p+vec3f(e.first);
+        n[num] = m_edges[idx].n;
+        q += qef::qem(p[num], n[num]);
         nor += n[num];
         mass += p[num++];
       }
@@ -447,16 +471,16 @@ struct dc_gridbuilder {
       const auto pos = mass + qef::evaluate(matrix, vector, num);
 
       // XXX test should go away at the end
-      const auto qef = vertex(xyz) + pos*m_cellsize;;
+      const auto qefpos = vertex(xyz) + pos*m_cellsize;;
       if (all(ge(xyz,vec3i(zero))) && all(lt(xyz,vec3i(SUBGRID)))) {
         const auto idx = xyz.x+SUBGRID*(xyz.y+xyz.z*SUBGRID);
-        ld->index[idx] = ld->qef.length();
-        ld->qef.add({qef,-1});
+        pl.index[idx] = pl.pts.length();
+        pl.pts.add({qefpos,q,xyz,-1,mat,multimat});
       }
     }
   }
 
-  void tesselate(octree::node &node) {
+  void tesselate() {
     loopxyz(vec3i(zero), vec3i(FIELDDIM)) {
       const auto startfield = field(xyz);
       const auto startsign = startfield.d < 0.f ? 1 : 0;
@@ -501,29 +525,38 @@ struct dc_gridbuilder {
           {p[qor[0]],p[qor[1]],p[qor[2]],p[qor[3]]},
           max(startfield.m, endfield.m)
         };
-        node.leafdata->quads.add(q);
+        pl.quads.add(q);
       }
     }
   }
 
+  void output(octree::node &node) {
+    pl.quads.moveto(node.leafdata->quads);
+    pl.index.moveto(node.leafdata->index);
+    loopv(pl.pts) node.leafdata->qef.add({pl.pts[i].pos,-1});
+  }
+
   void build(octree::node &node) {
+    pl.init();
     initfield();
     initedge();
     initqef();
-    tesselate(node);
+    tesselate();
     finishedges();
-    finishvertices(node);
+    finishvertices();
+    output(node);
   }
 
   const csg::node *m_node;
   vector<fielditem> m_field;
   vector<u32> m_qef_index;
   vector<u32> m_edge_index;
-  vector<pair<vec3f,vec3f>> m_edges;
+  vector<edge> m_edges;
   vector<pair<vec3i,vec4i>> m_delayed_edges;
   vector<pair<vec3i,int>> m_delayed_qef;
   edgestack *m_stack;
   const octree *m_octree;
+  procleaf pl;
   vec3f m_org;
   vec3i m_iorg;
   float m_cellsize;
@@ -589,10 +622,6 @@ struct mt_builder {
     if (cellnum == SUBGRID) {
       node.leafdata = NEWE(octree::leaf);
       node.leafdata->index.setsize(SUBGRID*SUBGRID*SUBGRID);
-#if !defined(RELEASE)
-      // clear it such we ensure we do not miss any piece when looking it up
-      node.leafdata->index.memset(0xff);
-#endif
       node.isleaf = 1;
     } else {
       node.children = NEWAE(octree::node, 8);
@@ -654,11 +683,13 @@ struct isotask : public task {
   }
 };
 
-// we have to choose between this two meshes and take the convex one
+// we have to choose between this two meshes and take the one that does not self
+// intersect
 struct quadmesh { int tri[2][3]; };
 static const quadmesh qmesh[2] = {{{{0,1,2},{0,2,3}}},{{{0,1,3},{3,1,2}}}};
 
-// test first configuration. If ok, take it, otherwise take the other one
+// test first configuration for non self intersection. If ok, take it, otherwise
+// take the other one
 INLINE const quadmesh &findbestmesh(octree::qefpoint **pt) {
   const auto qm0 = qmesh[0].tri;
   const auto e00 = pt[qm0[0][0]]->pos-pt[qm0[0][1]]->pos;
@@ -753,12 +784,12 @@ INLINE bool operator< (const qemheapitem &i0, const qemheapitem &i1) {
 }
 
 struct qemcontext {
-  vector<int> vidx; // list of triangle per vertex
-  vector<pair<int,int>> vtri; // <trinum, firstidx> triangle list per vertex
-  vector<qef::qem> vqem; // qem per vertex
-  vector<qemedge> eqem; // qem information per edge
-  vector<qemheapitem> heap; // heap to decimate the mesh
-  vector<int> mergelist; // temporary structure when merging triangle lists
+  vector<int> vidx;          // list of triangle per vertex
+  vector<pair<int,int>> vtri;// <trinum, firstidx> triangle list per vertex
+  vector<qef::qem> vqem;     // qem per vertex
+  vector<qemedge> eqem;      // qem information per edge
+  vector<qemheapitem> heap;  // heap to decimate the mesh
+  vector<int> mergelist;     // temporary structure when merging triangle lists
 };
 
 static void extraplane(const procmesh &pm, const qemedge &edge, int tri,
