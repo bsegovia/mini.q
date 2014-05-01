@@ -85,6 +85,7 @@ static const int interptable[12][2] = {
 static const u32 octreechildmap[8] = {0, 4, 3, 7, 1, 5, 2, 6};
 
 static const u32 SUBGRID = 16;
+static const u32 SUBGRIDDEPTH = ilog2(SUBGRID);
 static const u32 FIELDDIM = SUBGRID+2;
 static const u32 FIELDNUM = FIELDDIM*FIELDDIM*FIELDDIM;
 static const u32 QEFNUM = SUBGRID*SUBGRID*SUBGRID;
@@ -179,16 +180,72 @@ struct procleaf {
     vec3f pos;
     qef::qem qem;
     vec3<char> xyz;
-    int idx;
     int mat:31;
     int multimat:1;
+  };
+  struct node {
+    INLINE void setemptynonleaf() {
+      isleaf = empty = 1;
+      idx = 0;
+    }
+    u32 isleaf:1;
+    u32 empty:1;
+    u32 idx:30;
   };
   void init() {
     index.setsize(SUBGRID*SUBGRID*SUBGRID);
     index.memset(0xff);
     quads.setsize(0);
     pts.setsize(0);
+    root.setsize(1);
+    root[0].setemptynonleaf();
   }
+  void buildoctree() {loopv(pts) insert(pts[i], i);}
+  INLINE u32 descend(vec3i &xyz, u32 level, u32 idx) {
+    const auto logsize = vec3i(SUBGRIDDEPTH-level-1);
+    const auto bits = xyz >> logsize;
+    const auto child = octreechildmap[bits.x | (bits.y<<1) | (bits.z<<2)];
+    assert(all(ge(xyz, icubev[child] << logsize)));
+    xyz -= icubev[child] << logsize;
+    idx = root[idx].idx+child;
+    return idx;
+  }
+  void insert(const vertex &pt, int ptidx) {
+    auto xyz = vec3i(pt.xyz);
+    assert(all(ge(xyz,vec3i(zero))) && "out-of-bound vertex");
+    assert(all(lt(xyz,vec3i(SUBGRID))) && "out-of-bound vertex");
+    u32 level = 0, idx = 0;
+    for (;;) {
+      if (level == SUBGRIDDEPTH) {
+        root[idx].idx = ptidx;
+        root[idx].isleaf = 1;
+        break;
+      }
+      if (root[idx].idx == 0) {
+        const auto childidx = root.length();
+        root[idx].isleaf = root[idx].empty = 0;
+        root[idx].idx = childidx;
+        root.setsize(childidx+8);
+        loopi(8) root[childidx+i].setemptynonleaf();
+      }
+      idx = descend(xyz, level, idx);
+      ++level;
+    }
+  }
+  vertex *get(vec3i xyz) {
+    assert(all(ge(xyz,vec3i(zero))) && "out-of-bound vertex");
+    assert(all(lt(xyz,vec3i(SUBGRID))) && "out-of-bound vertex");
+    u32 level = 0, idx = 0;
+    for (;;) {
+      const auto node = &root[idx];
+      if (node->empty) return NULL;
+      if (node->isleaf) return &pts[node->idx];
+      idx = descend(xyz, level, idx);
+      ++level;
+    }
+  }
+
+  vector<node> root;
   vector<u16> index;
   vector<quad> quads;
   vector<vertex> pts;
@@ -475,7 +532,7 @@ struct dc_gridbuilder {
       if (all(ge(xyz,vec3i(zero))) && all(lt(xyz,vec3i(SUBGRID)))) {
         const auto idx = xyz.x+SUBGRID*(xyz.y+xyz.z*SUBGRID);
         pl.index[idx] = pl.pts.length();
-        pl.pts.add({qefpos,q,xyz,-1,mat,multimat});
+        pl.pts.add({qefpos,q,xyz,mat,multimat});
       }
     }
   }
