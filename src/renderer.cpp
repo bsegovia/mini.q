@@ -596,7 +596,7 @@ void finish() {
 }
 #endif
 
-VAR(isofromfile, 0, 1, 1);
+VAR(isofromfile, 0, 0, 1);
 static const float CELLSIZE = 0.1f;
 static void makescene() {
   if (initialized_m) return;
