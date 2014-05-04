@@ -32,13 +32,13 @@ static void stats() {
   STATS_RATIO(iso_grid_num, iso_num);
   STATS_RATIO(iso_octree_num, iso_num);
 }
-#endif
+#endif /* defined(RELEASE) */
 
 #define DEBUGOCTREE 0
 #if DEBUGOCTREE
 static const q::vec3f debugpos(19.f,3.0f,13.f);
 static const float debugsize = 0.8f;
-#endif
+#endif /* DEBUGOCTREE */
 
 //#define CSGVER csg::avx
 //#define CSGVER csg::sse
@@ -51,7 +51,6 @@ void mesh::destroy() {
   if (m_nor) {FREE(m_nor); m_nor=NULL;}
   if (m_index) {FREE(m_index); m_index=NULL;}
   if (m_segment) {FREE(m_segment); m_segment=NULL;}
-
 }
 static const auto DEFAULT_GRAD_STEP = 1e-3f;
 static const int MAX_STEPS = 8;
@@ -59,7 +58,10 @@ static const float SHARP_EDGE_THRESHOLD = 0.2f;
 static const float MIN_EDGE_FACTOR = 1.f/8.f;
 static const float MAX_EDGE_LEN = 4.f;
 static const double QEM_MIN_ERROR = 1e-8;
+static const double QEM_LEAF_MIN_ERROR = 1e-6;
 
+template <typename T>
+INLINE bool isdegenerated(T a, T b, T c) { return a==b || a==c || b==c; }
 INLINE pair<vec3i,u32> edge(vec3i start, vec3i end) {
   const auto lower = select(lt(start,end), start, end);
   const auto delta = select(eq(start,end), vec3i(zero), vec3i(one));
@@ -272,7 +274,13 @@ struct procleaf {
     vec3<char> xyz;    // coordinates in the local grid
     pair<int,int> mat; // pair of material used to build the qef
   };
+
+  // merge similar qef points together
   void merge(int idx = 0);
+
+  // removed degenerated quads
+  void decimate();
+
   leafoctree<vertex> leaf;
 };
 
@@ -326,7 +334,7 @@ void procleaf::merge(int idx) {
   int best = -1;
   loopi(num) {
     const auto idx = children[i];
-    const auto cost = q.error(leaf.pts[idx].local,QEM_MIN_ERROR);
+    const auto cost = q.error(leaf.pts[idx].local,QEM_LEAF_MIN_ERROR);
     if (bestcost > cost) {
       bestcost = cost;
       best = idx;
@@ -334,7 +342,7 @@ void procleaf::merge(int idx) {
   }
 
   assert(best != -1 && "unable to find candidate");
-  if (bestcost > QEM_MIN_ERROR) return;
+  if (bestcost > QEM_LEAF_MIN_ERROR) return;
   node->isleaf = 1;
   node->idx = best;
 }
@@ -482,7 +490,7 @@ struct dc_gridbuilder {
 #if !defined(NDEBUG)
           assert(!isnan(src.x)&&!isnan(src.y)&&!isnan(src.z));
           assert(!isinf(src.x)&&!isinf(src.y)&&!isinf(src.z));
-#endif
+#endif /* NDEBUG */
         }
       }
     }
@@ -713,7 +721,7 @@ struct dc_gridbuilder {
  -------------------------------------------------------------------------*/
 static THREAD dc_gridbuilder *localbuilder = NULL;
 struct jobdata {
-  const csg::node *m_csg_node;
+  const csg::node *csg_node;
   octree::node *octree_node;
   octree *m_octree;
   vec3i m_iorg;
@@ -771,7 +779,7 @@ struct mt_builder {
         node.empty = node.isleaf = 1;
         return;
       }
-#endif
+#endif /* DEBUGOCTREE */
       node.leaf = NEWE(octree::leaftype);
       node.isleaf = 1;
     } else {
@@ -788,21 +796,17 @@ struct mt_builder {
       jobdata job;
       job.m_octree = m_octree;
       job.octree_node = &node;
-      job.m_csg_node = m_node;
+      job.csg_node = m_node;
       job.m_iorg = xyz;
       job.m_maxlevel = m_maxlevel;
       job.level = node.level;
       job.m_cellsize = float(1<<(m_maxlevel-node.level)) * m_cellsize;
       job.m_org = pos(xyz);
       ctx->m_work.add(job);
-      return;
-    } else if (!node.isleaf) {
-      loopi(8) {
-        const auto cellnum = m_dim >> node.level;
-        const auto childxyz = xyz+int(cellnum/2)*icubev[i];
-        preparejobs(node.children[i], childxyz);
-      }
-      return;
+    } else if (!node.isleaf) loopi(8) {
+      const auto cellnum = m_dim >> node.level;
+      const auto childxyz = xyz+int(cellnum/2)*icubev[i];
+      preparejobs(node.children[i], childxyz);
     }
   }
 
@@ -828,7 +832,7 @@ struct isotask : public task {
     localbuilder->level = job.octree_node->level;
     localbuilder->m_maxlevel = job.m_maxlevel;
     localbuilder->setcellsize(job.m_cellsize);
-    localbuilder->setnode(job.m_csg_node);
+    localbuilder->setnode(job.csg_node);
     localbuilder->setorg(job.m_org);
     localbuilder->build(*job.octree_node);
   }
@@ -872,7 +876,8 @@ static void buildmesh(const octree &o, const octree::node &node, procmesh &pm) {
 
 #if DEBUGOCTREE
   bool missingpoint = false;
-#endif
+#endif /* DEBUGOCTREE */
+
   loopv(node.leaf->quads) {
     // get four points
     const auto &q = node.leaf->quads[i];
@@ -889,7 +894,7 @@ static void buildmesh(const octree &o, const octree::node &node, procmesh &pm) {
 #else
       assert(leaf != NULL && leaf->leaf != NULL &&
         "leaf node is missing from the octree");
-#endif
+#endif /* DEBUGOCTREE */
       const auto vidx = ipos % vec3i(SUBGRID);
       const auto qef = leaf->leaf->get(vidx);
       assert(qef != NULL && "point is missing from leaf octree");
@@ -898,15 +903,14 @@ static void buildmesh(const octree &o, const octree::node &node, procmesh &pm) {
 #if DEBUGOCTREE
     if (missingpoint)
       continue;
-#endif
+#endif /* DEBUGOCTREE */
     // get the right convex configuration
     const auto tri = findbestmesh(pt).tri;
 
     // append positions in the vertex buffer and the index buffer
     loopk(2) {
       const auto t = tri[k];
-      // check if the triangle is degenerated
-      if (pt[t[0]] == pt[t[1]] || pt[t[0]] == pt[t[2]] || pt[t[1]] == pt[t[2]])
+      if (isdegenerated(pt[t[0]],pt[t[1]],pt[t[2]]))
         continue;
       pm.mat.add(quadmat);
       loopl(3) {
@@ -1453,12 +1457,14 @@ mesh dc_mesh_mt(const vec3f &org, u32 cellnum, float cellsize, const csg::node &
   job->scheduled();
   job->wait();
   con::out("iso: contouring time: %f ms", sys::millis()-start);
+
 #if !defined(RELEASE)
   stats();
-#endif
-  const auto m = buildmesh(o, cellsize);
-  return m;
+#endif /* defined(RELEASE) */
+
+  return buildmesh(o, cellsize);
 }
+
 void store(const char *filename, const mesh &m) {
   auto f = fopen(filename, "wb");
   assert(f);

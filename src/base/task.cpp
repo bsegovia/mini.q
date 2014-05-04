@@ -155,7 +155,7 @@ void queue::terminate(task *job) {
 }
 
 int queue::threadfunc(void *data) {
-#if defined(__X86__)
+#if defined(__X86__) || defined(__X86_64__)
   // flush to zero and no denormals
   _mm_setcsr(_mm_getcsr() | (1<<15) | (1<<6));
 #endif
