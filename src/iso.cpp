@@ -130,12 +130,10 @@ struct leafoctree : leafoctreebase {
     quads.setsize(0);
     pts.setsize(0);
     root.setsize(1);
-    index.setsize(SUBGRID*SUBGRID*SUBGRID);
-    index.memset(0xff);
     root[0].setemptyleaf();
   }
 
-  void buildoctree() {loopv(pts) insert(pts[i],i);}
+  // void buildoctree() {loopv(pts) insert(pts[i],i);}
 
   INLINE u32 descend(vec3i &xyz, u32 level, u32 idx) {
     const auto logsize = vec3i(SUBGRIDDEPTH-level-1);
@@ -147,8 +145,7 @@ struct leafoctree : leafoctreebase {
     return idx;
   }
 
-  void insert(const T &pt, int ptidx) {
-    auto xyz = vec3i(pt.xyz);
+  void insert(vec3i xyz, int ptidx) {
     assert(all(ge(xyz,vec3i(zero))) && "out-of-bound vertex");
     assert(all(lt(xyz,vec3i(SUBGRID))) && "out-of-bound vertex");
     u32 level = 0, idx = 0;
@@ -186,7 +183,6 @@ struct leafoctree : leafoctreebase {
 
   vector<T> pts;      // qef points given by dual contouring
   vector<quad> quads; // all quads in the leaf
-  vector<u16> index;  // grid indexing (TODO remove and keep octree only)
   vector<node> root;  // root node of the leaf octree
 };
 
@@ -545,10 +541,13 @@ struct dc_gridbuilder {
       const auto pos = mass + qef::evaluate(matrix, vector, num);
 
       // XXX test should go away at the end
-      const auto qefpos = vertex(xyz) + pos*m_cellsize;;
+      const auto qefpos = vertex(xyz) + pos*m_cellsize;
       if (all(ge(xyz,vec3i(zero))) && all(lt(xyz,vec3i(SUBGRID)))) {
+        pl.leaf.insert(xyz,pl.leaf.pts.length());
+#if 0
         const auto idx = xyz.x+SUBGRID*(xyz.y+xyz.z*SUBGRID);
         pl.leaf.index[idx] = pl.leaf.pts.length();
+#endif
         pl.leaf.pts.add({qefpos,q,xyz,mat,multimat});
       }
     }
@@ -605,12 +604,9 @@ struct dc_gridbuilder {
   }
 
   void output(octree::node &node) {
-    pl.leaf.buildoctree();
     pl.leaf.root.moveto(node.leaf->root);
     pl.leaf.quads.moveto(node.leaf->quads);
-    pl.leaf.index.moveto(node.leaf->index);
-    loopv(pl.leaf.pts)
-      node.leaf->pts.add({pl.leaf.pts[i].pos,-1});
+    loopv(pl.leaf.pts) node.leaf->pts.add({pl.leaf.pts[i].pos,-1});
   }
 
   void build(octree::node &node) {
@@ -698,7 +694,7 @@ struct mt_builder {
     }
     if (cellnum == SUBGRID) {
       node.leaf = NEWE(octree::leaftype);
-      node.leaf->index.setsize(SUBGRID*SUBGRID*SUBGRID);
+      // node.leaf->index.setsize(SUBGRID*SUBGRID*SUBGRID);
       node.isleaf = 1;
     } else {
       node.children = NEWAE(octree::node, 8);
@@ -807,13 +803,7 @@ static void buildmesh(const octree &o, const octree::node &node, procmesh &pm) {
       assert(leaf != NULL && leaf->leaf != NULL &&
         "leaf node is missing from the octree");
       const auto vidx = ipos % vec3i(SUBGRID);
-#if 1
-      const auto idx = vidx.x+SUBGRID*(vidx.y+SUBGRID*vidx.z);
-      const auto qefidx = leaf->leaf->index[idx];
-      const auto hop = &leaf->leaf->pts[qefidx];
-#endif
       const auto qef = leaf->leaf->get(vidx);
-      assert(qef == hop);
       assert(qef != NULL && "point is missing from leaf octree");
       pt[k] = qef;
     }
