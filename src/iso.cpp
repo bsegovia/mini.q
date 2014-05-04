@@ -133,8 +133,6 @@ struct leafoctree : leafoctreebase {
     root[0].setemptyleaf();
   }
 
-  // void buildoctree() {loopv(pts) insert(pts[i],i);}
-
   INLINE u32 descend(vec3i &xyz, u32 level, u32 idx) {
     const auto logsize = vec3i(SUBGRIDDEPTH-level-1);
     const auto bits = xyz >> logsize;
@@ -539,17 +537,13 @@ struct dc_gridbuilder {
         vector[i] = double(dot(n[i],d));
       }
       const auto pos = mass + qef::evaluate(matrix, vector, num);
-
-      // XXX test should go away at the end
       const auto qefpos = vertex(xyz) + pos*m_cellsize;
-      if (all(ge(xyz,vec3i(zero))) && all(lt(xyz,vec3i(SUBGRID)))) {
-        pl.leaf.insert(xyz,pl.leaf.pts.length());
-#if 0
-        const auto idx = xyz.x+SUBGRID*(xyz.y+xyz.z*SUBGRID);
-        pl.leaf.index[idx] = pl.leaf.pts.length();
-#endif
-        pl.leaf.pts.add({qefpos,q,xyz,mat,multimat});
-      }
+
+      // insert the point in the leaf octree
+      assert(all(ge(xyz,vec3i(zero))) && "point is out-of-bound");
+      assert(all(lt(xyz,vec3i(SUBGRID))) && "point is out-of-bound");
+      pl.leaf.insert(xyz,pl.leaf.pts.length());
+      pl.leaf.pts.add({qefpos,q,xyz,mat,multimat});
     }
   }
 
