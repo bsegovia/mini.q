@@ -540,8 +540,6 @@ struct dc_gridbuilder {
       const auto qefpos = vertex(xyz) + pos*m_cellsize;
 
       // insert the point in the leaf octree
-      assert(all(ge(xyz,vec3i(zero))) && "point is out-of-bound");
-      assert(all(lt(xyz,vec3i(SUBGRID))) && "point is out-of-bound");
       pl.leaf.insert(xyz,pl.leaf.pts.length());
       pl.leaf.pts.add({qefpos,q,xyz,mat,multimat});
     }
