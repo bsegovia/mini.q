@@ -68,9 +68,10 @@ function complexscene()
   local remove = translation(18.0,3.0,7.0, sphere(4.2, mat_simple_index))
   local newmat0 = translation(30.0,3.0,7.0, cylinderxz(0,0,4.2, mat_snoise_index))
   local newmat1 = translation(30.0,3.0,10.0, cylinderxz(0,0,4.2, mat_snoise_index));
-  return U(c0, D(R(R(world, newmat0), newmat1), remove))
+  return U(ground, translation(10.0,1.0,10.0, box(5.0,5.0,5.0,mat_simple_index)))
+  --return U(c0, D(R(R(world, newmat0), newmat1), remove))
   --return d0
- -- return U(scene0, arc);
+  --return U(scene0, arc);
 end
 
 local env = {

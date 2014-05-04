@@ -603,7 +603,7 @@ static void makescene() {
 
   // create the indexed mesh from the scene description
   iso::mesh m;
-  if (isofromfile || !iso::load("simple.mesh", m)) {
+  if (!isofromfile || !iso::load("simple.mesh", m)) {
     const auto start = sys::millis();
     const auto node = csg::makescene();
     assert(node != NULL);

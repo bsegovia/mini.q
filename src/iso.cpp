@@ -104,39 +104,117 @@ struct CACHE_LINE_ALIGNED edgestack {
   csg::arrayi m;
 };
 
-/*-------------------------------------------------------------------------
- - spatial segmentation used for iso surface extraction
- -------------------------------------------------------------------------*/
 struct quad {
   vec3<char> index[4];
   u32 matindex;
 };
 
+/*-------------------------------------------------------------------------
+ - octree per leaf for compact representation
+ -------------------------------------------------------------------------*/
+struct leafoctreebase {
+  struct node {
+    INLINE void setemptyleaf() {
+      idx = 0;
+      isleaf = empty = 1;
+    }
+    u32 idx:30;
+    u32 isleaf:1;
+    u32 empty:1;
+  };
+};
+
+template <typename T>
+struct leafoctree : leafoctreebase {
+  void init() {
+    quads.setsize(0);
+    pts.setsize(0);
+    root.setsize(1);
+    index.setsize(SUBGRID*SUBGRID*SUBGRID);
+    index.memset(0xff);
+    root[0].setemptyleaf();
+  }
+
+  void buildoctree() {loopv(pts) insert(pts[i],i);}
+
+  INLINE u32 descend(vec3i &xyz, u32 level, u32 idx) {
+    const auto logsize = vec3i(SUBGRIDDEPTH-level-1);
+    const auto bits = xyz >> logsize;
+    const auto child = octreechildmap[bits.x | (bits.y<<1) | (bits.z<<2)];
+    assert(all(ge(xyz, icubev[child] << logsize)));
+    xyz -= icubev[child] << logsize;
+    idx = root[idx].idx+child;
+    return idx;
+  }
+
+  void insert(const T &pt, int ptidx) {
+    auto xyz = vec3i(pt.xyz);
+    assert(all(ge(xyz,vec3i(zero))) && "out-of-bound vertex");
+    assert(all(lt(xyz,vec3i(SUBGRID))) && "out-of-bound vertex");
+    u32 level = 0, idx = 0;
+    for (;;) {
+      if (level == SUBGRIDDEPTH) {
+        root[idx].idx = ptidx;
+        root[idx].isleaf = 1;
+        break;
+      }
+      if (root[idx].idx == 0) {
+        const auto childidx = root.length();
+        root[idx].isleaf = root[idx].empty = 0;
+        root[idx].idx = childidx;
+        root.setsize(childidx+8);
+        loopi(8) root[childidx+i].setemptyleaf();
+      }
+      idx = descend(xyz, level, idx);
+      ++level;
+    }
+  }
+
+  T *get(vec3i xyz) {
+    assert(all(ge(xyz,vec3i(zero))) && "out-of-bound vertex");
+    assert(all(lt(xyz,vec3i(SUBGRID))) && "out-of-bound vertex");
+    u32 level = 0, idx = 0;
+    for (;;) {
+      const auto node = &root[idx];
+      if (node->empty) return NULL;
+      if (node->isleaf) return &pts[node->idx];
+      idx = descend(xyz, level, idx);
+      ++level;
+    }
+  }
+
+  vector<T> pts;      // qef points given by dual contouring
+  vector<quad> quads; // all quads in the leaf
+  vector<u16> index;  // grid indexing (TODO remove and keep octree only)
+  vector<node> root;  // root node of the leaf octree
+};
+
+/*-------------------------------------------------------------------------
+ - spatial segmentation used for iso surface extraction
+ -------------------------------------------------------------------------*/
 struct octree {
   struct qefpoint {
     vec3f pos;
     int idx;
   };
-  struct leaf {
-    vector<quad> quads;
-    vector<qefpoint> qef;
-    vector<u16> index;
-  };
+  typedef leafoctree<qefpoint> leaftype;
+
   struct node {
-    INLINE node() : children(NULL), level(0), isleaf(0), m_empty(0) {}
+    INLINE node() : children(NULL), level(0), isleaf(0), empty(0) {}
     ~node() {
       if (isleaf)
-        SAFE_DEL(leafdata);
+        SAFE_DEL(leaf);
       else
         SAFE_DELA(children);
     }
     union {
       node *children;
-      leaf *leafdata;
+      leafoctree<qefpoint> *leaf;
     };
     vec3i org;
     u32 level:30;
-    u32 isleaf:1, m_empty:1;
+    u32 isleaf:1;
+    u32 empty:1;
   };
 
   INLINE octree(u32 dim) : m_dim(dim), m_logdim(ilog2(dim)) {}
@@ -183,72 +261,10 @@ struct procleaf {
     int mat:31;
     int multimat:1;
   };
-  struct node {
-    INLINE void setemptynonleaf() {
-      isleaf = empty = 1;
-      idx = 0;
-    }
-    u32 isleaf:1;
-    u32 empty:1;
-    u32 idx:30;
-  };
   void init() {
-    index.setsize(SUBGRID*SUBGRID*SUBGRID);
-    index.memset(0xff);
-    quads.setsize(0);
-    pts.setsize(0);
-    root.setsize(1);
-    root[0].setemptynonleaf();
+    leaf.init();
   }
-  void buildoctree() {loopv(pts) insert(pts[i], i);}
-  INLINE u32 descend(vec3i &xyz, u32 level, u32 idx) {
-    const auto logsize = vec3i(SUBGRIDDEPTH-level-1);
-    const auto bits = xyz >> logsize;
-    const auto child = octreechildmap[bits.x | (bits.y<<1) | (bits.z<<2)];
-    assert(all(ge(xyz, icubev[child] << logsize)));
-    xyz -= icubev[child] << logsize;
-    idx = root[idx].idx+child;
-    return idx;
-  }
-  void insert(const vertex &pt, int ptidx) {
-    auto xyz = vec3i(pt.xyz);
-    assert(all(ge(xyz,vec3i(zero))) && "out-of-bound vertex");
-    assert(all(lt(xyz,vec3i(SUBGRID))) && "out-of-bound vertex");
-    u32 level = 0, idx = 0;
-    for (;;) {
-      if (level == SUBGRIDDEPTH) {
-        root[idx].idx = ptidx;
-        root[idx].isleaf = 1;
-        break;
-      }
-      if (root[idx].idx == 0) {
-        const auto childidx = root.length();
-        root[idx].isleaf = root[idx].empty = 0;
-        root[idx].idx = childidx;
-        root.setsize(childidx+8);
-        loopi(8) root[childidx+i].setemptynonleaf();
-      }
-      idx = descend(xyz, level, idx);
-      ++level;
-    }
-  }
-  vertex *get(vec3i xyz) {
-    assert(all(ge(xyz,vec3i(zero))) && "out-of-bound vertex");
-    assert(all(lt(xyz,vec3i(SUBGRID))) && "out-of-bound vertex");
-    u32 level = 0, idx = 0;
-    for (;;) {
-      const auto node = &root[idx];
-      if (node->empty) return NULL;
-      if (node->isleaf) return &pts[node->idx];
-      idx = descend(xyz, level, idx);
-      ++level;
-    }
-  }
-
-  vector<node> root;
-  vector<u16> index;
-  vector<quad> quads;
-  vector<vertex> pts;
+  leafoctree<vertex> leaf;
 };
 
 /*-------------------------------------------------------------------------
@@ -531,8 +547,8 @@ struct dc_gridbuilder {
       const auto qefpos = vertex(xyz) + pos*m_cellsize;;
       if (all(ge(xyz,vec3i(zero))) && all(lt(xyz,vec3i(SUBGRID)))) {
         const auto idx = xyz.x+SUBGRID*(xyz.y+xyz.z*SUBGRID);
-        pl.index[idx] = pl.pts.length();
-        pl.pts.add({qefpos,q,xyz,mat,multimat});
+        pl.leaf.index[idx] = pl.leaf.pts.length();
+        pl.leaf.pts.add({qefpos,q,xyz,mat,multimat});
       }
     }
   }
@@ -582,15 +598,18 @@ struct dc_gridbuilder {
           {p[qor[0]],p[qor[1]],p[qor[2]],p[qor[3]]},
           max(startfield.m, endfield.m)
         };
-        pl.quads.add(q);
+        pl.leaf.quads.add(q);
       }
     }
   }
 
   void output(octree::node &node) {
-    pl.quads.moveto(node.leafdata->quads);
-    pl.index.moveto(node.leafdata->index);
-    loopv(pl.pts) node.leafdata->qef.add({pl.pts[i].pos,-1});
+    pl.leaf.buildoctree();
+    pl.leaf.root.moveto(node.leaf->root);
+    pl.leaf.quads.moveto(node.leaf->quads);
+    pl.leaf.index.moveto(node.leaf->index);
+    loopv(pl.leaf.pts)
+      node.leaf->pts.add({pl.leaf.pts[i].pos,-1});
   }
 
   void build(octree::node &node) {
@@ -673,12 +692,12 @@ struct mt_builder {
     STATS_INC(iso_octree_num);
     STATS_INC(iso_num);
     if (abs(dist) > sqrt(3.f) * m_cellsize * float(cellnum/2+2)) {
-      node.isleaf = node.m_empty = 1;
+      node.isleaf = node.empty = 1;
       return;
     }
     if (cellnum == SUBGRID) {
-      node.leafdata = NEWE(octree::leaf);
-      node.leafdata->index.setsize(SUBGRID*SUBGRID*SUBGRID);
+      node.leaf = NEWE(octree::leaftype);
+      node.leaf->index.setsize(SUBGRID*SUBGRID*SUBGRID);
       node.isleaf = 1;
     } else {
       node.children = NEWAE(octree::node, 8);
@@ -690,7 +709,7 @@ struct mt_builder {
   }
 
   void preparejobs(octree::node &node, const vec3i &xyz = vec3i(zero)) {
-    if (node.isleaf && !node.m_empty) {
+    if (node.isleaf && !node.empty) {
       jobdata job;
       job.m_octree = m_octree;
       job.m_octree_node = &node;
@@ -773,22 +792,22 @@ static void buildmesh(const octree &o, const octree::node &node, procmesh &pm) {
   if (!node.isleaf) {
     loopi(8) buildmesh(o, node.children[i], pm);
     return;
-  } else if (node.leafdata == NULL)
+  } else if (node.leaf == NULL)
     return;
 
-  loopv(node.leafdata->quads) {
+  loopv(node.leaf->quads) {
     // get four points
-    const auto &q = node.leafdata->quads[i];
+    const auto &q = node.leaf->quads[i];
     const auto quadmat = q.matindex;
     octree::qefpoint *pt[4];
     loopk(4) {
       const auto ipos = vec3i(q.index[k]) + node.org;
       const auto leaf = o.findleaf(ipos);
-      assert(leaf != NULL && leaf->leafdata != NULL);
+      assert(leaf != NULL && leaf->leaf != NULL);
       const auto vidx = ipos % vec3i(SUBGRID);
       const auto idx = vidx.x+SUBGRID*(vidx.y+SUBGRID*vidx.z);
-      const auto qefidx = leaf->leafdata->index[idx];
-      pt[k] = &leaf->leafdata->qef[qefidx];
+      const auto qefidx = leaf->leaf->index[idx];
+      pt[k] = &leaf->leaf->pts[qefidx];
     }
 
     // get the right convex configuration
