@@ -1071,16 +1071,15 @@ static void buildheap(qemcontext &ctx, procmesh &pm) {
   auto &e = ctx.eqem;
   auto &v = ctx.vqem;
   auto &p = pm.pos;
-  h.setsize(e.length());
   loopv(e) {
     const auto idx0 = e[i].idx[0], idx1 = e[i].idx[1];
     const auto &p0 = p[idx0], &p1 = p[idx1];
     const auto &q0 = v[idx0], &q1 = v[idx1];
     const auto best = qef::findbest(q0,q1,p0,p1,QEM_MIN_ERROR);
+    if (best.first > QEM_MIN_ERROR)
+      continue;
     e[i].best = best.second;
-    h[i].cost = best.first;
-    h[i].len2 = distance2(p0,p1);
-    h[i].idx = i;
+    h.add({best.first,distance2(p0,p1),i});
   }
   h.buildheap();
 }
