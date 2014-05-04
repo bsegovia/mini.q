@@ -156,6 +156,7 @@ struct leafoctree : leafoctreebase {
       if (level == SUBGRIDDEPTH) {
         root[idx].idx = ptidx;
         root[idx].isleaf = 1;
+        root[idx].empty = 0;
         break;
       }
       if (root[idx].idx == 0) {
@@ -803,11 +804,18 @@ static void buildmesh(const octree &o, const octree::node &node, procmesh &pm) {
     loopk(4) {
       const auto ipos = vec3i(q.index[k]) + node.org;
       const auto leaf = o.findleaf(ipos);
-      assert(leaf != NULL && leaf->leaf != NULL);
+      assert(leaf != NULL && leaf->leaf != NULL &&
+        "leaf node is missing from the octree");
       const auto vidx = ipos % vec3i(SUBGRID);
+#if 1
       const auto idx = vidx.x+SUBGRID*(vidx.y+SUBGRID*vidx.z);
       const auto qefidx = leaf->leaf->index[idx];
-      pt[k] = &leaf->leaf->pts[qefidx];
+      const auto hop = &leaf->leaf->pts[qefidx];
+#endif
+      const auto qef = leaf->leaf->get(vidx);
+      assert(qef == hop);
+      assert(qef != NULL && "point is missing from leaf octree");
+      pt[k] = qef;
     }
 
     // get the right convex configuration
