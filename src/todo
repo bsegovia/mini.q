@@ -1,0 +1,27 @@
+* dynamic dispatch of all simd functions
+* use 'q' as a metatable for all scripts and remove 'q.' from all lua calls
+* write tri->leaf mapping and build list of triangles per leaf
+* build bvh per node with some minimum of triangles per bvh
+* build vertex buffer per node with also some mininum number of triangles
+* for all lists (bvh/vb) maintain a bounding box of nodes in octree world
+* simdify qem build and accumulation with double in sse
+* make buildqem and buildedges asynchronous (be careful a part of buildedges
+  depends on buildqem)
+* annotate code where sse can be used
+* handle properly rotation in csg evaluation
+* build better sequence of union in csg tree to have something similar to a good
+  bvh
+* use ref counting for bvh
+* write a better class possibly refcouted for vertex buffer
+* write dc as task spawner rather than a free function
+* write more tests for tasking system
+* generalized cvar to floating points and string possibly
+* remove m_* to make code more consistent accross the board
+* be careful with all tasks and possibly refcount all structure
+* build a lua interpreter as tool in the build
+* write lua scripts to describe shaders rather than using macros hell
+* removed unused shaders that are spread all over the place
+* use regular font rendering instead of what is done today
+* properly handle opengl
+* check problem when mouse is locked
+
