@@ -83,7 +83,7 @@ struct octree {
   node m_root;
   u32 m_dim, m_logdim;
 };
-static const u32 SUBGRID = 16;
+static const int SUBGRID = 16;
 
 // tesselate along a grid the distance field with dual contouring algorithm
 geom::mesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d);

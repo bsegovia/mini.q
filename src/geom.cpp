@@ -86,7 +86,7 @@ static void buildmesh(const iso::octree &o, const iso::octree::node &node, procm
       const auto lpos = vec3i(q.index[k]);
       const auto ipos = lpos + node.org;
       assert(all(ge(lpos,vec3i(zero))) && "inconsistant position");
-      const auto leaf = all(lt(lpos,vec3i(iso::SUBGRID))) ? &node : o.findleaf(ipos);
+      const auto leaf = all(lt(lpos,iso::SUBGRID)) ? &node : o.findleaf(ipos);
 
 #if DEBUGOCTREE
       if (leaf == NULL || leaf->leaf == NULL) {
@@ -98,7 +98,7 @@ static void buildmesh(const iso::octree &o, const iso::octree::node &node, procm
         "leaf node is missing from the octree");
 #endif /* DEBUGOCTREE */
 
-      const auto vidx = ipos % vec3i(iso::SUBGRID);
+      const auto vidx = ipos % iso::SUBGRID;
       const auto qef = leaf->leaf->get(vidx);
       assert(qef != NULL && "point is missing from leaf octree");
       pt[k] = qef;
