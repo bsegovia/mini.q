@@ -285,8 +285,8 @@ void procleaf::merge(int idx) {
 /*-------------------------------------------------------------------------
  - iso surface extraction is done here
  -------------------------------------------------------------------------*/
-struct dc_gridbuilder {
-  dc_gridbuilder() :
+struct gridbuilder {
+  gridbuilder() :
     m_node(NULL),
     m_field(FIELDNUM),
     m_qef_index(QEFNUM),
@@ -294,10 +294,10 @@ struct dc_gridbuilder {
     stack((edgestack*)ALIGNEDMALLOC(sizeof(edgestack), CACHE_LINE_ALIGNMENT)),
     m_octree(NULL),
     m_iorg(zero),
-    m_maxlevel(0),
+    maxlvl(0),
     level(0)
   {}
-  ~dc_gridbuilder() { ALIGNEDFREE(stack); }
+  ~gridbuilder() { ALIGNEDFREE(stack); }
 
   struct edge {
     vec3f p, n;
@@ -311,12 +311,12 @@ struct dc_gridbuilder {
   };
 
   INLINE vec3f vertex(const vec3i &p) {
-    const vec3i ipos = m_iorg+(p<<(int(m_maxlevel-level)));
-    return vec3f(ipos)*m_cellsize;
+    const vec3i ipos = m_iorg+(p<<(int(maxlvl-level)));
+    return vec3f(ipos)*cellsize;
   }
   INLINE void setoctree(const octree &o) { m_octree = &o; }
   INLINE void setorg(const vec3f &org) { m_org = org; }
-  INLINE void setcellsize(float size) { m_cellsize = size; }
+  INLINE void setcellsize(float size) { cellsize = size; }
   INLINE void setnode(const csg::node *node) { m_node = node; }
   INLINE u32 qef_index(const vec3i &xyz) const {
     assert(all(ge(xyz,vec3i(zero))) && all(lt(xyz,vec3i(SUBGRID))));
@@ -339,7 +339,7 @@ struct dc_gridbuilder {
       auto &d = stack->d;
       auto &m = stack->m;
       const auto p = vertex(sxyz);
-      const auto box = aabb(p-2.f*m_cellsize, p+6.f*m_cellsize);
+      const auto box = aabb(p-2.f*cellsize, p+6.f*cellsize);
       int index = 0;
       const auto end = min(sxyz+4,vec3i(FIELDDIM));
       loopxyz(sxyz, end) csg::set(pos, vertex(xyz), index++);
@@ -398,14 +398,14 @@ struct dc_gridbuilder {
       auto box = aabb::empty();
       loopi(num) {
         const auto mid = (it[i].p0 + it[i].p1) * 0.5f;
-        const auto worldmid = it[i].org+m_cellsize*mid;
+        const auto worldmid = it[i].org+cellsize*mid;
         csg::set(p, mid, i);
         csg::set(pos, worldmid, i);
         box.pmin = min(worldmid, box.pmin);
         box.pmax = max(worldmid, box.pmax);
       }
-      box.pmin -= 3.f * m_cellsize;
-      box.pmax += 3.f * m_cellsize;
+      box.pmin -= 3.f * cellsize;
+      box.pmax += 3.f * cellsize;
       CSGVER::dist(m_node, pos, NULL, d, m, num, box);
       if (k != MAX_STEPS-1) {
         loopi(num) {
@@ -476,7 +476,7 @@ struct dc_gridbuilder {
         auto &nd = stack->nd;
         auto box = aabb::empty();
         loopk(subnum) {
-          const auto center = it[j+k].org + it[j+k].p0 * m_cellsize;
+          const auto center = it[j+k].org + it[j+k].p0 * cellsize;
           csg::set(p, center,    4*k+0);
           csg::set(p, center-dx, 4*k+1);
           csg::set(p, center-dy, 4*k+2);
@@ -484,14 +484,14 @@ struct dc_gridbuilder {
           box.pmin = min(center, box.pmin);
           box.pmax = max(center, box.pmax);
         }
-        box.pmin -= 3.f * m_cellsize;
-        box.pmax += 3.f * m_cellsize;
+        box.pmin -= 3.f * cellsize;
+        box.pmax += 3.f * cellsize;
 
         loopk(4*subnum) {
           const auto m0 = it[j+k/4].m0;
           const auto m1 = it[j+k/4].m1;
           bool const solidsolid = m0 != csg::MAT_AIR_INDEX && m1 != csg::MAT_AIR_INDEX;
-          nd[k] = solidsolid ? m_cellsize : 0.f;
+          nd[k] = solidsolid ? cellsize : 0.f;
         }
         CSGVER::dist(m_node, p, &nd, d, m, 4*subnum, box);
         STATS_ADD(iso_num, 4*subnum);
@@ -526,7 +526,7 @@ struct dc_gridbuilder {
       vec3f nor = zero;
       pair<int,int> mat = airmat;
       int num = 0, multimat = false;
-      const auto gridpos = vec3f(xyz) * m_cellsize;
+      const auto gridpos = vec3f(xyz) * cellsize;
       loopi(12) {
         if ((edgemap & (1<<i)) == 0) continue;
         const auto idx0 = interptable[i][0], idx1 = interptable[i][1];
@@ -543,7 +543,7 @@ struct dc_gridbuilder {
 
         p[num] = m_edges[idx].p+vec3f(e.first);
         n[num] = m_edges[idx].n;
-        q += qef::qem(n[num], gridpos+m_cellsize*p[num]);
+        q += qef::qem(n[num], gridpos+cellsize*p[num]);
         nor += n[num];
         mass += p[num++];
       }
@@ -558,8 +558,8 @@ struct dc_gridbuilder {
         vector[i] = double(dot(n[i],d));
       }
       const auto pos = mass + qef::evaluate(matrix, vector, num);
-      const auto worldpos = vertex(xyz) + pos*m_cellsize;
-      const auto localpos = (vec3f(xyz)+pos)*m_cellsize;
+      const auto worldpos = vertex(xyz) + pos*cellsize;
+      const auto localpos = (vec3f(xyz)+pos)*cellsize;
 
       // insert the point in the leaf octree
       pl.leaf.insert(xyz,pl.leaf.pts.length());
@@ -571,7 +571,7 @@ struct dc_gridbuilder {
     loopxyz(vec3i(zero), vec3i(FIELDDIM)) {
       const auto startfield = field(xyz);
       const auto startsign = startfield.d < 0.f ? 1 : 0;
-      if (abs(field(xyz).d) > 2.f*m_cellsize) continue;
+      if (abs(field(xyz).d) > 2.f*cellsize) continue;
 
       // some quads belong to our neighbor. we will not push them but we need to
       // compute their vertices such that our neighbor can output these quads
@@ -670,62 +670,106 @@ struct dc_gridbuilder {
   procleaf pl;
   vec3f m_org;
   vec3i m_iorg;
-  float m_cellsize;
+  float cellsize;
   u32 m_qefnum;
-  u32 m_maxlevel, level;
+  u32 maxlvl, level;
 };
 
 /*-------------------------------------------------------------------------
  - multi-threaded implementation of the iso surface extraction
  -------------------------------------------------------------------------*/
-static THREAD dc_gridbuilder *localbuilder = NULL;
-struct jobdata {
-  const csg::node *csg_node;
-  struct octree::node *octree_node;
-  struct octree *m_octree;
-  vec3i m_iorg;
-  vec3f m_org;
-  int level;
-  int m_maxlevel;
-  float m_cellsize;
-};
+static THREAD gridbuilder *localbuilder = NULL;
 struct context {
   INLINE context() : m_mutex(SDL_CreateMutex()) {}
   SDL_mutex *m_mutex;
-  vector<jobdata> m_work;
-  vector<dc_gridbuilder*> m_builders;
+  vector<gridbuilder*> m_builders;
 };
 static context *ctx = NULL;
 
-struct mt_builder {
-  mt_builder(const csg::node &node, const vec3f &org, float cellsize, u32 dim) :
-    m_node(&node), m_org(org),
-    m_cellsize(cellsize),
-    m_dim(dim)
+// run the contouring part per leaf of octree using small grids
+struct contouringtask : public task {
+  // what to run per task iteration
+  struct workitem {
+    const csg::node *csgnode;
+    struct octree::node *octnode;
+    struct octree *oct;
+    vec3i iorg;
+    vec3f org;
+    int level;
+    int maxlvl;
+    float cellsize;
+  };
+
+  INLINE contouringtask(vector<workitem> &items) :
+    task("contouringtask", items.length()), items(items)
+  {}
+
+  virtual void run(u32 idx) {
+    if (localbuilder == NULL) {
+      localbuilder = NEWE(gridbuilder);
+      SDL_LockMutex(ctx->m_mutex);
+      ctx->m_builders.add(localbuilder);
+      SDL_UnlockMutex(ctx->m_mutex);
+    }
+    const auto &job = items[idx];
+    localbuilder->m_octree = job.oct;
+    localbuilder->m_iorg = job.iorg;
+    localbuilder->level = job.octnode->level;
+    localbuilder->maxlvl = job.maxlvl;
+    localbuilder->setcellsize(job.cellsize);
+    localbuilder->setnode(job.csgnode);
+    localbuilder->setorg(job.org);
+    localbuilder->build(*job.octnode);
+  }
+  vector<workitem> &items;
+};
+
+// build the octree topology needed to run contouring
+struct isotask : public task {
+  typedef contouringtask::workitem workitem;
+  INLINE isotask(octree &o,
+                 const csg::node &csgnode,
+                 const vec3f &org,
+                 float cellsize,
+                 u32 dim) :
+    task("isotask", 1, 1),
+    oct(&o),
+    csgnode(&csgnode),
+    org(org),
+    cellsize(cellsize),
+    dim(dim)
   {
     assert(ispoweroftwo(dim) && dim % SUBGRID == 0);
-    m_maxlevel = ilog2(dim / SUBGRID);
+    maxlvl = ilog2(dim / SUBGRID);
   }
-  INLINE vec3f pos(const vec3i &xyz) { return m_org+m_cellsize*vec3f(xyz); }
-  INLINE void setoctree(octree &o) {m_octree=&o;}
+
+  virtual void run(u32) {
+    build(oct->m_root);
+    preparejobs(oct->m_root);
+    spawnnext();
+  }
+
+  INLINE vec3f pos(const vec3i &xyz) {
+    return org+cellsize*vec3f(xyz);
+  }
 
   void build(octree::node &node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
     node.level = level;
     node.org = xyz;
 
     // bounding box of this octree cell
-    const auto lod = m_maxlevel - level;
+    const auto lod = maxlvl - level;
     const vec3f pmin = pos(xyz - int(4<<lod));
     const vec3f pmax = pos(xyz + int((SUBGRID+4)<<lod));
 
     // center of the box where to evaluate the distance field
-    const auto cellnum = int(m_dim >> level);
+    const auto cellnum = int(dim >> level);
     const auto icenter = xyz + cellnum/2;
     const auto center = pos(icenter);
-    const auto dist = csg::dist(m_node, center, aabb(pmin,pmax));
+    const auto dist = csg::dist(csgnode, center, aabb(pmin,pmax));
     STATS_INC(iso_octree_num);
     STATS_INC(iso_num);
-    if (abs(dist) > sqrt(3.f) * m_cellsize * float(cellnum/2+2)) {
+    if (abs(dist) > sqrt(3.f) * cellsize * float(cellnum/2+2)) {
       node.isleaf = node.empty = 1;
       return;
     }
@@ -751,62 +795,41 @@ struct mt_builder {
 
   void preparejobs(octree::node &node, const vec3i &xyz = vec3i(zero)) {
     if (node.isleaf && !node.empty) {
-      jobdata job;
-      job.m_octree = m_octree;
-      job.octree_node = &node;
-      job.csg_node = m_node;
-      job.m_iorg = xyz;
-      job.m_maxlevel = m_maxlevel;
+      auto &job = items.add();
+      job.oct = oct;
+      job.octnode = &node;
+      job.csgnode = csgnode;
+      job.iorg = xyz;
+      job.maxlvl = maxlvl;
       job.level = node.level;
-      job.m_cellsize = float(1<<(m_maxlevel-node.level)) * m_cellsize;
-      job.m_org = pos(xyz);
-      ctx->m_work.add(job);
+      job.cellsize = float(1<<(maxlvl-node.level)) * cellsize;
+      job.org = pos(xyz);
     } else if (!node.isleaf) loopi(8) {
-      const auto cellnum = m_dim >> node.level;
+      const auto cellnum = dim >> node.level;
       const auto childxyz = xyz+int(cellnum/2)*icubev[i];
       preparejobs(node.children[i], childxyz);
     }
   }
 
-  octree *m_octree;
-  const csg::node *m_node;
-  vec3f m_org;
-  float m_cellsize;
-  u32 m_dim, m_maxlevel;
-};
-
-struct isotask : public task {
-  INLINE isotask(u32 n) : task("isotask", n, 1) {}
-  virtual void run(u32 idx) {
-    if (localbuilder == NULL) {
-      localbuilder = NEWE(dc_gridbuilder);
-      SDL_LockMutex(ctx->m_mutex);
-      ctx->m_builders.add(localbuilder);
-      SDL_UnlockMutex(ctx->m_mutex);
-    }
-    const auto &job = ctx->m_work[idx];
-    localbuilder->m_octree = job.m_octree;
-    localbuilder->m_iorg = job.m_iorg;
-    localbuilder->level = job.octree_node->level;
-    localbuilder->m_maxlevel = job.m_maxlevel;
-    localbuilder->setcellsize(job.m_cellsize);
-    localbuilder->setnode(job.csg_node);
-    localbuilder->setorg(job.m_org);
-    localbuilder->build(*job.octree_node);
+  void spawnnext() {
+    ref<task> contouring = NEW(contouringtask, items);
+    contouring->ends(*this);
+    contouring->scheduled();
   }
+
+  vector<workitem> items;
+  octree *oct;
+  const csg::node *csgnode;
+  vec3f org;
+  float cellsize;
+  u32 dim, maxlvl;
 };
 
-geom::mesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d) {
+geom::mesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::node &csgnode) {
   const auto start = sys::millis();
-  iso::octree o(cellnum);
-  iso::ctx->m_work.setsize(0);
-  mt_builder r(d, org, cellsize, cellnum);
-  r.setoctree(o);
-  r.build(o.m_root);
-  r.preparejobs(o.m_root);
+  octree o(cellnum);
 
-  // build the grids in parallel
-  ref<task> job = NEW(isotask, iso::ctx->m_work.length());
+  ref<task> job = NEW(isotask, o, csgnode, org, cellsize, cellnum);
   job->scheduled();
   job->wait();
   con::out("iso: contouring time: %f ms", sys::millis()-start);

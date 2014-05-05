@@ -236,6 +236,7 @@ void task::finish(void) {
 }
 
 task::task(const char *name, u32 n, u32 waiternum, u32 queue, u16 policy) {
+  assert(n > 0 && "cannot create a task with no work to do");
   new (opaque) tasking::internal(name,n,waiternum,queue,policy);
 }
 task::~task(void) { tasking::inner(this).~internal(); }
@@ -253,7 +254,7 @@ void task::scheduled(void) {
   }
 }
 
-void task::wait(void) { tasking::inner(this).wait(false); }
+void task::wait(void) {tasking::inner(this).wait(false);}
 
 void task::starts(task &dep) {
   auto &self = tasking::inner(this);

@@ -16,7 +16,7 @@ DEBUGFLAGS=-O0 -DMEMORY_DEBUGGER -g
 OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g -fsanitize=address
 RELFLAGS=-fomit-frame-pointer -O3 -DNDEBUG -DRELEASE
 
-CXXFLAGS=$(CXXCOMMONFLAGS) $(FLAGS) $(RELFLAGS)
+CXXFLAGS=$(CXXCOMMONFLAGS) $(FLAGS) $(DEBUGFLAGS)
 CXXSSEFLAGS=$(CXXFLAGS) -msse -msse2
 CXXAVXFLAGS=$(CXXFLAGS) -mavx
 LIBS=`sdl2-config --libs` -lSDL2_image -lSDL2_mixer -lz -lm -lstdc++ -fsanitize=address
