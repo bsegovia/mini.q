@@ -34,6 +34,9 @@ static const float SHARP_EDGE_THRESHOLD = 0.2f;
 // edges that we estimate too small are decimated automatically
 static const float MIN_EDGE_FACTOR = 1.f/8.f;
 
+// number of iterations of decimations
+static const u32 DECIMATION_NUM = 2;
+
 // we have to choose between this two meshes and take the one that does not self
 // intersect
 struct quadmesh { int tri[2][3]; };
@@ -601,23 +604,37 @@ static void sharpenmesh(procmesh &pm) {
  - build a final mesh from the qef points and quads stored in the octree
  -------------------------------------------------------------------------*/
 
-// task to build the mesh from a "contoured" octree
-struct meshbuildtask : public task {
-  INLINE meshbuildtask(mesh &m, iso::octree &o, float cellsize, int waiternum) :
-    task("meshbuildtask", 1, waiternum), m(m), o(o), cellsize(cellsize)
+// build a first mesh from contoured octree
+struct isomeshtask : public task {
+  INLINE isomeshtask(iso::octree &o, procmesh &pm) :
+    task("isomeshtask"), o(o), pm(pm)
   {}
-
   virtual void run(u32) {
-    // build the mesh
-    procmesh pm;
     buildmesh(o, o.m_root, pm);
     con::out("iso: procmesh: %d vertices", pm.pos.length());
     con::out("iso: procmesh: %d triangles", pm.idx.length()/3);
+  }
+  iso::octree &o;
+  procmesh &pm;
+};
 
-    // decimate the edges and remove degenrate triangles
-    loopi(2) decimatemesh(pm, cellsize);
+// decimate a procmesh using qem
+struct decimatetask : public task {
+  INLINE decimatetask(procmesh &pm, float cellsize) :
+    task("decimatetask"), pm(pm), cellsize(cellsize)
+  {}
+  virtual void run(u32) { decimatemesh(pm, cellsize); }
+  procmesh &pm;
+  float cellsize;
+};
 
-    // handle sharp edges
+// create proper (possible sharpened) normals and finish the mesh
+struct finishtask : public task {
+  INLINE finishtask(mesh &m, procmesh &pm) :
+    task("finishtask"), m(m), pm(pm)
+  {}
+  virtual void run(u32) {
+    // handle sharp edges and create normals
     sharpenmesh(pm);
 
     // build the segment list
@@ -648,8 +665,38 @@ struct meshbuildtask : public task {
   }
 
   mesh &m;
+  procmesh &pm;
+};
+
+// task to build the mesh from a "contoured" octree
+struct meshbuildtask : public task {
+  INLINE meshbuildtask(mesh &m, iso::octree &o, float cellsize, int waiternum) :
+    task("meshbuildtask", 1, waiternum), m(m), o(o), cellsize(cellsize)
+  {}
+
+  virtual void run(u32) {
+    // create all tasks needed for the mesh processing
+    ref<task> init = NEW(isomeshtask, o, pm);
+    ref<task> decimate[DECIMATION_NUM];
+    loopi(DECIMATION_NUM) decimate[i] = NEW(decimatetask, pm, cellsize);
+    ref<task> finish = NEW(finishtask, m, pm);
+
+    // handle dependencies and completion of parent task
+    init->starts(*decimate[0]);
+    rangei(1,DECIMATION_NUM) decimate[i-1]->starts(*decimate[i]);
+    decimate[DECIMATION_NUM-1]->starts(*finish);
+    finish->ends(*this);
+
+    // schedule everything
+    finish->scheduled();
+    loopi(DECIMATION_NUM) decimate[i]->scheduled();
+    init->scheduled();
+  }
+
+  mesh &m;
   iso::octree &o;
   float cellsize;
+  procmesh pm;
 };
 
 ref<task> buildmesh(mesh &m, iso::octree &o, float cellsize, int waiternum) {
