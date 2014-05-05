@@ -269,7 +269,6 @@ struct procleaf {
     INLINE bool multimat() const {return mat==airmat;}
     vec3f world;       // position in world space
     vec3f local;       // relative position in local grid
-    vec3f nor;       // relative position in local grid
     qef::qem qem;      // qem matrix used to merge vertices
     vec3<char> xyz;    // coordinates in the local grid
     pair<int,int> mat; // pair of material used to build the qef
@@ -628,7 +627,7 @@ struct dc_gridbuilder {
 
       // insert the point in the leaf octree
       pl.leaf.insert(xyz,pl.leaf.pts.length());
-      pl.leaf.pts.add({worldpos,localpos,nor,q,xyz,multimat?airmat:mat});
+      pl.leaf.pts.add({worldpos,localpos,q,xyz,multimat?airmat:mat});
     }
   }
 
@@ -708,7 +707,6 @@ struct dc_gridbuilder {
     outputoctree(node);
     node.leaf->root.refit();
     node.leaf->pts.refit();
-
     pl.leaf.quads.moveto(node.leaf->quads);
   }
 
@@ -929,6 +927,7 @@ static void buildmesh(const octree &o, const octree::node &node, procmesh &pm) {
     if (missingpoint)
       continue;
 #endif /* DEBUGOCTREE */
+
     // get the right convex configuration
     const auto tri = findbestmesh(pt).tri;
 
