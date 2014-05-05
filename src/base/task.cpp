@@ -77,19 +77,19 @@ void internal::wait(bool recursivewait) {
   assert((recursivewait||state >= tasking::SCHEDULED) &&
          (recursivewait||waiternum > 0));
   auto job = parent();
+  job->acquire();
 
   // execute all starting dependencies
-  while (tostart)
-    loopi(depnum)
-      if (tasking::inner(deps[i]).toend)
-        inner(deps[i]).wait(true);
+  while (tostart) loopi(depnum)
+    if (tasking::inner(deps[i]).toend)
+      inner(deps[i]).wait(true);
 
   // execute the run function
   for (;;) {
     const auto elt = --elemnum;
     if (elt == 0) {
       SDL_LockMutex(owner->mutex);
-        owner->readylist.pop_front();
+        owner->readylist.erase(this);
       SDL_UnlockMutex(owner->mutex);
     }
     if (elt >= 0) {
@@ -102,7 +102,8 @@ void internal::wait(bool recursivewait) {
   // execute all ending dependencies. n.a.u.g.h.t.y -> busy waiting here
 #if defined(__SSE__)
   int pausenum = 1;
-#endif
+#endif /* __SSE__ */
+
   while (toend) {
     loopi(depnum)
       if (tasking::inner(deps[i]).toend)
@@ -111,12 +112,13 @@ void internal::wait(bool recursivewait) {
     else
       loopj(pausenum) _mm_pause();
       pausenum = min(pausenum*2, 64);
-#endif
+#endif /* __SSE__ */
   }
 
   // finished and no more waiters, we can safely release the dependency array
   if (!recursivewait && --waiternum == 0)
     loopi(depnum) deps[i]->release();
+  job->release();
 }
 
 void queue::append(task *job) {
@@ -168,23 +170,24 @@ int queue::threadfunc(void *data) {
       SDL_UnlockMutex(q->mutex);
       break;
     }
-    auto &self = *q->readylist.front();
-    auto job = self.parent();
+    auto self = q->readylist.front();
+    auto job = self->parent();
 
     // if unfair, we run all elements until there is nothing else to do in this
     // job. we do not care if a hi-prio job arrives while we run
-    if (self.policy & task::UNFAIR) {
+    if (self->policy & task::UNFAIR) {
       job->acquire();
       SDL_UnlockMutex(q->mutex);
       for (;;) {
-        const auto elt = --self.elemnum;
+        const auto elt = --self->elemnum;
         if (elt >= 0) {
           job->run(elt);
-          if (--self.toend == 0) q->terminate(job);
+          if (--self->toend == 0) q->terminate(job);
         }
         if (elt == 0) {
           SDL_LockMutex(q->mutex);
-            q->readylist.pop_front();
+            q->readylist.erase(self);
+            // q->readylist.pop_front();
           SDL_UnlockMutex(q->mutex);
         }
         if (elt <= 0) break;
@@ -194,12 +197,12 @@ int queue::threadfunc(void *data) {
     // if fair, we run once and go back to the queue to possibly run something
     // with hi-prio that just arrived
     else {
-      const auto elt = --self.elemnum;
-      if (elt == 0) q->readylist.pop_front();
+      const auto elt = --self->elemnum;
+      if (elt == 0) q->readylist.erase(self);
       SDL_UnlockMutex(q->mutex);
       if (elt >= 0) {
         job->run(elt);
-        if (--self.toend == 0) q->terminate(job);
+        if (--self->toend == 0) q->terminate(job);
       }
     }
   }
