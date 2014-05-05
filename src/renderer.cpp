@@ -3,9 +3,10 @@
  - renderer.cpp -> handles rendering routines
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
-#include "iso.hpp"
 #include "sky.hpp"
 #include "csg.hpp"
+#include "iso.hpp"
+#include "geom.hpp"
 #include "rt.hpp"
 #include "shaders.hpp"
 
@@ -469,12 +470,12 @@ static void initdeferred() {
 
 #if !defined(RELEASE)
 static void cleandeferred() {
-  ogl::deletetextures(1, &gdiffusetex);
-  ogl::deletetextures(1, &gnortex);
-  ogl::deletetextures(1, &gdepthtex);
-  ogl::deletetextures(1, &finaltex);
-  ogl::deleteframebuffers(1, &gbuffer);
-  ogl::deleteframebuffers(1, &shadedbuffer);
+  if (gdiffusetex) ogl::deletetextures(1, &gdiffusetex);
+  if (gnortex) ogl::deletetextures(1, &gnortex);
+  if (gdepthtex) ogl::deletetextures(1, &gdepthtex);
+  if (finaltex) ogl::deletetextures(1, &finaltex);
+  if (gbuffer) ogl::deleteframebuffers(1, &gbuffer);
+  if (shadedbuffer) ogl::deleteframebuffers(1, &shadedbuffer);
 }
 #endif
 
@@ -510,8 +511,8 @@ static void initrt() {
 
 #if !defined(RELEASE)
 static void cleanrt() {
-  ogl::deletetextures(1, &rttex);
-  ogl::deletebuffers(1, &rtpbo);
+  if (rttex) ogl::deletetextures(1, &rttex);
+  if (rtpbo) ogl::deletebuffers(1, &rtpbo);
 }
 #endif
 
@@ -572,7 +573,7 @@ static vec3f getsundir() {
 static u32 scenenorbo = 0u, sceneposbo = 0u, sceneibo = 0u;
 static u32 indexnum = 0u;
 static bool initialized_m = false;
-static iso::segment *segment = NULL;
+static geom::segment *segment = NULL;
 
 static u32 segmentnum = 0;
 void start() {
@@ -596,17 +597,21 @@ void finish() {
 }
 #endif
 
+VAR(isofromfile, 0, 0, 1);
 static const float CELLSIZE = 0.1f;
 static void makescene() {
   if (initialized_m) return;
 
   // create the indexed mesh from the scene description
-  const auto start = sys::millis();
-  const auto node = csg::makescene();
-  assert(node != NULL);
-  const auto m = iso::dc_mesh_mt(vec3f(0.15f), 4096, CELLSIZE, *node);
-  segment = m.m_segment;
-  segmentnum = m.m_segmentnum;
+  geom::mesh m;
+  if (!isofromfile || !geom::load("simple.mesh", m)) {
+    const auto start = sys::millis();
+    const auto node = csg::makescene();
+    assert(node != NULL);
+    m = iso::dc(vec3f(0.15f), 4096, CELLSIZE, *node);
+    const auto duration = sys::millis() - start;
+    con::out("csg: elapsed %f ms ", float(duration));
+  }
   ogl::genbuffers(1, &sceneposbo);
   ogl::bindbuffer(ogl::ARRAY_BUFFER, sceneposbo);
   OGL(BufferData, GL_ARRAY_BUFFER, m.m_vertnum*sizeof(vec3f), &m.m_pos[0].x, GL_STATIC_DRAW);
@@ -619,14 +624,15 @@ static void makescene() {
   OGL(BufferData, GL_ELEMENT_ARRAY_BUFFER, m.m_indexnum*sizeof(u32), &m.m_index[0], GL_STATIC_DRAW);
   ogl::bindbuffer(ogl::ELEMENT_ARRAY_BUFFER, 0);
   indexnum = m.m_indexnum;
-  const auto duration = sys::millis() - start;
-  con::out("csg: elapsed %f ms ", float(duration));
   con::out("csg: tris %i verts %i", m.m_indexnum/3, m.m_vertnum);
 
   // create the bvh out of the mesh data
   rt::buildbvh(m.m_pos, m.m_index, m.m_indexnum);
+  segmentnum = m.m_segmentnum;
+  segment = (geom::segment*) MALLOC(sizeof(geom::segment) * segmentnum);
+  memcpy(segment, m.m_segment, segmentnum*sizeof(geom::segment));
+  m.destroy();
   initialized_m = true;
-  destroyscene(node);
 }
 
 struct screenquad {

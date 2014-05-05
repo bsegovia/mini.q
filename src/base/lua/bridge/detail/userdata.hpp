@@ -68,7 +68,7 @@ protected:
   /**
     Get an untyped pointer to the contained class.
   */
-  inline void* const getPointer ()
+  inline void* getPointer ()
   {
     return m_p;
   }
@@ -689,7 +689,7 @@ struct Stack <T*>
     UserdataPtr::push (L, p);
   }
 
-  static inline T* const get (lua_State* L, int index)
+  static inline T* get (lua_State* L, int index)
   {
     return Userdata::get <T> (L, index, false);
   }
@@ -704,7 +704,7 @@ struct Stack <T* const>
     UserdataPtr::push (L, p);
   }
 
-  static inline T* const get (lua_State* L, int index)
+  static inline T* get (lua_State* L, int index)
   {
     return Userdata::get <T> (L, index, false);
   }
@@ -719,7 +719,7 @@ struct Stack <T const*>
     UserdataPtr::push (L, p);
   }
 
-  static inline T const* const get (lua_State* L, int index)
+  static inline T const* get (lua_State* L, int index)
   {
     return Userdata::get <T> (L, index, true);
   }
@@ -734,7 +734,7 @@ struct Stack <T const* const>
     UserdataPtr::push (L, p);
   }
 
-  static inline T const* const get (lua_State* L, int index)
+  static inline T const* get (lua_State* L, int index)
   {
     return Userdata::get <T> (L, index, true);
   }

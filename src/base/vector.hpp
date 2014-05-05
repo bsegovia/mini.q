@@ -18,6 +18,10 @@ template <class T> struct vector : noncopyable {
   }
   INLINE ~vector() { setsize(0); FREE(buf); }
   INLINE void destroy() { vector<T>().moveto(*this); }
+  INLINE void refit() {
+    alen = ulen;
+    buf = (T*)REALLOC(buf, alen*sizeof(T));
+  }
   INLINE T &add(const T &x) {
     const T copy(x);
     if (ulen==alen) realloc();

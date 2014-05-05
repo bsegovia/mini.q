@@ -168,7 +168,7 @@ void *memalignedalloc(size_t size, size_t align, const char *file, int lineno) {
 void memalignedfree(const void* ptr) {
   if (ptr == NULL) return;
   int ofs = ((int*)ptr)[-1];
-  free((char*)ptr-ofs);
+  memfree((char*)ptr-ofs);
 }
 
 char *path(char *s) {

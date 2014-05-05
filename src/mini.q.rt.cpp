@@ -5,17 +5,17 @@
 #include "mini.q.hpp"
 #include "bvh.hpp"
 #include "rt.hpp"
+#include "iso.hpp"
+#include "csg.hpp"
 #include <zlib.h>
 
 namespace q {
-VARP(fov, 30, 70, 160);
-void finish() {}
 static void playerpos(int x, int y, int z) {game::player1->o = vec3f(vec3i(x,y,z));}
 static void playerypr(int x, int y, int z) {game::player1->ypr = vec3f(vec3i(x,y,z));}
 CMD(playerpos);
 CMD(playerypr);
 static void loadworld(const char *name) {
-  iso::mesh m;
+  geom::mesh m;
   con::out("init: loading %s", name);
   const auto start = sys::millis();
   auto f = gzopen(name, "rb");
@@ -29,11 +29,11 @@ static void loadworld(const char *name) {
   m.m_index = (u32*) MALLOC(sizeof(u32)*m.m_indexnum);
   m.m_pos = (vec3f*) MALLOC(sizeof(vec3f)*m.m_vertnum);
   m.m_nor = (vec3f*) MALLOC(sizeof(vec3f)*m.m_vertnum);
-  m.m_segment = (iso::segment*) MALLOC(sizeof(iso::segment)*m.m_segmentnum);
+  m.m_segment = (geom::segment*) MALLOC(sizeof(geom::segment)*m.m_segmentnum);
   gzread(f, m.m_index, sizeof(u32) * m.m_indexnum);
   gzread(f, m.m_pos, sizeof(vec3f) * m.m_vertnum);
   gzread(f, m.m_nor, sizeof(vec3f) * m.m_vertnum);
-  gzread(f, m.m_segment, sizeof(iso::segment) * m.m_segmentnum);
+  gzread(f, m.m_segment, sizeof(geom::segment) * m.m_segmentnum);
   gzclose(f);
   con::out("init: %s loaded in %.2f ms", name, float(sys::millis()-start));
   rt::buildbvh(m.m_pos, m.m_index, m.m_indexnum);
@@ -44,7 +44,7 @@ static void run(int argc, const char *argv[]) {
   con::out("init: memory debugger");
   sys::memstart();
   con::out("init: tasking system");
-  const u32 threadnum = 0;//sys::threadnumber() - 1;
+  const u32 threadnum = sys::threadnumber() - 1;
   con::out("init: tasking system: %d threads created", threadnum);
   task::start(&threadnum, 1);
   con::out("init: isosurface module");
@@ -52,20 +52,20 @@ static void run(int argc, const char *argv[]) {
 
   // load everything
   script::execscript(argv[1]);
-
   const auto pos = game::player1->o;
   const auto ypr = game::player1->ypr;
   loopi(16) rt::raytrace(argv[2], pos, ypr, 1920, 1080, fov, 1.f);
-  //loopi(16) rt::raytrace(argv[2], pos, ypr, 1920, 1080, fov, 1.f);
 }
 } /* namespace q */
 
 int main(int argc, const char *argv[]) {
   if (argc != 3) {
     q::con::out("usage: %s script outname", argv[0]);
+    q::finish();
     return 1;
   }
   q::run(argc, argv);
+  q::finish();
   return 0;
 }
 

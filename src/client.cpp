@@ -151,7 +151,7 @@ void trydisconnect(void) {
 CMDN(disconnect, trydisconnect);
 
 void toserver(const char *text) {
-  con::out("%s:\f %s", game::player1->name, text);
+  con::out("%s:\f %s", game::player1->name.c_str(), text);
   strn0cpy(ctext.c_str(), text, 80);
 }
 CMDN(say, toserver);
@@ -392,7 +392,7 @@ void localservertoclient(u8 *buf, int len) {
     break;
     case SV_TEXT:
       sgetstr();
-      con::out("%s:\f %s", d->name, text);
+      con::out("%s:\f %s", d->name.c_str(), text);
     break;
     case SV_MAPCHANGE:
       sgetstr();
@@ -423,7 +423,7 @@ void localservertoclient(u8 *buf, int len) {
       sgetstr();
       if (d->name[0]) { // already connected
         if (strcmp(d->name.c_str(), text))
-          con::out("%s is now known as %s", d->name, text);
+          con::out("%s is now known as %s", d->name.c_str(), text);
       } else { // new client
         c2sinit = false; // send new players my info again 
         con::out("connected: %s", text);
@@ -438,7 +438,7 @@ void localservertoclient(u8 *buf, int len) {
       cn = getint(p);
       if (!(d = game::getclient(cn))) break;
       con::out("player %s disconnected",
-                   d->name[0] ? d->name : "[incompatible client]"); 
+               d->name[0] ? d->name.c_str() : "[incompatible client]"); 
       game::zapdynent(game::players[cn]);
     break;
     case SV_SHOT: {
@@ -462,24 +462,26 @@ void localservertoclient(u8 *buf, int len) {
     case SV_DIED: {
       const int actor = getint(p);
       if (actor==cn)
-        con::out("%s suicided", d->name);
+        con::out("%s suicided", d->name.c_str());
       else if (actor==clientnum) {
         int frags;
         if (isteam(game::player1->team.c_str(), d->team.c_str())) {
           frags = -1;
-          con::out("you fragged a teammate (%s)", d->name);
+          con::out("you fragged a teammate (%s)", d->name.c_str());
         } else {
           frags = 1;
-          con::out("you fragged %s", d->name);
+          con::out("you fragged %s", d->name.c_str());
         }
         addmsg(1, 2, SV_FRAGS, game::player1->frags += frags);
       } else {
         const game::dynent * const a = game::getclient(actor);
         if (a) {
           if (isteam(a->team.c_str(), d->name.c_str()))
-            con::out("%s fragged his teammate (%s)", a->name, d->name);
+            con::out("%s fragged his teammate (%s)",
+              a->name.c_str(), d->name.c_str());
           else
-            con::out("%s fragged %s", a->name, d->name);
+            con::out("%s fragged %s",
+              a->name.c_str(), d->name.c_str());
         }
       }
       sound::play(sound::DIE1+rnd(2), &d->o);

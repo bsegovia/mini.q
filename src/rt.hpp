@@ -5,6 +5,7 @@
 #pragma once
 #include "base/math.hpp"
 #include "base/utility.hpp"
+#include "soa.hpp"
 
 namespace q {
 namespace rt {
@@ -18,11 +19,11 @@ struct ray {
 
 static const float SHADOWRAYBIAS = 1e-2f;
 static const u32 MAXRAYNUM = 256u;
-typedef CACHE_LINE_ALIGNED array<int,MAXRAYNUM> arrayi;
-typedef CACHE_LINE_ALIGNED array<float,MAXRAYNUM> arrayf;
-typedef CACHE_LINE_ALIGNED arrayf array2f[2];
-typedef CACHE_LINE_ALIGNED arrayf array3f[3];
-typedef CACHE_LINE_ALIGNED arrayf array4f[4];
+typedef CACHE_LINE_ALIGNED q::arrayi<MAXRAYNUM> arrayi;
+typedef CACHE_LINE_ALIGNED q::arrayf<MAXRAYNUM> arrayf;
+typedef CACHE_LINE_ALIGNED q::array2f<MAXRAYNUM> array2f;
+typedef CACHE_LINE_ALIGNED q::array3f<MAXRAYNUM> array3f;
+typedef CACHE_LINE_ALIGNED q::array4f<MAXRAYNUM> array4f;
 
 struct CACHE_LINE_ALIGNED raypacket {
   static const u32 SHAREDORG     = 1<<0;

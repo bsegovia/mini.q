@@ -21,6 +21,10 @@ INLINE bool operator==(const pair<T,U> &x0, const pair<T,U> &x1) {
   return x0.first == x1.first && x0.second == x1.second;
 }
 template <typename T, typename U>
+INLINE bool operator!=(const pair<T,U> &x0, const pair<T,U> &x1) {
+  return x0.first != x1.first || x0.second != x1.second;
+}
+template <typename T, typename U>
 INLINE pair<T,U> makepair(const T &t, const U &u){return pair<T,U>(t,u);}
 } /* namespace q */
 

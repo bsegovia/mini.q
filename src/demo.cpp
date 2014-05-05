@@ -85,7 +85,7 @@ static void savegame(const char *name) {
   fixedstring fn(fmt,"savegames/%s.csgz", name);
   savestate(fn.c_str());
   stop();
-  con::out("wrote %s", fn);
+  con::out("wrote %s", fn.c_str());
 }
 CMD(savegame);
 
@@ -172,7 +172,7 @@ static void record(const char *name) {
   fixedstring fn(fmt,"demos/%s.cdgz", name);
   savestate(fn.c_str());
   gzputi(cn);
-  con::out("started recording demo to %s", fn);
+  con::out("started recording demo to %s", fn.c_str());
   demorecording = true;
   starttime = int(game::lastmillis());
   ddamage = bdamage = 0;
@@ -277,7 +277,8 @@ void playbackstep(void) {
     assert(target);
 
     int extras;
-    if ((extras = gzget())) { // read additional client side state not present in normal network stream
+    // read additional client side state not present in normal network stream
+    if ((extras = gzget())) {
       target->gunselect = gzget();
       target->lastattackgun = gzget();
       target->lastaction = scaletime(gzgeti());
@@ -313,7 +314,9 @@ void playbackstep(void) {
 
   if (demoplayback) {
     int itime = int(game::lastmillis())-demodelaymsec;
-    loopvrev(playerhistory) if (playerhistory[i]->lastupdate<itime) { // find 2 positions in history that surround interpolation time point
+
+    // find 2 positions in history that surround interpolation time point
+    loopvrev(playerhistory) if (playerhistory[i]->lastupdate<itime) {
       game::dynent *a = playerhistory[i];
       game::dynent *b = a;
       if (i+1<playerhistory.length()) b = playerhistory[i+1];
@@ -330,7 +333,6 @@ void playbackstep(void) {
         const float dist = distance(z->o,c->o);
         if (dist<16.f) { // if teleport or spawn, dont't interpolate
           catmulrom(z->o, a->o, b->o, c->o, bf, game::player1->o);
-          // catmulrom(*(vec3f*)&z->ypr.x, *(vec3f*)&a->ypr.x, *(vec3f*)&b->ypr.x, *(vec3f*)&c->ypr.x, bf, *(vec3f *)&game::player1->ypr.x);
           vec3f dstangle;
           catmulrom(z->ypr, a->ypr, b->ypr, c->ypr, bf, dstangle);
           game::player1->ypr.x = dstangle.x;

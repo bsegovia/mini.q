@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------
  - mini.q - a minimalistic multiplayer fps
- - bvhsimd.cpp -> implements intersection routines using SIMD instructions
+ - rtsimd.cpp -> implements intersection routines using SIMD instructions
  -------------------------------------------------------------------------*/
 #include <cstring>
 #include <cfloat>
@@ -10,19 +10,19 @@
 #include "base/avx.hpp"
 #include "bvh.hpp"
 #include "bvhinternal.hpp"
+#include "soa.hpp"
 #include "rt.hpp"
 
-//TODO * tester culling en premier
-//TODO * enlever le code scalaire dans initextra
-//TODO * faire IA en simd
-
+// TODO * tester culling en premier
+// TODO * enlever le code scalaire dans initextra
+// TODO * faire IA en simd
 namespace q {
 namespace rt {
 namespace NAMESPACE {
 struct raypacketextra {
-  array3f rdir;                    // used by ray/box intersection
+  array3f rdir;             // used by ray/box intersection
   interval3f iaorg, iardir; // only used when INTERVALARITH is set
-  float iaminlen, iamaxlen;        // only used when INTERVALARITH is set
+  float iaminlen, iamaxlen; // only used when INTERVALARITH is set
 };
 static const u32 waldmodulo[] = {1,2,0,1};
 INLINE bool cullia(const aabb &box, const raypacket &p, const raypacketextra &extra) {
@@ -35,59 +35,6 @@ INLINE bool culliaco(const aabb &box, const raypacket &p, const raypacketextra &
   const vec3f pmax = box.pmax - p.sharedorg;
   const auto txyz = makeinterval(pmin,pmax)*extra.iardir;
   return empty(I(txyz.x,txyz.y,txyz.z,intervalf(extra.iaminlen,extra.iamaxlen)));
-}
-
-#if defined(__AVX__)
-typedef avxf soaf;
-typedef avxi soai;
-typedef avxb soab;
-INLINE void store(void *ptr, const soai &x) {store8i(ptr, x);}
-INLINE void store(void *ptr, const soaf &x) {store8f(ptr, x);}
-INLINE void store(void *ptr, const soab &x) {store8b(ptr, x);}
-INLINE void storeu(void *ptr, const soaf &x) {storeu8f(ptr, x);}
-INLINE void storeui(void *ptr, const soai &x) {storeu8i(ptr, x);}
-INLINE void storent(void *ptr, const soai &x) {store8i_nt(ptr, x);}
-INLINE void maskstore(const soab &m, void *ptr, const soaf &x) {store8f(m, ptr, x);}
-INLINE soaf splat(const soaf &v) {
-  const auto p = shuffle<0,0>(v);
-  const auto s = shuffle<0,0,0,0>(p,p);
-  return s;
-}
-#elif defined(__SSE__)
-typedef ssef soaf;
-typedef ssei soai;
-typedef sseb soab;
-INLINE void store(void *ptr, const soai &x) {store4i(ptr, x);}
-INLINE void store(void *ptr, const soaf &x) {store4f(ptr, x);}
-INLINE void store(void *ptr, const soab &x) {store4b(ptr, x);}
-INLINE void storent(void *ptr, const soai &x) {store4i_nt(ptr, x);}
-INLINE void storeu(void *ptr, const soaf &x) {storeu4f(ptr, x);}
-INLINE void storeui(void *ptr, const soai &x) {storeu4i(ptr, x);}
-INLINE void maskstore(const soab &m, void *ptr, const soaf &x) {store4f(m, ptr, x);}
-INLINE soaf splat(const soaf &v) {return shuffle<0,0,0,0>(v,v);}
-#else
-#error "unsupported SIMD"
-#endif
-
-typedef vec3<soai> soa3i;
-typedef vec3<soaf> soa3f;
-typedef vec2<soaf> soa2f;
-
-INLINE soaf get(const arrayf &x, u32 idx) {
-  return soaf::load(&x[idx*soaf::size]);
-}
-
-INLINE soa3f get(const array3f &v, u32 idx) {
-  const soaf x = get(v[0], idx);
-  const soaf y = get(v[1], idx);
-  const soaf z = get(v[2], idx);
-  return soa3f(x,y,z);
-}
-
-INLINE void set(array3f &out, const soa3f &v, u32 idx) {
-  store(&out[0][idx*soaf::size], v.x);
-  store(&out[1][idx*soaf::size], v.y);
-  store(&out[2][idx*soaf::size], v.z);
 }
 
 struct soaisec {
@@ -114,9 +61,9 @@ INLINE bool slabfirst(const aabb &RESTRICT box,
 {
   auto const packetnum = p.raynum / soaf::size;
   for (; first < packetnum; ++first) {
-    const auto org = get(p.vorg,first);
-    const auto rd = get(extra.rdir,first);
-    const auto t = get(hit,first);
+    const auto org = sget(p.vorg,first);
+    const auto rd = sget(extra.rdir,first);
+    const auto t = sget(hit,first);
     const auto pmin = soa3f(box.pmin)-org;
     const auto pmax = soa3f(box.pmax)-org;
     const auto res = slab(pmin, pmax, rd, t);
@@ -131,9 +78,9 @@ INLINE bool slabone(const aabb &RESTRICT box,
                     u32 first,
                     const arrayf &RESTRICT hit)
 {
-  const auto org = get(p.vorg,first);
-  const auto rd = get(extra.rdir,first);
-  const auto t = get(hit,first);
+  const auto org = sget(p.vorg,first);
+  const auto rd = sget(extra.rdir,first);
+  const auto t = sget(hit,first);
   const auto pmin = soa3f(box.pmin)-org;
   const auto pmax = soa3f(box.pmax)-org;
   return any(slab(pmin, pmax, rd, t).isec);
@@ -148,9 +95,9 @@ INLINE void slabfilter(const aabb &RESTRICT box,
 {
   auto const packetnum = p.raynum / soaf::size;
   for (u32 id = first; id < packetnum; ++id) {
-    const auto org = get(p.vorg,id);
-    const auto rd = get(extra.rdir,id);
-    const auto t = get(hit,id);
+    const auto org = sget(p.vorg,id);
+    const auto rd = sget(extra.rdir,id);
+    const auto t = sget(hit,id);
     const auto pmin = soa3f(box.pmin)-org;
     const auto pmax = soa3f(box.pmax)-org;
     const auto res = slab(pmin, pmax, rd, t);
@@ -168,8 +115,8 @@ INLINE bool slabfirstco(const aabb &RESTRICT box,
   const auto pmin = soa3f(box.pmin - p.sharedorg);
   const auto pmax = soa3f(box.pmax - p.sharedorg);
   for (; first < packetnum; ++first) {
-    const auto rd = get(extra.rdir,first);
-    const auto t = get(hit,first);
+    const auto rd = sget(extra.rdir,first);
+    const auto t = sget(hit,first);
     if (any(slab(pmin, pmax, rd, t).isec)) return true;
   }
   return false;
@@ -183,8 +130,8 @@ INLINE bool slaboneco(const aabb &RESTRICT box,
 {
   const auto pmin = soa3f(box.pmin - p.sharedorg);
   const auto pmax = soa3f(box.pmax - p.sharedorg);
-  const auto rd = get(extra.rdir,first);
-  const auto t = get(hit,first);
+  const auto rd = sget(extra.rdir,first);
+  const auto t = sget(hit,first);
   return any(slab(pmin, pmax, rd, t).isec);
 }
 
@@ -199,8 +146,8 @@ INLINE void slabfilterco(const aabb &RESTRICT box,
   const auto pmin = soa3f(box.pmin - p.sharedorg);
   const auto pmax = soa3f(box.pmax - p.sharedorg);
   for (u32 rayid = first; rayid < packetnum; ++rayid) {
-    const auto rd = get(extra.rdir,rayid);
-    const auto t = get(hit,rayid);
+    const auto rd = sget(extra.rdir,rayid);
+    const auto t = sget(hit,rayid);
     const auto res = slab(pmin, pmax, rd, t);
     active[rayid] = any(res.isec);
   }
@@ -210,7 +157,7 @@ INLINE float asfloat(u32 x) {union {float f; u32 u;}; u = x; return f;}
 
 template <bool sharedorg>
 INLINE soa3f getorg(const raypacket &p, u32 idx) {
-  return get(p.vorg, idx);
+  return sget(p.vorg, idx);
 }
 template <> INLINE
 soa3f getorg<true>(const raypacket &p, u32 idx) {
@@ -218,7 +165,7 @@ soa3f getorg<true>(const raypacket &p, u32 idx) {
 }
 template <bool shareddir>
 INLINE soa3f getdir(const raypacket &p, u32 idx) {
-  return get(p.vdir, idx);
+  return sget(p.vdir, idx);
 }
 template <> INLINE
 soa3f getdir<true>(const raypacket &p, u32 idx) {
@@ -271,7 +218,7 @@ INLINE void closest(const waldtriangle &RESTRICT tri,
     const auto idx = j*soaf::size;
     const auto raydir = getdir<0!=(flags&raypacket::SHAREDDIR)>(p,j);
     const auto rayorg = getorg<0!=(flags&raypacket::SHAREDORG)>(p,j);
-    const auto dist = get(hit.t, j);
+    const auto dist = sget(hit.t, j);
     const soa2f dir(raydir[ku], raydir[kv]);
     const soa2f org(rayorg[ku], rayorg[kv]);
 
@@ -320,7 +267,7 @@ INLINE u32 occluded(const waldtriangle &RESTRICT tri,
     const auto idx = j*soaf::size;
     const auto raydir = getdir<0!=(flags&raypacket::SHAREDDIR)>(p,j);
     const auto rayorg = getorg<0!=(flags&raypacket::SHAREDORG)>(p,j);
-    const auto dist = get(s.t, j);
+    const auto dist = sget(s.t, j);
     const soa2f dir(raydir[ku], raydir[kv]);
     const soa2f org(rayorg[ku], rayorg[kv]);
 
@@ -371,11 +318,11 @@ INLINE u32 initextra(raypacketextra &RESTRICT extra,
   soa3f soamindir(FLT_MAX), soamaxdir(-FLT_MAX);
   const auto packetnum = p.raynum/soaf::size;
   loopi(packetnum) {
-    const auto dir = get(p.vdir, i);
+    const auto dir = sget(p.vdir, i);
     const auto r = soaf(one) / dir;
     soamindir = min(soamindir, dir);
     soamaxdir = max(soamaxdir, dir);
-    set(extra.rdir, r, i);
+    sset(extra.rdir, r, i);
   }
 
   iardir(extra, soamindir, soamaxdir);
@@ -585,13 +532,13 @@ void occluded(const intersector &bvhtree, const raypacket &p, packetshadow &s) {
   if (lastsize != 0) {
     auto &np = const_cast<raypacket&>(p);
     const auto last = p.raynum / soaf::size;
-    const auto org = get(p.vorg, last);
-    const auto dir = get(p.vdir, last);
-    const auto t = get(s.t, last);
+    const auto org = sget(p.vorg, last);
+    const auto dir = sget(p.vdir, last);
+    const auto t = sget(s.t, last);
     const auto idx = soaf::size*last;
     const auto m = seqactivemask[lastsize];
-    set(np.vorg, select(m,org,splat(org)), last);
-    set(np.vdir, select(m,dir,splat(dir)), last);
+    sset(np.vorg, select(m,org,splat(org)), last);
+    sset(np.vdir, select(m,dir,splat(dir)), last);
     store(&s.occluded[idx], soab(falsev));
     store(&s.t[idx], splat(t));
     np.raynum = (last+1) * soaf::size;
@@ -611,6 +558,7 @@ void occluded(const intersector &bvhtree, const raypacket &p, packetshadow &s) {
   // be careful and reset the number of rays we initially got in the packet
   // before any padding
   const_cast<raypacket&>(p).raynum = initialnum;
+  AVX_ZERO_UPPER();
 }
 #undef CASE
 #undef CASE4
@@ -648,7 +596,7 @@ void visibilitypacket(const camera &RESTRICT cam,
     for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size/2, ++idx) {
       const auto xdir = (packetx+soaf(float(x)+0.5f))*xaxis;
       const auto dir = imgplaneorg+xdir+ydir;
-      set(p.vdir, dir, idx);
+      sset(p.vdir, dir, idx);
     }
   }
 #else
@@ -657,7 +605,7 @@ void visibilitypacket(const camera &RESTRICT cam,
     for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size, ++idx) {
       const auto xdir = (identityf+soaf(float(x)+0.5f))*xaxis;
       const auto dir = imgplaneorg+xdir+ydir;
-      set(p.vdir, dir, idx);
+      sset(p.vdir, dir, idx);
     }
   }
 #endif
@@ -678,6 +626,7 @@ void visibilitypacket(const camera &RESTRICT cam,
   p.raynum = TILESIZE*TILESIZE;
   p.sharedorg = cam.org;
   p.flags = raypacket::SHAREDORG|raypacket::CORNERRAYS;
+  AVX_ZERO_UPPER();
 }
 
 void clearpackethit(packethit &hit) {
@@ -686,6 +635,7 @@ void clearpackethit(packethit &hit) {
     store(&hit.id[i*soaf::size], soaf(asfloat(~0x0u)));
     store(&hit.t[i*soaf::size],  soaf(FLT_MAX));
   }
+  AVX_ZERO_UPPER();
 }
 
 u32 primarypoint(const raypacket &RESTRICT p,
@@ -705,17 +655,18 @@ u32 primarypoint(const raypacket &RESTRICT p,
       store(&mask[i*soaf::size], m);
       continue;
     }
-    const auto t = get(hit.t,i);
-    const auto dir = get(p.vdir,i);
-    const auto unormal = get(hit.n,i);
+    const auto t = sget(hit.t,i);
+    const auto dir = sget(p.vdir,i);
+    const auto unormal = sget(hit.n,i);
     const auto org = soa3f(p.sharedorg);
     const auto normal = normalize(unormal);
     const auto position = org + t*dir + soaf(SHADOWRAYBIAS)*normal;
     valid += popcnt(m);
     store(&mask[i*soaf::size], m);
-    set(nor, normal, i);
-    set(pos, position, i);
+    sset(nor, normal, i);
+    sset(pos, position, i);
   }
+  AVX_ZERO_UPPER();
   return valid;
 }
 
@@ -737,7 +688,7 @@ void shadowpacket(const array3f &RESTRICT pos,
       store(&occluded.mapping[idx], soai(mone));
       continue;
     }
-    const auto dst = get(pos, i);
+    const auto dst = sget(pos, i);
     const auto dir = dst-soalpos;
     storeu(&occluded.occluded[curr], soaf(zero));
     storeu(&occluded.t[curr], soaf(one));
@@ -763,6 +714,7 @@ void shadowpacket(const array3f &RESTRICT pos,
   shadow.sharedorg = lpos;
   shadow.raynum = curr;
   shadow.flags = raypacket::SHAREDORG;
+  AVX_ZERO_UPPER();
 }
 
 /*-------------------------------------------------------------------------
@@ -786,7 +738,7 @@ void writenormal(const packethit &RESTRICT hit,
     for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size, ++idx) {
 #endif
       const auto m = soaf::load(&hit.id[idx*soaf::size]) != soaf(~0x0u);
-      const auto n = clamp(normalize(get(hit.n, idx)));
+      const auto n = clamp(normalize(sget(hit.n, idx)));
       const auto rgb = soa3i(n*soaf(255.f));
       const auto hitcolor = rgb.x | (rgb.y<<8) | (rgb.z<<16) | soai(0xff000000);
       const auto color = select(m, hitcolor, soai(zero));
@@ -798,6 +750,7 @@ void writenormal(const packethit &RESTRICT hit,
 #endif
     }
   }
+  AVX_ZERO_UPPER();
 }
 
 void writendotl(const raypacket &RESTRICT shadow,
@@ -843,7 +796,7 @@ void writendotl(const raypacket &RESTRICT shadow,
         l.z[j] = shadow.vdir[2][remapped];
         ++curr;
       }
-      const auto n = get(nor, idx/soaf::size);
+      const auto n = sget(nor, idx/soaf::size);
       const auto shade = select(m, -dot(n, normalize(l)), soaf(zero));
       const auto d = soai(soaf(255.f)*clamp(shade));
       const auto rgb = d | (d<<8) | (d<<16) | 0xff000000;
@@ -855,6 +808,7 @@ void writendotl(const raypacket &RESTRICT shadow,
 #endif
     }
   }
+  AVX_ZERO_UPPER();
 }
 
 void clear(const vec2i &RESTRICT tileorg,
@@ -866,6 +820,7 @@ void clear(const vec2i &RESTRICT tileorg,
   for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y, yoffset+=w)
     for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size)
       storeu(pixels+yoffset+x, soaf(zero));
+  AVX_ZERO_UPPER();
 }
 } /* namespace NAMESPACE */
 } /* namespace rt */

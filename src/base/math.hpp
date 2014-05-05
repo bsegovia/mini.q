@@ -93,6 +93,7 @@ TINLINE T deg2rad(T x) {return x * T(1.74532925199432957692e-2);}
 TINLINE T rad2deg(T x) {return x * T(5.72957795130823208768e1);}
 TINLINE T sin2cos(T x) {return sqrt(max(T(zero),T(one)-x*x));}
 TINLINE T cos2sin(T x) {return sin2cos(x);}
+INLINE int ilog2(int x) {return __bsr(x);}
 
 /*-------------------------------------------------------------------------
  - 3D graphics related linear algebra (vectors, matrices)
@@ -579,6 +580,10 @@ template<typename T> struct quat {
   INLINE quat(const T &yaw, const T &pitch, const T &roll);
   INLINE quat(zerotype) : r(zero), i(zero), j(zero), k(zero) {}
   INLINE quat(onetype) : r(one), i(zero), j(zero), k(zero) {}
+  template <typename U>
+  INLINE explicit quat(const quat<U> &other) {
+    r=T(other.r); i=T(other.i); j=T(other.j); k=T(other.k);
+  }
   static INLINE quat rotate(v3arg u, const T &r) {
     return q3(cos(T(0.5)*r),sin(T(0.5)*r)*normalize(u));
   }
