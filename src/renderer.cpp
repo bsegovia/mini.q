@@ -3,9 +3,10 @@
  - renderer.cpp -> handles rendering routines
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
-#include "iso.hpp"
 #include "sky.hpp"
 #include "csg.hpp"
+#include "iso.hpp"
+#include "geom.hpp"
 #include "rt.hpp"
 #include "shaders.hpp"
 
@@ -572,7 +573,7 @@ static vec3f getsundir() {
 static u32 scenenorbo = 0u, sceneposbo = 0u, sceneibo = 0u;
 static u32 indexnum = 0u;
 static bool initialized_m = false;
-static iso::segment *segment = NULL;
+static geom::segment *segment = NULL;
 
 static u32 segmentnum = 0;
 void start() {
@@ -602,12 +603,12 @@ static void makescene() {
   if (initialized_m) return;
 
   // create the indexed mesh from the scene description
-  iso::mesh m;
-  if (!isofromfile || !iso::load("simple.mesh", m)) {
+  geom::mesh m;
+  if (!isofromfile || !geom::load("simple.mesh", m)) {
     const auto start = sys::millis();
     const auto node = csg::makescene();
     assert(node != NULL);
-    m = iso::dc_mesh_mt(vec3f(0.15f), 4096, CELLSIZE, *node);
+    m = iso::dc(vec3f(0.15f), 4096, CELLSIZE, *node);
     const auto duration = sys::millis() - start;
     con::out("csg: elapsed %f ms ", float(duration));
   }
@@ -628,8 +629,8 @@ static void makescene() {
   // create the bvh out of the mesh data
   rt::buildbvh(m.m_pos, m.m_index, m.m_indexnum);
   segmentnum = m.m_segmentnum;
-  segment = (iso::segment*) MALLOC(sizeof(iso::segment) * segmentnum);
-  memcpy(segment, m.m_segment, segmentnum*sizeof(iso::segment));
+  segment = (geom::segment*) MALLOC(sizeof(geom::segment) * segmentnum);
+  memcpy(segment, m.m_segment, segmentnum*sizeof(geom::segment));
   m.destroy();
   initialized_m = true;
 }

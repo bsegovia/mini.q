@@ -36,7 +36,7 @@ int main(int argc, const char **argv) {
   // flush to zero and no denormals
   _mm_setcsr(_mm_getcsr() | (1<<15) | (1<<6));
 #endif
-  const u32 threadnum = 0;//sys::threadnumber() - 1;
+  const u32 threadnum = sys::threadnumber() - 1;
   con::out("init: tasking system: %d threads created", threadnum);
   task::start(&threadnum, 1);
 
@@ -51,10 +51,10 @@ int main(int argc, const char **argv) {
   // build the mesh
   assert(node != NULL);
   const auto start = sys::millis();
-  const auto m = iso::dc_mesh_mt(vec3f(0.15f), 4096, CELLSIZE, *node);
+  const auto m = iso::dc(vec3f(0.15f), 4096, CELLSIZE, *node);
   const auto end = sys::millis();
   printf("time %f ms\n", float(end-start));
-  iso::store("simple.mesh", m);
+  geom::store("simple.mesh", m);
 #if !defined(NDEBUG)
   finish();
 #endif

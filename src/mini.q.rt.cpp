@@ -15,7 +15,7 @@ static void playerypr(int x, int y, int z) {game::player1->ypr = vec3f(vec3i(x,y
 CMD(playerpos);
 CMD(playerypr);
 static void loadworld(const char *name) {
-  iso::mesh m;
+  geom::mesh m;
   con::out("init: loading %s", name);
   const auto start = sys::millis();
   auto f = gzopen(name, "rb");
@@ -29,11 +29,11 @@ static void loadworld(const char *name) {
   m.m_index = (u32*) MALLOC(sizeof(u32)*m.m_indexnum);
   m.m_pos = (vec3f*) MALLOC(sizeof(vec3f)*m.m_vertnum);
   m.m_nor = (vec3f*) MALLOC(sizeof(vec3f)*m.m_vertnum);
-  m.m_segment = (iso::segment*) MALLOC(sizeof(iso::segment)*m.m_segmentnum);
+  m.m_segment = (geom::segment*) MALLOC(sizeof(geom::segment)*m.m_segmentnum);
   gzread(f, m.m_index, sizeof(u32) * m.m_indexnum);
   gzread(f, m.m_pos, sizeof(vec3f) * m.m_vertnum);
   gzread(f, m.m_nor, sizeof(vec3f) * m.m_vertnum);
-  gzread(f, m.m_segment, sizeof(iso::segment) * m.m_segmentnum);
+  gzread(f, m.m_segment, sizeof(geom::segment) * m.m_segmentnum);
   gzclose(f);
   con::out("init: %s loaded in %.2f ms", name, float(sys::millis()-start));
   rt::buildbvh(m.m_pos, m.m_index, m.m_indexnum);

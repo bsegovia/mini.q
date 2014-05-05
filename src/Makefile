@@ -84,6 +84,7 @@ GAME_OBJS=\
   editing.o\
   entities.o\
   game.o\
+  geom.o\
   iso.o\
   md2.o\
   menu.o\
