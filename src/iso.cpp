@@ -689,7 +689,10 @@ struct dc_gridbuilder {
 
     // if this is a leaf we stop here
     if (from->isleaf) {
-      to->idx = from->idx;
+      if (!from->empty) {
+        to->idx = node.leaf->pts.length();
+        node.leaf->pts.add({pl.leaf.pts[from->idx].world,-1});
+      }
       return;
     }
 
@@ -704,8 +707,9 @@ struct dc_gridbuilder {
     node.leaf->root.setsize(1);
     outputoctree(node);
     node.leaf->root.refit();
+    node.leaf->pts.refit();
+
     pl.leaf.quads.moveto(node.leaf->quads);
-    loopv(pl.leaf.pts) node.leaf->pts.add({pl.leaf.pts[i].world,-1});
   }
 
   void build(octree::node &node) {
