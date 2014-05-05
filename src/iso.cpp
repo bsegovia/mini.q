@@ -681,6 +681,10 @@ struct dc_gridbuilder {
     }
   }
 
+  void outputoctree(octree::node &node, int idx) {
+    
+  }
+
   void output(octree::node &node) {
     pl.leaf.root.moveto(node.leaf->root);
     pl.leaf.quads.moveto(node.leaf->quads);
@@ -1122,7 +1126,7 @@ static bool merge(qemcontext &ctx, procmesh &pm, const qemedge &edge, int idx0, 
     i0 = i0 == from ? to : i0;
     i1 = i1 == from ? to : i1;
     i2 = i2 == from ? to : i2;
-    if (i0 == i1 || i1 == i2 || i0 == i2) continue;
+    if (isdegenerated(i0,i1,i2)) continue;
     const vec3f target(cross(p[i0]-p[i1],p[i0]-p[i2]));
     if (dot(initial,target) <= 0.f)
       return false;
