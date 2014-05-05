@@ -44,6 +44,7 @@ int main(int argc, const char **argv) {
   iso::start();
   con::out("init: csg module");
   csg::start();
+
   // load the csg function
   script::execscript(argv[1] ? argv[1] : "data/csg.lua");
   const auto node = csg::makescene();
@@ -51,11 +52,13 @@ int main(int argc, const char **argv) {
   // build the mesh
   assert(node != NULL);
   const auto start = sys::millis();
-  const auto m = iso::dc(vec3f(0.15f), 4096, CELLSIZE, *node);
+  auto m = iso::dc(vec3f(0.15f), 4096, CELLSIZE, *node);
   const auto end = sys::millis();
   printf("time %f ms\n", float(end-start));
   geom::store("simple.mesh", m);
+
 #if !defined(NDEBUG)
+  m.destroy();
   finish();
 #endif
 }
