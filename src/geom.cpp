@@ -83,8 +83,10 @@ static void buildmesh(const iso::octree &o, const iso::octree::node &node, procm
     const auto quadmat = q.matindex;
     iso::octree::qefpoint *pt[4];
     loopk(4) {
-      const auto ipos = vec3i(q.index[k]) + node.org;
-      const auto leaf = o.findleaf(ipos);
+      const auto lpos = vec3i(q.index[k]);
+      const auto ipos = lpos + node.org;
+      assert(all(ge(lpos,vec3i(zero))) && "inconsistant position");
+      const auto leaf = all(lt(lpos,vec3i(iso::SUBGRID))) ? &node : o.findleaf(ipos);
 
 #if DEBUGOCTREE
       if (leaf == NULL || leaf->leaf == NULL) {
