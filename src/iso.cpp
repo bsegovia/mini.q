@@ -681,12 +681,29 @@ struct dc_gridbuilder {
     }
   }
 
-  void outputoctree(octree::node &node, int idx) {
-    
+  void outputoctree(octree::node &node, int src = 0, int dst = 0) {
+    const auto from = pl.leaf.getnode(src);
+    const auto to = node.leaf->getnode(dst);
+    to->isleaf = from->isleaf;
+    to->empty = from->empty;
+
+    // if this is a leaf we stop here
+    if (from->isleaf) {
+      to->idx = from->idx;
+      return;
+    }
+
+    // otherwise, we create all 8 children and recurse
+    const auto idx = node.leaf->root.length();
+    to->idx = idx;
+    node.leaf->root.setsize(idx+8);
+    loopi(8) outputoctree(node, from->idx+i, idx+i);
   }
 
   void output(octree::node &node) {
-    pl.leaf.root.moveto(node.leaf->root);
+    node.leaf->root.setsize(1);
+    outputoctree(node);
+    node.leaf->root.refit();
     pl.leaf.quads.moveto(node.leaf->quads);
     loopv(pl.leaf.pts) node.leaf->pts.add({pl.leaf.pts[i].world,-1});
   }
