@@ -61,8 +61,6 @@ static INLINE const quadmesh &findbestmesh(iso::octree::qefpoint **pt) {
 struct procmesh {
   vector<vec3f> pos, nor;
   vector<u32> idx, mat;
-  vector<int> vidx;
-  vector<pair<int,int>> vtri;
   INLINE int trinum() const {return idx.length()/3;}
 };
 
@@ -381,7 +379,7 @@ static void decimatemesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
   auto &heap = ctx.heap;
   auto &vqem = ctx.vqem;
   auto &eqem = ctx.eqem;
-  bool anychange = true;
+  auto anychange = true;
 
   // first we just remove all edges smaller than the given threshold. we iterate
   // until there is nothing left to remove

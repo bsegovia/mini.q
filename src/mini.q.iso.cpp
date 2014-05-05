@@ -60,5 +60,5 @@ int main(int argc, const char **argv) {
 #if !defined(NDEBUG)
   m.destroy();
   finish();
-#endif
+#endif /* !defined(NDEBUG) */
 }

@@ -425,7 +425,7 @@ struct gridbuilder {
 #if !defined(NDEBUG)
           assert(!isnan(src.x)&&!isnan(src.y)&&!isnan(src.z));
           assert(!isinf(src.x)&&!isinf(src.y)&&!isinf(src.z));
-#endif /* NDEBUG */
+#endif /* !defined(NDEBUG) */
         }
       }
     }
@@ -731,10 +731,9 @@ struct isotask : public task {
   INLINE isotask(octree &o, const csg::node &csgnode,
                  const vec3f &org, float cellsize,
                  u32 dim) :
-    task("isotask", 1),
+    task("isotask"),
     oct(&o), csgnode(&csgnode),
-    org(org), cellsize(cellsize),
-    dim(dim)
+    org(org), cellsize(cellsize), dim(dim)
   {
     assert(ispoweroftwo(dim) && dim % SUBGRID == 0);
     maxlvl = ilog2(dim / SUBGRID);
