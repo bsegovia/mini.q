@@ -2,11 +2,12 @@
  - mini.q - a minimalistic multiplayer fps
  - geom.cpp -> implements mesh creation, simplification and update routines
  -------------------------------------------------------------------------*/
-#include "base/vector.hpp"
-#include "base/console.hpp"
 #include "geom.hpp"
 #include "qef.hpp"
 #include "iso.hpp"
+#include "base/task.hpp"
+#include "base/vector.hpp"
+#include "base/console.hpp"
 
 namespace q {
 namespace geom {
@@ -81,6 +82,7 @@ static void buildmesh(const iso::octree &o, const iso::octree::node &node, procm
     loopk(4) {
       const auto ipos = vec3i(q.index[k]) + node.org;
       const auto leaf = o.findleaf(ipos);
+
 #if DEBUGOCTREE
       if (leaf == NULL || leaf->leaf == NULL) {
         missingpoint = true;
@@ -90,11 +92,13 @@ static void buildmesh(const iso::octree &o, const iso::octree::node &node, procm
       assert(leaf != NULL && leaf->leaf != NULL &&
         "leaf node is missing from the octree");
 #endif /* DEBUGOCTREE */
+
       const auto vidx = ipos % vec3i(iso::SUBGRID);
       const auto qef = leaf->leaf->get(vidx);
       assert(qef != NULL && "point is missing from leaf octree");
       pt[k] = qef;
     }
+
 #if DEBUGOCTREE
     if (missingpoint)
       continue;
@@ -596,46 +600,76 @@ static void sharpenmesh(procmesh &pm) {
 /*-------------------------------------------------------------------------
  - build a final mesh from the qef points and quads stored in the octree
  -------------------------------------------------------------------------*/
-mesh buildmesh(iso::octree &o, float cellsize) {
 
-  // build the mesh
-  procmesh pm;
-  buildmesh(o, o.m_root, pm);
-  con::out("iso: procmesh: %d vertices", pm.pos.length());
-  con::out("iso: procmesh: %d triangles", pm.idx.length()/3);
+// task to build the mesh from a "contoured" octree
+struct meshbuildtask : public task {
+  INLINE meshbuildtask(mesh &m, iso::octree &o, float cellsize, int waiternum) :
+    task("meshbuildtask", 1, waiternum), m(m), o(o), cellsize(cellsize)
+  {}
 
-  // decimate the edges and remove degenrate triangles
-  loopi(2) decimatemesh(pm, cellsize);
+  virtual void run(u32) {
+    // build the mesh
+    procmesh pm;
+    buildmesh(o, o.m_root, pm);
+    con::out("iso: procmesh: %d vertices", pm.pos.length());
+    con::out("iso: procmesh: %d triangles", pm.idx.length()/3);
 
-  // handle sharp edges
-  sharpenmesh(pm);
+    // decimate the edges and remove degenrate triangles
+    loopi(2) decimatemesh(pm, cellsize);
 
-  // build the segment list
-  vector<segment> seg;
-  u32 currmat = ~0x0;
-  loopv(pm.mat) {
-    if (pm.mat[i] != currmat) {
-      seg.add({3u*i,0u,pm.mat[i]});
-      currmat = pm.mat[i];
+    // handle sharp edges
+    sharpenmesh(pm);
+
+    // build the segment list
+    vector<segment> seg;
+    u32 currmat = ~0x0;
+    loopv(pm.mat) {
+      if (pm.mat[i] != currmat) {
+        seg.add({3u*i,0u,pm.mat[i]});
+        currmat = pm.mat[i];
+      }
+      seg.last().num += 3;
     }
-    seg.last().num += 3;
-  }
 
 #if !defined(NDEBUG)
-  loopv(pm.pos) assert(!isnan(pm.pos[i].x)&&!isnan(pm.pos[i].y)&&!isnan(pm.pos[i].z));
-  loopv(pm.pos) assert(!isinf(pm.pos[i].x)&&!isinf(pm.pos[i].y)&&!isinf(pm.pos[i].z));
-  loopv(pm.nor) assert(!isnan(pm.nor[i].x)&&!isnan(pm.nor[i].y)&&!isnan(pm.nor[i].z));
-  loopv(pm.nor) assert(!isinf(pm.nor[i].x)&&!isinf(pm.nor[i].y)&&!isinf(pm.nor[i].z));
-#endif
+    loopv(pm.pos) assert(!isnan(pm.pos[i].x)&&!isnan(pm.pos[i].y)&&!isnan(pm.pos[i].z));
+    loopv(pm.pos) assert(!isinf(pm.pos[i].x)&&!isinf(pm.pos[i].y)&&!isinf(pm.pos[i].z));
+    loopv(pm.nor) assert(!isnan(pm.nor[i].x)&&!isnan(pm.nor[i].y)&&!isnan(pm.nor[i].z));
+    loopv(pm.nor) assert(!isinf(pm.nor[i].x)&&!isinf(pm.nor[i].y)&&!isinf(pm.nor[i].z));
+#endif /* !defined(NDEBUG) */
 
-  const auto p = pm.pos.move();
-  const auto n = pm.nor.move();
-  const auto idx = pm.idx.move();
-  const auto s = seg.move();
+    const auto p = pm.pos.move();
+    const auto n = pm.nor.move();
+    const auto idx = pm.idx.move();
+    const auto s = seg.move();
+    con::out("iso: final: %d vertices", p.second);
+    con::out("iso: final: %d triangles", idx.second/3);
+    m.init(p.first, n.first, idx.first, s.first, p.second, idx.second, s.second);
+  }
 
-  con::out("iso: final: %d vertices", p.second);
-  con::out("iso: final: %d triangles", idx.second/3);
-  return mesh(p.first, n.first, idx.first, s.first, p.second, idx.second, s.second);
+  mesh &m;
+  iso::octree &o;
+  float cellsize;
+};
+
+ref<task> buildmesh(mesh &m, iso::octree &o, float cellsize, int waiternum) {
+  return NEW(meshbuildtask, m, o, cellsize, waiternum);
+}
+
+/*-------------------------------------------------------------------------
+ - mesh interface (very simple)
+ -------------------------------------------------------------------------*/
+mesh::mesh() {ZERO(this);}
+
+void mesh::init(vec3f *pos, vec3f *nor, u32 *index,
+                segment *seg, u32 vn, u32 idxn, u32 segn) {
+  m_pos = pos;
+  m_nor = nor;
+  m_index = index;
+  m_segment = seg;
+  m_vertnum = vn;
+  m_indexnum = idxn;
+  m_segmentnum = segn;
 }
 
 void store(const char *filename, const mesh &m) {

@@ -688,6 +688,7 @@ static context *ctx = NULL;
 
 // run the contouring part per leaf of octree using small grids
 struct contouringtask : public task {
+
   // what to run per task iteration
   struct workitem {
     const csg::node *csgnode;
@@ -727,16 +728,12 @@ struct contouringtask : public task {
 // build the octree topology needed to run contouring
 struct isotask : public task {
   typedef contouringtask::workitem workitem;
-  INLINE isotask(octree &o,
-                 const csg::node &csgnode,
-                 const vec3f &org,
-                 float cellsize,
+  INLINE isotask(octree &o, const csg::node &csgnode,
+                 const vec3f &org, float cellsize,
                  u32 dim) :
-    task("isotask", 1, 1),
-    oct(&o),
-    csgnode(&csgnode),
-    org(org),
-    cellsize(cellsize),
+    task("isotask", 1),
+    oct(&o), csgnode(&csgnode),
+    org(org), cellsize(cellsize),
     dim(dim)
   {
     assert(ispoweroftwo(dim) && dim % SUBGRID == 0);
@@ -826,19 +823,21 @@ struct isotask : public task {
 };
 
 geom::mesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::node &csgnode) {
-  const auto start = sys::millis();
   octree o(cellnum);
+  geom::mesh m;
 
-  ref<task> job = NEW(isotask, o, csgnode, org, cellsize, cellnum);
-  job->scheduled();
-  job->wait();
-  con::out("iso: contouring time: %f ms", sys::millis()-start);
+  ref<task> meshtask = geom::buildmesh(m, o, cellsize);
+  ref<task> contouringtask = NEW(isotask, o, csgnode, org, cellsize, cellnum);
+  contouringtask->starts(*meshtask);
+  meshtask->scheduled();
+  contouringtask->scheduled();
+  meshtask->wait();
 
 #if !defined(RELEASE)
   stats();
 #endif /* defined(RELEASE) */
 
-  return geom::buildmesh(o, cellsize);
+  return m;
 }
 
 void start() { ctx = NEWE(context); }
