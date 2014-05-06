@@ -41,12 +41,14 @@ static const q::vec3f debugpos(19.f,3.0f,13.f);
 static const float debugsize = 0.8f;
 #endif /* DEBUGOCTREE */
 
-#define CSGVER csg::avx
-//#define CSGVER csg::sse
-//#define CSGVER csg
-
 namespace q {
 namespace iso {
+
+// callback to perform distance to iso-surface
+static void (*isodist)(
+  const csg::node *RESTRICT, const csg::array3f &RESTRICT,
+  const csg::arrayf *RESTRICT, csg::arrayf &RESTRICT, csg::arrayi &RESTRICT,
+  int num, const aabb &RESTRICT);
 
 static const u32 SUBGRIDDEPTH = ilog2(SUBGRID);
 static const auto DEFAULT_GRAD_STEP = 1e-3f;
@@ -343,7 +345,7 @@ struct gridbuilder {
       int index = 0;
       const auto end = min(sxyz+4,vec3i(FIELDDIM));
       loopxyz(sxyz, end) csg::set(pos, vertex(xyz), index++);
-      CSGVER::dist(m_node, pos, NULL, d, m, index, box);
+      isodist(m_node, pos, NULL, d, m, index, box);
 #if !defined(NDEBUG)
       loopi(index) assert(d[i] <= 0.f || m[i] == csg::MAT_AIR_INDEX);
       loopi(index) assert(d[i] >= 0.f || m[i] != csg::MAT_AIR_INDEX);
@@ -406,7 +408,7 @@ struct gridbuilder {
       }
       box.pmin -= 3.f * cellsize;
       box.pmax += 3.f * cellsize;
-      CSGVER::dist(m_node, pos, NULL, d, m, num, box);
+      isodist(m_node, pos, NULL, d, m, num, box);
       if (k != MAX_STEPS-1) {
         loopi(num) {
           assert(!isnan(d[i]));
@@ -493,7 +495,7 @@ struct gridbuilder {
           bool const solidsolid = m0 != csg::MAT_AIR_INDEX && m1 != csg::MAT_AIR_INDEX;
           nd[k] = solidsolid ? cellsize : 0.f;
         }
-        CSGVER::dist(m_node, p, &nd, d, m, 4*subnum, box);
+        isodist(m_node, p, &nd, d, m, 4*subnum, box);
         STATS_ADD(iso_num, 4*subnum);
         STATS_ADD(iso_gradient_num, 4*subnum);
 
@@ -839,7 +841,21 @@ geom::mesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::node &cs
   return m;
 }
 
-void start() { ctx = NEWE(context); }
+void start() {
+  using namespace sys;
+  // avx also requires the system to support ymm properly
+  if (hasfeature(CPU_YMM) && sys::hasfeature(CPU_AVX)) {
+    con::out("iso: avx path selected");
+    isodist = csg::avx::dist;
+  } else if (hasfeature(CPU_SSE) && hasfeature(CPU_SSE2)) {
+    con::out("iso: sse path selected");
+    isodist = csg::sse::dist;
+  } else {
+    con::out("iso: warning slow path chosen for isosurface extraction");
+    isodist = csg::dist;
+  }
+  ctx = NEWE(context);
+}
 void finish() {
   if (ctx == NULL) return;
   loopv(ctx->m_builders) SAFE_DEL(ctx->m_builders[i]);
