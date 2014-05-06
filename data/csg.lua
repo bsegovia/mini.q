@@ -39,6 +39,7 @@ function complexscene()
   -- a bunch of cylinder with a hole in the middle
   local s = sphere(4.2, mat_simple_index);
   local b0 = rotation(0.0, 25.0, 0.0, box(4.0,4.0,4.0,mat_simple_index))
+  --local b0 = box(4.0,4.0,4.0,mat_simple_index)
   local d0 = translation(7.0, 5.0, 7.0, s);
   local d1 = translation(7.0, 5.0, 7.0, b0);
   local c = D(d1, d0);
@@ -70,6 +71,14 @@ function complexscene()
   local newmat1 = translation(30.0,3.0,10.0, cylinderxz(0,0,4.2, mat_snoise_index));
   --return U(ground, translation(10.0,1.0,10.0, box(5.0,5.0,5.0,mat_simple_index)))
   return U(c0, D(R(R(world, newmat0), newmat1), remove))
+--[[
+  local world = U(c0, D(R(R(world, newmat0), newmat1), remove))
+  local whole = world;
+  for i=1,15 do
+    whole = U(whole, translation(20*i,0,0,world))
+  end
+  return whole
+]]--
   --return d0
   --return U(scene0, arc);
 end

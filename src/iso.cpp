@@ -41,9 +41,9 @@ static const q::vec3f debugpos(19.f,3.0f,13.f);
 static const float debugsize = 0.8f;
 #endif /* DEBUGOCTREE */
 
-//#define CSGVER csg::avx
+#define CSGVER csg::avx
 //#define CSGVER csg::sse
-#define CSGVER csg
+//#define CSGVER csg
 
 namespace q {
 namespace iso {
