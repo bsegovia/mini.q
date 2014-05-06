@@ -149,7 +149,7 @@
 #define MAYALIAS
 #define PATHDIV         '\\'
 #if _MSC_VER >= 1400
-#pragma intrinsic(_ReadBarrier)
+//#pragma intrinsic(_ReadBarrier)
 #define COMPILER_READ_BARRIER        _ReadBarrier()
 #else
 #define COMPILER_READ_BARRIER        _ReadWriteBarrier()
@@ -365,7 +365,7 @@ INLINE int clz(const int x) {
 #if defined(__AVX2__)
   return _lzcnt_u32(x);
 #else
-  if (unlikely(x == 0)) return 32;
+  if (x == 0) return 32;
   return 31 - __bsr(x);
 #endif
 }
@@ -623,8 +623,8 @@ namespace q {
 template <u32 sz> struct ptrtype {};
 template <> struct ptrtype<4> { typedef s32 stype; typedef u32 utype; };
 template <> struct ptrtype<8> { typedef s64 stype; typedef u64 utype; };
-typedef typename ptrtype<sizeof(void*)>::utype uintptr;
-typedef typename ptrtype<sizeof(void*)>::stype intptr;
+typedef ptrtype<sizeof(void*)>::utype uintptr;
+typedef ptrtype<sizeof(void*)>::stype intptr;
 static struct niltype {niltype(){}} nil MAYBE_UNUSED;
 
 namespace sys {

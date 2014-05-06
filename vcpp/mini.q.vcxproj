@@ -19,14 +19,49 @@
     <ClCompile Include="..\src\enet\protocol.cpp" />
     <ClCompile Include="..\src\enet\win32.cpp" />
     <ClCompile Include="..\src\base\console.cpp" />
+    <ClCompile Include="..\src\base\intrusive_list.cpp" />
+    <ClCompile Include="..\src\base\hash.cpp" />
     <ClCompile Include="..\src\base\math.cpp" />
     <ClCompile Include="..\src\base\script.cpp" />
-    <ClCompile Include="..\src\base\stl.cpp" />
+    <ClCompile Include="..\src\base\string.cpp" />
+    <ClCompile Include="..\src\base\sse.cpp" />
     <ClCompile Include="..\src\base\sys.cpp" />
     <ClCompile Include="..\src\base\task.cpp" />
+    <ClCompile Include="..\src\base\lua\lapi.cpp" />
+    <ClCompile Include="..\src\base\lua\lauxlib.cpp" />
+    <ClCompile Include="..\src\base\lua\lbaselib.cpp" />
+    <ClCompile Include="..\src\base\lua\lcode.cpp" />
+    <ClCompile Include="..\src\base\lua\ldblib.cpp" />
+    <ClCompile Include="..\src\base\lua\ldebug.cpp" />
+    <ClCompile Include="..\src\base\lua\ldo.cpp" />
+    <ClCompile Include="..\src\base\lua\ldump.cpp" />
+    <ClCompile Include="..\src\base\lua\lfunc.cpp" />
+    <ClCompile Include="..\src\base\lua\lgc.cpp" />
+    <ClCompile Include="..\src\base\lua\linit.cpp" />
+    <ClCompile Include="..\src\base\lua\liolib.cpp" />
+    <ClCompile Include="..\src\base\lua\llex.cpp" />
+    <ClCompile Include="..\src\base\lua\lmathlib.cpp" />
+    <ClCompile Include="..\src\base\lua\lmem.cpp" />
+    <ClCompile Include="..\src\base\lua\loadlib.cpp" />
+    <ClCompile Include="..\src\base\lua\lobject.cpp" />
+    <ClCompile Include="..\src\base\lua\lopcodes.cpp" />
+    <ClCompile Include="..\src\base\lua\loslib.cpp" />
+    <ClCompile Include="..\src\base\lua\lparser.cpp" />
+    <ClCompile Include="..\src\base\lua\lstate.cpp" />
+    <ClCompile Include="..\src\base\lua\lstring.cpp" />
+    <ClCompile Include="..\src\base\lua\lstrlib.cpp" />
+    <ClCompile Include="..\src\base\lua\ltable.cpp" />
+    <ClCompile Include="..\src\base\lua\ltablib.cpp" />
+    <ClCompile Include="..\src\base\lua\ltm.cpp" />
+    <ClCompile Include="..\src\base\lua\lundump.cpp" />
+    <ClCompile Include="..\src\base\lua\lvm.cpp" />
+    <ClCompile Include="..\src\base\lua\lzio.cpp" />
+    <ClCompile Include="..\src\base\lua\print.cpp" />
     <ClCompile Include="..\src\entities.cpp" />
     <ClCompile Include="..\src\client.cpp" />
     <ClCompile Include="..\src\csg.cpp" />
+    <ClCompile Include="..\src\csgsse.cpp" />
+    <ClCompile Include="..\src\csgavx.cpp" />
     <ClCompile Include="..\src\bvh.cpp" />
     <ClCompile Include="..\src\rt.cpp" />
     <ClCompile Include="..\src\demo.cpp" />
@@ -41,6 +76,10 @@
     <ClCompile Include="..\src\ogl.cpp" />
     <ClCompile Include="..\src\physics.cpp" />
     <ClCompile Include="..\src\qef.cpp" />
+    <ClCompile Include="..\src\rt.cpp" />
+    <ClCompile Include="..\src\rtscalar.cpp" />
+    <ClCompile Include="..\src\rtsse.cpp" />
+    <ClCompile Include="..\src\rtavx.cpp" />
     <ClCompile Include="..\src\renderer.cpp" />
     <ClCompile Include="..\src\server.cpp" />
     <ClCompile Include="..\src\serverbrowser.cpp" />
@@ -113,7 +152,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v120</PlatformToolset>
+    <PlatformToolset>v110</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>

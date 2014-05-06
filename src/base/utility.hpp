@@ -26,7 +26,6 @@ MAKE_INTEGRAL(int);
 MAKE_INTEGRAL(unsigned int);
 MAKE_INTEGRAL(long);
 MAKE_INTEGRAL(unsigned long);
-MAKE_INTEGRAL(wchar_t);
 #undef MAKE_INTEGRAL
 
 static const struct noinitializetype {noinitializetype() {}} noinitialize;

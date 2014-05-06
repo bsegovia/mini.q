@@ -555,7 +555,7 @@ INLINE bool operator!= (const string_ref &x, const string_ref &y) {
   return !(x==y);
 }
 INLINE bool operator< (const string_ref &x, const string_ref &y) {
-  return strcmp(x.c_str(), y.c_str());
+  return strcmp(x.c_str(), y.c_str()) != 0;
 }
 template<>
 struct hash<string_ref> {
