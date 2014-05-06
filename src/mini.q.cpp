@@ -233,7 +233,8 @@ void start(int argc, const char *argv[]) {
 
   con::out("init: video: misc");
   sys::keyrepeat(true);
-
+  con::out("init: raytracer");
+  rt::start();
   con::out("init: sound");
   sound::start();
   con::out("init: md2 models");

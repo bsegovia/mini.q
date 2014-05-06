@@ -843,7 +843,6 @@ geom::mesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::node &cs
 
 void start() {
   using namespace sys;
-  // avx also requires the system to support ymm properly
   if (hasfeature(CPU_YMM) && sys::hasfeature(CPU_AVX)) {
     con::out("iso: avx path selected");
     isodist = csg::avx::dist;

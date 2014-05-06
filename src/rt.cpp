@@ -30,7 +30,54 @@ void buildbvh(vec3f *v, u32 *idx, u32 idxnum) {
   con::out("bvh: elapsed %f ms", float(ms));
 }
 
-// void start() {}
+// all packets functions we dynamically select at start-up time
+static void (*rtclosest)(const intersector&, const raypacket&, packethit&);
+static void (*rtoccluded)(const intersector&, const raypacket&, packetshadow&);
+static void (*rtvisibilitypacket)(const camera &RESTRICT, raypacket &RESTRICT,
+                                  const vec2i &RESTRICT, const vec2i &RESTRICT);
+static void (*rtshadowpacket)(const array3f &RESTRICT,
+                              const arrayi &RESTRICT,
+                              const vec3f &RESTRICT,
+                              raypacket &RESTRICT,
+                              packetshadow &RESTRICT,
+                              int);
+static u32 (*rtprimarypoint)(const raypacket &RESTRICT p,
+                             const packethit &RESTRICT hit,
+                             array3f &RESTRICT pos,
+                             array3f &RESTRICT nor,
+                             arrayi &RESTRICT mask);
+static void (*rtclearpackethit)(packethit &hit);
+static void (*rtwritenormal)(const packethit&, const vec2i&, const vec2i&,
+                             int *RESTRICT);
+static void (*rtwritendotl)(const raypacket&, const array3f&,
+                            const packetshadow&, const vec2i&, const vec2i&,
+                            int*);
+static void (*rtclear)(const vec2i&, const vec2i&, int*);
+
+#define LOAD(NAME) \
+  rtclosest = NAME::closest;\
+  rtoccluded = NAME::occluded;\
+  rtvisibilitypacket = NAME::visibilitypacket;\
+  rtshadowpacket = NAME::shadowpacket;\
+  rtprimarypoint = NAME::primarypoint;\
+  rtclearpackethit = NAME::clearpackethit;\
+  rtwritenormal = NAME::writenormal;\
+  rtwritendotl = NAME::writendotl;\
+  rtclear = NAME::clear;
+
+void start() {
+  using namespace sys;
+  if (hasfeature(CPU_YMM) && sys::hasfeature(CPU_AVX)) {
+    con::out("rt: avx path selected");
+    LOAD(rt::avx);
+  } else if (hasfeature(CPU_SSE) && hasfeature(CPU_SSE2)) {
+    con::out("rt: sse path selected");
+    LOAD(rt::sse);
+  } else {
+    con::out("rt: warning slow path chosen for isosurface extraction");
+    LOAD(rt);
+  }
+}
 void finish() {destroy(world);}
 
 camera::camera(vec3f org, vec3f up, vec3f view, float fov, float ratio) :
@@ -50,7 +97,6 @@ camera::camera(vec3f org, vec3f up, vec3f view, float fov, float ratio) :
 }
 
 #define NORMAL_ONLY 0
-#define RTVER avx
 
 //static const vec3f lpos(0.f, -4.f, 2.f);
 static const vec3f lpos(35.f, 10.f, 11.f);
@@ -64,10 +110,10 @@ struct raycasttask : public task {
   INLINE u32 primarypoint(vec2i tileorg, array3f &pos, array3f &nor, arrayi &mask) {
     raypacket p;
     packethit hit;
-    RTVER::visibilitypacket(cam, p, tileorg, dim);
-    RTVER::clearpackethit(hit);
-    RTVER::closest(*bvhisec, p, hit);
-    return RTVER::primarypoint(p, hit, pos, nor, mask);
+    rtvisibilitypacket(cam, p, tileorg, dim);
+    rtclearpackethit(hit);
+    rtclosest(*bvhisec, p, hit);
+    return rtprimarypoint(p, hit, pos, nor, mask);
   }
   virtual void run(u32 tileID) {
     const vec2i tilexy(tileID%tile.x, tileID/tile.x);
@@ -77,10 +123,10 @@ struct raycasttask : public task {
     // primary intersections
     raypacket p;
     packethit hit;
-    RTVER::visibilitypacket(cam, p, tileorg, dim);
-    RTVER::clearpackethit(hit);
-    RTVER::closest(*bvhisec, p, hit);
-    RTVER::writenormal(hit, tileorg, dim, pixels);
+    rtvisibilitypacket(cam, p, tileorg, dim);
+    rtclearpackethit(hit);
+    rtclosest(*bvhisec, p, hit);
+    rtwritenormal(hit, tileorg, dim, pixels);
     totalraynum += TILESIZE*TILESIZE;
 #else
     // shadow rays toward the light source
@@ -90,14 +136,14 @@ struct raycasttask : public task {
     packetshadow occluded;
     const auto validnum = primarypoint(tileorg, pos, nor, mask);
     if (validnum == 0) {
-      RTVER::clear(tileorg, dim, pixels);
+      rtclear(tileorg, dim, pixels);
       totalraynum += TILESIZE*TILESIZE;
     } else {
       //const auto sec = game::lastmillis()/1000.f;
       const auto newpos = lpos;// + vec3f(10.f*sin(sec),0.f, 10.f*cos(sec));
-      RTVER::shadowpacket(pos, mask, newpos, shadow, occluded, TILESIZE*TILESIZE);
-      RTVER::occluded(*bvhisec, shadow, occluded);
-      RTVER::writendotl(shadow, nor, occluded, tileorg, dim, pixels);
+      rtshadowpacket(pos, mask, newpos, shadow, occluded, TILESIZE*TILESIZE);
+      rtoccluded(*bvhisec, shadow, occluded);
+      rtwritendotl(shadow, nor, occluded, tileorg, dim, pixels);
       totalraynum += shadow.raynum+TILESIZE*TILESIZE;
     }
 #endif
