@@ -1,6 +1,13 @@
-FLAGS=-MP -MD -Wall -fvisibility=hidden -I./ `sdl2-config --cflags`
+FLAGS=-MP -MD -Wall -fvisibility=hidden -I./
 CXXCOMMONFLAGS=-fno-exceptions -fno-rtti -std=c++11 -fvisibility-inlines-hidden -Wno-invalid-offsetof
 # avx2 stuff for gcc -> -mavx2 -mbmi -mlzcnt -mfma -mf16c
+
+# 'mingw' for us means using cross-compiling from linux or cygwin using mingw
+ifeq (,$(findstring mingw, $(CXX)))
+FLAGS+=`sdl2-config --cflags`
+else
+FLAGS+=-I../include
+endif
 
 ifneq (,$(findstring g++, $(CXX)))
 FLAGS+=-fabi-version=6
@@ -13,7 +20,7 @@ FLAGS+=-vec-
 endif
 
 DEBUGFLAGS=-O0 -DMEMORY_DEBUGGER -g
-OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g -fsanitize=address
+OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g #-fsanitize=address
 RELFLAGS=-fomit-frame-pointer -O3 -DNDEBUG -DRELEASE
 
 CXXFLAGS=$(CXXCOMMONFLAGS) $(FLAGS) $(RELFLAGS)
@@ -27,8 +34,13 @@ ENET_OBJS=\
   enet/list.o\
   enet/packet.o\
   enet/peer.o\
-  enet/protocol.o\
-  enet/unix.o
+  enet/protocol.o
+
+ifeq (,$(findstring mingw, $(CXX)))
+ENET_OBJS+=enet/unix.o
+else
+ENET_OBJS+=enet/win32.o
+endif
 
 BASE_OBJS=\
   base/console.o\

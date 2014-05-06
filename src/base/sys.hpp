@@ -295,7 +295,7 @@ template <typename T> struct typeequal<T,T> { enum {value = true}; };
 /*-------------------------------------------------------------------------
  - windows intrinsics
  -------------------------------------------------------------------------*/
-#if defined(__WIN32__)
+#if defined(__MSVC__)
 #include <intrin.h>
 
 INLINE q::u64 __rdpmc(int i) {
@@ -435,7 +435,7 @@ INLINE void __cpuid_count(int out[4], int op1, int op2) {
 /*-------------------------------------------------------------------------
  - unix intrinsics
  -------------------------------------------------------------------------*/
-#if !defined(__WIN32__)
+#if !defined(__MSVC__)
 #if defined(__i386__) && defined(__PIC__)
 
 INLINE void __cpuid(int out[4], int op) {
@@ -465,6 +465,7 @@ INLINE void __cpuid_count(int out[4], int op1, int op2) {
 }
 #endif
 
+#if !defined(__WIN32__)
 INLINE q::u64 __rdtsc()  {
   q::u32 high,low;
   asm volatile ("rdtsc" : "=d"(high), "=a"(low));
@@ -476,6 +477,7 @@ INLINE q::u64 __rdpmc(int i) {
   asm volatile ("rdpmc" : "=d"(high), "=a"(low) : "c"(i));
   return (((q::u64)high) << 32) + (q::u64)low;
 }
+#endif
 
 INLINE unsigned int __popcnt(unsigned int in) {
   int r = 0; asm ("popcnt %1,%0" : "=r"(r) : "r"(in)); return r;
@@ -505,9 +507,11 @@ INLINE size_t __bsf(size_t v) {
   size_t r = 0; asm ("bsf %1,%0" : "=r"(r) : "r"(v)); return r;
 }
 
+#if !defined(__X86__)
 INLINE unsigned int __bsf(unsigned int v) {
   unsigned int r = 0; asm ("bsf %1,%0" : "=r"(r) : "r"(v)); return r;
 }
+#endif
 
 INLINE size_t __bsr(size_t v) {
   size_t r = 0; asm ("bsr %1,%0" : "=r"(r) : "r"(v)); return r;
@@ -541,6 +545,7 @@ INLINE unsigned int bitscan(unsigned int v) {
 #endif
 }
 
+#if !defined(__X86__)
 INLINE size_t bitscan(size_t v) {
 #if defined(__AVX2__)
 #if defined(__X86_64__)
@@ -552,6 +557,7 @@ INLINE size_t bitscan(size_t v) {
   return __bsf(v);
 #endif
 }
+#endif
 
 INLINE int clz(const int x) {
 #if defined(__AVX2__)
@@ -578,6 +584,7 @@ INLINE unsigned int __bscf(unsigned int& v) {
   return i;
 }
 
+#if !defined(__X86__)
 INLINE size_t __bscf(size_t& v) {
   size_t i = bitscan(v);
 #if defined(__AVX2__)
@@ -587,6 +594,7 @@ INLINE size_t __bscf(size_t& v) {
 #endif
   return i;
 }
+#endif
 #endif
 
 /*-------------------------------------------------------------------------
@@ -602,8 +610,9 @@ INLINE size_t __bscf(size_t& v) {
 #if defined(__WIN32__)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <intrin.h>
+#if defined(__MSVC__)
 #pragma warning (disable:4200) // no standard zero sized array
+#endif
 #undef min
 #undef max
 #else
