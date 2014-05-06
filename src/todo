@@ -1,4 +1,3 @@
-* dynamic dispatch of all simd functions
 * use 'q' as a metatable for all scripts and remove 'q.' from all lua calls
 * write tri->leaf mapping and build list of triangles per leaf
 * build bvh per node with some minimum of triangles per bvh
