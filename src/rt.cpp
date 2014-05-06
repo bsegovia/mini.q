@@ -41,12 +41,12 @@ static void (*rtshadowpacket)(const array3f &RESTRICT,
                               raypacket &RESTRICT,
                               packetshadow &RESTRICT,
                               int);
-static u32 (*rtprimarypoint)(const raypacket &RESTRICT p,
-                             const packethit &RESTRICT hit,
-                             array3f &RESTRICT pos,
-                             array3f &RESTRICT nor,
-                             arrayi &RESTRICT mask);
-static void (*rtclearpackethit)(packethit &hit);
+static u32 (*rtprimarypoint)(const raypacket &RESTRICT,
+                             const packethit &RESTRICT,
+                             array3f &RESTRICT,
+                             array3f &RESTRICT,
+                             arrayi &RESTRICT);
+static void (*rtclearpackethit)(packethit&);
 static void (*rtwritenormal)(const packethit&, const vec2i&, const vec2i&,
                              int *RESTRICT);
 static void (*rtwritendotl)(const raypacket&, const array3f&,
