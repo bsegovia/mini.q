@@ -310,12 +310,12 @@ void writebmp(const int *data, int w, int h, const char *filename) {
 enum {eax=0, ebx=1, ecx=2, edx=3};
 template <int lvl, int bit, int reg> static INLINE bool has() {
   int flags[]={0,0,0,0};
-  __cpuid(flags, lvl);
+  cpuid(flags, lvl);
   return (flags[reg] & (1<<bit)) != 0;
 }
 template <int lvl, int bit, int reg> static INLINE bool hasex() {
   int flags[]={0,0,0,0};
-  __cpuid_count(flags, lvl, 0);
+  cpuid_count(flags, lvl, 0);
   return (flags[reg] & (1<<bit)) != 0;
 }
 static INLINE int check_xcr0_ymm() {

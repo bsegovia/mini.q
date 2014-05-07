@@ -174,12 +174,12 @@ INLINE sseb extract(const avxb& a) {
 
 // reduction operations
 INLINE size_t popcnt(const avxb& a)   {return __popcnt(_mm256_movemask_ps(a));}
-INLINE bool reduce_and(const avxb& a) {return _mm256_movemask_ps(a) == (uint)0xff;}
+INLINE bool reduce_and(const avxb& a) {return _mm256_movemask_ps(a) == (u32)0xff;}
 INLINE bool reduce_or (const avxb& a) {return !_mm256_testz_ps(a,a);}
-INLINE bool all(const avxb& a)  {return _mm256_movemask_ps(a) == (uint)0xff;}
+INLINE bool all(const avxb& a)  {return _mm256_movemask_ps(a) == (u32)0xff;}
 INLINE bool none(const avxb& a) {return _mm256_testz_ps(a,a) != 0;}
 INLINE bool any(const avxb& a)  {return !_mm256_testz_ps(a,a);}
-INLINE uint movemask(const avxb& a) {return _mm256_movemask_ps(a);}
+INLINE u32 movemask(const avxb& a) {return _mm256_movemask_ps(a);}
 } /* namespace q */
 #undef op
 

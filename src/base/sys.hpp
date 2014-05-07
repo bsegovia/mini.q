@@ -256,10 +256,10 @@ extern TYPE NAME(void);\
 extern void set##NAME(TYPE x);
 
 #if !defined(__X86__) && !defined(__X86_64__)
-INLINE void __cpuid(int out[4], int op) {
+INLINE void cpuid(int out[4], int op) {
   out[0]=out[1]=out[2]=out[3]=0;
 }
-INLINE void __cpuid_count(int out[4], int op1, int op2) {
+INLINE void cpuid_count(int out[4], int op1, int op2) {
   out[0]=out[1]=out[2]=out[3]=0;
 }
 #endif
@@ -426,7 +426,11 @@ INLINE size_t __bscf(size_t& v) {
   return i;
 }
 
-INLINE void __cpuid_count(int out[4], int op1, int op2) {
+INLINE void cpuid(int out[4], int op) {
+  return __cpuid(out, op);
+}
+
+INLINE void cpuid_count(int out[4], int op1, int op2) {
   return __cpuidex(out, op1, op2);
 }
 #endif
@@ -437,8 +441,7 @@ INLINE void __cpuid_count(int out[4], int op1, int op2) {
  -------------------------------------------------------------------------*/
 #if !defined(__MSVC__)
 #if defined(__i386__) && defined(__PIC__)
-
-INLINE void __cpuid(int out[4], int op) {
+INLINE void cpuid(int out[4], int op) {
   asm volatile ("xchg{l}\t{%%}ebx, %1\n\t"
                 "cpuid\n\t"
                 "xchg{l}\t{%%}ebx, %1\n\t"
@@ -446,7 +449,7 @@ INLINE void __cpuid(int out[4], int op) {
                 : "0"(op));
 }
 
-INLINE void __cpuid_count(int out[4], int op1, int op2) {
+INLINE void cpuid_count(int out[4], int op1, int op2) {
   asm volatile ("xchg{l}\t{%%}ebx, %1\n\t"
                 "cpuid\n\t"
                 "xchg{l}\t{%%}ebx, %1\n\t"
@@ -454,13 +457,13 @@ INLINE void __cpuid_count(int out[4], int op1, int op2) {
                 : "0" (op1), "2" (op2));
 }
 
-#elif defined(__X86_64__)
+#else
 
-INLINE void __cpuid(int out[4], int op) {
+INLINE void cpuid(int out[4], int op) {
   asm volatile ("cpuid" : "=a"(out[0]), "=b"(out[1]), "=c"(out[2]), "=d"(out[3]) : "a"(op));
 }
 
-INLINE void __cpuid_count(int out[4], int op1, int op2) {
+INLINE void cpuid_count(int out[4], int op1, int op2) {
   asm volatile ("cpuid" : "=a"(out[0]), "=b"(out[1]), "=c"(out[2]), "=d"(out[3]) : "a"(op1), "c"(op2));
 }
 #endif

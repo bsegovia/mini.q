@@ -8,7 +8,7 @@
 #include "csg.hpp"
 #include "enet/enet.h"
 #include <time.h>
-#include <SDL2/SDL_image.h>
+#include <SDL_image.h>
 
 namespace q {
 namespace sys {

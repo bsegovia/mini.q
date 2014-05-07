@@ -200,7 +200,7 @@ protected:
     if (capacity_hint != 0) {
       ++capacity_hint;
       capacity_hint = (capacity_hint+kGranularity-1) & ~(kGranularity-1);
-      if (capacity_hint < kGranularity)
+      if (capacity_hint < size_type(kGranularity))
         capacity_hint = kGranularity;
     }
     assert(capacity_hint < string_rep::kMaxCapacity);
@@ -237,7 +237,7 @@ private:
     if (capacity != 0) {
       ++capacity;
       capacity = (capacity+kGranularity-1) & ~(kGranularity-1);
-      if (capacity < kGranularity)
+      if (capacity < size_type(kGranularity))
         capacity = kGranularity;
       assert(capacity < string_rep::kMaxCapacity);
 

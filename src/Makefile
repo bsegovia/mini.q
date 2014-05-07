@@ -2,11 +2,15 @@ FLAGS=-MP -MD -Wall -fvisibility=hidden -I./
 CXXCOMMONFLAGS=-fno-exceptions -fno-rtti -std=c++11 -fvisibility-inlines-hidden -Wno-invalid-offsetof
 # avx2 stuff for gcc -> -mavx2 -mbmi -mlzcnt -mfma -mf16c
 
+##############################################################################
+# compilation stuff
+##############################################################################
+
 # 'mingw' for us means using cross-compiling from linux or cygwin using mingw
 ifeq (,$(findstring mingw, $(CXX)))
 FLAGS+=`sdl2-config --cflags`
 else
-FLAGS+=-I../include
+FLAGS+=-I../include/SDL2 -I../include/
 endif
 
 ifneq (,$(findstring g++, $(CXX)))
@@ -26,7 +30,17 @@ RELFLAGS=-fomit-frame-pointer -O3 -DNDEBUG -DRELEASE
 CXXFLAGS=$(CXXCOMMONFLAGS) $(FLAGS) $(RELFLAGS)
 CXXSSEFLAGS=$(CXXFLAGS) -msse -msse2
 CXXAVXFLAGS=$(CXXFLAGS) -mavx
-LIBS=`sdl2-config --libs` -lSDL2_image -lSDL2_mixer -lz -lm -lstdc++ #-fsanitize=address
+
+##############################################################################
+# link stuff
+##############################################################################
+ifeq (,$(findstring mingw, $(CXX)))
+LIBS+=`sdl2-config --libs` -lSDL2_image -lSDL2_mixer -lz -lm -lstdc++ 
+endif
+
+ifneq (,$(findstring i686-w64-mingw, $(CXX)))
+LIBS=-L../lib/mingw/x86 -mwindows -lws2_32 -lwinmm -lmingw32 -lSDL2main -lSDL2 -lSDL2_image -lSDL2_mixer -lz
+endif
 
 ENET_OBJS=\
   enet/callbacks.o\

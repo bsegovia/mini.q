@@ -2,8 +2,8 @@
  - mini.q - a minimalistic multiplayer FPS
  - compress_chars.cpp -> load a png for the font and make a bitstring
  -------------------------------------------------------------------------*/
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
+#include <SDL.h>
+#include <SDL_image.h>
 #include <cstdio>
 #include <cstdlib>
 #include <cstdint>
@@ -30,7 +30,7 @@ void loaddata(SDL_Surface *s, bool invert) {
     }
   }
 }
-int main(int argc, const char *argv[]) {
+int main(int argc, char *argv[]) {
   if (argc != 5) FATAL("usage: %s filename width height invert", argv[0]);
   auto s = IMG_Load(argv[1]);
   auto fontw = atoi(argv[2]);
