@@ -75,7 +75,7 @@ void sort(int start, int num) {
 
 bool render(void) {
   if (vmenu<0) {
-    menustack.setsize(0);
+    menustack.resize(0);
     return false;
   }
 
@@ -88,7 +88,7 @@ bool render(void) {
   if (vmenu==1) browser::refreshservers();
   auto &m = menus[vmenu];
   fixedstring title(fmt, vmenu>1 ? "- %s menu -" : "%s", m.name);
-  const auto mdisp = m.items.length();
+  const auto mdisp = m.items.size();
   auto w = 0.f;
   loopi(mdisp) w = max(w, text::width(m.items[i].text));
   w = max(w, text::width(title.c_str()));
@@ -118,26 +118,29 @@ bool render(void) {
 }
 
 void newm(const char *name) {
-  auto &menu = menus.add();
+  menu menu;
   menu.name = NEWSTRING(name);
   menu.menusel = 0;
+  menus.push_back(menu);
 }
 CMDN(newmenu, newm);
 
 void manual(int m, int n, const char *text) {
-  if (!n) menus[m].items.setsize(0);
-  auto &mi = menus[m].items.add();
+  if (!n) menus[m].items.resize(0);
+  menu mi;
   mi.text = const_cast<char*>(text);
   mi.action = empty.c_str();
   mi.manual = 1;
+  menus[m].items.push_back(mi);
 }
 
 static void item(const char *text, const char *action) {
   auto &menu = menus.last();
-  auto &mi = menu.items.add();
+  menu mi;
   mi.text = NEWSTRING(text);
   mi.action = action[0] ? NEWSTRING(action) : NEWSTRING(text);
   mi.manual = 0;
+  menu.items.push_back(mi);
 }
 CMDN(menuitem, item);
 
@@ -153,7 +156,7 @@ bool key(int code, bool isdown) {
     }
     else if (code==SDLK_UP || code==-4) menusel--;
     else if (code==SDLK_DOWN || code==-5) menusel++;
-    const int n = menus[vmenu].items.length();
+    const int n = menus[vmenu].items.size();
     if (menusel<0) menusel = n-1;
     else if (menusel>=n) menusel = 0;
     menus[vmenu].menusel = menusel;

@@ -45,8 +45,8 @@ template <typename T>
 struct leafoctree : leafoctreebase {
   void init() {
     leafoctreebase::init();
-    quads.setsize(0);
-    pts.setsize(0);
+    quads.resize(0);
+    pts.resize(0);
   }
   INLINE T *get(vec3i xyz) {
     const auto idx = getidx(xyz);

@@ -13,18 +13,18 @@ namespace q {
 polygon::polygon(int n) { init(n); }
 polygon::polygon(const polygon &src) {
   hole = src.hole;
-  points.setsize(src.size());
+  points.resize(src.size());
   loopv(points) points[i] = src.points[i];
 }
 polygon &polygon::operator=(const polygon &src) {
   hole = src.hole;
-  points.setsize(src.size());
+  points.resize(src.size());
   loopv(points) points[i] = src.points[i];
   return *this;
 }
 void polygon::init(int n) {
   hole = false;
-  points.setsize(n);
+  points.resize(n);
 }
 
 INLINE vec2f safe_normalize(const vec2f &p) {

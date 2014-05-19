@@ -61,7 +61,7 @@ static INLINE const quadmesh &findbestmesh(iso::octree::qefpoint **pt) {
 struct procmesh {
   vector<vec3f> pos, nor;
   vector<u32> idx, mat;
-  INLINE int trinum() const {return idx.length()/3;}
+  INLINE int trinum() const {return idx.size()/3;}
 };
 
 static void buildmesh(const iso::octree &o, const iso::octree::node &node, procmesh &pm) {
@@ -119,7 +119,7 @@ static void buildmesh(const iso::octree &o, const iso::octree::node &node, procm
       loopl(3) {
         const auto qef = pt[t[l]];
         if (qef->idx == -1) {
-          qef->idx = pm.pos.length();
+          qef->idx = pm.pos.size();
           pm.pos.add(qef->pos);
         }
         pm.idx.add(qef->idx);
@@ -194,8 +194,8 @@ static void buildedges(qemcontext &ctx, const procmesh &pm) {
   auto &v = ctx.vqem;
 
   // maintain a list of edges per triangle
-  const auto vertnum = pm.pos.length(), trinum = pm.trinum();
-  vector<int> vlist(pm.pos.length()+pm.idx.length());
+  const auto vertnum = pm.pos.size(), trinum = pm.trinum();
+  vector<int> vlist(pm.pos.size()+pm.idx.size());
   loopi(vertnum) vlist[i] = -1;
   int firstedge = vertnum;
 
@@ -208,7 +208,7 @@ static void buildedges(qemcontext &ctx, const procmesh &pm) {
       const int i1 = t[j];
       if (i0 < i1) {
         vlist[firstedge++] = vlist[i0];
-        vlist[i0] = e.length();
+        vlist[i0] = e.size();
         e.add(qemedge(i0,i1,mat));
       }
       i0 = i1;
@@ -233,7 +233,7 @@ static void buildedges(qemcontext &ctx, const procmesh &pm) {
         // border edge
         if (idx == -1) {
           vlist[firstedge++] = vlist[i1];
-          vlist[i1] = e.length();
+          vlist[i1] = e.size();
           e.add(qemedge(i1,i0,mat));
           extraplane(pm, e.last(), i, v[i0], v[i1]);
         } else {
@@ -295,13 +295,13 @@ INLINE int uncollapsedidx(vector<qef::qem> &v, int idx) {
 static bool merge(qemcontext &ctx, procmesh &pm, const qemedge &edge, int idx0, int idx1) {
 
   // first we gather non degenerated triangles from both vertex triangle lists
-  ctx.mergelist.setsize(0);
+  ctx.mergelist.resize(0);
   const int idx[] = {idx0,idx1}, other[] = {idx1,idx0};
   int pivot;
   loopi(2) {
     const auto first = ctx.vtri[idx[i]].first;
     const auto n = ctx.vtri[idx[i]].second;
-    pivot = ctx.mergelist.length();
+    pivot = ctx.mergelist.size();
     loopj(n) {
       const auto tri = ctx.vidx[first+j];
       const auto i0 = pm.idx[3*tri], i1 = pm.idx[3*tri+1], i2 = pm.idx[3*tri+2];
@@ -316,7 +316,7 @@ static bool merge(qemcontext &ctx, procmesh &pm, const qemedge &edge, int idx0, 
   const auto from = edge.best == 0 ? idx1 : idx0;
   const auto to = edge.best == 0 ? idx0 : idx1;
   const auto begin = edge.best == 0 ? pivot : 0;
-  const auto end = edge.best == 0 ? ctx.mergelist.length() : pivot;
+  const auto end = edge.best == 0 ? ctx.mergelist.size() : pivot;
   rangei(begin,end) {
     const auto &p = pm.pos;
     const auto t = &pm.idx[3*ctx.mergelist[i]];
@@ -346,17 +346,17 @@ static bool merge(qemcontext &ctx, procmesh &pm, const qemedge &edge, int idx0, 
   // of both lists. if not, we just linear allocate a new range
   // XXX we should remove degenerated triangles as well
   int first = -1;
-  loopi(2) if (ctx.vtri[idx[i]].second >= ctx.mergelist.length()) {
+  loopi(2) if (ctx.vtri[idx[i]].second >= ctx.mergelist.size()) {
     first = ctx.vtri[idx[i]].first;
     break;
   }
   if (first == -1) {
-    first = ctx.vidx.length();
-    ctx.vidx.setsize(first+ctx.mergelist.length());
+    first = ctx.vidx.size();
+    ctx.vidx.resize(first+ctx.mergelist.size());
   }
   loopv(ctx.mergelist) ctx.vidx[first+i] = ctx.mergelist[i];
   ctx.vtri[to].first = first;
-  ctx.vtri[to].second = ctx.mergelist.length();
+  ctx.vtri[to].second = ctx.mergelist.size();
 
   // add both qems
   auto &q0 = ctx.vqem[idx0], &q1 = ctx.vqem[idx1];
@@ -445,7 +445,7 @@ static void decimatemesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
   }
 
   // now, we remove unused vertices and degenerated triangles
-  vector<int> mapping(pm.pos.length());
+  vector<int> mapping(pm.pos.size());
   loopv(mapping) mapping[i] = -1;
   vector<u32> newidx, newmat;
   const auto trinum = pm.trinum();
@@ -471,7 +471,7 @@ static void decimatemesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
 
 static void buildqem(qemcontext &ctx, procmesh &pm) {
   auto &v = ctx.vqem;
-  v.setsize(pm.pos.length());
+  v.resize(pm.pos.size());
   loopi(pm.trinum()) {
     const auto i0 = pm.idx[3*i+0];
     const auto i1 = pm.idx[3*i+1];
@@ -489,8 +489,8 @@ static void buildqem(qemcontext &ctx, procmesh &pm) {
 static void buildtrianglelists(qemcontext &ctx, const procmesh &pm) {
   auto &vtri = ctx.vtri;
   auto &vidx = ctx.vidx;
-  vtri.setsize(pm.pos.length());
-  vidx.setsize(pm.idx.length());
+  vtri.resize(pm.pos.size());
+  vidx.resize(pm.idx.size());
 
   // first initialize tri lists
   loopv(vtri) vtri[i].first = vtri[i].second = 0;
@@ -501,7 +501,7 @@ static void buildtrianglelists(qemcontext &ctx, const procmesh &pm) {
     accum += vtri[i].second;
     vtri[i].second = 0;
   }
-  assert(accum == pm.idx.length());
+  assert(accum == pm.idx.size());
 
   // then, fill them
   loopv(pm.idx) {
@@ -511,7 +511,7 @@ static void buildtrianglelists(qemcontext &ctx, const procmesh &pm) {
 }
 
 static void decimatemesh(procmesh &pm, float cellsize) {
-  if (pm.idx.length() == 0) return;
+  if (pm.idx.size() == 0) return;
   qemcontext ctx;
 
   // we go over all triangles and build all vertex qem
@@ -536,10 +536,10 @@ static void decimatemesh(procmesh &pm, float cellsize) {
  - sharpen mesh i.e. duplicate sharp points and compute vertex normals
  -------------------------------------------------------------------------*/
 static void sharpenmesh(procmesh &pm) {
-  if (pm.idx.length() == 0) return;
+  if (pm.idx.size() == 0) return;
   const auto trinum = pm.trinum();
-  vector<int> vertlist(pm.pos.length());
-  vector<vec3f> newnor(pm.pos.length());
+  vector<int> vertlist(pm.pos.size());
+  vector<vec3f> newnor(pm.pos.size());
   vector<u32> newidx, newmat;
 
   // init the chain list
@@ -578,8 +578,8 @@ static void sharpenmesh(procmesh &pm) {
           newnor[idx] += dir;
         else {
           const auto old = vertlist[t[j]];
-          idx = newnor.length();
-          vertlist[t[j]] = newnor.length();
+          idx = newnor.size();
+          vertlist[t[j]] = newnor.size();
           vertlist.add(old);
           pm.pos.add(pm.pos[t[j]]);
           newnor.add(dir);
@@ -611,8 +611,8 @@ struct isomeshtask : public task {
   {}
   virtual void run(u32) {
     buildmesh(o, o.m_root, pm);
-    con::out("iso: procmesh: %d vertices", pm.pos.length());
-    con::out("iso: procmesh: %d triangles", pm.idx.length()/3);
+    con::out("iso: procmesh: %d vertices", pm.pos.size());
+    con::out("iso: procmesh: %d triangles", pm.idx.size()/3);
   }
   iso::octree &o;
   procmesh &pm;

@@ -16,7 +16,7 @@ static int disconnecting = 0;
 static int clientnum = -1; // our client id in the game
 static bool c2sinit = false; // whether we need to tell the other clients our stats
 static fixedstring ctext;
-static vector<ivector> messages; // collect c2s messages conveniently
+static vector<vector<int>> messages; // collect c2s messages conveniently
 static int lastupdate = 0, lastping = 0;
 static fixedstring toservermap;
 static bool senditemstoserver = false; // after a map change (server doesn't have map)
@@ -166,11 +166,12 @@ void addmsg(int rel, int num, int type, ...) {
                              type, num, msgsizelookup(type));
     sys::fatal(s.c_str());
   }
-  if (messages.length()==128) {
+  if (messages.size()==128) {
     con::out("command flood protection (type %d)", type);
     return;
   }
-  ivector &msg = messages.add();
+  messages.push_back(vector<int>());
+  ivector &msg = messages.back();
   msg.add(num);
   msg.add(rel);
   msg.add(type);
@@ -276,7 +277,7 @@ void c2sinfo(const game::dynent *d) {
       if (msg[1]) packet->flags = ENET_PACKET_FLAG_RELIABLE;
       loopi(msg[0]) putint(p, msg[i+2]);
     }
-    messages.setsize(0);
+    messages.resize(0);
     if (game::lastmillis()-lastping>250) {
       putint(p, SV_PING);
       putint(p, int(game::lastmillis()));
@@ -498,7 +499,7 @@ void localservertoclient(u8 *buf, int len) {
     case SV_ITEMSPAWN: {
       u32 i = getint(p);
       game::setspawn(i, true);
-      if (i>=u32(game::ents.length()))
+      if (i>=u32(game::ents.size()))
         break;
       const auto &e = game::ents[i];
       const vec3f v(float(e.x),float(e.y),float(e.z));
@@ -534,8 +535,10 @@ void localservertoclient(u8 *buf, int len) {
     // Coop edit of ent
     case SV_EDITENT: {
       u32 i = getint(p);
-      while (u32(game::ents.length()) <= i)
-        game::ents.add().type = game::NOTUSED;
+      while (u32(game::ents.size()) <= i) {
+        game::ents.push_back(entity);
+        game::ents.back().type = game::NOTUSED;
+      }
       game::ents[i].type = getint(p);
       game::ents[i].x = getint(p);
       game::ents[i].y = getint(p);

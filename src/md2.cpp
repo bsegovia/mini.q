@@ -257,12 +257,12 @@ void mapmodel(const char *rad, const char *h, const char *zoff, const char *snap
 void mapmodelreset(void) {
   auto &map = mdllookup;
   for (auto it = map.begin(); it != map.end(); ++it) SAFE_DEL(it->second);
-  mapmodels.setsize(0);
+  mapmodels.resize(0);
   modelnum = 0;
 }
 
 game::mapmodelinfo &getmminfo(int i) {
-  return i<mapmodels.length() ? mapmodels[i]->mmi : *(game::mapmodelinfo*) NULL;
+  return i<mapmodels.size() ? mapmodels[i]->mmi : *(game::mapmodelinfo*) NULL;
 }
 
 CMD(mapmodel);

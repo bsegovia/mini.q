@@ -625,8 +625,8 @@ static timer *findtimer(const char *name, bool gpu) {
     timerorder.add(i);
     return &timers[i];
   }
-  timerorder.add(timers.length());
-  auto &t = timers.add();
+  timerorder.add(timers.size());
+  timer t;
   t.name = name;
   t.gpu = gpu;
   memset(t.query, 0, sizeof(t.query));
@@ -635,7 +635,8 @@ static timer *findtimer(const char *name, bool gpu) {
   t.starttime = 0.f;
   t.result = -1;
   t.print = -1;
-  return &t;
+  timers.push_back(t);
+  return &timers.back();
 }
 
 timer *begintimer(const char *name, bool gpu) {
@@ -796,7 +797,7 @@ static u32 loadshader(GLenum type, const char *source, const shaderrules &rules)
   sources.add(header);
   loopv(rules) sources.add(rules[i]);
   sources.add(source);
-  OGL(ShaderSource, name, sources.length(), &sources[0], NULL);
+  OGL(ShaderSource, name, sources.size(), &sources[0], NULL);
   OGL(CompileShader, name);
   if (!checkshader(sources, name)) return 0;
   return name;

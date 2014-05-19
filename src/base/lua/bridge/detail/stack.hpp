@@ -437,7 +437,7 @@ struct Stack <string>
 {
   static inline void push (lua_State* L, string const& str)
   {
-    lua_pushlstring (L, str.c_str (), str.length());
+    lua_pushlstring (L, str.c_str (), str.size());
   }
 
   static inline string get (lua_State* L, int index)
@@ -457,7 +457,7 @@ struct Stack <string const&>
 {
   static inline void push (lua_State* L, string const& str)
   {
-    lua_pushlstring (L, str.c_str(), str.length());
+    lua_pushlstring (L, str.c_str(), str.size());
   }
 
   static inline string get (lua_State* L, int index)

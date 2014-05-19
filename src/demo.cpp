@@ -49,7 +49,7 @@ void stop(void) {
   demoplayback = false;
   demoloading = false;
   loopv(playerhistory) game::zapdynent(playerhistory[i]);
-  playerhistory.setsize(0);
+  playerhistory.resize(0);
 }
 
 void stopifrecording(void) { if (demorecording) stop(); }
@@ -64,13 +64,13 @@ static void savestate(char *fn) {
   gzputi(sizeof(game::dynent));
   gzwrite(f, (const voidp) game::getclientmap(), MAXDEFSTR);
   gzputi(game::mode());
-  gzputi(game::ents.length());
+  gzputi(game::ents.size());
   loopv(game::ents) gzputc(f, game::ents[i].spawned);
   gzwrite(f, game::player1, sizeof(game::dynent));
   game::dvector &monsters = game::getmonsters();
-  gzputi(monsters.length());
+  gzputi(monsters.size());
   loopv(monsters) gzwrite(f, monsters[i], sizeof(game::dynent));
-  gzputi(game::players.length());
+  gzputi(game::players.size());
   loopv(game::players) {
     gzput(game::players[i]==NULL);
     gzwrite(f, game::players[i], sizeof(game::dynent));
@@ -123,7 +123,7 @@ static void loadgameout(void) {
 
 void loadgamerest(void) {
   if (demoplayback || !f) return;
-  if (gzgeti()!=game::ents.length()) return loadgameout();
+  if (gzgeti()!=game::ents.size()) return loadgameout();
   loopv(game::ents) {
     game::ents[i].spawned = gzgetc(f)!=0;
     // TODO if (game::ents[i].type==game::CARROT && !game::ents[i].spawned)
@@ -136,7 +136,7 @@ void loadgamerest(void) {
 
   int nmonsters = gzgeti();
   game::dvector &monsters = game::getmonsters();
-  if (nmonsters!=monsters.length()) return loadgameout();
+  if (nmonsters!=monsters.size()) return loadgameout();
   loopv(monsters) {
     gzread(f, monsters[i], sizeof(game::dynent));
     monsters[i]->enemy = game::player1; // lazy, could save id of enemy instead
@@ -303,7 +303,7 @@ void playbackstep(void) {
       *d = *target;
       d->lastupdate = playbacktime;
       playerhistory.add(d);
-      if (playerhistory.length()>20) {
+      if (playerhistory.size()>20) {
         game::zapdynent(playerhistory[0]);
         playerhistory.remove(0);
       }
@@ -319,11 +319,11 @@ void playbackstep(void) {
     loopvrev(playerhistory) if (playerhistory[i]->lastupdate<itime) {
       game::dynent *a = playerhistory[i];
       game::dynent *b = a;
-      if (i+1<playerhistory.length()) b = playerhistory[i+1];
+      if (i+1<playerhistory.size()) b = playerhistory[i+1];
       *game::player1 = *b;
       if (a!=b) { // interpolate pos & angles
         game::dynent *c = b;
-        if (i+2<playerhistory.length()) c = playerhistory[i+2];
+        if (i+2<playerhistory.size()) c = playerhistory[i+2];
         game::dynent *z = a;
         if (i-1>=0) z = playerhistory[i-1];
         float bf = (itime-a->lastupdate)/(float)(b->lastupdate-a->lastupdate);

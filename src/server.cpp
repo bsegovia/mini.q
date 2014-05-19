@@ -100,11 +100,11 @@ void disconnect_client(int n, const char *reason) {
   send2(true, -1, SV_CDIS, n);
 }
 
-void resetitems() { sents.setsize(0); notgotitems = true; };
+void resetitems() { sents.resize(0); notgotitems = true; };
 
 // server side item pickup, acknowledge first client that gets it
 void pickup(u32 i, int sec, int sender) {
-  if (i>=(u32)sents.length()) return;
+  if (i>=(u32)sents.size()) return;
   if (sents[i].spawned) {
     sents[i].spawned = false;
     sents[i].spawnsecs = sec;
@@ -182,7 +182,7 @@ void process(ENetPacket * packet, int sender) { // sender may be -1
       int n;
       while ((n = getint(p))!=-1) if (notgotitems) {
         server_entity se = { false, 0 };
-        while (sents.length()<=n) sents.add(se);
+        while (sents.size()<=n) sents.add(se);
         sents[n].spawned = true;
       }
       notgotitems = false;
@@ -198,7 +198,7 @@ void process(ENetPacket * packet, int sender) { // sender may be -1
     break;
     case SV_POS: {
       cn = getint(p);
-      if (cn<0 || cn>=clients.length() || clients[cn].type==ST_EMPTY) {
+      if (cn<0 || cn>=clients.size() || clients[cn].type==ST_EMPTY) {
         disconnect_client(sender, "client num");
         return;
       }
@@ -239,7 +239,7 @@ void send_welcome(int n) {
   putint(p, PROTOCOL_VERSION);
   putint(p, smapname[0]);
   sendstring(serverpassword, p);
-  putint(p, clients.length()>maxclients);
+  putint(p, clients.size()>maxclients);
   if (smapname[0]) {
     putint(p, SV_MAPCHANGE);
     sendstring(smapname.c_str(), p);
@@ -267,7 +267,8 @@ void localclienttoserver(ENetPacket *packet) {
 
 drawarray &addclient(void) {
   loopv(clients) if (clients[i].type==ST_EMPTY) return clients[i];
-  return clients.add();
+  clients.push_back(drawarray());
+  return clients.back();
 }
 
 void checkintermission(void) {
@@ -282,7 +283,7 @@ void startintermission() { minremain = 0; checkintermission(); };
 
 void resetserverifempty(void) {
   loopv(clients) if (clients[i].type!=ST_EMPTY) return;
-  clients.setsize(0);
+  clients.resize(0);
   smapname[0] = 0;
   resetvotes();
   resetitems();
@@ -326,7 +327,7 @@ void slice(int seconds, unsigned int timeout) {
   int numplayers = 0;
   loopv(clients) if (clients[i].type!=ST_EMPTY) ++numplayers;
   serverms(mode, numplayers, minremain, smapname.c_str(),
-           seconds, clients.length()>=maxclients);
+           seconds, clients.size()>=maxclients);
 
   if (seconds-laststatus>60) { // display bandwidth stats, useful for server ops
     nonlocalclients = 0;

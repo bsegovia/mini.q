@@ -74,13 +74,13 @@ void compiler::injection(const primitive *soup, const u32 primnum) {
 
   root = NEWAE(intersector::node,2*primnum+1);
 
-  loopi(3) ids[i].setsize(primnum);
-  pos.setsize(primnum);
-  tmpids.setsize(primnum);
-  centroids.setsize(primnum);
-  boxes.setsize(primnum);
-  rlboxes.setsize(primnum);
-  istri.setsize(primnum);
+  loopi(3) ids[i].resize(primnum);
+  pos.resize(primnum);
+  tmpids.resize(primnum);
+  centroids.resize(primnum);
+  boxes.resize(primnum);
+  rlboxes.resize(primnum);
+  istri.resize(primnum);
   n = primnum;
 
   scenebox = aabb(FLT_MAX, -FLT_MAX);
@@ -96,7 +96,7 @@ void compiler::injection(const primitive *soup, const u32 primnum) {
   quicksort(&ids[1][0], &ids[1][0]+primnum, sorter<1>(centroids));
   quicksort(&ids[2][0], &ids[2][0]+primnum, sorter<2>(centroids));
   prims = soup;
-  acc.setsize(primnum);
+  acc.resize(primnum);
 }
 
 struct partition {

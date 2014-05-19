@@ -99,7 +99,7 @@ static const u32 NOINDEX = ~0x0u;
  - leafoctree implementation
  -------------------------------------------------------------------------*/
 void leafoctreebase::init() {
-  root.setsize(1);
+  root.resize(1);
   root[0].setemptyleaf();
 }
 
@@ -115,10 +115,10 @@ void leafoctreebase::insert(vec3i xyz, int ptidx) {
       break;
     }
     if (root[idx].idx == 0) {
-      const auto childidx = root.length();
+      const auto childidx = root.size();
       root[idx].isleaf = root[idx].empty = 0;
       root[idx].idx = childidx;
-      root.setsize(childidx+8);
+      root.resize(childidx+8);
       loopi(8) root[childidx+i].setemptyleaf();
     }
     idx = descend(xyz, level, idx);
@@ -362,14 +362,14 @@ struct gridbuilder {
 
   void initedge() {
     m_edge_index.memset(0xff);
-    m_edges.setsize(0);
-    delayed_edges.setsize(0);
+    m_edges.resize(0);
+    delayed_edges.resize(0);
   }
 
   void initqef() {
     m_qefnum = 0;
     m_qef_index.memset(0xff);
-    delayed_qef.setsize(0);
+    delayed_qef.resize(0);
   }
 
   int delayed_qef_vertex(const mcell &cell, const vec3i &xyz) {
@@ -381,7 +381,7 @@ struct gridbuilder {
       const auto e = getedge(icubev[idx0], icubev[idx1]);
       auto &idx = m_edge_index[edge_index(xyz+e.first, e.second)];
       if (idx == NOINDEX) {
-        idx = delayed_edges.length();
+        idx = delayed_edges.size();
         delayed_edges.add(makepair(xyz, vec4i(idx0, idx1, m0, m1)));
       }
       edgemap |= 1<<i;
@@ -436,7 +436,7 @@ struct gridbuilder {
   }
 
   void finishedges() {
-    const auto len = delayed_edges.length();
+    const auto len = delayed_edges.size();
     STATS_ADD(iso_edge_num, len);
     for (int i = 0; i < len; i += 64) {
       auto &it = stack->it;
@@ -564,7 +564,7 @@ struct gridbuilder {
       const auto localpos = (vec3f(xyz)+pos)*cellsize;
 
       // insert the point in the leaf octree
-      pl.leaf.insert(xyz,pl.leaf.pts.length());
+      pl.leaf.insert(xyz,pl.leaf.pts.size());
       pl.leaf.pts.add({worldpos,localpos,q,xyz,multimat?airmat:mat});
     }
   }
@@ -627,21 +627,21 @@ struct gridbuilder {
     // if this is a leaf we stop here
     if (from->isleaf) {
       if (!from->empty) {
-        to->idx = node.leaf->pts.length();
+        to->idx = node.leaf->pts.size();
         node.leaf->pts.add({pl.leaf.pts[from->idx].world,-1});
       }
       return;
     }
 
     // otherwise, we create all 8 children and recurse
-    const auto idx = node.leaf->root.length();
+    const auto idx = node.leaf->root.size();
     to->idx = idx;
-    node.leaf->root.setsize(idx+8);
+    node.leaf->root.resize(idx+8);
     loopi(8) outputoctree(node, from->idx+i, idx+i);
   }
 
   void output(octree::node &node) {
-    node.leaf->root.setsize(1);
+    node.leaf->root.resize(1);
     outputoctree(node);
     node.leaf->root.refit();
     node.leaf->pts.refit();
@@ -704,7 +704,7 @@ struct contouringtask : public task {
   };
 
   INLINE contouringtask(vector<workitem> &items) :
-    task("contouringtask", items.length()), items(items)
+    task("contouringtask", items.size()), items(items)
   {}
 
   virtual void run(u32 idx) {
@@ -793,7 +793,7 @@ struct isotask : public task {
 
   void preparejobs(octree::node &node, const vec3i &xyz = vec3i(zero)) {
     if (node.isleaf && !node.empty) {
-      auto &job = items.add();
+      workitem job;
       job.oct = oct;
       job.octnode = &node;
       job.csgnode = csgnode;
@@ -802,6 +802,7 @@ struct isotask : public task {
       job.level = node.level;
       job.cellsize = float(1<<(maxlvl-node.level)) * cellsize;
       job.org = pos(xyz);
+      items.push_back(job);
     } else if (!node.isleaf) loopi(8) {
       const auto cellnum = dim >> node.level;
       const auto childxyz = xyz+int(cellnum/2)*icubev[i];

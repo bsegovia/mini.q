@@ -53,11 +53,12 @@ static int resolverloop(void * data) {
     ENetAddress address = {ENET_HOST_ANY, CUBE_SERVINFO_PORT};
     enet_address_set_host(&address, rt->query);
     SDL_LockMutex(resolvermutex);
-    resolverresult &rr = resolverresults.add();
+    resolverresult rr;
     rr.query = rt->query;
     rr.address = address;
     rt->query = NULL;
     rt->starttime = 0;
+    resolverresults.push_back(rr);
     SDL_UnlockMutex(resolvermutex);
   }
   return 0;
@@ -69,7 +70,8 @@ static void resolverinit(int threads, int limit) {
   resolvermutex = SDL_CreateMutex();
 
   while (threads > 0) {
-    resolverthread &rt = resolverthreads.add();
+    resolverthreads.push_back(resolverthread());
+    resolverthread &rt = resolverthreads.back();
     rt.query = NULL;
     rt.alive = true;
     rt.starttime = 0;
@@ -92,8 +94,8 @@ static void resolverstop(resolverthread &rt, bool restart) {
 
 static void resolverclear(void) {
   SDL_LockMutex(resolvermutex);
-  resolverqueries.setsize(0);
-  resolverresults.setsize(0);
+  resolverqueries.resize(0);
+  resolverresults.resize(0);
   while (SDL_SemTryWait(resolversem) == 0);
   loopv(resolverthreads) {
     resolverthread &rt = resolverthreads[i];
@@ -271,7 +273,7 @@ static void updatefrommaster(void) {
       strstr(reply, "<HTML>"))
     con::out("master server not replying");
   else {
-    servers.setsize(0);
+    servers.resize(0);
     script::execstring(reply);
   }
   servermenu();

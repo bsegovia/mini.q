@@ -68,7 +68,7 @@ void finish() {
 
 static void line(const char *sf, bool highlight) {
   cline cl;
-  cl.cref = conlines.length()>100 ? conlines.pop().cref : NEWSTRINGBUF("");
+  cl.cref = conlines.size()>100 ? conlines.pop().cref : NEWSTRINGBUF("");
   cl.outtime = int(game::lastmillis()); // for how long to keep line on screen
   conlines.insert(0,cl);
   if (highlight) { // show line in a different colour, for chat etc.
@@ -100,7 +100,7 @@ VAR(confadeout, 1, 5000, 256000);
 static int conlinenum(char *refs[ndraw]) {
   int nd = 0;
   loopv(conlines) {
-    if (conskip ? i>=conskip-1 || i>=conlines.length()-ndraw :
+    if (conskip ? i>=conskip-1 || i>=conlines.size()-ndraw :
        game::lastmillis()-conlines[i].outtime < confadeout) {
       refs[nd] = conlines[i].cref;
       if (++nd==ndraw) break;
@@ -142,9 +142,9 @@ CMD(saycommand);
 
 static void history(int n) {
   static bool rec = false;
-  if (!rec && n>=0 && n<vhistory.length()) {
+  if (!rec && n>=0 && n<vhistory.size()) {
     rec = true;
-    const auto cmd = (const char*)(vhistory[vhistory.length()-n-1]);
+    const auto cmd = (const char*)(vhistory[vhistory.size()-n-1]);
     script::execstring(cmd);
     rec = false;
   }
@@ -174,7 +174,7 @@ void keypress(int code, bool isdown) {
           if (histpos) strcpy_s(cmdbuf, vhistory[--histpos]);
         break;
         case SDLK_DOWN:
-          if (histpos<vhistory.length()) strcpy_s(cmdbuf, vhistory[histpos++]);
+          if (histpos<vhistory.size()) strcpy_s(cmdbuf, vhistory[histpos++]);
         break;
         case SDLK_TAB: script::complete(cmdbuf); break;
         default:
@@ -186,7 +186,7 @@ void keypress(int code, bool isdown) {
         if (cmdbuf[0]) {
           if (vhistory.empty() || strcmp(vhistory.last(), cmdbuf.c_str()))
             vhistory.add(NEWSTRING(cmdbuf.c_str()));  // cap this?
-          histpos = vhistory.length();
+          histpos = vhistory.size();
           if (cmdbuf[0]=='/') {
             setkeydownflag(true);
             script::execstring(cmdbuf.c_str()+1);

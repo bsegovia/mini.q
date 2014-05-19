@@ -125,9 +125,9 @@ int objloader::findmaterial(const char *name) {
 objloader::face *objloader::parseface(void) {
   auto face = allocface();
   parsevertexindex(*face);
-  getlistindex(vertexlist.length(), face->vertexindex);
-  getlistindex(texturelist.length(), face->textureindex);
-  getlistindex(normallist.length(), face->normalindex);
+  getlistindex(vertexlist.size(), face->vertexindex);
+  getlistindex(texturelist.size(), face->textureindex);
+  getlistindex(normallist.size(), face->normalindex);
   return face;
 }
 
@@ -306,7 +306,7 @@ bool obj::load(const char *filename) {
   }
 
   // No face defined
-  if (polys.length() == 0) return true;
+  if (polys.size() == 0) return true;
 
   // create triangles now
   vector<triangle> tris;
@@ -332,14 +332,14 @@ bool obj::load(const char *filename) {
     matgrp.last().last = (int) (i-1);
     matgrp.add(matgroup((int)i,0,curr));
   }
-  matgrp.last().last = tris.length() - 1;
+  matgrp.last().last = tris.size() - 1;
 
   // we replace the undefined material by the default one if needed
   if (tris[0].m == -1) {
     auto mat = loader.allocmat();
     mat->setdefault();
     loader.materiallist.add(mat);
-    const auto matindex = loader.materiallist.length() - 1;
+    const auto matindex = loader.materiallist.size() - 1;
     loopv(tris)
       if (tris[i].m != -1)
         break;
@@ -388,8 +388,8 @@ bool obj::load(const char *filename) {
   if (!allnorset) printf("obj: some normals are unspecified for %s\n", filename);
   if (!alltexset) printf("obj: some texture coordinates are unspecified for %s\n", filename);
 
-  auto matarray = NEWAE(material, loader.materiallist.length());
-  memset(matarray, 0, sizeof(material) * loader.materiallist.length());
+  auto matarray = NEWAE(material, loader.materiallist.size());
+  memset(matarray, 0, sizeof(material) * loader.materiallist.size());
 
 #define COPY_FIELD(NAME)\
 if (from.NAME) {\
@@ -412,10 +412,10 @@ if (from.NAME) {\
 
   // now return the properly allocated obj
   memset(this, 0, sizeof(obj));
-  trinum = tris.length();
-  vertnum = verts.length();
-  grpnum = matgrp.length();
-  matnum = loader.materiallist.length();
+  trinum = tris.size();
+  vertnum = verts.size();
+  grpnum = matgrp.size();
+  matnum = loader.materiallist.size();
   if (trinum) {
     tri = NEWAE(triangle, trinum);
     memcpy(tri, &tris[0], sizeof(triangle) * trinum);

@@ -428,7 +428,7 @@ dynent *getclient(int cn) {
     client::neterr("clientnum");
     return NULL;
   }
-  while (cn>=players.length())
+  while (cn>=players.size())
     players.add(NULL);
   return players[cn] ? players[cn] : (players[cn] = newdynent());
 }
@@ -529,10 +529,12 @@ static vector<sline> scorelines;
 static void renderscore(dynent *d) {
   fixedstring lag(fmt, "%d", d->plag);
   fixedstring name(fmt, "(%s)", d->name.c_str());
-  scorelines.add().s.fmt("%d\t%s\t%d\t%s\t%s",
+  sline line;
+  line.s,fmt("%d\t%s\t%d\t%s\t%s",
     d->frags, d->state==CS_LAGGED ? "LAG" : lag.c_str(), d->ping,
     d->team.c_str(), d->state==CS_DEAD ? name.c_str() : d->name.c_str());
-  menu::manual(0, scorelines.length()-1, scorelines.last().s.c_str());
+  scorelines.push_back(line);
+  menu::manual(0, scorelines.size()-1, scorelines.last().s.c_str());
 }
 
 static const int maxteams = 4;
@@ -553,11 +555,11 @@ static void addteamscore(dynent *d) {
 
 void renderscores() {
   if (!scoreson) return;
-  scorelines.setsize(0);
+  scorelines.resize(0);
   if (!demo::playing()) renderscore(player1);
   loopv(players) if (players[i])
     renderscore(players[i]);
-  menu::sort(0, scorelines.length());
+  menu::sort(0, scorelines.size());
   if (m_teammode) {
     teamsused = 0;
     loopv(players)
@@ -568,8 +570,8 @@ void renderscores() {
       fixedstring sc(fmt, "[ %s: %d ]", teamname[j], teamscore[j]);
       strcat_s(teamscores, sc.c_str());
     }
-    menu::manual(0, scorelines.length(), "");
-    menu::manual(0, scorelines.length()+1, teamscores.c_str());
+    menu::manual(0, scorelines.size(), "");
+    menu::manual(0, scorelines.size()+1, teamscores.c_str());
   }
 }
 

@@ -104,13 +104,13 @@ public:
   : m_data(0),
     m_capacity(0),
     m_length(0),
-    m_allocator(allocator) { assign(rhs.c_str(), rhs.length()); }
+    m_allocator(allocator) { assign(rhs.c_str(), rhs.size()); }
   ~string_storage() { release_string(); }
 
   // @note: doesnt copy allocator
   string_storage& operator=(const string_storage& rhs) {
     if (m_data != rhs.c_str())
-      assign(rhs.c_str(), rhs.length());
+      assign(rhs.c_str(), rhs.size());
     return *this;
   }
 
@@ -128,7 +128,7 @@ public:
   }
 
   void append(const value_type* str, size_type len) {
-    const size_type prevLen = length();
+    const size_type prevLen = size();
     const size_type newLen = prevLen + len;
     if (m_capacity <= newLen + 1) {
       size_type newCapacity;
@@ -145,7 +145,7 @@ public:
   }
 
   inline const value_type* c_str() const { return m_data; }
-  inline size_type length() const { return m_length; }
+  inline size_type size() const { return m_length; }
   inline size_type capacity() const { return m_capacity; } 
   void clear() {
     release_string();
@@ -160,8 +160,8 @@ protected:
   bool invariant() const {
     assert(m_data);
     assert(m_length <= m_capacity);
-    if (length() != 0)
-      assert(m_data[length()] == 0);
+    if (size() != 0)
+      assert(m_data[size()] == 0);
     return true;
   }
 private:
@@ -230,7 +230,7 @@ public:
 
   // No operator returning ref for the time being. It's dangerous with COW.
   value_type operator[](size_type i) const {
-    assert(i < length());
+    assert(i < size());
     assert(invariant());
     return c_str()[i];
   }
@@ -256,11 +256,11 @@ public:
   }
 
   basic_string substr(size_type begin, size_type end) const {
-    assert(end >= begin && end <= length() && begin >= 0);
+    assert(end >= begin && end <= size() && begin >= 0);
     return basic_string(c_str() + begin, end - begin);
   }
   basic_string substr(size_type begin) const {
-    return substr(begin, length());
+    return substr(begin, size());
   }
 
   void allocate(int sz) { assign(NULL, sz); }
@@ -269,7 +269,7 @@ public:
       return;
     TStorage::append(str, len);
   }
-  void append(const basic_string& str) { append(str.c_str(), str.length()); }
+  void append(const basic_string& str) { append(str.c_str(), str.size()); }
   void append(const value_type* str) { append(str, strlen(str)); }
   void append(const value_type ch) { append(&ch, 1); }
   basic_string& operator+=(const basic_string& rhs) {
@@ -278,7 +278,7 @@ public:
   }
 
   int compare(const value_type* str) const {
-    const size_type thisLen = length();
+    const size_type thisLen = size();
     const size_type strLen = strlen(str);
     if (thisLen < strLen)
       return -1;
@@ -287,8 +287,8 @@ public:
     return strcmp(c_str(), str);
   }
   int compare(const basic_string& rhs) const {
-    const size_type thisLen = length();
-    const size_type rhsLen = rhs.length();
+    const size_type thisLen = size();
+    const size_type rhsLen = rhs.size();
     if (thisLen < rhsLen) return -1;
     if (thisLen > rhsLen) return 1;
     return strcmp(c_str(), rhs.c_str());
@@ -300,10 +300,10 @@ public:
     return TStorage::c_str();
   }
   const_iterator begin() const { assert(invariant()); return c_str(); }
-  const_iterator end() const   { assert(invariant()); return c_str() + length(); }
+  const_iterator end() const   { assert(invariant()); return c_str() + size(); }
 
-  size_type length() const { return TStorage::length(); }
-  bool empty() const  { return length() == 0; }
+  size_type size() const { return TStorage::size(); }
+  bool empty() const  { return size() == 0; }
 
   const allocator_type& get_allocator() const  { return TStorage::get_allocator; }
 
@@ -312,7 +312,7 @@ public:
   }
   void clear() { TStorage::clear(); }
   void make_lower() {
-    const size_type len = length();
+    const size_type len = size();
     TStorage::make_unique(len);
     static const int chDelta = 'a' - 'A';
     E* data = TStorage::get_data();
@@ -322,7 +322,7 @@ public:
     }
   }
   void make_upper() {
-    const size_type len = length();
+    const size_type len = size();
     TStorage::make_unique(len);
     static const int chDelta = 'a' - 'A';
     E* data = TStorage::get_data();
@@ -359,7 +359,7 @@ public:
   }
 
   size_type find_first_of(const value_type *ch, size_type from) const {
-    const auto sz = length();
+    const auto sz = size();
     if (from >= sz) return basic_string::npos;
     const auto match = size_type(strcspn(c_str()+from, ch));
     return match == sz-from ? basic_string::npos : from+match;
@@ -390,8 +390,8 @@ public:
   }
 
   size_type rfind(const value_type* needle) const {
-    const value_type* s(c_str() + length());
-    size_type si(length()+1);
+    const value_type* s(c_str() + size());
+    size_type si(size()+1);
 
     // find the last index of the first char in needle
     // searching from end->start for obvious reasons
@@ -459,7 +459,7 @@ typedef basic_string<char> string;
 template<typename E, class TAllocator, typename TStorage>
 struct hash<basic_string<E, TAllocator, TStorage> > {
   hash_value_t operator()(const basic_string<E, TAllocator, TStorage>& x) const {
-    return murmurhash2(x.c_str(), x.length());
+    return murmurhash2(x.c_str(), x.size());
   }
 };
 string format(const char *fmt, ...);

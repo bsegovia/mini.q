@@ -229,7 +229,7 @@ queue::~queue(void) {
 
 
 void task::start(const u32 *queueinfo, u32 n) {
-  tasking::queues.setsize(n);
+  tasking::queues.resize(n);
   loopi(s32(n)) tasking::queues[i] = NEW(tasking::queue, queueinfo[i]);
 }
 
