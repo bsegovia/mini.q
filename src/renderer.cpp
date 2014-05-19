@@ -482,7 +482,7 @@ static void cleandeferred() {
 static u32 rttex, rtpbo;
 static void initrt() {
   const auto dim = scrdim();
-  auto w = dim.x, h = dim.y;
+  auto w = int(dim.x), h = int(dim.y);
   // no texture buffer here
   if (!ogl::hasTB) {
     ogl::genbuffers(1, &rtpbo);
@@ -520,7 +520,7 @@ static void *pbomap(u32 pbo) {
   const auto dim = scrdim();
   void *ptr;
   ogl::bindbuffer(ogl::PIXEL_UNPACK_BUFFER, pbo);
-  OGL(BufferData,GL_PIXEL_UNPACK_BUFFER, dim.x * dim.y * 4, NULL, GL_STATIC_DRAW);
+  OGL(BufferData,GL_PIXEL_UNPACK_BUFFER, int(dim.x) * int(dim.y) * sizeof(u32), NULL, GL_STATIC_DRAW);
   OGLR(ptr, MapBuffer, GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY);
   assert(ptr != NULL);
   ogl::bindbuffer(ogl::PIXEL_UNPACK_BUFFER, 0);
@@ -532,7 +532,7 @@ static void pbounmap(u32 pbo, u32 tex) {
   ogl::bindbuffer(ogl::PIXEL_UNPACK_BUFFER, pbo);
   OGL(UnmapBuffer, GL_PIXEL_UNPACK_BUFFER);
   ogl::bindtexture(GL_TEXTURE_2D, tex, 0);
-  OGL(TexSubImage2D, GL_TEXTURE_2D, 0, 0, 0, dim.x, dim.y, GL_BGRA, GL_UNSIGNED_BYTE, 0);
+  OGL(TexSubImage2D, GL_TEXTURE_2D, 0, 0, 0, int(dim.x), int(dim.y), GL_BGRA, GL_UNSIGNED_BYTE, 0);
   ogl::bindbuffer(ogl::PIXEL_UNPACK_BUFFER, 0);
   ogl::bindtexture(GL_TEXTURE_2D, 0, 0);
 }
@@ -541,7 +541,7 @@ static void *texbufmap(u32 texbuf) {
   const auto dim = scrdim();
   void *ptr;
   ogl::bindbuffer(ogl::TEXTURE_BUFFER, texbuf);
-  OGL(BufferData,GL_TEXTURE_BUFFER, dim.x * dim.y * sizeof(u32), NULL, GL_DYNAMIC_DRAW);
+  OGL(BufferData,GL_TEXTURE_BUFFER, int(dim.x) * int(dim.y) * sizeof(u32), NULL, GL_DYNAMIC_DRAW);
   OGLR(ptr, MapBuffer, GL_TEXTURE_BUFFER, GL_WRITE_ONLY);
   assert(ptr!=NULL);
   ogl::bindbuffer(ogl::TEXTURE_BUFFER, 0);
@@ -847,9 +847,9 @@ void frame(int w, int h, int curfps) {
     ogl::disable(GL_CULL_FACE);
     OGL(DepthMask, GL_FALSE);
     if (ogl::hasTB)
-      ogl3raytrace(w,h,fov,aspect);
+      ogl3raytrace(w,h,fovy,aspect);
     else
-      ogl2raytrace(w,h,fov,aspect);
+      ogl2raytrace(w,h,fovy,aspect);
     ogl::enable(GL_CULL_FACE);
     OGL(DepthMask, GL_TRUE);
     ogl::endtimer(rttimer);

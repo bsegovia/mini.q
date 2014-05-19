@@ -321,7 +321,7 @@ template <int lvl, int bit, int reg> static INLINE bool hasex() {
 static INLINE int check_xcr0_ymm() {
   u32 xcr0;
 #if defined(__MSVC__)
-  xcr0 = u32(_xgetbv(0))
+  xcr0 = u32(_xgetbv(0));
 #else
   asm ("xgetbv" : "=a" (xcr0) : "c" (0) : "%edx" );
 #endif
@@ -343,7 +343,7 @@ bool hasfeature(cpufeature feature) {
     case CPU_LZCNT: return has<int(0x80000001),5,ecx>();
     case CPU_FMA:   return has<1,12,ecx>();
     case CPU_F16C:  return has<1,29,ecx>();
-    case CPU_YMM:   return check_xcr0_ymm();
+    case CPU_YMM:   return 0 != check_xcr0_ymm();
     default: return false;
   }
 }

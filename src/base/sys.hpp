@@ -136,7 +136,7 @@
 #undef NOINLINE
 #define NOINLINE        __declspec(noinline)
 #define INLINE          __forceinline
-#define RESTRICT        __restrict
+#define RESTRICT
 #define THREAD          __declspec(thread)
 #define ALIGNED(...)    __declspec(align(__VA_ARGS__))
 //#define __FUNCTION__  __FUNCTION__
@@ -425,15 +425,15 @@ INLINE size_t __bscf(size_t& v) {
   v &= v-1;
   return i;
 }
+#endif
 
 INLINE void cpuid(int out[4], int op) {
-  return __cpuid(out, op);
+	return __cpuid(out, op);
 }
 
 INLINE void cpuid_count(int out[4], int op1, int op2) {
-  return __cpuidex(out, op1, op2);
+	return __cpuidex(out, op1, op2);
 }
-#endif
 #endif
 
 /*-------------------------------------------------------------------------
@@ -608,7 +608,7 @@ INLINE size_t __bscf(size_t& v) {
 #include <cstdarg>
 #include <cassert>
 #include <new>
-#include <SDL2/SDL.h>
+#include <SDL.h>
 
 #if defined(__WIN32__)
 #define WIN32_LEAN_AND_MEAN

@@ -149,7 +149,7 @@ void swap() {
 }
 
 // static const float CELLSIZE = 0.2f;
-void start(int argc, const char *argv[]) {
+void start(int argc, char *argv[]) {
   bool dedicated = false;
   int uprate = 0, maxcl = 4;
   const char *master = NULL;

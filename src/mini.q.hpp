@@ -30,7 +30,7 @@
 
 namespace q {
 extern int fov, farplane, gamespeed, minmillis;
-void start(int argc, const char *argv[]);
+void start(int argc, char *argv[]);
 void finish();
 void swap();
 }

@@ -44,7 +44,7 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
         loopi(packetnum) {
           const auto idx = i*soaf::size;
           store(&tempdist[idx], soaf(FLT_MAX));
-          store(&tempmatindex[idx], soai(MAT_AIR_INDEX));
+          store(&tempmatindex[idx], soai(int(MAT_AIR_INDEX)));
         }
         distr(u->right, pos, normaldist, tempdist, tempmatindex, packetnum, box);
         loopi(packetnum) {
@@ -88,7 +88,7 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
       loopi(packetnum) {
         const auto idx = i*soaf::size;
         store(&tempdist[idx], soaf(FLT_MAX));
-        store(&tempmatindex[idx], soai(MAT_AIR_INDEX));
+        store(&tempmatindex[idx], soai(int(MAT_AIR_INDEX)));
       }
       distr(r->right, pos, normaldist, tempdist, tempmatindex, packetnum, box);
       loopi(packetnum) {
@@ -127,7 +127,7 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
         const auto td = soaf::load(&tempdist[idx]);
         const auto md = max(d,td);
         const auto oldindex = soai::load(&matindex[idx]);
-        const auto airindex = soai(MAT_AIR_INDEX);
+        const auto airindex = soai(int(MAT_AIR_INDEX));
         const auto newindex = select(md>=soaf(zero), airindex, oldindex);
         store(&dist[idx], md);
         store(&matindex[idx], newindex);
@@ -152,7 +152,7 @@ static void distr(const node *RESTRICT n, const array3f &RESTRICT pos,
         const auto td = soaf::load(&tempdist[idx]);
         const auto md = max(d,-td);
         const auto oldindex = soai::load(&matindex[idx]);
-        const auto airindex = soai(MAT_AIR_INDEX);
+        const auto airindex = soai(int(MAT_AIR_INDEX));
         const auto newindex = select(md>=soaf(zero), airindex, oldindex);
         store(&dist[idx], md);
         store(&matindex[idx], newindex);
@@ -266,7 +266,7 @@ void dist(const node *RESTRICT n, const array3f &RESTRICT pos,
   const auto packetnum = num/soaf::size + (num%soaf::size?1:0);
   loopi(packetnum) {
     store(&d[i*soaf::size], soaf(FLT_MAX));
-    store(&mat[i*soaf::size], soai(MAT_AIR_INDEX));
+    store(&mat[i*soaf::size], soai(int(MAT_AIR_INDEX)));
   }
   distr(n, pos, normaldist, d, mat, packetnum, ssebox(box));
   AVX_ZERO_UPPER();

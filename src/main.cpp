@@ -7,6 +7,7 @@
 #include "game.hpp"
 #include "mini.q.hpp"
 #include <time.h>
+#include <SDL_main.h>
 
 namespace q {
 
@@ -76,10 +77,11 @@ static int run() {
   return 0;
 }
 } /* namespace q */
-extern "C" {
-int main(int argc, const char **argv) {
+
+int SDL_main(int argc, char *argv[])
+{
   q::start(argc, argv);
   return q::run();
 }
-}
+
 

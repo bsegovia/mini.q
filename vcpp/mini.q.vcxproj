@@ -11,6 +11,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\src\bvhscalar.cpp" />
+    <ClCompile Include="..\src\csgscalar.cpp" />
     <ClCompile Include="..\src\enet\callbacks.cpp" />
     <ClCompile Include="..\src\enet\host.cpp" />
     <ClCompile Include="..\src\enet\list.cpp" />
@@ -63,11 +65,12 @@
     <ClCompile Include="..\src\csgsse.cpp" />
     <ClCompile Include="..\src\csgavx.cpp" />
     <ClCompile Include="..\src\bvh.cpp" />
-    <ClCompile Include="..\src\rt.cpp" />
     <ClCompile Include="..\src\demo.cpp" />
     <ClCompile Include="..\src\editing.cpp" />
     <ClCompile Include="..\src\game.cpp" />
+    <ClCompile Include="..\src\geom.cpp" />
     <ClCompile Include="..\src\iso.cpp" />
+    <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\md2.cpp" />
     <ClCompile Include="..\src\menu.cpp" />
     <ClCompile Include="..\src\mini.q.cpp" />
@@ -94,6 +97,7 @@
     <ClCompile Include="..\src\world.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\src\csgscalar.hpp" />
     <ClInclude Include="..\src\enet\callbacks.h" />
     <ClInclude Include="..\src\enet\enet.h" />
     <ClInclude Include="..\src\enet\list.h" />
@@ -115,9 +119,10 @@
     <ClInclude Include="..\src\editing.hpp" />
     <ClInclude Include="..\src\entities.hpp" />
     <ClInclude Include="..\src\font.hxx" />
-    <ClCompile Include="..\src\bvh.hpp" />
-    <ClCompile Include="..\src\rt.hpp" />
+    <ClInclude Include="..\src\bvh.hpp" />
+    <ClInclude Include="..\src\rt.hpp" />
     <ClInclude Include="..\src\game.hpp" />
+    <ClInclude Include="..\src\geom.hpp" />
     <ClInclude Include="..\src\iso.hpp" />
     <ClInclude Include="..\src\md2.hpp" />
     <ClInclude Include="..\src\menu.hpp" />
@@ -152,7 +157,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
-    <PlatformToolset>v110</PlatformToolset>
+    <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -190,7 +195,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../enet/include;../include/;../</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../src/;../enet/include;../include/SDL2/;../include/;../</AdditionalIncludeDirectories>
       <StringPooling>true</StringPooling>
       <MinimalRebuild>false</MinimalRebuild>
       <ExceptionHandling>false</ExceptionHandling>
@@ -206,7 +211,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>odbc32.lib;odbccp32.lib;zdll.lib;opengl32.lib;msvcrt.lib;SDLmain.lib;SDL.lib;SDL_image.lib;SDL_mixer.lib;ws2_32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>odbc32.lib;odbccp32.lib;zdll.lib;opengl32.lib;msvcrt.lib;SDL2main.lib;SDL2.lib;SDL2_image.lib;SDL2_mixer.lib;ws2_32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>../lib/msvc/x86</AdditionalLibraryDirectories>
       <AdditionalOptions>/NODEFAULTLIB:library %(AdditionalOptions)</AdditionalOptions>
       <ForceFileOutput>
@@ -227,7 +232,7 @@
       <FunctionLevelLinking>false</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;USE_ENET;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../enet/include;../include/;../</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../src/;../enet/include;../include/SDL2/;../include/;../</AdditionalIncludeDirectories>
       <StringPooling>true</StringPooling>
       <ExceptionHandling>false</ExceptionHandling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -237,12 +242,12 @@
       <ForceConformanceInForLoopScope>false</ForceConformanceInForLoopScope>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>../lib/msvc/x86</AdditionalLibraryDirectories>
-      <AdditionalDependencies>SDLmain.lib;odbc32.lib;odbccp32.lib;zdll.lib;opengl32.lib;msvcrt.lib;SDL.lib;SDL_image.lib;ws2_32.lib;winmm.lib;SDL_mixer.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>odbc32.lib;odbccp32.lib;zdll.lib;opengl32.lib;msvcrt.lib;SDL2main.lib;SDL2.lib;SDL2_image.lib;ws2_32.lib;winmm.lib;SDL2_mixer.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
     </Link>

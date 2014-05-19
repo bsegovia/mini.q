@@ -273,7 +273,7 @@ void procleaf::merge(int idx) {
     const auto idx = children[i];
     const auto cost = q.error(leaf.pts[idx].local,QEM_LEAF_MIN_ERROR);
     if (bestcost > cost) {
-      bestcost = cost;
+      bestcost = float(cost);
       best = idx;
     }
   }

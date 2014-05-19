@@ -737,7 +737,7 @@ void writenormal(const packethit &RESTRICT hit,
   for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y, yoffset+=w) {
     for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size, ++idx) {
 #endif
-      const auto m = soaf::load(&hit.id[idx*soaf::size]) != soaf(~0x0u);
+      const auto m = soaf::load(&hit.id[idx*soaf::size]) != soaf(0.f);
       const auto n = clamp(normalize(sget(hit.n, idx)));
       const auto rgb = soa3i(n*soaf(255.f));
       const auto hitcolor = rgb.x | (rgb.y<<8) | (rgb.z<<16) | soai(0xff000000);
