@@ -200,6 +200,9 @@ void start(int argc, char *argv[]) {
   con::out("init: memory debugger");
   sys::memstart();
 
+  con::out("init: script engine");
+  script::start();
+
   con::out("init: tasking system");
 #if defined(__X86__) || defined(__X86_64__)
   // flush to zero and no denormals
@@ -244,11 +247,6 @@ void start(int argc, char *argv[]) {
   con::out("init: isosurface module");
   iso::start();
 
-  con::out("init: csg module");
-  csg::start();
-  script::execscript("data/csg.lua");
-  inputgrab(false);
-
   con::out("script");
   menu::newm("frags\tpj\tping\tteam\tname");
   menu::newm("ping\tplr\tserver");
@@ -256,6 +254,11 @@ void start(int argc, char *argv[]) {
   script::execscript("data/menus.lua");
   script::execscript("data/sounds.lua");
   script::execscript("data/autoexec.lua");
+
+  con::out("init: csg module");
+  csg::start();
+  script::execscript("data/csg.lua");
+  inputgrab(false);
 
   con::out("localconnect");
   server::localconnect();

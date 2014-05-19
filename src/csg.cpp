@@ -25,8 +25,10 @@ void start() {
 #define ENUM(NAMESPACE,NAME,VALUE)\
   static const u32 NAME = VALUE;\
   luabridge::getGlobalNamespace(script::luastate())\
+  .beginNamespace("q")\
   .beginNamespace(#NAMESPACE)\
     .addVariable(#NAME, const_cast<u32*>(&NAME), false)\
+  .endNamespace()\
   .endNamespace()
   ENUM(csg, mat_air_index, MAT_AIR_INDEX);
   ENUM(csg, mat_simple_index, MAT_SIMPLE_INDEX);
@@ -38,6 +40,7 @@ void start() {
     .addConstructor<CONSTRUCTOR, ref<NAME>>()\
   .endClass()
   luabridge::getGlobalNamespace(script::luastate())
+  .beginNamespace("q")
   .beginNamespace("csg")
     .addFunction("setroot", setroot)
     .beginClass<node>("node")
@@ -56,6 +59,7 @@ void start() {
     ADDCLASS(cylinderyz,void(*)(float,float,float,u32))
     ADDCLASS(translation,void(*)(float,float,float,const ref<node>&))
     ADDCLASS(rotation,void(*)(float,float,float,const ref<node>&))
+  .endNamespace()
   .endNamespace();
 #undef ADDCLASS
 }

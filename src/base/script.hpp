@@ -28,6 +28,8 @@ int execstring(const char *p);
 void execscript(const char *cfgfile);
 // execute a file and says if this succeeded
 bool execfile(const char *cfgfile);
+// init the environment for all scripts
+void start();
 } /* namespace script */
 } /* namespace q */
 

@@ -1,118 +1,118 @@
 -- standard menu definitions
 -- don't modify, add personal menus to autoexec.cfg instead
-q.bind('ESCAPE', 'q.showmenu("main")') -- it all starts here
+bind('ESCAPE', 'showmenu("main")') -- it all starts here
 
 --[[ main ]]--
-q.newmenu('main')
-q.menuitem('load map..','q.showmenu("maps")')
-q.menuitem('singleplayer..','q.showmenu("singleplayer")')
-q.menuitem('multiplayer..','q.showmenu("multiplayer")')
-q.menuitem('tweaking..','q.showmenu("tweaking")')
-q.menuitem('editing..','q.showmenu("editing")')
-q.menuitem('about..','q.showmenu("about")')
-q.menuitem('quit', 'q.quit(nil)')
+newmenu('main')
+menuitem('load map..','showmenu("maps")')
+menuitem('singleplayer..','showmenu("singleplayer")')
+menuitem('multiplayer..','showmenu("multiplayer")')
+menuitem('tweaking..','showmenu("tweaking")')
+menuitem('editing..','showmenu("editing")')
+menuitem('about..','showmenu("about")')
+menuitem('quit', 'quit(nil)')
 
 --[[ about ]]--
-q.newmenu('about')
-q.menuitem('mini.q game/engine','')
-q.menuitem('by shadowofq','')
+newmenu('about')
+menuitem('mini.q game/engine','')
+menuitem('by shadowofq','')
 
 --[[ maps ]]--
 local function genmapitems(...)
    for _,v in ipairs{...} do
-     q.menuitem(v, '') -- add next map here!
+     menuitem(v, '') -- add next map here!
    end
 end
-q.newmenu('maps')
+newmenu('maps')
 genmapitems('frag','ogrosupply','powerplant','aquae','drianmp3','douze','kmap5','q3dm2','uf','mak1','kmap6','metl2','mak2')
-q.menuitem('more maps (1) ..', 'q.showmenu("moremaps")')
-q.menuitem('more maps (2) ..', 'q.showmenu("evenmoremaps")')
-q.menuitem('more maps (3) ..', 'q.showmenu("yetmoremaps")')
+menuitem('more maps (1) ..', 'showmenu("moremaps")')
+menuitem('more maps (2) ..', 'showmenu("evenmoremaps")')
+menuitem('more maps (3) ..', 'showmenu("yetmoremaps")')
 
 --[[ moremaps ]]--
-q.newmenu('moremaps')
+newmenu('moremaps')
 genmapitems('caged', 'wandering', 'oddworld', 'kmap3', 'hellsgate', 'kmap4', 'nudist', 'dusk', 'biologie', 'cellar', 'b2k', 'metl1', 'inkedskin', 'gzdm1', 'aard3', 'tartech', 'zippie')
 
 --[[ evenmoremaps ]]--
-q.newmenu('evenmoremaps')
+newmenu('evenmoremaps')
 genmapitems('spillway', 'fsession', '32', 'templemount', 'minion1', 'infertile', 'gdb1', 'aard1', 'aard2', 'kmap2', 'matador', 'rpgcb01', 'ludm1', 'taurus', 'ger1', 'dragon', 'af')
 
 --[[ yetmoremaps ]]--
-q.newmenu('yetmoremaps')
+newmenu('yetmoremaps')
 genmapitems('kmap1', 'drianmp2', 'island_pre', 'style', 'hylken5', 'gib', 'aard1_remix', 'artanis', 'tongues', 'plagiat', 'thearit', 'attacko', 'metalv2', 'lbase', 'fox', 'darth', 'templeofdespair')
 
 --[[ spmaps ]]--
-q.newmenu('spmaps')
+newmenu('spmaps')
 genmapitems('fanatic/revenge', 'dcp_the_core/enter', 'mpsp4', 'mpsp5', 'kitchensink', 'ruins', 'rampage', 'ksp1', 'ksp2', 'egysp1', 'kksp1', 'kartoffel', 'vaterland')
 
 --[[ singleplayer ]]--
-q.newmenu('singleplayer')
-q.menuitem('start SP map..','mode(-2); showmenu("spmaps")')
-q.menuitem('start DMSP map..','mode(-1); showmenu("maps")')
-q.menuitem('change skill level','showmenu("skill")')
-q.menuitem('savegame quicksave', 'savegame("quicksave")')
-q.menuitem('loadgame quicksave', 'loadgame("quicksave")')
+newmenu('singleplayer')
+menuitem('start SP map..','mode(-2); showmenu("spmaps")')
+menuitem('start DMSP map..','mode(-1); showmenu("maps")')
+menuitem('change skill level','showmenu("skill")')
+menuitem('savegame quicksave', 'savegame("quicksave")')
+menuitem('loadgame quicksave', 'loadgame("quicksave")')
 
 --[[ skill ]]--
-q.newmenu('skill')
-q.menuitem('skill 1', 'q.skill = 1')
-q.menuitem('skill 2', 'q.skill = 2')
-q.menuitem('skill 3 (default)',  'q.skill = 3')
-q.menuitem('skill 4', 'q.skill = 4')
-q.menuitem('skill 5', 'q.skill = 5')
-q.menuitem('skill 6', 'q.skill = 6')
-q.menuitem('skill 7', 'q.skill = 7')
-q.menuitem('skill 8', 'q.skill = 8')
-q.menuitem('skill 9', 'q.skill = 9')
-q.menuitem('skill 10', 'q.skill = 10')
+newmenu('skill')
+menuitem('skill 1', 'skill = 1')
+menuitem('skill 2', 'skill = 2')
+menuitem('skill 3 (default)',  'skill = 3')
+menuitem('skill 4', 'skill = 4')
+menuitem('skill 5', 'skill = 5')
+menuitem('skill 6', 'skill = 6')
+menuitem('skill 7', 'skill = 7')
+menuitem('skill 8', 'skill = 8')
+menuitem('skill 9', 'skill = 9')
+menuitem('skill 10', 'skill = 10')
 
 --[[ multiplayer ]]--
-q.newmenu('multiplayer')
-q.menuitem('server browser..', 'q.servermenu()')
-q.menuitem('vote game mode / map ..', 'q.showmenu("gamemode")')
-q.menuitem('connect localhost', 'q.connect("localhost")')
-q.menuitem('update server list from master server', 'q.updatefrommaster()')
-q.menuitem('disconnect', 'q.disconnect()')
-q.menuitem('team red', 'q.team("red")')
-q.menuitem('team blue', 'q.team("blue")')
-q.menuitem('record tempdemo', 'q.record("tempdemo")')
-q.menuitem('demo tempdemo', 'q.demo("tempdemo")')
-q.menuitem('stop demo play/recording', 'q.stop()')
+newmenu('multiplayer')
+menuitem('server browser..', 'servermenu()')
+menuitem('vote game mode / map ..', 'showmenu("gamemode")')
+menuitem('connect localhost', 'connect("localhost")')
+menuitem('update server list from master server', 'updatefrommaster()')
+menuitem('disconnect', 'disconnect()')
+menuitem('team red', 'team("red")')
+menuitem('team blue', 'team("blue")')
+menuitem('record tempdemo', 'record("tempdemo")')
+menuitem('demo tempdemo', 'demo("tempdemo")')
+menuitem('stop demo play/recording', 'stop()')
 
 --[[ gamemode ]]--
-q.newmenu('gamemode')
-q.menuitem('ffa/default',        'mode(0);  showmenu("maps")')
-q.menuitem('coop edit',          'mode(1);  showmenu("maps")')
-q.menuitem('ffa/duel',           'mode(2);  showmenu("maps")')
-q.menuitem('teamplay',           'mode(3);  showmenu("maps")')
-q.menuitem('instagib',           'mode(4);  showmenu("maps")')
-q.menuitem('instagib team',      'mode(5);  showmenu("maps")')
-q.menuitem('efficiency',         'mode(6);  showmenu("maps")')
-q.menuitem('efficiency team',    'mode(7);  showmenu("maps")')
-q.menuitem('insta arena',        'mode(8);  showmenu("maps")')
-q.menuitem('insta clan arena',   'mode(9);  showmenu("maps")')
-q.menuitem('tactics arena',      'mode(10); showmenu("maps")')
-q.menuitem('tactics clan arena', 'mode(11); showmenu("maps")')
+newmenu('gamemode')
+menuitem('ffa/default',        'mode(0);  showmenu("maps")')
+menuitem('coop edit',          'mode(1);  showmenu("maps")')
+menuitem('ffa/duel',           'mode(2);  showmenu("maps")')
+menuitem('teamplay',           'mode(3);  showmenu("maps")')
+menuitem('instagib',           'mode(4);  showmenu("maps")')
+menuitem('instagib team',      'mode(5);  showmenu("maps")')
+menuitem('efficiency',         'mode(6);  showmenu("maps")')
+menuitem('efficiency team',    'mode(7);  showmenu("maps")')
+menuitem('insta arena',        'mode(8);  showmenu("maps")')
+menuitem('insta clan arena',   'mode(9);  showmenu("maps")')
+menuitem('tactics arena',      'mode(10); showmenu("maps")')
+menuitem('tactics clan arena', 'mode(11); showmenu("maps")')
 
 --[[ fov ]]--
-q.newmenu('fov')
-q.menuitem('fov 120', 'fov=120')
-q.menuitem('fov 110', 'fov=110')
-q.menuitem('fov 100', 'fov=100')
-q.menuitem('fov 90', 'fov=90')
-q.menuitem('fov 60', 'fov=60')
-q.menuitem('fov 30', 'fov=30')
+newmenu('fov')
+menuitem('fov 120', 'fov=120')
+menuitem('fov 110', 'fov=110')
+menuitem('fov 100', 'fov=100')
+menuitem('fov 90', 'fov=90')
+menuitem('fov 60', 'fov=60')
+menuitem('fov 30', 'fov=30')
 
 --[[
-q.newmenu teleport
-q.menuitem "newent teleport 1"
-q.menuitem "newent teledest 1"
-q.menuitem "newent teleport 2"
-q.menuitem "newent teledest 2"
-q.menuitem "newent teleport 3"
-q.menuitem "newent teledest 3"
-q.menuitem "newent teleport 4"
-q.menuitem "newent teledest 4"
+newmenu teleport
+menuitem "newent teleport 1"
+menuitem "newent teledest 1"
+menuitem "newent teleport 2"
+menuitem "newent teledest 2"
+menuitem "newent teleport 3"
+menuitem "newent teledest 3"
+menuitem "newent teleport 4"
+menuitem "newent teledest 4"
 
 newmenu mapmodels
 

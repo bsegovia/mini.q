@@ -77,9 +77,33 @@ static int luareport(int ret) {
   return ret;
 }
 
+static int execunsafe(const char *p) {
+  auto L = luastate();
+  if (luareport(luaL_loadstring(L, p))) return 0;
+  return luareport(lua_pcall(L, 0, 0, 0));
+}
+
+void start() {
+  execunsafe("env = {\n"
+             "  ipairs = _G.ipairs,\n"
+             "  setfenv = _G.setfenv,\n"
+             "  setmetatable = _G.setmetatable\n"
+             "}\n"
+             "local newindex = function (t, k, v)\n"
+             "  if q[k] ~= nil then\n"
+             "    q[k] = v\n"
+             "  else\n"
+             "   rawset(t,k,v)\n"
+             "  end\n"
+             "end\n"
+             "setmetatable(env, {__index=q, __newindex=newindex})\n");
+}
+
 int execstring(const char *p) {
   auto L = luastate();
   if (luareport(luaL_loadstring(L, p))) return 0;
+  lua_getglobal(L, "env");
+  lua_setfenv(L, 1);
   return luareport(lua_pcall(L, 0, 0, 0));
 }
 
