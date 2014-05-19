@@ -169,7 +169,7 @@ private:
     value_type* data(0);
     if (capacity != 0) {
       capacity = (capacity+kGranularity-1) & ~(kGranularity-1);
-      if (capacity < kGranularity)
+      if (capacity < size_type(kGranularity))
         capacity = kGranularity;
 
       const size_type toAlloc = sizeof(value_type)*(capacity + 1);
