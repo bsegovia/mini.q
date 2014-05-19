@@ -78,10 +78,13 @@ static int run() {
 }
 } /* namespace q */
 
+#if defined(__WIN32__)
 int SDL_main(int argc, char *argv[])
+#else
+int main(int argc, char *argv[])
+#endif
 {
   q::start(argc, argv);
   return q::run();
 }
-
 

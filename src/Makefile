@@ -60,6 +60,7 @@ BASE_OBJS=\
   base/console.o\
   base/intrusive_list.o\
   base/hash.o\
+  base/list.o\
   base/math.o\
   base/script.o\
   base/string.o\
