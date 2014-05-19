@@ -20,7 +20,7 @@ extern "C"
 
 #include "types.h"
 #include "protocol.h"
-#include "list.h"
+#include "elist.h"
 #include "callbacks.h"
 
 typedef enum

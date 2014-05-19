@@ -45,7 +45,7 @@ endif
 ENET_OBJS=\
   enet/callbacks.o\
   enet/host.o\
-  enet/list.o\
+  enet/elist.o\
   enet/packet.o\
   enet/peer.o\
   enet/protocol.o
@@ -118,6 +118,7 @@ GAME_OBJS=\
   monster.o\
   network.o\
   ogl.o\
+  polygon.o\
   physics.o\
   qef.o\
   renderer.o\

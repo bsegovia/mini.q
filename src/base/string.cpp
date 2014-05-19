@@ -65,5 +65,26 @@ fixedstring::fixedstring(fmttype, const char *txt, ...) {
   fmt(txt, va);
   va_end(va);
 }
+string to_string(int i)        {return format("%d",i);}
+string to_string(double d)     {return format("%lf",d);}
+double stod(const string &str) {return atof(str.c_str());}
+string format(const char *fmt, ...) {
+  int size = 256;
+  string str;
+  va_list ap;
+  for (;;) {
+    str.resize(size);
+    va_start(ap, fmt);
+    const auto n = vsnprintf((char*)str.c_str(), size, fmt, ap);
+    if (n < 0) return string();
+    va_end(ap);
+    if (n < size) {
+      str.resize(n);
+      return str;
+    }
+    size = n+1;
+  }
+  return str;
+}
 } /* namespace q */
 

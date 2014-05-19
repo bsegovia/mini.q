@@ -2,7 +2,7 @@
  @file list.c
  @brief ENet linked list functions
 */
-#include "list.h"
+#include "elist.h"
 
 /** 
     @defgroup list ENet linked list utility functions

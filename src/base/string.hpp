@@ -77,8 +77,7 @@ struct string_rep {
     capacity = new_capacity;
   }
   atomic refs;
-  s16 size;
-  s16 capacity;
+  s16 size, capacity;
   static const size_t kMaxCapacity = (1 << (sizeof(short) << 3)) >> 1;
 };
 
@@ -100,7 +99,7 @@ public:
     const int len = strlen(str);
     construct_string(len);
     memcpy(m_data, str, len*sizeof(value_type));
-    assert(len < string_rep::kMaxCapacity);
+    assert(len < int(string_rep::kMaxCapacity));
     get_rep()->size = static_cast<short>(len);
     m_data[len] = 0;
   }
@@ -109,7 +108,7 @@ public:
   : m_allocator(allocator) {
     construct_string(len);
     memcpy(m_data, str, len*sizeof(value_type));
-    assert(len < string_rep::kMaxCapacity);
+    assert(len < int(string_rep::kMaxCapacity));
     get_rep()->size = static_cast<short>(len);
     m_data[len] = 0;
   }
@@ -121,7 +120,7 @@ public:
       const int len = rhs.length();
       construct_string(len);
       memcpy(m_data, rhs.c_str(), len*sizeof(value_type));
-      assert(len < string_rep::kMaxCapacity);
+      assert(len < int(string_rep::kMaxCapacity));
       get_rep()->size = static_cast<short>(len);
       m_data[len] = 0;
     }
@@ -203,7 +202,7 @@ protected:
       if (capacity_hint < size_type(kGranularity))
         capacity_hint = kGranularity;
     }
-    assert(capacity_hint < string_rep::kMaxCapacity);
+    assert(capacity_hint < size_type(string_rep::kMaxCapacity));
     // reallocate string only if we truly need to make it unique
     // (it's shared) or if our current buffer is too small.
     if (rep->refs > 1 || short(capacity_hint) > rep->capacity) {
@@ -239,7 +238,7 @@ private:
       capacity = (capacity+kGranularity-1) & ~(kGranularity-1);
       if (capacity < size_type(kGranularity))
         capacity = kGranularity;
-      assert(capacity < string_rep::kMaxCapacity);
+      assert(capacity < size_type(string_rep::kMaxCapacity));
 
       const size_type toAlloc = sizeof(string_rep) + sizeof(value_type)*capacity;
       void* mem = m_allocator.allocate(toAlloc);
@@ -434,6 +433,13 @@ public:
     return retIndex;
   }
 
+  size_type find_first_of(const value_type *ch, size_type from) const {
+    const auto sz = length();
+    if (from >= sz) return basic_string::npos;
+    const auto match = size_type(strcspn(c_str()+from, ch));
+    return match == sz-from ? basic_string::npos : from+match;
+  }
+
   size_type find(const value_type* needle) const {
     const value_type* s(c_str());
     size_type si(0);
@@ -531,6 +537,10 @@ struct hash<basic_string<E, TAllocator, TStorage> > {
     return murmurhash2(x.c_str(), x.length());
   }
 };
+string format(const char *fmt, ...);
+string to_string(int i);
+string to_string(double d);
+double stod(const string &str);
 
 /*-------------------------------------------------------------------------
  - hash_map/set/map compatible raw string wrapper

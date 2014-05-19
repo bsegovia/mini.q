@@ -11,11 +11,12 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\src\base\list.cpp" />
     <ClCompile Include="..\src\bvhscalar.cpp" />
     <ClCompile Include="..\src\csgscalar.cpp" />
     <ClCompile Include="..\src\enet\callbacks.cpp" />
+    <ClCompile Include="..\src\enet\elist.cpp" />
     <ClCompile Include="..\src\enet\host.cpp" />
-    <ClCompile Include="..\src\enet\list.cpp" />
     <ClCompile Include="..\src\enet\packet.cpp" />
     <ClCompile Include="..\src\enet\peer.cpp" />
     <ClCompile Include="..\src\enet\protocol.cpp" />
@@ -97,10 +98,34 @@
     <ClCompile Include="..\src\world.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\src\base\algorithm.hpp" />
+    <ClInclude Include="..\src\base\allocator.hpp" />
+    <ClInclude Include="..\src\base\atomics.hpp" />
+    <ClInclude Include="..\src\base\avx.hpp" />
+    <ClInclude Include="..\src\base\avxb.hpp" />
+    <ClInclude Include="..\src\base\avxf.hpp" />
+    <ClInclude Include="..\src\base\avxi.hpp" />
+    <ClInclude Include="..\src\base\avxi_emu.hpp" />
+    <ClInclude Include="..\src\base\hash.hpp" />
+    <ClInclude Include="..\src\base\hash_map.hpp" />
+    <ClInclude Include="..\src\base\intrusive_list.hpp" />
+    <ClInclude Include="..\src\base\list.hpp" />
+    <ClInclude Include="..\src\base\map.hpp" />
+    <ClInclude Include="..\src\base\pair.hpp" />
+    <ClInclude Include="..\src\base\rbtree.hpp" />
+    <ClInclude Include="..\src\base\ref.hpp" />
+    <ClInclude Include="..\src\base\set.hpp" />
+    <ClInclude Include="..\src\base\sse.hpp" />
+    <ClInclude Include="..\src\base\sseb.hpp" />
+    <ClInclude Include="..\src\base\ssef.hpp" />
+    <ClInclude Include="..\src\base\ssei.hpp" />
+    <ClInclude Include="..\src\base\string.hpp" />
+    <ClInclude Include="..\src\base\utility.hpp" />
+    <ClInclude Include="..\src\base\vector.hpp" />
     <ClInclude Include="..\src\csgscalar.hpp" />
     <ClInclude Include="..\src\enet\callbacks.h" />
+    <ClInclude Include="..\src\enet\elist.h" />
     <ClInclude Include="..\src\enet\enet.h" />
-    <ClInclude Include="..\src\enet\list.h" />
     <ClInclude Include="..\src\enet\memory.h" />
     <ClInclude Include="..\src\enet\protocol.h" />
     <ClInclude Include="..\src\enet\time.h" />
@@ -110,7 +135,6 @@
     <ClInclude Include="..\src\base\console.hpp" />
     <ClInclude Include="..\src\base\math.hpp" />
     <ClInclude Include="..\src\base\script.hpp" />
-    <ClInclude Include="..\src\base\stl.hpp" />
     <ClInclude Include="..\src\base\sys.hpp" />
     <ClInclude Include="..\src\base\task.hpp" />
     <ClInclude Include="..\src\client.hpp" />
