@@ -429,7 +429,7 @@ dynent *getclient(int cn) {
     return NULL;
   }
   while (cn>=players.size())
-    players.add(NULL);
+    players.push_back(NULL);
   return players[cn] ? players[cn] : (players[cn] = newdynent());
 }
 
@@ -530,11 +530,11 @@ static void renderscore(dynent *d) {
   fixedstring lag(fmt, "%d", d->plag);
   fixedstring name(fmt, "(%s)", d->name.c_str());
   sline line;
-  line.s,fmt("%d\t%s\t%d\t%s\t%s",
+  line.s.fmt("%d\t%s\t%d\t%s\t%s",
     d->frags, d->state==CS_LAGGED ? "LAG" : lag.c_str(), d->ping,
     d->team.c_str(), d->state==CS_DEAD ? name.c_str() : d->name.c_str());
   scorelines.push_back(line);
-  menu::manual(0, scorelines.size()-1, scorelines.last().s.c_str());
+  menu::manual(0, scorelines.size()-1, scorelines.back().s.c_str());
 }
 
 static const int maxteams = 4;

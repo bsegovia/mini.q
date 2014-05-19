@@ -171,13 +171,13 @@ void addmsg(int rel, int num, int type, ...) {
     return;
   }
   messages.push_back(vector<int>());
-  ivector &msg = messages.back();
-  msg.add(num);
-  msg.add(rel);
-  msg.add(type);
+  vector<int> &msg = messages.back();
+  msg.push_back(num);
+  msg.push_back(rel);
+  msg.push_back(type);
   va_list marker;
   va_start(marker, type);
-  loopi(num-1) msg.add(va_arg(marker, int));
+  loopi(num-1) msg.push_back(va_arg(marker, int));
   va_end(marker);
 }
 
@@ -273,7 +273,7 @@ void c2sinfo(const game::dynent *d) {
     }
     // send messages collected during the previous frames
     loopv(messages) {
-      ivector &msg = messages[i];
+      vector<int> &msg = messages[i];
       if (msg[1]) packet->flags = ENET_PACKET_FLAG_RELIABLE;
       loopi(msg[0]) putint(p, msg[i+2]);
     }
@@ -536,7 +536,7 @@ void localservertoclient(u8 *buf, int len) {
     case SV_EDITENT: {
       u32 i = getint(p);
       while (u32(game::ents.size()) <= i) {
-        game::ents.push_back(entity);
+        game::ents.push_back(game::entity());
         game::ents.back().type = game::NOTUSED;
       }
       game::ents[i].type = getint(p);

@@ -185,7 +185,7 @@ static void update_vertex(partition_vertex *v, const vector<partition_vertex> &v
 }
 
 INLINE void add(vec2f p0, vec2f p1, vec2f p2, vector<vec2f> &tri) {
-  tri.add(p0); tri.add(p1); tri.add(p2);
+  tri.push_back(p0); tri.push_back(p1); tri.push_back(p2);
 }
 
 // triangulation by ear removal

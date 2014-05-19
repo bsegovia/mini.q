@@ -10,7 +10,7 @@ namespace shaders {
 
 template <typename T> INLINE void allocateappend(vector<T> **x, T *elem) {
   if (*x == NULL) *x = NEWE(vector<T>);
-  (*x)->add(*elem);
+  (*x)->push_back(*elem);
 }
 
 fragdatadesc::fragdatadesc(fragdatadesc::vec **v, u32 loc, const char *name, const char *type)
@@ -43,7 +43,7 @@ static vector<shaderdef> *allshaders = NULL;
 
 shaderregister::shaderregister(ogl::shadertype &s, const shaderdesc &desc, const char *name, u32 sz, u32) {
   if (allshaders == NULL) allshaders = NEWE(vector<shaderdef>);
-  allshaders->add({&s, &desc, name, 0u});
+  allshaders->push_back({&s, &desc, name, 0u});
 }
 
 shaderregister::shaderregister(void *s, const shaderdesc &desc, const char *name, u32 sz, u32 num) {
@@ -51,7 +51,7 @@ shaderregister::shaderregister(void *s, const shaderdesc &desc, const char *name
   if (allshaders == NULL) allshaders = NEWE(vector<shaderdef>);
   loopi(int(num)) {
     const auto shader = (ogl::shadertype*)(baseaddress+sz*i);
-    allshaders->add({shader, &desc, name, u32(i)});
+    allshaders->push_back({shader, &desc, name, u32(i)});
   }
 }
 
@@ -85,16 +85,16 @@ void builder::setrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules)
       else
         rule.fmt("uniform %s %s[%s];\n", uni[i].type, uni[i].name, uni[i].arraysize);
       if (uni[i].vertex)
-        vertrules.add(NEWSTRING(rule.c_str()));
+        vertrules.push_back(NEWSTRING(rule.c_str()));
       else
-        fragrules.add(NEWSTRING(rule.c_str()));
+        fragrules.push_back(NEWSTRING(rule.c_str()));
     }
   }
   if (*desc.attrib) {
     auto &att = **desc.attrib;
     loopv(att) {
       fixedstring rule(fmt, "VS_IN %s %s;\n", att[i].type, att[i].name);
-      vertrules.add(NEWSTRING(rule.c_str()));
+      vertrules.push_back(NEWSTRING(rule.c_str()));
     }
   }
 #if !defined(__WEBGL__)
@@ -102,13 +102,13 @@ void builder::setrules(ogl::shaderrules &vertrules, ogl::shaderrules &fragrules)
     auto &fd = **desc.fragdata;
     loopv(fd) {
       fixedstring rule(fmt, "out %s %s;\n", fd[i].type, fd[i].name);
-      fragrules.add(NEWSTRING(rule.c_str()));
+      fragrules.push_back(NEWSTRING(rule.c_str()));
     }
   }
 #endif
   if (*desc.include) {
     auto &inc = **desc.include;
-    loopv(inc) fragrules.add(NEWSTRING(inc[i].source));
+    loopv(inc) fragrules.push_back(NEWSTRING(inc[i].source));
   }
   if (desc.rulescb) desc.rulescb(vertrules, fragrules, rule);
 }

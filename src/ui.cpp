@@ -198,17 +198,17 @@ static void drawpoly(const float *coords, u32 numCoords, float r, u32 col) {
   // XXX remove this and use a static array as the rest
   vector<verttype> verts;
   for (u32 i = 0, j = numCoords-1; i < numCoords; j=i++) {
-    verts.add(verttype(colf,coords[i*2+0],coords[i*2+1]));
-    verts.add(verttype(colf,coords[j*2+0],coords[j*2+1]));
-    verts.add(verttype(colTrans,tempcoords[j*2+0],tempcoords[j*2+1]));
-    verts.add(verttype(colTrans,tempcoords[j*2+0],tempcoords[j*2+1]));
-    verts.add(verttype(colTrans,tempcoords[i*2+0],tempcoords[i*2+1]));
-    verts.add(verttype(colf,coords[i*2+0],coords[i*2+1]));
+    verts.push_back(verttype(colf,coords[i*2+0],coords[i*2+1]));
+    verts.push_back(verttype(colf,coords[j*2+0],coords[j*2+1]));
+    verts.push_back(verttype(colTrans,tempcoords[j*2+0],tempcoords[j*2+1]));
+    verts.push_back(verttype(colTrans,tempcoords[j*2+0],tempcoords[j*2+1]));
+    verts.push_back(verttype(colTrans,tempcoords[i*2+0],tempcoords[i*2+1]));
+    verts.push_back(verttype(colf,coords[i*2+0],coords[i*2+1]));
   }
   for (u32 i = 2; i < numCoords; ++i) {
-    verts.add(verttype(colf, coords[0], coords[1]));
-    verts.add(verttype(colf, coords[(i-1)*2], coords[(i-1)*2+1]));
-    verts.add(verttype(colf, coords[i*2], coords[i*2+1]));
+    verts.push_back(verttype(colf, coords[0], coords[1]));
+    verts.push_back(verttype(colf, coords[(i-1)*2], coords[(i-1)*2+1]));
+    verts.push_back(verttype(colf, coords[i*2], coords[i*2+1]));
   }
   ogl::bindfixedshader(ogl::FIXED_COLOR);
   ogl::immdraw("Tc4p2", verts.size(), &verts[0][0]);

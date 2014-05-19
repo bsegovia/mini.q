@@ -24,10 +24,10 @@ FLAGS+=-vec-
 endif
 
 DEBUGFLAGS=-O0 -DMEMORY_DEBUGGER -g
-OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g #-fsanitize=address
+OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g -fsanitize=address
 RELFLAGS=-fomit-frame-pointer -O3 -DNDEBUG -DRELEASE
 
-CXXFLAGS=$(CXXCOMMONFLAGS) $(FLAGS) $(RELFLAGS)
+CXXFLAGS=$(CXXCOMMONFLAGS) $(FLAGS) $(OPTFLAGS)
 CXXSSEFLAGS=$(CXXFLAGS) -msse -msse2
 CXXAVXFLAGS=$(CXXFLAGS) -mavx
 
@@ -35,7 +35,7 @@ CXXAVXFLAGS=$(CXXFLAGS) -mavx
 # link stuff
 ##############################################################################
 ifeq (,$(findstring mingw, $(CXX)))
-LIBS+=`sdl2-config --libs` -lSDL2_image -lSDL2_mixer -lz -lm -lstdc++ 
+LIBS+=`sdl2-config --libs` -lSDL2_image -lSDL2_mixer -lz -lm -lstdc++ -fsanitize=address
 endif
 
 ifneq (,$(findstring i686-w64-mingw, $(CXX)))
@@ -124,16 +124,16 @@ GAME_OBJS=\
   qef.o\
   renderer.o\
   server.o\
-  serverbrowser.o\
-  serverms.o\
-  serverutil.o\
-  shaders.o\
   rt.o\
   rtscalar.o\
   rtsse.o\
   rtavx.o\
-  sound.o\
+  serverbrowser.o\
+  serverms.o\
+  serverutil.o\
+  shaders.o\
   sky.o\
+  sound.o\
   text.o\
   ui.o\
   weapon.o\

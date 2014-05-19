@@ -163,7 +163,7 @@ bool objloader::loadmtl(const char *mtlfilename, const char *objfilename) {
       currmat = allocmat();
       currmat->setdefault();
       strncpy(currmat->name, tokenize(NULL, whitespace, saved), MAT_NAME_SZ);
-      materiallist.add(currmat);
+      materiallist.push_back(currmat);
     } else if (strequal(tok, "Ka") && material_open) // ambient
       loopi(3) currmat->amb[i] = atof(tokenize(NULL, " \t", saved));
     else if (strequal(tok, "Kd") && material_open) // diff
@@ -223,15 +223,15 @@ bool objloader::loadobj(const char *filename) {
     if (tok == NULL || tok[0] == '#') continue;
     // parse objects
     else if (strequal(tok, "v")) // vertex
-      vertexlist.add(parsevector());
+      vertexlist.push_back(parsevector());
     else if (strequal(tok, "vn")) // vertex normal
-      normallist.add(parsevector());
+      normallist.push_back(parsevector());
     else if (strequal(tok, "vt")) // vertex texture
-      texturelist.add(parsevector());
+      texturelist.push_back(parsevector());
     else if (strequal(tok, "f")) { // face
       auto face = parseface();
       face->materialindex = currmaterial;
-      facelist.add(face);
+      facelist.push_back(face);
     } else if (strequal(tok, "usemtl"))   // usemtl
       currmaterial = findmaterial(tokenize(NULL, whitespace, saved));
     else if (strequal(tok, "mtllib")) { //  mtllib
@@ -302,7 +302,7 @@ bool obj::load(const char *filename) {
         v[j] = it->second;
     }
     const poly p = {{v[0],v[1],v[2],v[3]},face->materialindex,face->vertexnum};
-    polys.add(p);
+    polys.push_back(p);
   }
 
   // No face defined
@@ -313,12 +313,12 @@ bool obj::load(const char *filename) {
   for (auto poly = polys.begin(); poly != polys.end(); ++poly) {
     if (poly->n == 3) {
       const triangle tri(vec3i(poly->v[0], poly->v[1], poly->v[2]), poly->mat);
-      tris.add(tri);
+      tris.push_back(tri);
     } else {
       const triangle tri0(vec3i(poly->v[0], poly->v[1], poly->v[2]), poly->mat);
       const triangle tri1(vec3i(poly->v[0], poly->v[2], poly->v[3]), poly->mat);
-      tris.add(tri0);
-      tris.add(tri1);
+      tris.push_back(tri0);
+      tris.push_back(tri1);
     }
   }
 
@@ -326,19 +326,19 @@ bool obj::load(const char *filename) {
   quicksort(tris.begin(), tris.end(), cmp);
   vector<matgroup> matgrp;
   int curr = tris[0].m;
-  matgrp.add(matgroup(0,0,curr));
+  matgrp.push_back(matgroup(0,0,curr));
   loopv(tris) if (tris[i].m != curr) {
     curr = tris[i].m;
-    matgrp.last().last = (int) (i-1);
-    matgrp.add(matgroup((int)i,0,curr));
+    matgrp.back().last = (int) (i-1);
+    matgrp.push_back(matgroup((int)i,0,curr));
   }
-  matgrp.last().last = tris.size() - 1;
+  matgrp.back().last = tris.size() - 1;
 
   // we replace the undefined material by the default one if needed
   if (tris[0].m == -1) {
     auto mat = loader.allocmat();
     mat->setdefault();
-    loader.materiallist.add(mat);
+    loader.materiallist.push_back(mat);
     const auto matindex = loader.materiallist.size() - 1;
     loopv(tris)
       if (tris[i].m != -1)

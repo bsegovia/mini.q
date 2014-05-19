@@ -159,15 +159,15 @@ bool mdl::load(const char *name, float scale, int sn) {
                       +(snap(sn,cv[2]*cf->scale[2])+cf->translate[2])/sc);
         const auto nptr = normaltable[cf->vertices[vn].normalidx];
         const auto n = vec3f(nptr[0],-nptr[1],nptr[2]);
-        trisv.add(vertextype(s,t,rot*n.xzy(),rot*v.xzy()));
+        trisv.push_back(vertextype(s,t,rot*n.xzy(),rot*v.xzy()));
       }
       loopi(n-2) { // just stolen from cube. TODO use an index buffer
         if (moden <= 0) { // fan
-          tris.add(trisv[0]);
-          tris.add(trisv[i+1]);
-          tris.add(trisv[i+2]);
+          tris.push_back(trisv[0]);
+          tris.push_back(trisv[i+1]);
+          tris.push_back(trisv[i+2]);
         } else // strip
-          loopk(3) tris.add(trisv[i&1 && k ? i+(1-(k-1))+1 : i+k]);
+          loopk(3) tris.push_back(trisv[i&1 && k ? i+(1-(k-1))+1 : i+k]);
       }
     }
     OGL(BufferSubData, GL_ARRAY_BUFFER, vboframesz*j, vboframesz, &tris[0][0]);
@@ -251,7 +251,7 @@ mdl *loadmodel(const char *name) {
 void mapmodel(const char *rad, const char *h, const char *zoff, const char *snap, const char *name) {
   auto m = loadmodel(name);
   m->mmi = {atoi(rad), atoi(h), atoi(zoff), atoi(snap), m->loadname};
-  mapmodels.add(m);
+  mapmodels.push_back(m);
 }
 
 void mapmodelreset(void) {

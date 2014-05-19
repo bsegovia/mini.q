@@ -28,6 +28,15 @@ MAKE_INTEGRAL(long);
 MAKE_INTEGRAL(unsigned long);
 #undef MAKE_INTEGRAL
 
+template< class T > struct remove_reference      {typedef T type;};
+template< class T > struct remove_reference<T&>  {typedef T type;};
+template< class T > struct remove_reference<T&&> {typedef T type;};
+
+template<class T> INLINE
+typename remove_reference<T>::type&& move(T&& arg) {
+  return (typename remove_reference<T>::type&&) arg;
+}
+
 static const struct noinitializetype {noinitializetype() {}} noinitialize;
 template<> struct is_floating_point<float> { enum { value = true }; };
 template<> struct is_floating_point<double> { enum { value = true }; };

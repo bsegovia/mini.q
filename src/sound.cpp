@@ -23,7 +23,7 @@ static bool nosound = false;
 static Mix_Music *mod = NULL;
 static void *stream = NULL;
 static vector<Mix_Chunk*> samples;
-static cvector snames;
+static vector<char*> snames;
 static int soundsatonce = 0;
 static int lastsoundmillis = 0;
 static struct { vec3f loc; bool inuse; } soundlocs[MAXCHAN];
@@ -64,8 +64,8 @@ static void music(const char *name) {
 static void registersound(const char *name) {
   static linear_allocator<4096,sizeof(char)> lin;
   loopv(snames) if (strcmp(snames[i], name)==0) return;
-  snames.add(lin.newstring(name));
-  samples.add(NULL);
+  snames.push_back(lin.newstring(name));
+  samples.push_back(NULL);
 }
 
 void finish(void) {

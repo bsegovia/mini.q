@@ -65,7 +65,7 @@ dynent *basicmonster(int type, int yaw, int state, int trigger, int move) {
   m->state = CS_ALIVE;
   m->anger = 0;
   strcpy_s(m->name, t->name);
-  monsters.add(m);
+  monsters.push_back(m);
   return m;
 }
 
@@ -82,7 +82,7 @@ static void spawnmonster(void) {
 
 void cleanmonsters() {
   loopv(monsters) FREE(monsters[i]);
-  monsters.destroy();
+  monsters = dvector();
   numkilled = 0;
   monstertotal = 0;
   spawnremain = 0;

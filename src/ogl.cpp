@@ -621,11 +621,11 @@ static int deferquery=0;
 
 static timer *findtimer(const char *name, bool gpu) {
   loopv(timers) if (!strcmp(timers[i].name, name) && timers[i].gpu == gpu) {
-    timerorder.removeobj(i);
-    timerorder.add(i);
+    timerorder.erase(&timerorder.at(i));
+    timerorder.push_back(i);
     return &timers[i];
   }
-  timerorder.add(timers.size());
+  timerorder.push_back(timers.size());
   timer t;
   t.name = name;
   t.gpu = gpu;
@@ -683,8 +683,8 @@ static void cleanuptimers() {
     timer &t = timers[i];
     if (t.gpu) OGL(DeleteQueries, timer::MAXQUERY, t.query);
   }
-  timers.destroy();
-  timerorder.destroy();
+  timers = vector<timer>();
+  timerorder = vector<int>();
 }
 
 VARF(gputimers, 0, 0, 1, cleanuptimers());
@@ -792,11 +792,11 @@ static u32 loadshader(GLenum type, const char *source, const shaderrules &rules)
   assert(version != NULL && "invalid ogl version");
   vector<const char*> sources;
 #if !defined(__WEBGL__)
-  sources.add(version);
+  sources.push_back(version);
 #endif
-  sources.add(header);
-  loopv(rules) sources.add(rules[i]);
-  sources.add(source);
+  sources.push_back(header);
+  loopv(rules) sources.push_back(rules[i]);
+  sources.push_back(source);
   OGL(ShaderSource, name, sources.size(), &sources[0], NULL);
   OGL(CompileShader, name);
   if (!checkshader(sources, name)) return 0;
@@ -870,7 +870,7 @@ bool shaderbuilder::buildprogramfromfile(shadertype &s) {
 static vector<pair<shaderbuilder*, shadertype*>> allshaders;
 
 bool shaderbuilder::build(shadertype &s, int fromfile, bool save) {
-  if (save) allshaders.add(makepair(this, &s));
+  if (save) allshaders.push_back(makepair(this, &s));
   if (fromfile)
     return buildprogramfromfile(s);
   else
@@ -922,8 +922,8 @@ void fixedrules(shaderrules &vert, shaderrules &frag, u32 rule) {
                        rule&FIXED_COLOR,
                        rule&FIXED_KEYFRAME,
                        rule&FIXED_DIFFUSETEX);
-  vert.add(NEWSTRING(str.c_str()));
-  frag.add(NEWSTRING(str.c_str()));
+  vert.push_back(NEWSTRING(str.c_str()));
+  frag.push_back(NEWSTRING(str.c_str()));
 }
 
 #define RULES fixedrules
@@ -1013,7 +1013,7 @@ void finish() {
   // we need a vertex array for gl >= 3
   if (glversion >= 300) ogl::DeleteVertexArrays(1, &vao);
   loopv(allshaders) DEL(allshaders[i].first);
-  allshaders.destroy();
+  allshaders = vector<pair<shaderbuilder*, shadertype*>>();
   rangei(TEX_CROSSHAIR, TEX_PREALLOCATED_NUM)
     if (coretexarray[i]) ogl::deletetextures(1, coretexarray+i);
   immdestroy();

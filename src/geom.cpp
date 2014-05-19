@@ -115,14 +115,14 @@ static void buildmesh(const iso::octree &o, const iso::octree::node &node, procm
       const auto t = tri[k];
       if (isdegenerated(pt[t[0]],pt[t[1]],pt[t[2]]))
         continue;
-      pm.mat.add(quadmat);
+      pm.mat.push_back(quadmat);
       loopl(3) {
         const auto qef = pt[t[l]];
         if (qef->idx == -1) {
           qef->idx = pm.pos.size();
-          pm.pos.add(qef->pos);
+          pm.pos.push_back(qef->pos);
         }
-        pm.idx.add(qef->idx);
+        pm.idx.push_back(qef->idx);
       }
     }
   }
@@ -209,7 +209,7 @@ static void buildedges(qemcontext &ctx, const procmesh &pm) {
       if (i0 < i1) {
         vlist[firstedge++] = vlist[i0];
         vlist[i0] = e.size();
-        e.add(qemedge(i0,i1,mat));
+        e.push_back(qemedge(i0,i1,mat));
       }
       i0 = i1;
     }
@@ -234,8 +234,8 @@ static void buildedges(qemcontext &ctx, const procmesh &pm) {
         if (idx == -1) {
           vlist[firstedge++] = vlist[i1];
           vlist[i1] = e.size();
-          e.add(qemedge(i1,i0,mat));
-          extraplane(pm, e.last(), i, v[i0], v[i1]);
+          e.push_back(qemedge(i1,i0,mat));
+          extraplane(pm, e.back(), i, v[i0], v[i1]);
         } else {
           auto &edge = e[idx];
           ++edge.num;
@@ -282,7 +282,7 @@ static void buildheap(qemcontext &ctx, procmesh &pm) {
     if (best.first > QEM_MIN_ERROR)
       continue;
     e[i].best = best.second;
-    h.add({best.first,distance2(p0,p1),i});
+    h.push_back({best.first,distance2(p0,p1),i});
   }
   h.buildheap();
 }
@@ -307,7 +307,7 @@ static bool merge(qemcontext &ctx, procmesh &pm, const qemedge &edge, int idx0, 
       const auto i0 = pm.idx[3*tri], i1 = pm.idx[3*tri+1], i2 = pm.idx[3*tri+2];
       if (int(i0) == other[i] || int(i1) == other[i] || int(i2) == other[i])
         continue;
-      ctx.mergelist.add(tri);
+      ctx.mergelist.push_back(tri);
     }
   }
 
@@ -454,19 +454,19 @@ static void decimatemesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
     const u32 idx[] = {pm.idx[3*i+0], pm.idx[3*i+1], pm.idx[3*i+2]};
     if (idx[0] == idx[1] || idx[1] == idx[2] || idx[2] == idx[0])
       continue;
-    newmat.add(pm.mat[i]);
+    newmat.push_back(pm.mat[i]);
     loopj(3) {
       if (mapping[idx[j]] == -1) mapping[idx[j]] = vertnum++;
-      newidx.add(mapping[idx[j]]);
+      newidx.push_back(mapping[idx[j]]);
     }
   }
-  newidx.moveto(pm.idx);
-  newmat.moveto(pm.mat);
+  pm.idx = move(newidx);
+  pm.mat = move(newmat);
 
   // compact vertex buffer
   vector<vec3f> newpos(vertnum);
   loopv(mapping) if (mapping[i] != -1) newpos[mapping[i]] = pm.pos[i];
-  newpos.moveto(pm.pos);
+  pm.pos = move(newpos);
 }
 
 static void buildqem(qemcontext &ctx, procmesh &pm) {
@@ -580,14 +580,15 @@ static void sharpenmesh(procmesh &pm) {
           const auto old = vertlist[t[j]];
           idx = newnor.size();
           vertlist[t[j]] = newnor.size();
-          vertlist.add(old);
-          pm.pos.add(pm.pos[t[j]]);
-          newnor.add(dir);
+          vertlist.push_back(old);
+          const auto newpos = pm.pos[t[j]];
+          pm.pos.push_back(newpos);
+          newnor.push_back(dir);
         }
       }
-      newidx.add(idx);
+      newidx.push_back(idx);
     }
-    newmat.add(pm.mat[i]);
+    newmat.push_back(pm.mat[i]);
   }
 
   // renormalize all normals
@@ -595,9 +596,9 @@ static void sharpenmesh(procmesh &pm) {
     const auto len2 = length2(newnor[i]);
     if (len2 != 0.f) newnor[i] = newnor[i]*rsqrt(len2);
   }
-  newnor.moveto(pm.nor);
-  newidx.moveto(pm.idx);
-  newmat.moveto(pm.mat);
+  pm.nor = move(newnor);
+  pm.idx = move(newidx);
+  pm.mat = move(newmat);
 }
 
 /*-------------------------------------------------------------------------
@@ -642,10 +643,10 @@ struct finishtask : public task {
     u32 currmat = ~0x0;
     loopv(pm.mat) {
       if (pm.mat[i] != currmat) {
-        seg.add({3u*i,0u,pm.mat[i]});
+        seg.push_back({3u*i,0u,pm.mat[i]});
         currmat = pm.mat[i];
       }
-      seg.last().num += 3;
+      seg.back().num += 3;
     }
 
 #if !defined(NDEBUG)

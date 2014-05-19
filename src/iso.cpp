@@ -382,7 +382,7 @@ struct gridbuilder {
       auto &idx = m_edge_index[edge_index(xyz+e.first, e.second)];
       if (idx == NOINDEX) {
         idx = delayed_edges.size();
-        delayed_edges.add(makepair(xyz, vec4i(idx0, idx1, m0, m1)));
+        delayed_edges.push_back(makepair(xyz, vec4i(idx0, idx1, m0, m1)));
       }
       edgemap |= 1<<i;
     }
@@ -507,7 +507,7 @@ struct gridbuilder {
           const auto grad = vec3f(c-dfdx, c-dfdy, c-dfdz);
           const auto n = grad==vec3f(zero) ? vec3f(zero) : normalize(grad);
           const auto p = it[j+k].p0;
-          m_edges.add({p,n,vec2i(it[j+k].m0,it[j+k].m1)});
+          m_edges.push_back({p,n,vec2i(it[j+k].m0,it[j+k].m1)});
         }
       }
     }
@@ -565,7 +565,7 @@ struct gridbuilder {
 
       // insert the point in the leaf octree
       pl.leaf.insert(xyz,pl.leaf.pts.size());
-      pl.leaf.pts.add({worldpos,localpos,q,xyz,multimat?airmat:mat});
+      pl.leaf.pts.push_back({worldpos,localpos,q,xyz,multimat?airmat:mat});
     }
   }
 
@@ -602,7 +602,7 @@ struct gridbuilder {
             mcell cell;
             loopk(8) cell[k] = field(np+icubev[k]);
             m_qef_index[idx] = m_qefnum++;
-            delayed_qef.add(makepair(np, delayed_qef_vertex(cell, np)));
+            delayed_qef.push_back(makepair(np, delayed_qef_vertex(cell, np)));
             STATS_INC(iso_qef_num);
           }
         }
@@ -613,7 +613,7 @@ struct gridbuilder {
         const quad q = {{p[qor[0]],p[qor[1]],p[qor[2]],p[qor[3]]},
           max(startfield.m, endfield.m)
         };
-        pl.leaf.quads.add(q);
+        pl.leaf.quads.push_back(q);
       }
     }
   }
@@ -628,7 +628,7 @@ struct gridbuilder {
     if (from->isleaf) {
       if (!from->empty) {
         to->idx = node.leaf->pts.size();
-        node.leaf->pts.add({pl.leaf.pts[from->idx].world,-1});
+        node.leaf->pts.push_back({pl.leaf.pts[from->idx].world,-1});
       }
       return;
     }
@@ -643,9 +643,9 @@ struct gridbuilder {
   void output(octree::node &node) {
     node.leaf->root.resize(1);
     outputoctree(node);
-    node.leaf->root.refit();
-    node.leaf->pts.refit();
-    pl.leaf.quads.moveto(node.leaf->quads);
+    //node.leaf->root.refit();
+    //node.leaf->pts.refit();
+    node.leaf->quads = move(pl.leaf.quads);
   }
 
   void build(octree::node &node) {
@@ -711,7 +711,7 @@ struct contouringtask : public task {
     if (localbuilder == NULL) {
       localbuilder = NEWE(gridbuilder);
       SDL_LockMutex(ctx->m_mutex);
-      ctx->m_builders.add(localbuilder);
+      ctx->m_builders.push_back(localbuilder);
       SDL_UnlockMutex(ctx->m_mutex);
     }
     const auto &job = items[idx];

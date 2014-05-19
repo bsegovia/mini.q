@@ -29,7 +29,7 @@ struct gmenu {
 
 static vector<gmenu> menus;
 static int vmenu = -1;
-static ivector menustack;
+static vector<int> menustack;
 static fixedstring empty = "";
 
 void set(int menu) {
@@ -118,16 +118,16 @@ bool render(void) {
 }
 
 void newm(const char *name) {
-  menu menu;
-  menu.name = NEWSTRING(name);
-  menu.menusel = 0;
-  menus.push_back(menu);
+  gmenu m;
+  m.name = NEWSTRING(name);
+  m.menusel = 0;
+  menus.push_back(m);
 }
 CMDN(newmenu, newm);
 
 void manual(int m, int n, const char *text) {
   if (!n) menus[m].items.resize(0);
-  menu mi;
+  mitem mi;
   mi.text = const_cast<char*>(text);
   mi.action = empty.c_str();
   mi.manual = 1;
@@ -135,8 +135,8 @@ void manual(int m, int n, const char *text) {
 }
 
 static void item(const char *text, const char *action) {
-  auto &menu = menus.last();
-  menu mi;
+  auto &menu = menus.back();
+  mitem mi;
   mi.text = NEWSTRING(text);
   mi.action = action[0] ? NEWSTRING(action) : NEWSTRING(text);
   mi.manual = 0;
@@ -150,8 +150,10 @@ bool key(int code, bool isdown) {
   if (isdown) {
     if (code==SDLK_ESCAPE) {
       set(-1);
-      if (!menustack.empty())
-        set(menustack.pop());
+      if (!menustack.empty()) {
+        set(menustack.back());
+        menustack.pop_back();
+      }
       return true;
     }
     else if (code==SDLK_UP || code==-4) menusel--;
@@ -165,7 +167,7 @@ bool key(int code, bool isdown) {
       const auto action = menus[vmenu].items[menusel].action;
       if (vmenu==1)
         client::connect(browser::getservername(menusel));
-      menustack.add(vmenu);
+      menustack.push_back(vmenu);
       set(-1);
       con::setkeydownflag(true);
       script::execstring(action);

@@ -358,14 +358,14 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
 
 static void deferredrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32 rule) {
   fixedstring str(fmt, "#define LIGHTNUM %d\n", rule+1);
-  frag.insert(0, NEWSTRING(str.c_str()));
-  frag.add(NEWSTRING("vec3 shade(vec3 pos, vec3 nor) {\n"));
-  frag.add(NEWSTRING("  vec3 outcol = diffuse(pos,nor,u_lightpos[0],u_lightpow[0]);\n"));
+  frag.insert(frag.begin(), NEWSTRING(str.c_str()));
+  frag.push_back(NEWSTRING("vec3 shade(vec3 pos, vec3 nor) {\n"));
+  frag.push_back(NEWSTRING("  vec3 outcol = diffuse(pos,nor,u_lightpos[0],u_lightpow[0]);\n"));
   loopi(int(rule)) {
     str.fmt("  outcol += diffuse(pos,nor,u_lightpos[%d],u_lightpow[%d]);\n",i+1,i+1);
-    frag.add(NEWSTRING(str.c_str()));
+    frag.push_back(NEWSTRING(str.c_str()));
   }
-  frag.add(NEWSTRING("  return outcol;\n}\n"));
+  frag.push_back(NEWSTRING("  return outcol;\n}\n"));
 }
 
 #define SHADERVARIANT 16
@@ -378,8 +378,8 @@ static void deferredrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32 ru
 
 static void rules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32 rule) {
   fixedstring str(fmt, "#define SPLITNUM %f\n", float(SPLITNUM));
-  vert.add(NEWSTRING(str.c_str()));
-  frag.add(NEWSTRING(str.c_str()));
+  vert.push_back(NEWSTRING(str.c_str()));
+  frag.push_back(NEWSTRING(str.c_str()));
 }
 
 #define RULES rules
@@ -428,9 +428,9 @@ static void shadertoyrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32) 
   if (ogl::loadfromfile()) {
     auto s = sys::loadfile("data/shaders/hell.glsl");
     assert(s);
-    frag.add(s);
+    frag.push_back(s);
   } else
-    frag.add(NEWSTRING(shaders::hell));
+    frag.push_back(NEWSTRING(shaders::hell));
 }
 
 #define RULES shadertoyrules

@@ -47,8 +47,9 @@ static int resolverloop(void * data) {
       SDL_UnlockMutex(resolvermutex);
       continue;
     }
-    rt->query = resolverqueries.pop();
+    rt->query = resolverqueries.back();
     rt->starttime = int(game::lastmillis());
+    resolverqueries.pop_back();
     SDL_UnlockMutex(resolvermutex);
     ENetAddress address = {ENET_HOST_ANY, CUBE_SERVINFO_PORT};
     enet_address_set_host(&address, rt->query);
@@ -106,7 +107,7 @@ static void resolverclear(void) {
 
 static void resolverquery(char *name) {
   SDL_LockMutex(resolvermutex);
-  resolverqueries.add(name);
+  resolverqueries.push_back(name);
   SDL_SemPost(resolversem);
   SDL_UnlockMutex(resolvermutex);
 }
@@ -114,9 +115,10 @@ static void resolverquery(char *name) {
 static bool resolvercheck(char **name, ENetAddress *address) {
   SDL_LockMutex(resolvermutex);
   if (!resolverresults.empty()) {
-    resolverresult &rr = resolverresults.pop();
+    resolverresult &rr = resolverresults.back();
     *name = rr.query;
     *address = rr.address;
+    resolverresults.pop_back();
     SDL_UnlockMutex(resolvermutex);
     return true;
   }
@@ -143,8 +145,7 @@ const char *getservername(int n) { return servers[n].name.c_str(); }
 
 void addserver(const char *servername) {
   loopv(servers) if (strcmp(servers[i].name.c_str(), servername)==0) return;
-  // serverinfo &si = servers.insert(0, serverinfo());
-  servers.insert(0, serverinfo());
+  servers.insert(servers.begin(), serverinfo());
   serverinfo &si = *servers.begin();
   strcpy_s(si.name, servername);
   si.full[0] = 0;
@@ -230,7 +231,7 @@ void refreshservers(void) {
   checkresolver();
   checkpings();
   if (game::lastmillis() - lastinfo >= 5000) pingservers();
-  servers.sort((void*)sicompare);
+  quicksort(servers.begin(), servers.end(), sicompare);
   int maxmenu = 16;
   loopv(servers) {
     serverinfo &si = servers[i];

@@ -65,6 +65,7 @@ static bool memfirstalloc = true;
 static void memlinkblock(memblock *node) {
   if (memmutex) SDL_LockMutex(memmutex);
   node->allocnum = memallocnum++;
+  // if (node->allocnum == 1123) DEBUGBREAK;
   memlist->push_back(node);
   if (memmutex) SDL_UnlockMutex(memmutex);
 }

@@ -298,14 +298,14 @@ void playbackstep(void) {
     }
 
     // insert latest copy of player into history
-    if (extras && (playerhistory.empty() || playerhistory.last()->lastupdate!=playbacktime)) {
+    if (extras && (playerhistory.empty() || playerhistory.back()->lastupdate!=playbacktime)) {
       game::dynent *d = game::newdynent();
       *d = *target;
       d->lastupdate = playbacktime;
-      playerhistory.add(d);
+      playerhistory.push_back(d);
       if (playerhistory.size()>20) {
         game::zapdynent(playerhistory[0]);
-        playerhistory.remove(0);
+        playerhistory.erase(playerhistory.begin());
       }
     }
 

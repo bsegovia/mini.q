@@ -19,7 +19,7 @@ static const unsigned int WORDWRAP = 80;
 static int conskip = 0;
 static bool saycommandon = false;
 static fixedstring cmdbuf;
-static cvector vhistory;
+static vector<char*> vhistory;
 static int histpos = 0;
 
 bool active() { return saycommandon; }
@@ -57,8 +57,8 @@ CMDN(bind, bindkey);
 void finish() {
   loopv(conlines) FREE(conlines[i].cref);
   loopv(vhistory) FREE(vhistory[i]);
-  vhistory.destroy();
-  conlines.destroy();
+  vhistory = vector<char*>();
+  conlines = vector<cline>();
   loopi(numkm) {
     FREE(keyms[i].name);
     FREE(keyms[i].action);
@@ -68,9 +68,13 @@ void finish() {
 
 static void line(const char *sf, bool highlight) {
   cline cl;
-  cl.cref = conlines.size()>100 ? conlines.pop().cref : NEWSTRINGBUF("");
+  if (conlines.size()>100) {
+    cl.cref = conlines.back().cref;
+    conlines.pop_back();
+  } else
+    cl.cref = NEWSTRINGBUF("");
   cl.outtime = int(game::lastmillis()); // for how long to keep line on screen
-  conlines.insert(0,cl);
+  conlines.insert(conlines.begin(),cl);
   if (highlight) { // show line in a different colour, for chat etc.
     cl.cref[0] = '\f';
     cl.cref[1] = 0;
@@ -184,8 +188,8 @@ void keypress(int code, bool isdown) {
     } else {
       if (code==SDLK_RETURN) {
         if (cmdbuf[0]) {
-          if (vhistory.empty() || strcmp(vhistory.last(), cmdbuf.c_str()))
-            vhistory.add(NEWSTRING(cmdbuf.c_str()));  // cap this?
+          if (vhistory.empty() || strcmp(vhistory.back(), cmdbuf.c_str()))
+            vhistory.push_back(NEWSTRING(cmdbuf.c_str()));  // cap this?
           histpos = vhistory.size();
           if (cmdbuf[0]=='/') {
             setkeydownflag(true);

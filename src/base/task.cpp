@@ -4,6 +4,7 @@
  -------------------------------------------------------------------------*/
 #include "base/task.hpp"
 #include "base/vector.hpp"
+#include "base/math.hpp"
 #include "base/intrusive_list.hpp"
 #include <SDL_thread.h>
 
@@ -213,7 +214,7 @@ int queue::threadfunc(void *data) {
 queue::queue(u32 threadnum) : terminatethreads(false) {
   mutex = SDL_CreateMutex();
   cond = SDL_CreateCond();
-  loopi(s32(threadnum)) threads.add(SDL_CreateThread(threadfunc, "worker thread", this));
+  loopi(s32(threadnum)) threads.push_back(SDL_CreateThread(threadfunc, "worker thread", this));
 }
 
 queue::~queue(void) {
@@ -235,7 +236,7 @@ void task::start(const u32 *queueinfo, u32 n) {
 
 void task::finish(void) {
   loopv(tasking::queues) DEL(tasking::queues[i]);
-  vector<tasking::queue*>().moveto(tasking::queues);
+  tasking::queues = vector<tasking::queue*>();
 }
 
 task::task(const char *name, u32 n, u32 waiternum, u32 queue, u16 policy) {

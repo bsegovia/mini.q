@@ -306,7 +306,7 @@ intersector *create(const primitive *prims, int n) {
   auto tree = NEWE(intersector);
   c.injection(prims, n);
   c.compile();
-  c.acc.moveto(tree->acc);
+  tree->acc = move(c.acc);
   tree->root = c.root;
   if (bvhstatitics) {
     con::out("bvh: %d nodes %d leaves", c.nodenum, c.leafnum);

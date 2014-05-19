@@ -182,7 +182,7 @@ void process(ENetPacket * packet, int sender) { // sender may be -1
       int n;
       while ((n = getint(p))!=-1) if (notgotitems) {
         server_entity se = { false, 0 };
-        while (sents.size()<=n) sents.add(se);
+        while (sents.size()<=n) sents.push_back(se);
         sents[n].spawned = true;
       }
       notgotitems = false;

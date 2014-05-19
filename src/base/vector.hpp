@@ -5,6 +5,7 @@
  -------------------------------------------------------------------------*/
 #pragma once
 #include "sys.hpp"
+#include "pair.hpp"
 #include "allocator.hpp"
 #include "algorithm.hpp"
 
@@ -17,11 +18,11 @@ struct base_vector {
 template<typename T, class TAllocator>
 struct standard_vector_storage {
   explicit standard_vector_storage(const TAllocator& allocator)
-  :  m_begin(0),
+  : m_begin(0),
     m_end(0),
     m_capacityEnd(0),
     m_allocator(allocator)
-  {/**/ }
+  {}
   explicit standard_vector_storage(noinitializetype) {}
 
   void reallocate(base_vector::size_type newCapacity, base_vector::size_type oldSize) {
@@ -89,6 +90,7 @@ public:
   typedef TAllocator allocator_type;
   static const size_type kInitialCapacity = 16;
 
+  explicit vector(vector &&other) {*this=other;}
   explicit vector(const allocator_type& allocator = allocator_type())
   : TStorage(allocator)
   {}
@@ -97,13 +99,35 @@ public:
   vector(const T* first, const T* last, const allocator_type& allocator = allocator_type())
   : TStorage(allocator) {assign(first, last);}
 
+  vector &operator= (vector &&other) {
+    if (&other != this) {
+      this->~vector();
+      m_begin = other.m_begin;
+      m_end = other.m_end;
+      m_capacityEnd = other.m_capacityEnd;
+      m_allocator = other.m_allocator;
+      other.m_begin = 0;
+      other.m_end = 0;
+      other.m_capacityEnd = 0;
+    }
+    return *this;
+  }
+
+  pair<T*,size_type> move() {
+    const auto dst = makepair(m_begin, size());
+    m_begin = m_end = 0;
+    m_capacityEnd = 0;
+    return dst;
+  }
+  void memset(char c) {::memset(&at(0), c, size()*sizeof(T));}
+
   // @note: allocator is not copied from rhs.
   // @note: will not perform default constructor for newly created objects.
   vector(const vector& rhs, const allocator_type& allocator = allocator_type())
   : TStorage(allocator) {
     if(rhs.size() == 0) // nothing to do
       return;
-    reallocate_discard_old(rhs.capacity());
+    TStorage::reallocate_discard_old(rhs.capacity());
     q::copy_construct_n(rhs.m_begin, rhs.size(), m_begin);
     m_end = m_begin + rhs.size();
     TStorage::record_high_watermark();
@@ -123,11 +147,10 @@ public:
     return *this;
   }
 
-  void copy(const vector& rhs)
-  {
+  void copy(const vector& rhs) {
     const size_type newSize = rhs.size();
     if (newSize > capacity())
-      reallocate_discard_old(rhs.capacity());
+      TStorage::reallocate_discard_old(rhs.capacity());
     q::copy_construct_n(rhs.m_begin, newSize, m_begin);
     m_end = m_begin + newSize;
     TStorage::record_high_watermark();
@@ -297,9 +320,7 @@ public:
 
     // Move everything down, overwriting *it
     if (it + 1 < m_end)
-    {
       move_down_1(it, int_to_type<has_trivial_copy<T>::value>());
-    }
     --m_end;
     q::destruct(m_end);
     return it;
@@ -314,8 +335,7 @@ public:
 
     const size_type indexFirst = size_type(first - m_begin);
     const size_type toRemove = size_type(last - first);
-    if (toRemove > 0)
-    {
+    if (toRemove > 0) {
       move_down(last, first, int_to_type<has_trivial_copy<T>::value>());
       shrink(size() - toRemove);
     }
@@ -323,7 +343,7 @@ public:
   }
 
   // *Much* quicker version of erase, doesnt preserve collection oqr.
-  INLINE void erase_unoqred(iterator it) {
+  INLINE void erase_unordered(iterator it) {
     assert(validate_iterator(it));
     assert(it != end());
     assert(invariant());
@@ -392,6 +412,56 @@ public:
   size_type get_high_watermark() const {
     return TStorage::get_high_watermark();
   }
+  static INLINE int heapparent(int i) { return (i - 1) >> 1; }
+  static INLINE int heapchild(int i) { return (i << 1) + 1; }
+
+  void buildheap() { for(int i = size()/2; i >= 0; i--) downheap(i); }
+
+  int upheap(int i) {
+    auto score = at(i);
+    while (i > 0) {
+      int pi = heapparent(i);
+      if (!(score < at(pi))) break;
+      swap(at(i), at(pi));
+      i = pi;
+    }
+    return i;
+  }
+
+  T &addheap(const T &x) {
+    push_back(x);
+    return at(upheap(size()-1));
+  }
+
+  int downheap(int i) {
+    auto score = at(i);
+    for (;;) {
+      int ci = heapchild(i);
+      if (ci >= size()) break;
+      auto cscore = at(ci);
+      if (cscore < score) {
+        if (ci+1 < size() && at(ci+1) < cscore) {
+          swap(at(ci+1), at(i));
+          i = ci+1;
+        } else {
+          swap(at(ci), at(i));
+          i = ci;
+        }
+      } else if (ci+1 < size() && at(ci+1) < score) {
+        swap(at(ci+1), at(i));
+        i = ci+1;
+      } else
+        break;
+    }
+    return i;
+  }
+
+  T removeheap() {
+    T e = *begin();
+    erase_unordered(begin());
+    if (size()) downheap(0);
+    return e;
+  }
 
 private:
   size_type compute_new_capacity(size_type newMinCapacity) const {
@@ -410,10 +480,10 @@ private:
     m_end = m_begin + newSize;
   }
 
-  // The following two methods are only to get better cache behavior.
-  // We do not really need 'move' here if copying one-by-one, only for memcpy/memmove (on some platforms, see
+  // The following two methods are only to get better cache behavior.  We do not
+  // really need 'move' here if copying one-by-one, only for memcpy/memmove (on
+  // some platforms, see
   // http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.kui0002a/c51_memcpy.htm for example).
-
   INLINE void move_down_1(iterator it, int_to_type<true> itt) {
     internal::move(it + 1, m_end, it, itt);
   }
