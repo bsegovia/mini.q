@@ -73,13 +73,13 @@ string format(const char *fmt, ...) {
   string str;
   va_list ap;
   for (;;) {
-    str.resize(size);
+    str.allocate(size);
     va_start(ap, fmt);
     const auto n = vsnprintf((char*)str.c_str(), size, fmt, ap);
     if (n < 0) return string();
     va_end(ap);
     if (n < size) {
-      str.resize(n);
+      str.allocate(n);
       return str;
     }
     size = n+1;

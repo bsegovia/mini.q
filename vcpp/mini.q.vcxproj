@@ -79,6 +79,7 @@
     <ClCompile Include="..\src\network.cpp" />
     <ClCompile Include="..\src\ogl.cpp" />
     <ClCompile Include="..\src\physics.cpp" />
+    <ClCompile Include="..\src\polygon.cpp" />
     <ClCompile Include="..\src\qef.cpp" />
     <ClCompile Include="..\src\rt.cpp" />
     <ClCompile Include="..\src\rtscalar.cpp" />
@@ -144,6 +145,7 @@
     <ClInclude Include="..\src\entities.hpp" />
     <ClInclude Include="..\src\font.hxx" />
     <ClInclude Include="..\src\bvh.hpp" />
+    <ClInclude Include="..\src\polygon.hpp" />
     <ClInclude Include="..\src\rt.hpp" />
     <ClInclude Include="..\src\game.hpp" />
     <ClInclude Include="..\src\geom.hpp" />

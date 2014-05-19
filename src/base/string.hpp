@@ -66,208 +66,133 @@ INLINE void strfmt_s(fixedstring &d, const char *fmt, va_list v) {
 }
 
 /*-------------------------------------------------------------------------
- - copy-on-write storage
+ - simple string storage
  -------------------------------------------------------------------------*/
-struct string_rep {
-  void add_ref() { ++refs; }
-  bool release() { --refs; return refs <= 0; }
-  void init(short new_capacity = 0) {
-    refs = 1;
-    size = 0;
-    capacity = new_capacity;
-  }
-  atomic refs;
-  s16 size, capacity;
-  static const size_t kMaxCapacity = (1 << (sizeof(short) << 3)) >> 1;
-};
-
 template<typename E, class TAllocator>
-class cow_string_storage {
+class string_storage
+{
 public:
-  static_assert(sizeof(E) <= 2, "character is too big");
   typedef E value_type;
   typedef int size_type;
   typedef TAllocator allocator_type;
   typedef const value_type *const_iterator;
   static const unsigned long kGranularity = 32;
 
-  explicit cow_string_storage(const allocator_type& allocator)
+  explicit string_storage(const allocator_type& allocator)
+    : m_length(0), m_allocator(allocator) {
+    m_data = construct_string(0, m_capacity);
+  }
+  string_storage(const value_type* str, const allocator_type& allocator)
     : m_allocator(allocator)
-  { construct_string(0); }
-  cow_string_storage(const value_type* str, const allocator_type& allocator)
-    : m_allocator(allocator) {
+  {
     const int len = strlen(str);
-    construct_string(len);
+    m_data = construct_string(len, m_capacity);
     memcpy(m_data, str, len*sizeof(value_type));
-    assert(len < int(string_rep::kMaxCapacity));
-    get_rep()->size = static_cast<short>(len);
+    m_length = len;
     m_data[len] = 0;
   }
-  cow_string_storage(const value_type* str, size_type len,
-                     const allocator_type& allocator)
-  : m_allocator(allocator) {
-    construct_string(len);
+  string_storage(const value_type* str, size_type len,
+    const allocator_type& allocator)
+  : m_allocator(allocator)
+  {
+    m_data = construct_string(len, m_capacity);
     memcpy(m_data, str, len*sizeof(value_type));
-    assert(len < int(string_rep::kMaxCapacity));
-    get_rep()->size = static_cast<short>(len);
+    m_length = len;
     m_data[len] = 0;
   }
-  cow_string_storage(const cow_string_storage& rhs, const allocator_type& allocator)
-  : m_data(rhs.m_data), m_allocator(allocator) {
-    if (rhs.is_dynamic())
-      get_rep()->add_ref();
-    else {
-      const int len = rhs.length();
-      construct_string(len);
-      memcpy(m_data, rhs.c_str(), len*sizeof(value_type));
-      assert(len < int(string_rep::kMaxCapacity));
-      get_rep()->size = static_cast<short>(len);
-      m_data[len] = 0;
-    }
-  }
-  ~cow_string_storage() {
-    if (!is_dynamic())
-      assert(get_rep()->refs == 1);
-    release_string();
-  }
+  string_storage(const string_storage& rhs, const allocator_type& allocator)
+  : m_data(0),
+    m_capacity(0),
+    m_length(0),
+    m_allocator(allocator) { assign(rhs.c_str(), rhs.length()); }
+  ~string_storage() { release_string(); }
 
   // @note: doesnt copy allocator
-  cow_string_storage& operator=(const cow_string_storage& rhs) {
-    if (m_data != rhs.m_data) {
-      release_string();
-      m_data = rhs.m_data;
-      get_rep()->add_ref();
-    }
+  string_storage& operator=(const string_storage& rhs) {
+    if (m_data != rhs.c_str())
+      assign(rhs.c_str(), rhs.length());
     return *this;
   }
 
   void assign(const value_type* str, size_type len) {
-    // do not use with str = str2.c_str()!
+    // Do not use with str = str.c_str()!
     assert(str != m_data);
-    release_string();
-    construct_string(len);
-    memcpy(m_data, str, len*sizeof(value_type));
-    get_rep()->size = short(len);
+    if (m_capacity <= len + 1)
+    {
+      release_string();
+      m_data = construct_string(len, m_capacity);
+    }
+    if (NULL != str) memcpy(m_data, str, len*sizeof(value_type));
+    m_length = len;
     m_data[len] = 0;
   }
 
   void append(const value_type* str, size_type len) {
     const size_type prevLen = length();
-    const size_type newCapacity = prevLen + len;
-    make_unique(newCapacity);
-    string_rep* rep = get_rep();
-    assert(rep->capacity >= short(newCapacity));
     const size_type newLen = prevLen + len;
-    assert(short(newLen) <= rep->capacity);
+    if (m_capacity <= newLen + 1) {
+      size_type newCapacity;
+      value_type* newData = construct_string(newLen, newCapacity);
+      memcpy(newData, m_data, prevLen * sizeof(value_type));
+      release_string();
+            m_data = newData;
+      m_capacity = newCapacity;
+    }
     memcpy(m_data + prevLen, str, len * sizeof(value_type));
     m_data[newLen] = 0;
-    rep->size = short(newLen);
+    m_length = newLen;
+    assert(invariant());
   }
 
   inline const value_type* c_str() const { return m_data; }
-  inline size_type length() const {
-    return get_rep()->size;
+  inline size_type length() const { return m_length; }
+  inline size_type capacity() const { return m_capacity; } 
+  void clear() {
+    release_string();
+    m_data = construct_string(0, m_capacity);
+    m_length = 0;
   }
-  const allocator_type& get_allocator() const { return m_allocator; }
-
-  value_type* reserve(size_type capacity_hint) {
-    make_unique(capacity_hint);
-    return m_data;
-  }
-  void clear() { resize(0); }
-  void resize(size_type size) {
-    string_rep* rep = get_rep();
-    make_unique(size);
-    rep->size = (short)size;
-    m_data[size] = 0;
-  }
+  const allocator_type& get_allocator() const  { return m_allocator; }
+  void make_unique(size_type) {}
+  value_type* get_data() { return m_data; }
 
 protected:
   bool invariant() const {
     assert(m_data);
-    string_rep* rep = get_rep();
-    assert(rep->refs >= 1);
-    assert(rep->size <= rep->capacity);
+    assert(m_length <= m_capacity);
     if (length() != 0)
       assert(m_data[length()] == 0);
     return true;
   }
-  void make_unique(size_type capacity_hint) {
-    string_rep* rep = get_rep();
-    assert(rep->refs >= 1);
-
-    if (capacity_hint != 0) {
-      ++capacity_hint;
-      capacity_hint = (capacity_hint+kGranularity-1) & ~(kGranularity-1);
-      if (capacity_hint < size_type(kGranularity))
-        capacity_hint = kGranularity;
-    }
-    assert(capacity_hint < size_type(string_rep::kMaxCapacity));
-    // reallocate string only if we truly need to make it unique
-    // (it's shared) or if our current buffer is too small.
-    if (rep->refs > 1 || short(capacity_hint) > rep->capacity) {
-      if (capacity_hint > 0) {
-        const size_type toAlloc = sizeof(string_rep) + sizeof(value_type)*capacity_hint;
-        void* newMem = m_allocator.allocate(toAlloc);
-        string_rep* newRep = reinterpret_cast<string_rep*>(newMem);
-        newRep->init(short(capacity_hint));
-        value_type* newData = reinterpret_cast<value_type*>(newRep + 1);
-        memcpy(newData, m_data, rep->size*sizeof(value_type));
-        newRep->size = rep->size;
-        newData[rep->size] = 0;
-        release_string();
-        m_data = newData;
-      } else {
-        release_string();
-        string_rep* rep = reinterpret_cast<string_rep*>(m_buffer);
-        rep->init();
-        m_data = reinterpret_cast<value_type*>(rep + 1);
-        *m_data = 0;
-      }
-    }
-  }
-  INLINE E* get_data() { return m_data; }
-
 private:
-  INLINE string_rep *get_rep() const {
-    return reinterpret_cast<string_rep*>(m_data) - 1;
-  }
-  void construct_string(size_type capacity) {
+  value_type* construct_string(size_type capacity, size_type& out_capacity) {
+    value_type* data(0);
     if (capacity != 0) {
-      ++capacity;
       capacity = (capacity+kGranularity-1) & ~(kGranularity-1);
-      if (capacity < size_type(kGranularity))
+      if (capacity < kGranularity)
         capacity = kGranularity;
-      assert(capacity < size_type(string_rep::kMaxCapacity));
 
-      const size_type toAlloc = sizeof(string_rep) + sizeof(value_type)*capacity;
+      const size_type toAlloc = sizeof(value_type)*(capacity + 1);
       void* mem = m_allocator.allocate(toAlloc);
-      string_rep* rep = reinterpret_cast<string_rep*>(mem);
-      rep->init(static_cast<short>(capacity));
-      m_data = reinterpret_cast<value_type*>(rep + 1);
-    } else { // empty string, no allocation needed. Use our internal buffer.
-      string_rep* rep = reinterpret_cast<string_rep*>(m_buffer);
-      rep->init();
-      m_data = reinterpret_cast<value_type*>(rep + 1);
-    }
-    *m_data = 0;
+      data = static_cast<value_type*>(mem);
+    } else  // empty string, no allocation needed. Use our internal buffer.
+      data = &m_end_of_data;
+
+    out_capacity = capacity;
+    *data = 0;
+    return data;
   }
   void release_string() {
-    string_rep* rep = get_rep();
-    if (rep->release() && rep->capacity != 0) {
-      // make sure it was a dynamically allocated data.
-      assert(is_dynamic());
-      m_allocator.deallocate(rep, rep->capacity);
+    if (m_capacity != 0) {
+      assert(m_data != &m_end_of_data);
+      m_allocator.deallocate(m_data, m_capacity);
     }
   }
-  bool is_dynamic() const {
-    return get_rep() != reinterpret_cast<const string_rep*>(&m_buffer[0]);
-  }
 
-  E *m_data;
-  // @note: hack-ish. sizeof(string_rep) bytes for string_rep, than place for
-  // terminating character (up to 2-bytes!)
-  char m_buffer[sizeof(string_rep)+2];
+  E* m_data;
+  E m_end_of_data;
+  size_type m_capacity;
+  size_type m_length;
   TAllocator m_allocator;
 };
 
@@ -276,7 +201,7 @@ private:
  -------------------------------------------------------------------------*/
 template<typename E,
          class TAllocator = q::allocator,
-         typename TStorage = q::cow_string_storage<E, TAllocator>>
+         typename TStorage = q::string_storage<E, TAllocator>>
 class basic_string : private TStorage {
 public:
   typedef typename TStorage::value_type value_type;
@@ -338,6 +263,7 @@ public:
     return substr(begin, length());
   }
 
+  void allocate(int sz) { assign(NULL, sz); }
   void append(const value_type* str, size_type len) {
     if (!str || len == 0 || *str == 0)
       return;
@@ -385,7 +311,6 @@ public:
     return TStorage::reserve(capacity_hint);
   }
   void clear() { TStorage::clear(); }
-  void resize(size_type size) { TStorage::resize(size); }
   void make_lower() {
     const size_type len = length();
     TStorage::make_unique(len);
