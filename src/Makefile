@@ -27,9 +27,10 @@ DEBUGFLAGS=-O0 -DMEMORY_DEBUGGER -g
 OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g -fsanitize=address
 RELFLAGS=-fomit-frame-pointer -O3 -DNDEBUG -DRELEASE
 
-CXXFLAGS=$(CXXCOMMONFLAGS) $(FLAGS) $(OPTFLAGS)
+CXXFLAGS=$(CXXCOMMONFLAGS) $(FLAGS) $(DEBUGFLAGS)
 CXXSSEFLAGS=$(CXXFLAGS) -msse -msse2
 CXXAVXFLAGS=$(CXXFLAGS) -mavx
+CXXEXFLAGS=$(CXXFLAGS) -fexceptions
 
 ##############################################################################
 # link stuff
@@ -57,6 +58,7 @@ ENET_OBJS+=enet/win32.o
 endif
 
 BASE_OBJS=\
+  base/boodew.o\
   base/console.o\
   base/intrusive_list.o\
   base/hash.o\
@@ -178,14 +180,24 @@ MAYAOBJ_OBJS=\
   base/intrusive_list.o\
   obj.o
 
+TEST_SCRIPTS_OBJS=\
+  $(BASE_OBJS)\
+  $(LUA_OBJS)\
+  $(GAME_OBJS)\
+  $(ENET_OBJS)\
+  utests/test_script.o
+
 SHADERS=$(shell ls data/shaders/*[glsl,decl])
-all: mini.q.server mini.q.rt mini.q.iso mini.q importobj compress_chars importobj
+all: mini.q.server mini.q.rt mini.q.iso mini.q compress_chars importobj test_script
 
 %.o: %.cpp
 	$(CXX) $(CXXSSEFLAGS) -c $< -o $@
 
 %avx.o: %avx.cpp
 	$(CXX) $(CXXAVXFLAGS) -c $< -o $@
+
+base/boodew.o: base/boodew.cpp
+	$(CXX) $(CXXEXFLAGS) -c $< -o $@
 
 -include $(MAYAOBJ_OBJS:.o=.d)
 -include $(CLIENT_OBJS:.o=.d)
@@ -195,6 +207,7 @@ all: mini.q.server mini.q.rt mini.q.iso mini.q importobj compress_chars importob
 -include $(LUA_OBJS:.o=.d)
 -include $(GAME_OBJS:.o=.d)
 -include $(BASE_OBJS:.o=.d)
+-include $(TEST_SCRIPTS_OBJS:.o=.d)
 
 ## build embedded shader source
 shaders.hxx shaders.cxx: $(SHADERS)
@@ -221,6 +234,9 @@ importobj: $(MAYAOBJ_OBJS)
 
 compress_chars: compress_chars.o
 	$(CXX) $(CXXFLAGS) -o compress_chars compress_chars.o $(LIBS)
+
+test_script: $(TEST_SCRIPTS_OBJS)
+	$(CXX) $(CXXFLAGS) -o test_script $(TEST_SCRIPTS_OBJS) $(LIBS)
 
 clean:
 	rm -rf mini.q mini.q.server mini.q.rt importobj\

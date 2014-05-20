@@ -230,7 +230,7 @@ public:
 
   // No operator returning ref for the time being. It's dangerous with COW.
   value_type operator[](size_type i) const {
-    assert(i < size());
+    assert(i <= size());
     assert(invariant());
     return c_str()[i];
   }
@@ -255,9 +255,9 @@ public:
     return assign(str, strlen(str));
   }
 
-  basic_string substr(size_type begin, size_type end) const {
-    assert(end >= begin && end <= size() && begin >= 0);
-    return basic_string(c_str() + begin, end - begin);
+  basic_string substr(size_type begin, size_type len) const {
+    assert(begin+len <= size() && begin >= 0);
+    return basic_string(c_str() + begin, len);
   }
   basic_string substr(size_type begin) const {
     return substr(begin, size());
