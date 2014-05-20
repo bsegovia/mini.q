@@ -1,8 +1,6 @@
 /*-------------------------------------------------------------------------
  - boodew - a very simple and small (and slow) language based on strings
  -------------------------------------------------------------------------*/
-#include <cstdarg>
-#include <iostream>
 #include "base/hash_map.hpp"
 #include "base/sstream.hpp"
 #include "base/console.hpp"
@@ -11,12 +9,6 @@
 namespace q {
 namespace boodew {
 
-struct boodew_exception : std::exception {
-  boodew_exception(string str) : str(str) {}
-  ~boodew_exception() throw() {}
-  const char *what() const throw() {return str.c_str();}
-  string str;
-};
 string vtos(const value &v) {
       if (v.k==value::STR) return v.s;
  else if (v.k==value::DOUBLE) return to_string(v.d);
@@ -184,8 +176,8 @@ BCMDN("loop", loop_builtin)
 BCMDN("?", if_builtin)
 BCMDN("$", getvar)
 pair<string,bool> exec(const string &s) {
-  try {ex(s); return makepair(string(),true);}
-  catch (const boodew_exception &e) {return makepair(string(e.what()),false);}
+  const auto ret = ex(s);
+  return ret.k == value::ERROR ? makepair(s,false) : makepair(string(),true);
 }
 } /* namespace boodew */
 } /* namespace q */
