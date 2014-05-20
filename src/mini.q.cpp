@@ -22,7 +22,7 @@ VARF(gamespeed, 10, 100, 1000, if (client::multiplayer()) gamespeed = 100);
 VARP(minmillis, 0, 5, 1000);
 VARP(fullscreen, 0, 0, 1);
 
-static const int SCR_DEFAULTW = 1024;
+//static const int SCR_DEFAULTW = 1024;
 static const int SCR_DEFAULTH = 768;
 static const int SCR_MINW = 320;
 static const int SCR_MINH = 200;

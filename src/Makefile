@@ -30,7 +30,6 @@ RELFLAGS=-fomit-frame-pointer -O3 -DNDEBUG -DRELEASE
 CXXFLAGS=$(CXXCOMMONFLAGS) $(FLAGS) $(OPTFLAGS)
 CXXSSEFLAGS=$(CXXFLAGS) -msse -msse2
 CXXAVXFLAGS=$(CXXFLAGS) -mavx
-CXXEXFLAGS=$(CXXFLAGS) -fexceptions
 
 ##############################################################################
 # link stuff
@@ -195,9 +194,6 @@ all: mini.q.server mini.q.rt mini.q.iso mini.q compress_chars importobj test_scr
 
 %avx.o: %avx.cpp
 	$(CXX) $(CXXAVXFLAGS) -c $< -o $@
-
-base/boodew.o: base/boodew.cpp
-	$(CXX) $(CXXEXFLAGS) -c $< -o $@
 
 -include $(MAYAOBJ_OBJS:.o=.d)
 -include $(CLIENT_OBJS:.o=.d)

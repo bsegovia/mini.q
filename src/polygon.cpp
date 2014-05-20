@@ -72,8 +72,8 @@ struct partition_vertex {
 // removes holes from in by merging them with non-holes
 static bool remove_holes(const list<polygon> &in, list<polygon> &out) {
   list<polygon>::iterator holeiter,polyiter;
-  int holeidx,polyidx;
-  vec2f bestpolypt;
+  int holeidx = -1,polyidx = -1;
+  vec2f bestpolypt(zero);
 
   // check for trivial case (no holes)
   bool hasholes = false;
