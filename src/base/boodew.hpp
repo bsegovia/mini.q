@@ -9,15 +9,15 @@ namespace q {
 namespace boodew {
 
 struct value {
-  enum kind {STR,DOUBLE,BOOL};
+  enum {STR,DOUBLE,BOOL,BREAK,CONTINUE,ERROR,RETURN=1<<31};
   string s;
   double d;
   bool b;
-  kind k;
+  int k;
 };
-inline value stov(const string &s) {return {s,0.0,false,value::STR};}
-inline value dtov(double d) {return {"",d,false,value::DOUBLE};}
-inline value btov(bool b) {return {"",0.0,b,value::BOOL};}
+INLINE value stov(const string &s) {return {s,0.0,false,value::STR};}
+INLINE value dtov(double d) {return {"",d,false,value::DOUBLE};}
+INLINE value btov(bool b) {return {"",0.0,b,value::BOOL};}
 string vtos(const value &v);
 double vtod(const value &v);
 bool vtob(const value &v);
