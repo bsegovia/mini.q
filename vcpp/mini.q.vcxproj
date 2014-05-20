@@ -11,7 +11,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\base\list.cpp" />
     <ClCompile Include="..\src\bvhscalar.cpp" />
     <ClCompile Include="..\src\csgscalar.cpp" />
     <ClCompile Include="..\src\enet\callbacks.cpp" />
@@ -21,9 +20,11 @@
     <ClCompile Include="..\src\enet\peer.cpp" />
     <ClCompile Include="..\src\enet\protocol.cpp" />
     <ClCompile Include="..\src\enet\win32.cpp" />
+    <ClCompile Include="..\src\base\boodew.cpp" />
     <ClCompile Include="..\src\base\console.cpp" />
-    <ClCompile Include="..\src\base\intrusive_list.cpp" />
     <ClCompile Include="..\src\base\hash.cpp" />
+    <ClCompile Include="..\src\base\intrusive_list.cpp" />
+    <ClCompile Include="..\src\base\list.cpp" />
     <ClCompile Include="..\src\base\math.cpp" />
     <ClCompile Include="..\src\base\script.cpp" />
     <ClCompile Include="..\src\base\string.cpp" />
@@ -107,6 +108,8 @@
     <ClInclude Include="..\src\base\avxf.hpp" />
     <ClInclude Include="..\src\base\avxi.hpp" />
     <ClInclude Include="..\src\base\avxi_emu.hpp" />
+    <ClInclude Include="..\src\base\boodew.hpp" />
+    <ClInclude Include="..\src\base\functional.hpp" />
     <ClInclude Include="..\src\base\hash.hpp" />
     <ClInclude Include="..\src\base\hash_map.hpp" />
     <ClInclude Include="..\src\base\intrusive_list.hpp" />
@@ -123,6 +126,11 @@
     <ClInclude Include="..\src\base\string.hpp" />
     <ClInclude Include="..\src\base\utility.hpp" />
     <ClInclude Include="..\src\base\vector.hpp" />
+    <ClInclude Include="..\src\base\console.hpp" />
+    <ClInclude Include="..\src\base\math.hpp" />
+    <ClInclude Include="..\src\base\script.hpp" />
+    <ClInclude Include="..\src\base\sys.hpp" />
+    <ClInclude Include="..\src\base\task.hpp" />
     <ClInclude Include="..\src\csgscalar.hpp" />
     <ClInclude Include="..\src\enet\callbacks.h" />
     <ClInclude Include="..\src\enet\elist.h" />
@@ -133,11 +141,6 @@
     <ClInclude Include="..\src\enet\types.h" />
     <ClInclude Include="..\src\enet\utility.h" />
     <ClInclude Include="..\src\enet\win32.h" />
-    <ClInclude Include="..\src\base\console.hpp" />
-    <ClInclude Include="..\src\base\math.hpp" />
-    <ClInclude Include="..\src\base\script.hpp" />
-    <ClInclude Include="..\src\base\sys.hpp" />
-    <ClInclude Include="..\src\base\task.hpp" />
     <ClInclude Include="..\src\client.hpp" />
     <ClInclude Include="..\src\csg.hpp" />
     <ClInclude Include="..\src\demo.hpp" />
