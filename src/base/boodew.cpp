@@ -37,11 +37,11 @@ const value &get(args arg, int idx) {
 }
 
 // builtins and global variables boiler plate
-typedef hash_map<string, std::function<value(args)>> builtinmap;
+typedef hash_map<string, function<value(args)>> builtinmap;
 bool new_builtin(const string &n, const builtin_type &fn) {
   return unique<builtinmap>()->insert(makepair(n,fn)), true;
 }
-typedef hash_map<string, std::function<value()>> cvar_map;
+typedef hash_map<string, function<value()>> cvar_map;
 bool new_cvar(const string &n, const cvar_type &f0, const builtin_type &f1) {
   return unique<cvar_map>()->insert(makepair(n,f0)), new_builtin(n,f1);
 }

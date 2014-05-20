@@ -3,7 +3,7 @@
  -------------------------------------------------------------------------*/
 #include "base/string.hpp"
 #include "base/vector.hpp"
-#include <functional>
+#include "base/functional.hpp"
 
 namespace q {
 namespace boodew {
@@ -24,8 +24,8 @@ bool vtob(const value &v);
 
 // functions and builtins can have a variable number of arguments
 typedef const vector<value> &args;
-typedef std::function<value(args)> builtin_type;
-typedef std::function<value()> cvar_type;
+typedef function<value(args)> builtin_type;
+typedef function<value()> cvar_type;
 
 // extract the argument with extra checks
 const value &get(args arg, int idx);

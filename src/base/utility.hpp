@@ -32,11 +32,14 @@ template< class T > struct remove_reference      {typedef T type;};
 template< class T > struct remove_reference<T&>  {typedef T type;};
 template< class T > struct remove_reference<T&&> {typedef T type;};
 
-template<class T> INLINE
-typename remove_reference<T>::type&& move(T&& arg) {
+template<class T>
+INLINE typename remove_reference<T>::type&& move(T&& arg) {
   return (typename remove_reference<T>::type&&) arg;
 }
-
+template <class T, class U>
+INLINE T&& forward(U& u) {
+  return static_cast<T&&>(u);
+}
 static const struct noinitializetype {noinitializetype() {}} noinitialize;
 template<> struct is_floating_point<float> { enum { value = true }; };
 template<> struct is_floating_point<double> { enum { value = true }; };
@@ -273,21 +276,6 @@ INLINE u32 ilog2(u32 x) {
   while (x >>= 1) ++l;
   return l;
 }
-
-template<typename T>
-struct less {
-  INLINE bool operator()(const T& lhs, const T& rhs) const {return lhs < rhs;}
-};
-
-template<typename T>
-struct greater {
-  INLINE bool operator()(const T& lhs, const T& rhs) const {return lhs > rhs;}
-};
-
-template<typename T>
-struct equal_to {
-  INLINE bool operator()(const T& lhs, const T& rhs) const {return lhs == rhs;}
-};
 
 // global variable with proper constructor
 #define GLOBAL(TYPE, NAME) static TYPE &NAME() {static TYPE var; return var;}

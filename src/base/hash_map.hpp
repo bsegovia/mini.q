@@ -6,6 +6,7 @@
 #pragma once
 #include "algorithm.hpp"
 #include "allocator.hpp"
+#include "functional.hpp"
 #include "hash.hpp"
 #include "pair.hpp"
 
