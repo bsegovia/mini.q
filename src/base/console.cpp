@@ -30,8 +30,8 @@ static void setconskip(int n) {
 }
 CMDN(conskip, setconskip);
 
-// keymap is defined externally in keymap.q
-static hash_map<string,int> key_map; // keyname -> code
+// keymap is defined externally in keymap.lua
+static hash_map<string,int> key_map;    // keyname -> code
 static hash_map<int,string> action_map; // code -> action
 static void insertkeymap(int code, const string &name) {
   key_map.insert(makepair(name,code));
@@ -192,6 +192,7 @@ void keypress(int code, bool isdown) {
         saycommand(NULL);
     }
   } else if (!menu::key(code, isdown)) { // keystrokes go to menu
+    setkeydownflag(isdown);
     const auto it = action_map.find(code);
     if (it != action_map.end()) script::execstring(it->second.c_str());
   }

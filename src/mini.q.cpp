@@ -251,6 +251,7 @@ void start(int argc, char *argv[]) {
   menu::newm("frags\tpj\tping\tteam\tname");
   menu::newm("ping\tplr\tserver");
   script::execscript("data/keymap.lua");
+  script::execscript("data/default_bind.lua");
   script::execscript("data/menus.lua");
   script::execscript("data/sounds.lua");
   script::execscript("data/autoexec.lua");
