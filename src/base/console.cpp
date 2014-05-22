@@ -8,6 +8,7 @@
 #include "client.hpp"
 #include "menu.hpp"
 #include "text.hpp"
+#include "hash_map.hpp"
 #include "sys.hpp"
 
 namespace q {
@@ -30,26 +31,19 @@ static void setconskip(int n) {
 CMDN(conskip, setconskip);
 
 // keymap is defined externally in keymap.q
-struct keym { int code; char *name; char *action; } keyms[256];
-static int numkm = 0;
-
-static void keymap(const char *code, const char *key, const char *action) {
-  keyms[numkm].code = ATOI(code);
-  keyms[numkm].name = NEWSTRING(key);
-  keyms[numkm++].action = NEWSTRINGBUF(action);
+static hash_map<string,int> key_map; // keyname -> code
+static hash_map<int,string> action_map; // code -> action
+static void insertkeymap(int code, const string &name) {
+  key_map.insert(makepair(name,code));
 }
-CMD(keymap);
+CMDN(keymap, insertkeymap);
 
-static void bindkey(const char *key, const char *action) {
-  fixedstring upper;
-  char *dst = upper.c_str();
-  for (auto *src = key; *src; ++src, ++dst) *dst = toupper(*src);
-  *dst = 0;
-  loopi(numkm) if (strcmp(keyms[i].name, upper.c_str())==0) {
-    strcpy_cs(keyms[i].action, action);
-    return;
-  }
-  out("unknown key \"%s\"", key);
+static void bindkey(const string &key, const string &action) {
+  const auto it = key_map.find(key);
+  if (it == key_map.end())
+    out("unknown key \"%s\"", key.c_str());
+  else
+    action_map.insert(makepair(it->second, action));
 }
 CMDN(bind, bindkey);
 
@@ -59,10 +53,6 @@ void finish() {
   loopv(vhistory) FREE(vhistory[i]);
   vhistory = vector<char*>();
   conlines = vector<cline>();
-  loopi(numkm) {
-    FREE(keyms[i].name);
-    FREE(keyms[i].action);
-  }
 }
 #endif
 
@@ -202,11 +192,8 @@ void keypress(int code, bool isdown) {
         saycommand(NULL);
     }
   } else if (!menu::key(code, isdown)) { // keystrokes go to menu
-    loopi(numkm) if (keyms[i].code==code) { // keystrokes go to game, lookup in keymap and execute
-      setkeydownflag(isdown);
-      script::execstring(keyms[i].action);
-      return;
-    }
+    const auto it = action_map.find(code);
+    if (it != action_map.end()) script::execstring(it->second.c_str());
   }
 }
 const char *curcmd() { return saycommandon ? cmdbuf.c_str() : NULL; }

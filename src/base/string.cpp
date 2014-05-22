@@ -68,6 +68,7 @@ fixedstring::fixedstring(fmttype, const char *txt, ...) {
 string to_string(int i)        {return format("%d",i);}
 string to_string(double d)     {return format("%lf",d);}
 double stod(const string &str) {return atof(str.c_str());}
+int stoi(const string &str)    {return strtol(str.c_str(), NULL, 0);}
 string format(const char *fmt, ...) {
   int size = 256;
   string str;

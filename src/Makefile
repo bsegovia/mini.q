@@ -24,7 +24,7 @@ FLAGS+=-vec-
 endif
 
 DEBUGFLAGS=-O0 -DMEMORY_DEBUGGER -g
-OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g #-fsanitize=address
+OPTFLAGS=-O2 -DMEMORY_DEBUGGER -g -fsanitize=address
 RELFLAGS=-fomit-frame-pointer -O3 -DNDEBUG -DRELEASE
 
 CXXFLAGS=$(CXXCOMMONFLAGS) $(FLAGS) $(OPTFLAGS)
@@ -35,7 +35,7 @@ CXXAVXFLAGS=$(CXXFLAGS) -mavx
 # link stuff
 ##############################################################################
 ifeq (,$(findstring mingw, $(CXX)))
-LIBS+=`sdl2-config --libs` -lSDL2_image -lSDL2_mixer -lz -lm -lstdc++ #-fsanitize=address
+LIBS+=`sdl2-config --libs` -lSDL2_image -lSDL2_mixer -lz -lm -lstdc++ -fsanitize=address
 endif
 
 ifneq (,$(findstring i686-w64-mingw, $(CXX)))
@@ -236,7 +236,7 @@ test_script: $(TEST_SCRIPTS_OBJS)
 
 clean:
 	rm -rf mini.q mini.q.server mini.q.rt importobj\
-		compress_chars *.o *.d ./enet/*.o ./enet/*.d\
+		compress_chars test_script *.o *.d ./enet/*.o ./enet/*.d\
 		base/*.o base/*.d base/lua/*.o base/lua/*.d\
 		oprofile_data
 

@@ -33,9 +33,6 @@ CMDN(edittoggle, toggleedit);
 
 void pruneundos(int maxremain) {}
 
-// two mode of editions: extrusion of cubes / displacement of corners
-VARF(editcorner, 0, 0, 1, con::out("edit mode is 'edit%s", editcorner?"corner'":"cube'"));
-
 bool noteditmode(void) {
   if (!editmode)
     con::out("this function is only allowed in edit mode");

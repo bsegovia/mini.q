@@ -466,6 +466,7 @@ string format(const char *fmt, ...);
 string to_string(int i);
 string to_string(double d);
 double stod(const string &str);
+int stoi(const string &str);
 
 /*-------------------------------------------------------------------------
  - hash_map/set/map compatible raw string wrapper
