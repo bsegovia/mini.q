@@ -24,11 +24,11 @@ bool vtob(const value &v) {
  else if (v.k==value::DOUBLE) return v.d!=0.0;
  else return v.b;
 }
-INLINE value verr(const string &s) {return {s,0.0,false,value::ERROR};}
+INLINE value verr(const string &s) {return {s,0.0,false,value::ERR};}
 INLINE value vbreak() {return {"",0.0,false,value::BREAK};}
 INLINE value vcont() {return {"",0.0,false,value::CONTINUE};}
 INLINE bool earlyout(const value &v) {
-  return v.k==value::BREAK || v.k==value::CONTINUE || v.k==value::ERROR ||
+  return v.k==value::BREAK || v.k==value::CONTINUE || v.k==value::ERR ||
          (v.k&value::RETURN) != 0;
 }
 template <typename T> T *unique() { static T internal; return &internal; }
@@ -177,7 +177,7 @@ BCMDN("?", if_builtin)
 BCMDN("$", getvar)
 pair<string,bool> exec(const string &s) {
   const auto ret = ex(s);
-  return ret.k == value::ERROR ? makepair(s,false) : makepair(string(),true);
+  return ret.k == value::ERR ? makepair(s,false) : makepair(string(),true);
 }
 } /* namespace boodew */
 } /* namespace q */
