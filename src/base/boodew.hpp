@@ -9,7 +9,7 @@ namespace q {
 namespace boodew {
 
 struct value {
-  enum {STR,DOUBLE,BOOL,BREAK,CONTINUE,ERROR,RETURN=1<<31};
+  enum {STR,DOUBLE,BOOL,BREAK,CONTINUE,ERR,RETURN=1<<31};
   string s;
   double d;
   bool b;

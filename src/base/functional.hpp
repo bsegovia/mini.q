@@ -24,6 +24,10 @@ struct equal_to {
 
 template <typename T>
 struct function;
+#if defined(__MSVC__)
+#pragma warning (push)
+#pragma warning (disable : 4180)
+#endif /* defined(__MSVC__) */
 
 template <typename Result, typename... Args>
 struct function<Result(Args...)> {
@@ -34,11 +38,11 @@ private:
 
   template <typename T>
   struct model : concept {
-    model(const T &t) : t(t) {}
+    model(const T &t) : callback(t) {}
     Result operator()(Args... a) const {
-      return t(forward<Args>(a)...);
+	  return callback(forward<Args>(a)...);
     }
-    const T &t;
+    const T &callback;
   };
 
   q::ref<concept> fn;
@@ -51,5 +55,8 @@ public:
     return (*fn)(forward<Args>(args)...);
   }
 };
+#if defined(__MSVC__)
+#pragma warning (pop)
+#endif /* defined(__MSVC__) */
 } /* namespace q */
 
