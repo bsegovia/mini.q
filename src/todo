@@ -1,4 +1,3 @@
-* use 'q' as a metatable for all scripts and remove 'q.' from all lua calls
 * write tri->leaf mapping and build list of triangles per leaf
 * build bvh per node with some minimum of triangles per bvh
 * build vertex buffer per node with also some mininum number of triangles
@@ -12,15 +11,16 @@
   bvh
 * use ref counting for bvh
 * write a better class possibly refcouted for vertex buffer
-* write dc as task spawner rather than a free function
 * write more tests for tasking system
 * generalized cvar to floating points and string possibly
-* remove m_* to make code more consistent accross the board
+* add m_* to make code more consistent accross the board
 * be careful with all tasks and possibly refcount all structure
 * build a lua interpreter as tool in the build
 * write lua scripts to describe shaders rather than using macros hell
 * removed unused shaders that are spread all over the place
 * use regular font rendering instead of what is done today
-* properly handle opengl
+* properly handle opengl version
 * check problem when mouse is locked
+* release all keys when getting ouf of focus
+* remove internal::task crap. just useless complications
 
