@@ -39,7 +39,8 @@ int main(int argc, const char **argv) {
   const u32 threadnum = sys::threadnumber() - 1;
   con::out("init: tasking system: %d threads created", threadnum);
   task::start(&threadnum, 1);
-
+  con::out("init: script module");
+  script::start();
   con::out("init: isosurface module");
   iso::start();
   con::out("init: csg module");
