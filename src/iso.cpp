@@ -299,7 +299,7 @@ struct gridbuilder {
     maxlvl(0),
     level(0)
   {}
-  ~gridbuilder() { ALIGNEDFREE(stack); }
+  ~gridbuilder() {ALIGNEDFREE(stack);}
 
   struct edge {
     vec3f p, n;
@@ -610,7 +610,8 @@ struct gridbuilder {
         // we must use a more compact storage for it
         if (outside) continue;
         const auto qor = startsign==1 ? quadorder : quadorder_cc;
-        const quad q = {{p[qor[0]],p[qor[1]],p[qor[2]],p[qor[3]]},
+        const quad q = {
+          {p[qor[0]],p[qor[1]],p[qor[2]],p[qor[3]]},
           max(startfield.m, endfield.m)
         };
         pl.leaf.quads.push_back(q);
@@ -643,8 +644,8 @@ struct gridbuilder {
   void output(octree::node &node) {
     node.leaf->root.resize(1);
     outputoctree(node);
-    //node.leaf->root.refit();
-    //node.leaf->pts.refit();
+    // node.leaf->root.refit(); XXX implement this in vector class
+    // node.leaf->pts.refit(); XXX implement this in vector class
     node.leaf->quads = move(pl.leaf.quads);
   }
 
@@ -747,9 +748,7 @@ struct isotask : public task {
     spawnnext();
   }
 
-  INLINE vec3f pos(const vec3i &xyz) {
-    return org+cellsize*vec3f(xyz);
-  }
+  INLINE vec3f pos(const vec3i &xyz) {return org+cellsize*vec3f(xyz);}
 
   void build(octree::node &node, const vec3i &xyz = vec3i(zero), u32 level = 0) {
     node.level = level;

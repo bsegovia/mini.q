@@ -55,6 +55,7 @@ struct queue {
   queue(u32 threadnum);
   ~queue(void);
   void append(task*);
+  void remove(task*, bool lock=true);
   void terminate(task*);
   static int threadfunc(void*);
   SDL_cond *cond;
@@ -88,12 +89,7 @@ void internal::wait(bool recursivewait) {
   // execute the run function
   for (;;) {
     const auto elt = --elemnum;
-    if (elt == 0) {
-      SDL_LockMutex(owner->mutex);
-        if (in_list())
-          owner->readylist.erase(this);
-      SDL_UnlockMutex(owner->mutex);
-    }
+    if (elt == 0) owner->remove(job);
     if (elt >= 0) {
       job->run(elt);
       if (--toend == 0) owner->terminate(job);
@@ -118,10 +114,8 @@ void internal::wait(bool recursivewait) {
   }
 
   // finished and no more waiters, we can safely release the dependency array
-  if (!recursivewait && --waiternum == 0) {
+  if (!recursivewait && --waiternum == 0)
     loopi(depnum) deps[i]->release();
-    job->release();
-  }
   job->release();
 }
 
@@ -129,7 +123,8 @@ void queue::append(task *job) {
   auto &self = inner(job);
   assert(self.owner == this && self.tostart == 0);
   SDL_LockMutex(self.owner->mutex);
-    if (self.elemnum != 0) {
+    if (self.elemnum > 0) {
+      job->acquire();
       if (self.policy & task::HI_PRIO)
         self.owner->readylist.push_front(&self);
       else
@@ -137,6 +132,19 @@ void queue::append(task *job) {
     }
   SDL_CondBroadcast(cond);
   SDL_UnlockMutex(self.owner->mutex);
+}
+
+void queue::remove(task *job, bool lock) {
+  auto &self = inner(job);
+  assert(self.owner == this);
+  if (lock) SDL_LockMutex(self.owner->mutex);
+  if (!self.in_list()) {
+    if (lock) SDL_UnlockMutex(self.owner->mutex);
+    return;
+  }
+  self.owner->readylist.erase(&self);
+  if (lock) SDL_UnlockMutex(self.owner->mutex);
+  job->release();
 }
 
 void queue::terminate(task *job) {
@@ -157,10 +165,8 @@ void queue::terminate(task *job) {
   }
 
   // if no more waiters, we can safely free all dependencies since we are done
-  if (self.waiternum == 0) {
+  if (self.waiternum == 0)
     loopi(self.depnum) self.deps[i]->release();
-    job->release();
-  }
 }
 
 int queue::threadfunc(void *data) {
@@ -191,11 +197,7 @@ int queue::threadfunc(void *data) {
           job->run(elt);
           if (--self->toend == 0) q->terminate(job);
         }
-        if (elt == 0) {
-          SDL_LockMutex(q->mutex);
-            q->readylist.erase(self);
-          SDL_UnlockMutex(q->mutex);
-        }
+        if (elt == 0) q->remove(job);
         if (elt <= 0) break;
       }
     }
@@ -203,7 +205,7 @@ int queue::threadfunc(void *data) {
     // with hi-prio that just arrived
     else {
       const auto elt = --self->elemnum;
-      if (elt == 0) q->readylist.erase(self);
+      if (elt == 0) q->remove(job, false);
       SDL_UnlockMutex(q->mutex);
       if (elt >= 0) {
         job->run(elt);
@@ -233,7 +235,6 @@ queue::~queue(void) {
 }
 } /* namespace tasking */
 
-
 void task::start(const u32 *queueinfo, u32 n) {
   tasking::queues.resize(n);
   loopi(s32(n)) tasking::queues[i] = NEW(tasking::queue, queueinfo[i]);
@@ -256,7 +257,6 @@ void task::scheduled(void) {
   auto &self = tasking::inner(this);
   assert(self.state == tasking::UNSCHEDULED);
   storerelease(&self.state, u16(tasking::SCHEDULED));
-  acquire();
   if (--self.tostart == 0) {
     storerelease(&self.state, u16(tasking::RUNNING));
     self.owner->append(this);

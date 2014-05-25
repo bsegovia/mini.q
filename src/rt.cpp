@@ -13,7 +13,7 @@
 
 namespace q {
 namespace rt {
-static intersector *world = NULL;
+ref<intersector> world;
 
 // create a triangle soup and make a mesh out of it
 void buildbvh(vec3f *v, u32 *idx, u32 idxnum) {
@@ -24,7 +24,7 @@ void buildbvh(vec3f *v, u32 *idx, u32 idxnum) {
     loopj(3) prim[i].v[j] = v[idx[3*i+j]];
     prim[i].type = primitive::TRI;
   }
-  world = create(prim, trinum);
+  world = NEW(intersector, prim, trinum);
   const auto ms = sys::millis() - start;
   SAFE_DELA(prim);
   con::out("bvh: elapsed %f ms", float(ms));
@@ -78,7 +78,7 @@ void start() {
     LOAD(rt);
   }
 }
-void finish() {destroy(world);}
+void finish() {world=NULL;}
 
 camera::camera(vec3f org, vec3f up, vec3f view, float fov, float ratio) :
   org(org), up(up), view(view), fov(fov), ratio(ratio)

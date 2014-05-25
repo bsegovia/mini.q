@@ -236,7 +236,7 @@ test_script: $(TEST_SCRIPTS_OBJS)
 
 clean:
 	rm -rf mini.q mini.q.server mini.q.rt importobj\
-		compress_chars test_script *.o *.d ./enet/*.o ./enet/*.d\
+		compress_chars test_script *.o *.d ./utests/*.o ./enet/*.o ./enet/*.d\
 		base/*.o base/*.d base/lua/*.o base/lua/*.d\
 		oprofile_data
 

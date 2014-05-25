@@ -164,7 +164,7 @@ public:
   // personally, I consider it "risky". use find/insert for more
   // explicit operations.
   mapped_type& operator[](const key_type& key) {
-    hash_value_t hash;
+    hash_value_t hash = 0;
     node* n = find_for_insert(key, &hash);
     if (n == 0 || !n->is_occupied())
       return insert_at(value_type(key, TValue()), n, hash).first->second;

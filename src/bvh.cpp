@@ -44,7 +44,7 @@ enum {ONLEFT, ONRIGHT};
 // n log(n) compiler with bounding box sweeping and SAH heuristics
 struct compiler {
   compiler(void) : n(0), accnum(0), currid(0), leafnum(0), nodenum(0) {}
-  void injection(const primitive *soup, u32 primnum);
+  void injection(primitive *soup, u32 primnum);
   void compile(void);
   vector<u8> istri;
   vector<s32> pos;
@@ -52,7 +52,7 @@ struct compiler {
   vector<u32> tmpids;
   vector<aabb> boxes;
   vector<aabb> rlboxes;
-  const primitive *prims;
+  primitive *prims;
   vector<waldtriangle> acc;
   intersector::node *root;
   s32 n, accnum;
@@ -69,7 +69,7 @@ template<u32 axis> struct sorter {
   }
 };
 
-void compiler::injection(const primitive *soup, const u32 primnum) {
+void compiler::injection(primitive *soup, const u32 primnum) {
   vector<centroid> centroids;
 
   root = NEWAE(intersector::node,2*primnum+1);
@@ -203,13 +203,14 @@ INLINE void makenode(compiler &c, const segment &data, u32 axis) {
 
 INLINE void makeleaf(compiler &c, const segment &data) {
   const auto n = data.last - data.first + 1;
-  const auto &first = c.prims[c.ids[0][data.first]];
+  auto &first = c.prims[c.ids[0][data.first]];
   auto &node = c.root[data.id];
   node.box = data.box;
   if (first.type == primitive::INTERSECTOR) {
     assert(n==1);
     node.setflag(intersector::ISECLEAF);
-    node.setptr(first.isec);
+    node.setptr(first.isec.ptr);
+    first.isec->acquire();
   } else {
     node.setflag(intersector::TRILEAF);
     node.setptr(&c.acc[c.accnum]);
@@ -300,27 +301,25 @@ void compiler::compile(void) {
   growboxes(*this);
 }
 
-intersector *create(const primitive *prims, int n) {
-  if (n==0) return NULL;
-  compiler c;
-  auto tree = NEWE(intersector);
-  c.injection(prims, n);
-  c.compile();
-  tree->acc = move(c.acc);
-  tree->root = c.root;
-  if (bvhstatitics) {
-    con::out("bvh: %d nodes %d leaves", c.nodenum, c.leafnum);
-    con::out("bvh: %f triangles/leaf", float(n) / float(c.leafnum));
+intersector::intersector(primitive *prims, int n) {
+  if (n==0)
+    root = NULL;
+  else {
+    compiler c;
+    c.injection(prims, n);
+    c.compile();
+    acc = move(c.acc);
+    root = c.root;
+    if (bvhstatitics) {
+      con::out("bvh: %d nodes %d leaves", c.nodenum, c.leafnum);
+      con::out("bvh: %f triangles/leaf", float(n) / float(c.leafnum));
+    }
   }
-  return tree;
 }
 
-void destroy(intersector *bvhtree) {
-  if (bvhtree == NULL) return;
-  SAFE_DELA(bvhtree->root);
-  SAFE_DEL(bvhtree);
+intersector::~intersector() {
+  SAFE_DELA(root);
 }
-
 } /* namespace rt */
 } /* namespace q */
 
