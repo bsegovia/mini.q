@@ -55,7 +55,7 @@ struct queue {
   queue(u32 threadnum);
   ~queue(void);
   void append(task*);
-  void remove(task*, bool lock=true);
+  void remove(task*);
   void terminate(task*);
   static int threadfunc(void*);
   SDL_cond *cond;
@@ -134,16 +134,16 @@ void queue::append(task *job) {
   SDL_UnlockMutex(self.owner->mutex);
 }
 
-void queue::remove(task *job, bool lock) {
+void queue::remove(task *job) {
   auto &self = inner(job);
   assert(self.owner == this);
-  if (lock) SDL_LockMutex(self.owner->mutex);
+  SDL_LockMutex(self.owner->mutex);
   if (!self.in_list()) {
-    if (lock) SDL_UnlockMutex(self.owner->mutex);
+    SDL_UnlockMutex(self.owner->mutex);
     return;
   }
   self.owner->readylist.erase(&self);
-  if (lock) SDL_UnlockMutex(self.owner->mutex);
+  SDL_UnlockMutex(self.owner->mutex);
   job->release();
 }
 
@@ -205,7 +205,7 @@ int queue::threadfunc(void *data) {
     // with hi-prio that just arrived
     else {
       const auto elt = --self->elemnum;
-      if (elt == 0) q->remove(job, false);
+      if (elt == 0) q->remove(job);
       SDL_UnlockMutex(q->mutex);
       if (elt >= 0) {
         job->run(elt);
