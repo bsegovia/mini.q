@@ -7,7 +7,6 @@
 #include "iso.hpp"
 #include "base/task.hpp"
 #include "base/vector.hpp"
-#include "base/map.hpp" // XXX remove it
 #include "base/console.hpp"
 
 namespace q {
@@ -516,22 +515,6 @@ static void buildtrianglelists(qemcontext &ctx, const procmesh &pm) {
   }
 }
 
-#if 0
-static void compute_quad_count(procmesh &pm) {
-  map<iso::octree::node*, int> counts;
-  loopv(pm.owner) {
-    const auto node = pm.owner[i];
-    const auto it = counts.find(node);
-    if (it == counts.end())
-      counts[node] = 1;
-    else
-      ++it->second;
-  }
-  for (auto it = counts.begin(); it != counts.end(); ++it)
-    printf("node %p %i\n", it->first, it->second);
-}
-#endif
-
 static void decimatemesh(procmesh &pm, float cellsize) {
   if (pm.idx.size() == 0) return;
   qemcontext ctx;
@@ -568,6 +551,7 @@ static void sharpenmesh(procmesh &pm) {
   vector<int> vertlist(pm.pos.size());
   vector<vec3f> newnor(pm.pos.size());
   vector<u32> newidx, newmat;
+  vector<iso::octree::node*> newowner;
 
   // init the chain list
   loopv(vertlist) vertlist[i] = i;
@@ -629,13 +613,124 @@ static void sharpenmesh(procmesh &pm) {
 }
 
 /*-------------------------------------------------------------------------
+ - boiler plate to build bvh from procmesh
+ -------------------------------------------------------------------------*/
+// list of triangles per leaf
+typedef vector<int> leafsubmesh;
+
+static void build_leaf_submesh(procmesh &pm, vector<leafsubmesh> &submeshes) {
+  loopv(pm.owner) {
+    const auto node = pm.owner[i];
+    if (node->flag == 0) {
+      node->flag = submeshes.size() + 1; // +1 since 0 means "empty"
+      submeshes.push_back(leafsubmesh());
+      submeshes.back().push_back(i);
+    } else
+      submeshes[node->flag-1].push_back(i);
+  }
+}
+
+static const int MIN_TRI_NUM_PER_BVH = 32;
+static int build_bvh_jobs(iso::octree::node *curr,
+                          vector<iso::octree::node*> &jobs,
+                          const vector<leafsubmesh> &submeshes)
+{
+  if (curr->isleaf) {
+    if (curr->flag == 0) return 0;
+    const int size = submeshes[curr->flag-1].size();
+    if (size >= MIN_TRI_NUM_PER_BVH) {
+      jobs.push_back(curr);
+      return -1;
+    } else
+      return size;
+  }
+
+  // if one of the children has a BVH, we force the others to have one
+  int total = 0;
+  bool forcebvh = false, hasbvh[8];
+  loopi(8) {
+    const auto howmany = build_bvh_jobs(curr->children+i, jobs, submeshes);
+    if (howmany == -1)
+      hasbvh[i] = forcebvh = true;
+    else {
+      hasbvh[i] = false;
+      total += howmany;
+    }
+  }
+
+  // update the job list accordingly. if not enough triangles, just push the
+  // triangles up
+  if (forcebvh) {
+    loopi(8) {
+      if (hasbvh[i]) continue;
+      jobs.push_back(curr->children+i);
+    }
+    return -1;
+  } else if (total >= MIN_TRI_NUM_PER_BVH) {
+    jobs.push_back(curr);
+    return 0;
+  } else
+    return total;
+}
+
+// build bvhs for submeshes
+struct task_submesh_bvh_build : public task {
+  INLINE task_submesh_bvh_build(procmesh &pm, iso::octree &o,
+                                const vector<leafsubmesh> &submeshes,
+                                const vector<iso::octree::node*> &jobs) :
+    task("task_submesh_bvh_build", jobs.size()), pm(pm), o(o),
+    submeshes(submeshes), jobs(jobs)
+  {}
+  virtual void run(u32 idx) {
+
+  }
+  procmesh &pm;
+  iso::octree &o;
+  const vector<leafsubmesh> &submeshes;
+  const vector<iso::octree::node*> &jobs;
+};
+
+// build the bvh of bvhs for the complete scene
+struct task_two_level_bvh_build : public task {
+  INLINE task_two_level_bvh_build(iso::octree &o, const vector<iso::octree::node*> &jobs) :
+    task("task_two_level_bvh_build"), jobs(jobs), o(o)
+  {}
+  virtual void run(u32) {
+
+  }
+  const vector<iso::octree::node*> &jobs;
+  iso::octree &o;
+};
+
+// build a bvh from octree nodes
+struct task_bvh_build : public task {
+  INLINE task_bvh_build(procmesh &pm, iso::octree &o) :
+    task("task_bvh_build"), pm(pm), o(o)
+  {}
+  virtual void run(u32) {
+    build_leaf_submesh(pm, submeshes);
+    build_bvh_jobs(&o.m_root, jobs, submeshes);
+    ref<task> submesh_task = NEW(task_submesh_bvh_build, pm, o, submeshes, jobs);
+    ref<task> twolevel_task = NEW(task_two_level_bvh_build, o, jobs);
+    submesh_task->starts(*twolevel_task);
+    twolevel_task->ends(*this);
+    submesh_task->scheduled();
+    twolevel_task->scheduled();
+  }
+  procmesh &pm;
+  iso::octree &o;
+  vector<leafsubmesh> submeshes;
+  vector<iso::octree::node*> jobs;
+};
+
+/*-------------------------------------------------------------------------
  - build a final mesh from the qef points and quads stored in the octree
  -------------------------------------------------------------------------*/
 
 // build a first mesh from contoured octree
-struct isomeshtask : public task {
-  INLINE isomeshtask(iso::octree &o, procmesh &pm) :
-    task("isomeshtask"), o(o), pm(pm)
+struct task_iso_mesh : public task {
+  INLINE task_iso_mesh(iso::octree &o, procmesh &pm) :
+    task("task_iso_mesh"), o(o), pm(pm)
   {}
   virtual void run(u32) {
     buildmesh(o, o.m_root, pm);
@@ -647,9 +742,9 @@ struct isomeshtask : public task {
 };
 
 // decimate a procmesh using qem
-struct decimatetask : public task {
-  INLINE decimatetask(procmesh &pm, float cellsize) :
-    task("decimatetask"), pm(pm), cellsize(cellsize)
+struct task_decimate : public task {
+  INLINE task_decimate(procmesh &pm, float cellsize) :
+    task("task_decimate"), pm(pm), cellsize(cellsize)
   {}
   virtual void run(u32) { decimatemesh(pm, cellsize); }
   procmesh &pm;
@@ -657,9 +752,9 @@ struct decimatetask : public task {
 };
 
 // create proper (possible sharpened) normals and finish the mesh
-struct finishtask : public task {
-  INLINE finishtask(mesh &m, procmesh &pm) :
-    task("finishtask"), m(m), pm(pm)
+struct task_finish_mesh : public task {
+  INLINE task_finish_mesh(mesh &m, procmesh &pm) :
+    task("task_finish_mesh"), m(m), pm(pm)
   {}
   virtual void run(u32) {
     // handle sharp edges and create normals
@@ -697,17 +792,17 @@ struct finishtask : public task {
 };
 
 // task to build the mesh from a "contoured" octree
-struct meshbuildtask : public task {
-  INLINE meshbuildtask(mesh &m, iso::octree &o, float cellsize, int waiternum) :
-    task("meshbuildtask", 1, waiternum), m(m), o(o), cellsize(cellsize)
+struct task_build_mesh : public task {
+  INLINE task_build_mesh(mesh &m, iso::octree &o, float cellsize, int waiternum) :
+    task("task_build_mesh", 1, waiternum), m(m), o(o), cellsize(cellsize)
   {}
 
   virtual void run(u32) {
     // create all tasks needed for the mesh processing
-    ref<task> init = NEW(isomeshtask, o, pm);
+    ref<task> init = NEW(task_iso_mesh, o, pm);
     ref<task> decimate[DECIMATION_NUM];
-    loopi(DECIMATION_NUM) decimate[i] = NEW(decimatetask, pm, cellsize);
-    ref<task> finish = NEW(finishtask, m, pm);
+    loopi(DECIMATION_NUM) decimate[i] = NEW(task_decimate, pm, cellsize);
+    ref<task> finish = NEW(task_finish_mesh, m, pm);
 
     // handle dependencies and completion of parent task
     init->starts(*decimate[0]);
@@ -728,7 +823,7 @@ struct meshbuildtask : public task {
 };
 
 ref<task> buildmesh(mesh &m, iso::octree &o, float cellsize, int waiternum) {
-  return NEW(meshbuildtask, m, o, cellsize, waiternum);
+  return NEW(task_build_mesh, m, o, cellsize, waiternum);
 }
 
 /*-------------------------------------------------------------------------

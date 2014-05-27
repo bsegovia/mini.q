@@ -5,6 +5,7 @@
 #pragma once
 #include "csg.hpp"
 #include "geom.hpp"
+#include "bvh.hpp"
 #include "base/sys.hpp"
 #include "base/vector.hpp"
 #include "base/math.hpp"
@@ -65,16 +66,18 @@ struct octree {
     int idx;
   };
   struct node {
-    INLINE node() : children(NULL), level(0), isleaf(0), empty(0) {}
+    INLINE node() : children(NULL), level(0), isleaf(0), empty(0), flag(0) {}
     ~node();
     union {
       node *children;
       leafoctree<qefpoint> *leaf;
     };
+    ref<rt::intersector> bvh;
     vec3i org;
     u32 level:30;
     u32 isleaf:1;
     u32 empty:1;
+    u32 flag;
   };
   typedef leafoctree<qefpoint> leaftype;
 
@@ -82,6 +85,7 @@ struct octree {
   const node *findleaf(vec3i xyz) const;
   node m_root;
   u32 m_dim, m_logdim;
+  ref<rt::intersector> bvh;
 };
 static const int SUBGRID = 16;
 

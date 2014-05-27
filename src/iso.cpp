@@ -690,7 +690,7 @@ struct context {
 static context *ctx = NULL;
 
 // run the contouring part per leaf of octree using small grids
-struct contouringtask : public task {
+struct task_contouring : public task {
 
   // what to run per task iteration
   struct workitem {
@@ -704,8 +704,8 @@ struct contouringtask : public task {
     float cellsize;
   };
 
-  INLINE contouringtask(vector<workitem> &items) :
-    task("contouringtask", items.size()), items(items)
+  INLINE task_contouring(vector<workitem> &items) :
+    task("task_contouring", items.size()), items(items)
   {}
 
   virtual void run(u32 idx) {
@@ -729,12 +729,12 @@ struct contouringtask : public task {
 };
 
 // build the octree topology needed to run contouring
-struct isotask : public task {
-  typedef contouringtask::workitem workitem;
-  INLINE isotask(octree &o, const csg::node &csgnode,
+struct task_iso : public task {
+  typedef task_contouring::workitem workitem;
+  INLINE task_iso(octree &o, const csg::node &csgnode,
                  const vec3f &org, float cellsize,
                  u32 dim) :
-    task("isotask"),
+    task("task_iso"),
     oct(&o), csgnode(&csgnode),
     org(org), cellsize(cellsize), dim(dim)
   {
@@ -810,7 +810,7 @@ struct isotask : public task {
   }
 
   void spawnnext() {
-    ref<task> contouring = NEW(contouringtask, items);
+    ref<task> contouring = NEW(task_contouring, items);
     contouring->ends(*this);
     contouring->scheduled();
   }
@@ -828,10 +828,10 @@ geom::mesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::node &cs
   geom::mesh m;
 
   ref<task> meshtask = geom::buildmesh(m, o, cellsize);
-  ref<task> contouringtask = NEW(isotask, o, csgnode, org, cellsize, cellnum);
-  contouringtask->starts(*meshtask);
+  ref<task> isotask = NEW(task_iso, o, csgnode, org, cellsize, cellnum);
+  isotask->starts(*meshtask);
   meshtask->scheduled();
-  contouringtask->scheduled();
+  isotask->scheduled();
   meshtask->wait();
 
 #if !defined(RELEASE)
