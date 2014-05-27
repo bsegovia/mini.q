@@ -9,7 +9,6 @@
 #include "base/sse.hpp"
 #include "base/avx.hpp"
 #include "bvh.hpp"
-#include "bvhinternal.hpp"
 #include "soa.hpp"
 #include "rt.hpp"
 

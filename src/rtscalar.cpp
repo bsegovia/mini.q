@@ -4,7 +4,6 @@
  -------------------------------------------------------------------------*/
 #include "rt.hpp"
 #include "bvh.hpp"
-#include "bvhinternal.hpp"
 
 namespace q {
 namespace rt {

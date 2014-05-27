@@ -7,6 +7,7 @@
 #include "iso.hpp"
 #include "base/task.hpp"
 #include "base/vector.hpp"
+#include "base/map.hpp" // XXX remove it
 #include "base/console.hpp"
 
 namespace q {
@@ -61,6 +62,7 @@ static INLINE const quadmesh &findbestmesh(iso::octree::qefpoint **pt) {
 struct procmesh {
   vector<vec3f> pos, nor;
   vector<u32> idx, mat;
+  vector<iso::octree::node*> owner;
   INLINE int trinum() const {return idx.size()/3;}
 };
 
@@ -124,6 +126,7 @@ static void buildmesh(const iso::octree &o, const iso::octree::node &node, procm
         }
         pm.idx.push_back(qef->idx);
       }
+      pm.owner.push_back(&const_cast<iso::octree::node&>(node));
     }
   }
 }
@@ -448,6 +451,7 @@ static void decimatemesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
   vector<int> mapping(pm.pos.size());
   loopv(mapping) mapping[i] = -1;
   vector<u32> newidx, newmat;
+  vector<iso::octree::node*> newowner;
   const auto trinum = pm.trinum();
   auto vertnum = 0;
   loopi(trinum) {
@@ -455,6 +459,7 @@ static void decimatemesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
     if (idx[0] == idx[1] || idx[1] == idx[2] || idx[2] == idx[0])
       continue;
     newmat.push_back(pm.mat[i]);
+    newowner.push_back(pm.owner[i]);
     loopj(3) {
       if (mapping[idx[j]] == -1) mapping[idx[j]] = vertnum++;
       newidx.push_back(mapping[idx[j]]);
@@ -462,6 +467,7 @@ static void decimatemesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
   }
   pm.idx = move(newidx);
   pm.mat = move(newmat);
+  pm.owner = move(newowner);
 
   // compact vertex buffer
   vector<vec3f> newpos(vertnum);
@@ -510,9 +516,27 @@ static void buildtrianglelists(qemcontext &ctx, const procmesh &pm) {
   }
 }
 
+#if 0
+static void compute_quad_count(procmesh &pm) {
+  map<iso::octree::node*, int> counts;
+  loopv(pm.owner) {
+    const auto node = pm.owner[i];
+    const auto it = counts.find(node);
+    if (it == counts.end())
+      counts[node] = 1;
+    else
+      ++it->second;
+  }
+  for (auto it = counts.begin(); it != counts.end(); ++it)
+    printf("node %p %i\n", it->first, it->second);
+}
+#endif
+
 static void decimatemesh(procmesh &pm, float cellsize) {
   if (pm.idx.size() == 0) return;
   qemcontext ctx;
+  // printf("before\n");
+  // compute_quad_count(pm);
 
   // we go over all triangles and build all vertex qem
   buildqem(ctx, pm);
@@ -530,6 +554,9 @@ static void decimatemesh(procmesh &pm, float cellsize) {
   // decimate the mesh using quadric error functions
   const auto minlen = cellsize*MIN_EDGE_FACTOR;
   decimatemesh(ctx, pm, minlen);
+  // printf("after\n");
+  // compute_quad_count(pm);
+  // fflush(stdout);
 }
 
 /*-------------------------------------------------------------------------

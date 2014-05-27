@@ -6,7 +6,6 @@
 #include <cfloat>
 #include <cmath>
 #include "bvh.hpp"
-#include "bvhinternal.hpp"
 #include "base/algorithm.hpp"
 #include "base/console.hpp"
 #include "base/script.hpp"
