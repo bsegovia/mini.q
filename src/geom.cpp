@@ -617,8 +617,9 @@ static void sharpenmesh(procmesh &pm) {
  -------------------------------------------------------------------------*/
 // list of triangles per leaf
 typedef vector<int> leafsubmesh;
+static const int MIN_TRI_NUM_PER_BVH = 32;
 
-static void build_leaf_submesh(procmesh &pm, vector<leafsubmesh> &submeshes) {
+static void assign_leaf_submesh(procmesh &pm, vector<leafsubmesh> &submeshes) {
   loopv(pm.owner) {
     const auto node = pm.owner[i];
     if (node->flag == 0) {
@@ -630,7 +631,6 @@ static void build_leaf_submesh(procmesh &pm, vector<leafsubmesh> &submeshes) {
   }
 }
 
-static const int MIN_TRI_NUM_PER_BVH = 32;
 static int build_bvh_jobs(iso::octree::node *curr,
                           vector<iso::octree::node*> &jobs,
                           const vector<leafsubmesh> &submeshes)
@@ -673,19 +673,41 @@ static int build_bvh_jobs(iso::octree::node *curr,
     return total;
 }
 
+// push all triangles that belongs to this node in vector of primitives
+static void gather_triangles(const iso::octree::node *curr,
+                             vector<rt::primitive> &prims,
+                             const procmesh &pm,
+                             const vector<leafsubmesh> &submeshes)
+{
+  if (curr->isleaf) {
+    const auto &submesh = submeshes[curr->flag-1];
+    for (auto it = submesh.begin(); it != submesh.end(); ++it) {
+      const auto tri = &pm.idx[3*(*it)];
+      const auto v0 = pm.pos[tri[0]];
+      const auto v1 = pm.pos[tri[1]];
+      const auto v2 = pm.pos[tri[2]];
+      prims.push_back(rt::primitive(v0,v1,v2));
+    }
+  } else loopi(8)
+    gather_triangles(curr->children+i, prims, pm, submeshes);
+}
+
 // build bvhs for submeshes
 struct task_submesh_bvh_build : public task {
-  INLINE task_submesh_bvh_build(procmesh &pm, iso::octree &o,
+  INLINE task_submesh_bvh_build(iso::octree &o,
+                                procmesh &pm,
                                 const vector<leafsubmesh> &submeshes,
                                 const vector<iso::octree::node*> &jobs) :
-    task("task_submesh_bvh_build", jobs.size()), pm(pm), o(o),
+    task("task_submesh_bvh_build", jobs.size()), o(o), pm(pm),
     submeshes(submeshes), jobs(jobs)
   {}
   virtual void run(u32 idx) {
-
+    vector<rt::primitive> prims;
+    gather_triangles(jobs[idx], prims, pm, submeshes);
+    jobs[idx]->bvh = NEW(rt::intersector, &prims[0], prims.size());
   }
-  procmesh &pm;
   iso::octree &o;
+  procmesh &pm;
   const vector<leafsubmesh> &submeshes;
   const vector<iso::octree::node*> &jobs;
 };
@@ -696,7 +718,9 @@ struct task_two_level_bvh_build : public task {
     task("task_two_level_bvh_build"), jobs(jobs), o(o)
   {}
   virtual void run(u32) {
-
+    vector<rt::primitive> prims;
+    loopv(jobs) prims.push_back(rt::primitive(jobs[i]->bvh.ptr));
+    o.m_root.bvh = NEW(rt::intersector, &prims[0], prims.size());
   }
   const vector<iso::octree::node*> &jobs;
   iso::octree &o;
@@ -708,9 +732,9 @@ struct task_bvh_build : public task {
     task("task_bvh_build"), pm(pm), o(o)
   {}
   virtual void run(u32) {
-    build_leaf_submesh(pm, submeshes);
+    assign_leaf_submesh(pm, submeshes);
     build_bvh_jobs(&o.m_root, jobs, submeshes);
-    ref<task> submesh_task = NEW(task_submesh_bvh_build, pm, o, submeshes, jobs);
+    ref<task> submesh_task = NEW(task_submesh_bvh_build, o, pm, submeshes, jobs);
     ref<task> twolevel_task = NEW(task_two_level_bvh_build, o, jobs);
     submesh_task->starts(*twolevel_task);
     twolevel_task->ends(*this);
