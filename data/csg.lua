@@ -70,7 +70,7 @@ function complexscene()
   local newmat0 = translation(30.0,3.0,7.0, cylinderxz(0,0,4.2, mat_snoise_index))
   local newmat1 = translation(30.0,3.0,10.0, cylinderxz(0,0,4.2, mat_snoise_index));
   --return U(ground, translation(10.0,1.0,10.0, box(5.0,5.0,5.0,mat_simple_index)))
-  return U(c0, D(R(R(world, newmat0), newmat1), remove))
+  --return U(c0, D(R(R(world, newmat0), newmat1), remove))
 --[[
   local world = U(c0, D(R(R(world, newmat0), newmat1), remove))
   local whole = world;
@@ -79,7 +79,7 @@ function complexscene()
   end
   return whole
 ]]--
-  --return d0
+  return d0
   --return U(scene0, arc);
 end
 

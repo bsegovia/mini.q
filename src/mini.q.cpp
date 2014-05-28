@@ -192,9 +192,9 @@ void start(int argc, char *argv[]) {
   const auto flags = IMG_INIT_JPG | IMG_INIT_PNG;
   const auto initted = IMG_Init(flags);
   if ((initted&flags) != flags) {
-    con::out("IMG_Init: Failed to init required jpg and png support!\n");
-      con::out("IMG_Init: %s\n", IMG_GetError());
-      sys::fatal("IMG_Init failed");
+    con::out("IMG_Init: failed to init required jpg and png support!\n");
+    con::out("IMG_Init: %s\n", IMG_GetError());
+    sys::fatal("IMG_Init failed");
   }
 
   con::out("init: memory debugger");
@@ -208,7 +208,7 @@ void start(int argc, char *argv[]) {
   // flush to zero and no denormals
   _mm_setcsr(_mm_getcsr() | (1<<15) | (1<<6));
 #endif
-  const u32 threadnum = sys::threadnumber() - 1;
+  const u32 threadnum = 0;//sys::threadnumber() - 1;
   con::out("init: tasking system: %d threads created", threadnum);
   task::start(&threadnum, 1);
 

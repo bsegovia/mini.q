@@ -599,6 +599,7 @@ static void sharpenmesh(procmesh &pm) {
       }
       newidx.push_back(idx);
     }
+    newowner.push_back(pm.owner[i]);
     newmat.push_back(pm.mat[i]);
   }
 
@@ -610,21 +611,27 @@ static void sharpenmesh(procmesh &pm) {
   pm.nor = move(newnor);
   pm.idx = move(newidx);
   pm.mat = move(newmat);
+  pm.owner = move(newowner);
 }
 
 /*-------------------------------------------------------------------------
  - boiler plate to build bvh from procmesh
  -------------------------------------------------------------------------*/
 // list of triangles per leaf
-typedef vector<int> leafsubmesh;
+typedef vector<int> leaf_submesh;
 static const int MIN_TRI_NUM_PER_BVH = 32;
 
-static void assign_leaf_submesh(procmesh &pm, vector<leafsubmesh> &submeshes) {
+static void build_leaf_submesh(procmesh &pm, vector<leaf_submesh> &submeshes) {
+#if !defined(NDEBUG)
+  const auto ownersz = pm.owner.size();
+  const auto idxsz = pm.idx.size();
+  assert(3*ownersz == idxsz && "inconsistant procmesh");
+#endif /* NDEBUG */
   loopv(pm.owner) {
     const auto node = pm.owner[i];
     if (node->flag == 0) {
       node->flag = submeshes.size() + 1; // +1 since 0 means "empty"
-      submeshes.push_back(leafsubmesh());
+      submeshes.push_back(leaf_submesh());
       submeshes.back().push_back(i);
     } else
       submeshes[node->flag-1].push_back(i);
@@ -633,7 +640,7 @@ static void assign_leaf_submesh(procmesh &pm, vector<leafsubmesh> &submeshes) {
 
 static int build_bvh_jobs(iso::octree::node *curr,
                           vector<iso::octree::node*> &jobs,
-                          const vector<leafsubmesh> &submeshes)
+                          const vector<leaf_submesh> &submeshes)
 {
   if (curr->isleaf) {
     if (curr->flag == 0) return 0;
@@ -646,23 +653,21 @@ static int build_bvh_jobs(iso::octree::node *curr,
   }
 
   // if one of the children has a BVH, we force the others to have one
-  int total = 0;
-  bool forcebvh = false, hasbvh[8];
+  int total = 0, leaftotal[8];
+  bool forcebvh = false;
   loopi(8) {
-    const auto howmany = build_bvh_jobs(curr->children+i, jobs, submeshes);
-    if (howmany == -1)
-      hasbvh[i] = forcebvh = true;
-    else {
-      hasbvh[i] = false;
-      total += howmany;
-    }
+    leaftotal[i] = build_bvh_jobs(curr->children+i, jobs, submeshes);
+    if (leaftotal[i] == -1)
+      forcebvh = true;
+    else
+      total += leaftotal[i];
   }
 
   // update the job list accordingly. if not enough triangles, just push the
   // triangles up
   if (forcebvh) {
     loopi(8) {
-      if (hasbvh[i]) continue;
+      if (leaftotal[i] <= 0) continue;
       jobs.push_back(curr->children+i);
     }
     return -1;
@@ -677,9 +682,10 @@ static int build_bvh_jobs(iso::octree::node *curr,
 static void gather_triangles(const iso::octree::node *curr,
                              vector<rt::primitive> &prims,
                              const procmesh &pm,
-                             const vector<leafsubmesh> &submeshes)
+                             const vector<leaf_submesh> &submeshes)
 {
   if (curr->isleaf) {
+    assert(curr->flag != 0 && "no mesh found for this leaf");
     const auto &submesh = submeshes[curr->flag-1];
     for (auto it = submesh.begin(); it != submesh.end(); ++it) {
       const auto tri = &pm.idx[3*(*it)];
@@ -693,12 +699,12 @@ static void gather_triangles(const iso::octree::node *curr,
 }
 
 // build bvhs for submeshes
-struct task_submesh_bvh_build : public task {
-  INLINE task_submesh_bvh_build(iso::octree &o,
+struct task_build_submesh_bvh : public task {
+  INLINE task_build_submesh_bvh(iso::octree &o,
                                 procmesh &pm,
-                                const vector<leafsubmesh> &submeshes,
+                                const vector<leaf_submesh> &submeshes,
                                 const vector<iso::octree::node*> &jobs) :
-    task("task_submesh_bvh_build", jobs.size()), o(o), pm(pm),
+    task("task_build_submesh_bvh", jobs.size()), o(o), pm(pm),
     submeshes(submeshes), jobs(jobs)
   {}
   virtual void run(u32 idx) {
@@ -708,7 +714,7 @@ struct task_submesh_bvh_build : public task {
   }
   iso::octree &o;
   procmesh &pm;
-  const vector<leafsubmesh> &submeshes;
+  const vector<leaf_submesh> &submeshes;
   const vector<iso::octree::node*> &jobs;
 };
 
@@ -727,14 +733,14 @@ struct task_two_level_bvh_build : public task {
 };
 
 // build a bvh from octree nodes
-struct task_bvh_build : public task {
-  INLINE task_bvh_build(procmesh &pm, iso::octree &o) :
-    task("task_bvh_build"), pm(pm), o(o)
+struct task_build_bvh : public task {
+  INLINE task_build_bvh(procmesh &pm, iso::octree &o) :
+    task("task_build_bvh"), pm(pm), o(o)
   {}
   virtual void run(u32) {
-    assign_leaf_submesh(pm, submeshes);
+    build_leaf_submesh(pm, submeshes);
     build_bvh_jobs(&o.m_root, jobs, submeshes);
-    ref<task> submesh_task = NEW(task_submesh_bvh_build, o, pm, submeshes, jobs);
+    ref<task> submesh_task = NEW(task_build_submesh_bvh, o, pm, submeshes, jobs);
     ref<task> twolevel_task = NEW(task_two_level_bvh_build, o, jobs);
     submesh_task->starts(*twolevel_task);
     twolevel_task->ends(*this);
@@ -743,7 +749,7 @@ struct task_bvh_build : public task {
   }
   procmesh &pm;
   iso::octree &o;
-  vector<leafsubmesh> submeshes;
+  vector<leaf_submesh> submeshes;
   vector<iso::octree::node*> jobs;
 };
 
@@ -827,14 +833,18 @@ struct task_build_mesh : public task {
     ref<task> decimate[DECIMATION_NUM];
     loopi(DECIMATION_NUM) decimate[i] = NEW(task_decimate, pm, cellsize);
     ref<task> finish = NEW(task_finish_mesh, m, pm);
+    ref<task> bvhtask = NEW(task_build_bvh, pm, o);
 
     // handle dependencies and completion of parent task
     init->starts(*decimate[0]);
     rangei(1,DECIMATION_NUM) decimate[i-1]->starts(*decimate[i]);
     decimate[DECIMATION_NUM-1]->starts(*finish);
     finish->ends(*this);
+    //finish->starts(*bvhtask);
+    //bvhtask->ends(*this);
 
     // schedule everything
+    //bvhtask->scheduled();
     finish->scheduled();
     loopi(DECIMATION_NUM) decimate[i]->scheduled();
     init->scheduled();
