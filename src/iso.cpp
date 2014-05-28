@@ -745,7 +745,9 @@ struct task_iso : public task {
   virtual void run(u32) {
     build(oct->m_root);
     preparejobs(oct->m_root);
-    spawnnext();
+    ref<task> contouring = NEW(task_contouring, items);
+    contouring->ends(*this);
+    contouring->scheduled();
   }
 
   INLINE vec3f pos(const vec3i &xyz) {return org+cellsize*vec3f(xyz);}
@@ -809,12 +811,6 @@ struct task_iso : public task {
     }
   }
 
-  void spawnnext() {
-    ref<task> contouring = NEW(task_contouring, items);
-    contouring->ends(*this);
-    contouring->scheduled();
-  }
-
   vector<workitem> items;
   octree *oct;
   const csg::node *csgnode;
@@ -838,10 +834,6 @@ geom::mesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::node &cs
   isotask->scheduled();
   meshtask->wait();
 
-#if !defined(RELEASE)
-  stats();
-#endif /* defined(RELEASE) */
-
   return m;
 }
 #endif
@@ -862,6 +854,9 @@ void start() {
 }
 void finish() {
   if (ctx == NULL) return;
+#if !defined(RELEASE)
+  stats();
+#endif
   loopv(ctx->m_builders) SAFE_DEL(ctx->m_builders[i]);
   DEL(ctx);
 }

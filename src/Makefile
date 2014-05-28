@@ -24,10 +24,10 @@ FLAGS+=-vec-
 endif
 
 DEBUGFLAGS=-O0 -DMEMORY_DEBUGGER -g
-OPTFLAGS=-O2 -g -DMEMORY_DEBUGGER -fsanitize=address
+OPTFLAGS=-O2 -g -DMEMORY_DEBUGGER #-fsanitize=address
 RELFLAGS=-fomit-frame-pointer -O3 -DNDEBUG -DRELEASE
 
-CXXFLAGS=$(CXXCOMMONFLAGS) $(FLAGS) $(OPTFLAGS)
+CXXFLAGS=$(CXXCOMMONFLAGS) $(FLAGS) $(RELFLAGS)
 CXXSSEFLAGS=$(CXXFLAGS) -msse -msse2
 CXXAVXFLAGS=$(CXXFLAGS) -mavx
 
@@ -35,7 +35,7 @@ CXXAVXFLAGS=$(CXXFLAGS) -mavx
 # link stuff
 ##############################################################################
 ifeq (,$(findstring mingw, $(CXX)))
-LIBS+=`sdl2-config --libs` -lSDL2_image -lSDL2_mixer -lz -lm -lstdc++ -fsanitize=address
+LIBS+=`sdl2-config --libs` -lSDL2_image -lSDL2_mixer -lz -lm -lstdc++ #-fsanitize=address
 endif
 
 ifneq (,$(findstring i686-w64-mingw, $(CXX)))
