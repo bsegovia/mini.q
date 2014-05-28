@@ -823,6 +823,10 @@ struct task_iso : public task {
   u32 dim, maxlvl;
 };
 
+ref<task> create_task(octree &o, const csg::node &node, const vec3f &org, u32 cellnum, float cellsize) {
+  return NEW(task_iso, o, node, org, cellsize, cellnum);
+}
+#if 0
 geom::mesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::node &csgnode) {
   octree o(cellnum);
   geom::mesh m;
@@ -840,6 +844,7 @@ geom::mesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::node &cs
 
   return m;
 }
+#endif
 
 void start() {
   using namespace sys;

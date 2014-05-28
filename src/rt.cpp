@@ -15,6 +15,7 @@ namespace q {
 namespace rt {
 ref<intersector> world;
 
+void setbvh(const ref<intersector> &bvh) { world = bvh; }
 // create a triangle soup and make a mesh out of it
 void buildbvh(vec3f *v, u32 *idx, u32 idxnum) {
   const auto start = sys::millis();

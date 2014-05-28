@@ -95,6 +95,10 @@ static void setupscreen() {
     initwindowpos = true;
   }
 
+  SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+  SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+  SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+  SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
   SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
   SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
   SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
@@ -185,7 +189,9 @@ void start(int argc, char *argv[]) {
  SDL_SetHint(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0");
 #endif
 
- outputcpufeatures();
+  outputcpufeatures();
+  con::out("init: console");
+  con::start();
 
   // load support for the JPG and PNG image formats
   con::out("init: sdl image");
@@ -208,7 +214,7 @@ void start(int argc, char *argv[]) {
   // flush to zero and no denormals
   _mm_setcsr(_mm_getcsr() | (1<<15) | (1<<6));
 #endif
-  const u32 threadnum = 0;//sys::threadnumber() - 1;
+  const u32 threadnum = sys::threadnumber() - 1;
   con::out("init: tasking system: %d threads created", threadnum);
   task::start(&threadnum, 1);
 

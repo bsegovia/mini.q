@@ -64,6 +64,7 @@ const char deferred_fp[] = {
 "    outcol = vec4(getsky(rd, u_sundir), 1.0);\n"
 "  }\n"
 "  SWITCH_WEBGL(gl_FragColor, rt_col) = outcol;\n"
+"  // SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(abs(dot(nor,normalize(vec3(1,1,0)))));\n"
 "}\n"
 
 };

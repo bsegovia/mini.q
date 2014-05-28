@@ -36,7 +36,7 @@ struct mesh {
 };
 
 // create a task to build a mesh from a "contoured" octree
-ref<task> buildmesh(mesh &m, iso::octree &o, float cellsize, int waitnum = 1);
+ref<task> create_task(mesh &m, iso::octree &o, float cellsize, int waitnum = 1);
 
 // load/store the mesh in the given stream
 void store(const char *filename, const mesh &m);

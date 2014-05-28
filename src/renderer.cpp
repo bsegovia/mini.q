@@ -597,21 +597,31 @@ void finish() {
 }
 #endif
 
-VAR(isofromfile, 0, 0, 1);
+static geom::mesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::node &root) {
+  iso::octree o(cellnum);
+  geom::mesh m;
+  ref<task> geom_task = geom::create_task(m, o, cellsize);
+  ref<task> iso_task = iso::create_task(o, root, org, cellnum, cellsize);
+  iso_task->starts(*geom_task);
+  iso_task->scheduled();
+  geom_task->scheduled();
+  geom_task->wait();
+  rt::setbvh(o.bvh);
+  return m;
+}
+
 static const float CELLSIZE = 0.1f;
 static void makescene() {
   if (initialized_m) return;
 
   // create the indexed mesh from the scene description
   geom::mesh m;
-  if (!isofromfile || !geom::load("simple.mesh", m)) {
-    const auto start = sys::millis();
-    const auto node = csg::makescene();
-    assert(node != NULL);
-    m = iso::dc(vec3f(0.15f), 4096, CELLSIZE, *node);
-    const auto duration = sys::millis() - start;
-    con::out("csg: elapsed %f ms ", float(duration));
-  }
+  const auto start = sys::millis();
+  const auto node = csg::makescene();
+  assert(node != NULL);
+  m = dc(vec3f(0.15f), 4096, CELLSIZE, *node);
+  const auto duration = sys::millis() - start;
+  con::out("csg: elapsed %f ms ", float(duration));
   ogl::genbuffers(1, &sceneposbo);
   ogl::bindbuffer(ogl::ARRAY_BUFFER, sceneposbo);
   OGL(BufferData, GL_ARRAY_BUFFER, m.m_vertnum*sizeof(vec3f), &m.m_pos[0].x, GL_STATIC_DRAW);
@@ -627,7 +637,7 @@ static void makescene() {
   con::out("csg: tris %i verts %i", m.m_indexnum/3, m.m_vertnum);
 
   // create the bvh out of the mesh data
-  rt::buildbvh(m.m_pos, m.m_index, m.m_indexnum);
+  //rt::buildbvh(m.m_pos, m.m_index, m.m_indexnum);
   segmentnum = m.m_segmentnum;
   segment = (geom::segment*) MALLOC(sizeof(geom::segment) * segmentnum);
   memcpy(segment, m.m_segment, segmentnum*sizeof(geom::segment));

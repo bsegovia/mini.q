@@ -6,6 +6,7 @@
 
 namespace q {
 namespace con {
+void start();
 void finish();
 const char *curcmd();
 void out(const char *s, ...);

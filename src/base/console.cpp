@@ -10,6 +10,7 @@
 #include "text.hpp"
 #include "hash_map.hpp"
 #include "sys.hpp"
+#include <SDL.h>
 
 namespace q {
 namespace con {
@@ -47,8 +48,12 @@ static void bindkey(const string &key, const string &action) {
 }
 CMDN(bind, bindkey);
 
+static SDL_mutex *mutex = NULL;
+void start() { mutex = SDL_CreateMutex(); }
+
 #if !defined(RELEASE)
 void finish() {
+  SDL_DestroyMutex(mutex);
   loopv(conlines) FREE(conlines[i].cref);
   loopv(vhistory) FREE(vhistory[i]);
   vhistory = vector<char*>();
@@ -78,6 +83,7 @@ static void line(const char *sf, bool highlight) {
 }
 
 void out(const char *s, ...) {
+  SDL_LockMutex(mutex);
   vasprintfsd(sf, s, s);
   s = sf.c_str();
   int n = 0;
@@ -88,6 +94,7 @@ void out(const char *s, ...) {
     s += WORDWRAP;
   }
   line(s, n!=0);
+  SDL_UnlockMutex(mutex);
 }
 
 VAR(confadeout, 1, 5000, 256000);

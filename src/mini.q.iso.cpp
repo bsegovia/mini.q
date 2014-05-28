@@ -23,6 +23,17 @@ static void outputcpufeatures() {
   }
   con::out(features.c_str());
 }
+static geom::mesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::node &root) {
+  iso::octree o(cellnum);
+  geom::mesh m;
+  ref<task> geom_task = geom::create_task(m, o, cellsize);
+  ref<task> iso_task = iso::create_task(o, root, org, cellnum, cellsize);
+  iso_task->starts(*geom_task);
+  iso_task->scheduled();
+  geom_task->scheduled();
+  geom_task->wait();
+  return m;
+}
 
 static const float CELLSIZE = 0.1f;
 int main(int argc, const char **argv) {
@@ -53,7 +64,7 @@ int main(int argc, const char **argv) {
   // build the mesh
   assert(node != NULL);
   const auto start = sys::millis();
-  auto m = iso::dc(vec3f(0.15f), 4096, CELLSIZE, *node);
+  auto m = dc(vec3f(0.15f), 4096, CELLSIZE, *node);
   const auto end = sys::millis();
   printf("time %f ms\n", float(end-start));
   geom::store("simple.mesh", m);

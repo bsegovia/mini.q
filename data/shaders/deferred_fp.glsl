@@ -15,5 +15,6 @@ void main() {
     outcol = vec4(getsky(rd, u_sundir), 1.0);
   }
   SWITCH_WEBGL(gl_FragColor, rt_col) = outcol;
+  // SWITCH_WEBGL(gl_FragColor, rt_col) = vec4(abs(dot(nor,normalize(vec3(1,1,0)))));
 }
 

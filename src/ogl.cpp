@@ -370,6 +370,7 @@ u32 maketex(const char *fmt, ...) {
         case 'r': internalfmt = GL_RED; break;
         case 'a': internalfmt = GL_ALPHA; break;
         case 'd': internalfmt = GL_DEPTH_COMPONENT32; break;
+        case 'n': internalfmt = GL_RGB10_A2; break;
       }
       break;
       case 'm': // minfilter

@@ -42,7 +42,7 @@ enum {ONLEFT, ONRIGHT};
 
 // n log(n) compiler with bounding box sweeping and SAH heuristics
 struct compiler {
-  compiler(void) : n(0), accnum(0), currid(0), leafnum(0), nodenum(0) {}
+  compiler(void) : n(0), accnum(0), currid(0), leafnum(0), nodenum(0), hasintersector(false) {}
   void injection(primitive *soup, u32 primnum);
   void compile(void);
   vector<u8> istri;
@@ -58,6 +58,7 @@ struct compiler {
   u32 currid;
   aabb scenebox;
   u32 leafnum, nodenum;
+  bool hasintersector;
 };
 
 template<u32 axis> struct sorter {
@@ -210,6 +211,7 @@ INLINE void makeleaf(compiler &c, const segment &data) {
     node.setflag(intersector::ISECLEAF);
     node.setptr(first.isec.ptr);
     first.isec->acquire();
+    c.hasintersector = true;
   } else {
     node.setflag(intersector::TRILEAF);
     node.setptr(&c.acc[c.accnum]);
@@ -309,14 +311,19 @@ intersector::intersector(primitive *prims, int n) {
     c.compile();
     acc = move(c.acc);
     root = c.root;
+    nodenum = c.nodenum;
+    hasintersector = u32(c.hasintersector);
     if (bvhstatitics) {
       con::out("bvh: %d nodes %d leaves", c.nodenum, c.leafnum);
-      con::out("bvh: %f triangles/leaf", float(n) / float(c.leafnum));
+      con::out("bvh: %f primitives/leaf", float(n) / float(c.leafnum));
     }
   }
 }
 
 intersector::~intersector() {
+  if (hasintersector) loopi(nodenum)
+    if (root[i].isleaf() && root[i].getflag() == ISECLEAF)
+     root[i].getptr<intersector>()->release();
   SAFE_DELA(root);
 }
 } /* namespace rt */

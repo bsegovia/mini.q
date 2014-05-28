@@ -652,7 +652,7 @@ static int build_bvh_jobs(iso::octree::node *curr,
       return size;
   }
 
-  // if one of the children has a BVH, we force the others to have one
+  // if one of the children has a bvh, we force the others to have one
   int total = 0, leaftotal[8];
   bool forcebvh = false;
   loopi(8) {
@@ -685,7 +685,7 @@ static void gather_triangles(const iso::octree::node *curr,
                              const vector<leaf_submesh> &submeshes)
 {
   if (curr->isleaf) {
-    assert(curr->flag != 0 && "no mesh found for this leaf");
+    if (curr->flag == 0) return;
     const auto &submesh = submeshes[curr->flag-1];
     for (auto it = submesh.begin(); it != submesh.end(); ++it) {
       const auto tri = &pm.idx[3*(*it)];
@@ -719,14 +719,14 @@ struct task_build_submesh_bvh : public task {
 };
 
 // build the bvh of bvhs for the complete scene
-struct task_two_level_bvh_build : public task {
-  INLINE task_two_level_bvh_build(iso::octree &o, const vector<iso::octree::node*> &jobs) :
-    task("task_two_level_bvh_build"), jobs(jobs), o(o)
+struct task_build_two_level_bvh : public task {
+  INLINE task_build_two_level_bvh(iso::octree &o, const vector<iso::octree::node*> &jobs) :
+    task("task_build_two_level_bvh"), jobs(jobs), o(o)
   {}
   virtual void run(u32) {
     vector<rt::primitive> prims;
     loopv(jobs) prims.push_back(rt::primitive(jobs[i]->bvh.ptr));
-    o.m_root.bvh = NEW(rt::intersector, &prims[0], prims.size());
+    o.bvh = NEW(rt::intersector, &prims[0], prims.size());
   }
   const vector<iso::octree::node*> &jobs;
   iso::octree &o;
@@ -741,7 +741,7 @@ struct task_build_bvh : public task {
     build_leaf_submesh(pm, submeshes);
     build_bvh_jobs(&o.m_root, jobs, submeshes);
     ref<task> submesh_task = NEW(task_build_submesh_bvh, o, pm, submeshes, jobs);
-    ref<task> twolevel_task = NEW(task_two_level_bvh_build, o, jobs);
+    ref<task> twolevel_task = NEW(task_build_two_level_bvh, o, jobs);
     submesh_task->starts(*twolevel_task);
     twolevel_task->ends(*this);
     submesh_task->scheduled();
@@ -838,13 +838,14 @@ struct task_build_mesh : public task {
     // handle dependencies and completion of parent task
     init->starts(*decimate[0]);
     rangei(1,DECIMATION_NUM) decimate[i-1]->starts(*decimate[i]);
-    decimate[DECIMATION_NUM-1]->starts(*finish);
+    decimate[DECIMATION_NUM-1]->starts(*bvhtask);
     finish->ends(*this);
+    bvhtask->starts(*finish);
     //finish->starts(*bvhtask);
     //bvhtask->ends(*this);
 
     // schedule everything
-    //bvhtask->scheduled();
+    bvhtask->scheduled();
     finish->scheduled();
     loopi(DECIMATION_NUM) decimate[i]->scheduled();
     init->scheduled();
@@ -856,7 +857,7 @@ struct task_build_mesh : public task {
   procmesh pm;
 };
 
-ref<task> buildmesh(mesh &m, iso::octree &o, float cellsize, int waiternum) {
+ref<task> create_task(mesh &m, iso::octree &o, float cellsize, int waiternum) {
   return NEW(task_build_mesh, m, o, cellsize, waiternum);
 }
 

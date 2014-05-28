@@ -46,7 +46,7 @@ struct intersector : public refcount {
       uintptr prim;
     };
     template <typename T>
-    INLINE const T *getptr(void) const {return (const T*)(prim&~uintptr(MASK));}
+    INLINE T *getptr(void) const {return (T*)(prim&~uintptr(MASK));}
     template <typename T>
     INLINE void setptr(const T *ptr) {prim = (prim&uintptr(MASK))|uintptr(ptr);}
     INLINE u32 getoffset(void) const {return offsetflag>>SHIFT;}
@@ -59,6 +59,8 @@ struct intersector : public refcount {
   };
   node *root;
   vector<waldtriangle> acc;
+  u32 nodenum:31;
+  u32 hasintersector:1;
 };
 static_assert(sizeof(intersector::node) == 32,"invalid node size");
 
