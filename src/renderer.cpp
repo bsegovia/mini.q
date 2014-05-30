@@ -3,12 +3,23 @@
  - renderer.cpp -> handles rendering routines
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
-#include "sky.hpp"
 #include "csg.hpp"
-#include "iso.hpp"
+#include "demo.hpp"
+#include "game.hpp"
 #include "geom.hpp"
+#include "iso.hpp"
+#include "menu.hpp"
+#include "md2.hpp"
+#include "monster.hpp"
+#include "network.hpp"
 #include "rt.hpp"
+#include "renderer.hpp"
 #include "shaders.hpp"
+#include "sky.hpp"
+#include "text.hpp"
+#include "weapon.hpp"
+#include "base/console.hpp"
+#include "base/script.hpp"
 
 namespace q {
 namespace rr {

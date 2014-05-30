@@ -4,9 +4,12 @@
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
 #include "bvh.hpp"
-#include "rt.hpp"
-#include "iso.hpp"
 #include "csg.hpp"
+#include "iso.hpp"
+#include "game.hpp"
+#include "rt.hpp"
+#include "base/console.hpp"
+#include "base/script.hpp"
 #include <zlib.h>
 
 namespace q {

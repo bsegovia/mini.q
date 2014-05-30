@@ -150,6 +150,15 @@ queue::~queue(void) {
 }
 } /* namespace tasking */
 
+task::task(const char *name, u32 n, u32 waiternum, u32 queue, u16 policy) :
+  owner(tasking::queues[queue]), name(name), elemnum(n), tostart(1), toend(n),
+  depnum(0), waiternum(waiternum), tasktostartnum(0), tasktoendnum(0),
+  policy(policy), state(tasking::UNSCHEDULED)
+{
+  assert(n > 0 && "cannot create a task with no work to do");
+}
+task::~task() {}
+
 void task::start(const u32 *queueinfo, u32 n) {
   tasking::queues.resize(n);
   loopi(s32(n)) tasking::queues[i] = NEW(tasking::queue, queueinfo[i]);
@@ -159,16 +168,6 @@ void task::finish(void) {
   loopv(tasking::queues) DEL(tasking::queues[i]);
   tasking::queues = vector<tasking::queue*>();
 }
-
-task::task(const char *name, u32 n, u32 waiternum, u32 queue, u16 policy) :
-  owner(tasking::queues[queue]), name(name), elemnum(n), tostart(1), toend(n),
-  depnum(0), waiternum(waiternum), tasktostartnum(0), tasktoendnum(0),
-  policy(policy), state(tasking::UNSCHEDULED)
-{
-  assert(n > 0 && "cannot create a task with no work to do");
-}
-
-void task::run(u32 elt) {}
 
 void task::scheduled(void) {
   assert(state == tasking::UNSCHEDULED);

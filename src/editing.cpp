@@ -2,7 +2,14 @@
  - mini.q - a minimalistic multiplayer FPS
  - editing.hpp -> implements editing routines
  -------------------------------------------------------------------------*/
-#include "mini.q.hpp"
+#include "weapon.hpp"
+#include "client.hpp"
+#include "game.hpp"
+#include "monster.hpp"
+#include "world.hpp"
+#include "network.hpp"
+#include "base/script.hpp"
+#include "base/console.hpp"
 
 namespace q {
 namespace edit {

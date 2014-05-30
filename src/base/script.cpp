@@ -8,6 +8,8 @@
 #include "console.hpp"
 #include "hash_map.hpp"
 #include "base/lua/lualib.h"
+#include "base/console.hpp"
+#include "base/script.hpp"
 #include <cstdio>
 
 namespace q {

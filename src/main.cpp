@@ -2,10 +2,15 @@
  - mini.q - a minimalistic multiplayer FPS
  - main.cpp -> main entry point for the client
  -------------------------------------------------------------------------*/
-#include "base/sys.hpp"
-#include "base/math.hpp"
+#include "demo.hpp"
 #include "game.hpp"
 #include "mini.q.hpp"
+#include "ogl.hpp"
+#include "renderer.hpp"
+#include "server.hpp"
+#include "base/sys.hpp"
+#include "base/math.hpp"
+#include "base/console.hpp"
 #include <time.h>
 #include <SDL_main.h>
 

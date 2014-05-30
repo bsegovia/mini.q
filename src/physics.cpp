@@ -7,6 +7,10 @@
 // tweaked until they "felt right", and have no basis in reality.  Collision
 // detection is simplistic but very robust (uses discrete steps at fixed fps).
 #include "mini.q.hpp"
+#include "game.hpp"
+#include "monster.hpp"
+#include "network.hpp"
+#include "base/script.hpp"
 
 namespace q {
 namespace physics {

@@ -3,8 +3,11 @@
  - sound.cpp -> sound related code
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
+#include "game.hpp"
 #include "base/vector.hpp"
 #include "base/allocator.hpp"
+#include "base/console.hpp"
+#include "base/script.hpp"
 #include <SDL2/SDL_mixer.h>
 
 #define MAXCHAN 32

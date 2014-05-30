@@ -4,6 +4,7 @@
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
 #include "intrusive_list.hpp"
+#include "string.hpp"
 #if defined(__UNIX__)
 #include <unistd.h>
 #endif

@@ -3,10 +3,19 @@
  - mini.q.cpp -> stub to run the game
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
-#include "rt.hpp"
-#include "iso.hpp"
+#include "client.hpp"
 #include "csg.hpp"
+#include "iso.hpp"
+#include "game.hpp"
+#include "menu.hpp"
+#include "md2.hpp"
+#include "rt.hpp"
+#include "server.hpp"
+#include "shaders.hpp"
+#include "renderer.hpp"
 #include "enet/enet.h"
+#include "base/script.hpp"
+#include "base/console.hpp"
 #include <time.h>
 #include <SDL_image.h>
 

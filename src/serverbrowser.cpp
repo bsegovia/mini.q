@@ -3,8 +3,15 @@
  - serverbrowser.cpp -> implements routines to list servers
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
-#include "enet/enet.h"
+#include "game.hpp"
+#include "menu.hpp"
+#include "network.hpp"
+#include "serverbrowser.hpp"
+#include "server.hpp"
 #include "base/vector.hpp"
+#include "enet/enet.h"
+#include "base/console.hpp"
+#include "base/script.hpp"
 #include <SDL2/SDL_thread.h>
 
 namespace q {

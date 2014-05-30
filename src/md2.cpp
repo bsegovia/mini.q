@@ -3,8 +3,12 @@
  - md2.cpp -> handles quake md2 models
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
+#include "game.hpp"
+#include "shaders.hpp"
 #include "base/vector.hpp"
 #include "base/hash_map.hpp"
+#include "base/script.hpp"
+#include "base/console.hpp"
 
 namespace q {
 #define SHADERNAME md2

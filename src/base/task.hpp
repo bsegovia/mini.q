@@ -19,12 +19,11 @@ public:
   static void finish(void);
   task(const char *name, u32 elem=1, u32 waiter=0, u32 queue=0, u16 policy=0);
   virtual ~task(void);
+  virtual void run(u32) = 0;
   void starts(task&);
   void ends(task&);
-  void wait(void);
   void scheduled(void);
   void wait(bool recursivewait=false);
-  virtual void run(u32);
   static const u32 LO_PRIO = 0u;
   static const u32 HI_PRIO = 1u;
   static const u32 FAIR    = 0u;

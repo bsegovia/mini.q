@@ -4,7 +4,15 @@
  - (monsters,players...)
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
+#include "client.hpp"
+#include "editing.hpp"
+#include "entities.hpp"
+#include "game.hpp"
+#include "network.hpp"
+#include "server.hpp"
 #include "base/vector.hpp"
+#include "base/console.hpp"
+#include "base/script.hpp"
 
 namespace q {
 namespace game {

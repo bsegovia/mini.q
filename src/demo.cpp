@@ -3,6 +3,15 @@
  - demo.cpp -> implements demo record / play back
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
+#include "client.hpp"
+#include "demo.hpp"
+#include "game.hpp"
+#include "monster.hpp"
+#include "network.hpp"
+#include "renderer.hpp"
+#include "server.hpp"
+#include "base/console.hpp"
+#include "base/script.hpp"
 #include <zlib.h>
 
 // loading and saving of savegames & demos, dumps the spawn state of all

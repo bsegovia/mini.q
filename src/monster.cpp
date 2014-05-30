@@ -3,6 +3,15 @@
  - monster.hpp -> implements monster AI
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
+#include "editing.hpp"
+#include "game.hpp"
+#include "network.hpp"
+#include "monster.hpp"
+#include "physics.hpp"
+#include "server.hpp"
+#include "weapon.hpp"
+#include "base/console.hpp"
+#include "base/script.hpp"
 
 namespace q {
 namespace game {

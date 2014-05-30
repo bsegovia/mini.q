@@ -4,7 +4,21 @@
  -------------------------------------------------------------------------*/
 #if !defined(STANDALONE)
 #include "mini.q.hpp"
+#include "client.hpp"
+#include "demo.hpp"
+#include "game.hpp"
+#include "ogl.hpp"
+#include "editing.hpp"
+#include "md2.hpp"
+#include "menu.hpp"
+#include "monster.hpp"
+#include "network.hpp"
+#include "physics.hpp"
+#include "server.hpp"
+#include "weapon.hpp"
 #include "enet/enet.h"
+#include "base/console.hpp"
+#include "base/script.hpp"
 
 namespace q {
 namespace game {

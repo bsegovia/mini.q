@@ -3,6 +3,10 @@
  - server.hpp -> implements server specific code
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
+#include "game.hpp"
+#include "network.hpp"
+#include "server.hpp"
+#include "client.hpp"
 #include "enet/enet.h"
 #include <time.h>
 

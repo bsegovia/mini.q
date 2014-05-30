@@ -165,9 +165,9 @@ void raytrace(int *pixels, const vec3f &pos, const vec3f &ypr,
   const camera cam(pos, -r.vy, -r.vz, fovy, aspect);
   const vec2i dim(w,h), tile(dim/int(TILESIZE));
   totalraynum=0;
-  ref<task> isectask = NEW(task_raycast, world, cam, pixels, dim, tile);
-  isectask->scheduled();
-  isectask->wait();
+  ref<task> raycast = NEW(task_raycast, world, cam, pixels, dim, tile);
+  raycast->scheduled();
+  raycast->wait();
 }
 
 static int *pixels=NULL;

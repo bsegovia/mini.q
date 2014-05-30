@@ -3,8 +3,19 @@
 - client.cpp -> implements client game routines
 -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
+#include "client.hpp"
+#include "editing.hpp"
+#include "demo.hpp"
+#include "game.hpp"
+#include "network.hpp"
+#include "server.hpp"
+#include "serverbrowser.hpp"
+#include "world.hpp"
+#include "weapon.hpp"
 #include "enet/enet.h"
 #include "base/vector.hpp"
+#include "base/console.hpp"
+#include "base/script.hpp"
 
 namespace q {
 namespace client {
