@@ -22,33 +22,6 @@ enum {
 // all queues as instantiated by the user
 static vector<struct queue*> queues;
 
-static const u32 MAXSTART = 4; // maximum number of tasks we may start
-static const u32 MAXEND   = 4; // maximum number of tasks we may end
-static const u32 MAXDEP   = 8; // maximum number of tasks we may depend on
-
-// internal hidden structure of the task
-struct MAYALIAS internal : public noncopyable, public intrusive_list_node {
-  INLINE internal(const char *name, u32 n, u32 waiternum, u32 queue, u16 policy);
-  INLINE task *parent(void);
-  void wait(bool recursivewait);
-  task *taskstostart[MAXSTART];// all the tasks that wait for us to start
-  task *taskstoend[MAXEND];    // all the tasks that wait for us to finish
-  task *deps[MAXDEP];          // all the tasks we depend on to finish or start
-  tasking::queue *const owner; // where the task runs when ready
-  const char *name;            // name of the task (may be NULL)
-  atomic elemnum;              // number of items still to run in the set
-  atomic tostart;              // mbz to start
-  atomic toend;                // mbz to end
-  atomic depnum;               // number of tasks we depend to finish
-  atomic waiternum;            // number of wait() that still need to be done
-  atomic tasktostartnum;       // number of tasks we need to start
-  atomic tasktoendnum;         // number of tasks we need to end
-  const u16 policy;            // handle fairness and priority
-  volatile u16 state;          // track task state (useful to debug)
-};
-static_assert(sizeof(internal) <= task::SIZE, "opaque storage is too small");
-static_assert(sizeof(task) == 256, "invalid task size");
-
 // a set of threads subscribes this queue and share the work in the list of the
 // tasks. threads terminate when "terminatethreads" become true
 struct queue {
@@ -61,112 +34,55 @@ struct queue {
   SDL_cond *cond;
   SDL_mutex *mutex;
   vector<SDL_Thread*> threads;
-  intrusive_list<internal> readylist;
+  intrusive_list<task> readylist;
   volatile bool terminatethreads;
 };
 
-INLINE internal::internal(const char *name, u32 n, u32 waiternum, u32 queue, u16 policy) :
-  owner(tasking::queues[queue]), name(name), elemnum(n), tostart(1), toend(n),
-  depnum(0), waiternum(waiternum), tasktostartnum(0), tasktoendnum(0),
-  policy(policy), state(tasking::UNSCHEDULED)
-{}
-INLINE task *internal::parent(void) {
-  return (task*)((char*)this-OFFSETOF(task,opaque));
-}
-INLINE internal &inner(task *job) { return *(internal*)job->opaque; }
-
-void internal::wait(bool recursivewait) {
-  assert((recursivewait||state >= tasking::SCHEDULED) &&
-         (recursivewait||waiternum > 0));
-  auto job = parent();
-  job->acquire();
-
-  // execute all starting dependencies
-  while (tostart) loopi(depnum)
-    if (tasking::inner(deps[i]).toend)
-      inner(deps[i]).wait(true);
-
-  // execute the run function
-  for (;;) {
-    const auto elt = --elemnum;
-    if (elt == 0) owner->remove(job);
-    if (elt >= 0) {
-      job->run(elt);
-      if (--toend == 0) owner->terminate(job);
-    }
-    if (elt <= 0) break;
-  }
-
-  // execute all ending dependencies. n.a.u.g.h.t.y -> busy waiting here
-#if defined(__SSE__)
-  int pausenum = 1;
-#endif /* __SSE__ */
-
-  while (toend) {
-    loopi(depnum)
-      if (tasking::inner(deps[i]).toend)
-        inner(deps[i]).wait(true);
-#if defined(__SSE__)
-    else
-      loopj(pausenum) _mm_pause();
-      pausenum = min(pausenum*2, 64);
-#endif /* __SSE__ */
-  }
-
-  // finished and no more waiters, we can safely release the dependency array
-  if (!recursivewait && --waiternum == 0)
-    loopi(depnum) deps[i]->release();
-  job->release();
-}
-
 void queue::append(task *job) {
-  auto &self = inner(job);
-  assert(self.owner == this && self.tostart == 0);
-  SDL_LockMutex(self.owner->mutex);
-    if (self.elemnum > 0) {
+  assert(job->owner == this && job->tostart == 0);
+  SDL_LockMutex(job->owner->mutex);
+    if (job->elemnum > 0) {
       job->acquire();
-      if (self.policy & task::HI_PRIO)
-        self.owner->readylist.push_front(&self);
+      if (job->policy & task::HI_PRIO)
+        job->owner->readylist.push_front(job);
       else
-        self.owner->readylist.push_back(&self);
+        job->owner->readylist.push_back(job);
     }
   SDL_CondBroadcast(cond);
-  SDL_UnlockMutex(self.owner->mutex);
+  SDL_UnlockMutex(job->owner->mutex);
 }
 
 void queue::remove(task *job) {
-  auto &self = inner(job);
-  assert(self.owner == this);
-  SDL_LockMutex(self.owner->mutex);
-  if (!self.in_list()) {
-    SDL_UnlockMutex(self.owner->mutex);
+  assert(job->owner == this);
+  SDL_LockMutex(job->owner->mutex);
+  if (!job->in_list()) {
+    SDL_UnlockMutex(job->owner->mutex);
     return;
   }
-  self.owner->readylist.erase(&self);
-  SDL_UnlockMutex(self.owner->mutex);
+  job->owner->readylist.erase(job);
+  SDL_UnlockMutex(job->owner->mutex);
   job->release();
 }
 
 void queue::terminate(task *job) {
-  auto &self = inner(job);
-  assert(self.owner == this && self.toend == 0);
-  storerelease(&self.state, u16(DONE));
+  assert(job->owner == this && job->toend == 0);
+  storerelease(&job->state, u16(DONE));
 
   // go over all tasks that depend on us
-  loopi(self.tasktostartnum) {
-    if (--inner(self.taskstostart[i]).tostart == 0)
-      append(self.taskstostart[i]);
-    self.taskstostart[i]->release();
+  loopi(job->tasktostartnum) {
+    if (--job->taskstostart[i]->tostart == 0)
+      append(job->taskstostart[i]);
+    job->taskstostart[i]->release();
   }
-  loopi(self.tasktoendnum) {
-    if (--inner(self.taskstoend[i]).toend == 0)
-      terminate(self.taskstoend[i]);
-    self.taskstoend[i]->release();
+  loopi(job->tasktoendnum) {
+    if (--job->taskstoend[i]->toend == 0)
+      terminate(job->taskstoend[i]);
+    job->taskstoend[i]->release();
   }
 
   // if no more waiters, we can safely free all dependencies since we are done
-  if (self.waiternum == 0)
-    loopi(self.depnum) self.deps[i]->release();
+  if (job->waiternum == 0)
+    loopi(job->depnum) job->deps[i]->release();
 }
 
 int queue::threadfunc(void *data) {
@@ -183,19 +99,18 @@ int queue::threadfunc(void *data) {
       SDL_UnlockMutex(q->mutex);
       break;
     }
-    auto self = q->readylist.front();
-    auto job = self->parent();
+    auto job = q->readylist.front();
 
     // if unfair, we run all elements until there is nothing else to do in this
     // job. we do not care if a hi-prio job arrives while we run
     job->acquire();
-    if (self->policy & task::UNFAIR) {
+    if (job->policy & task::UNFAIR) {
       SDL_UnlockMutex(q->mutex);
       for (;;) {
-        const auto elt = --self->elemnum;
+        const auto elt = --job->elemnum;
         if (elt >= 0) {
           job->run(elt);
-          if (--self->toend == 0) q->terminate(job);
+          if (--job->toend == 0) q->terminate(job);
         }
         if (elt == 0) q->remove(job);
         if (elt <= 0) break;
@@ -204,12 +119,12 @@ int queue::threadfunc(void *data) {
     // if fair, we run once and go back to the queue to possibly run something
     // with hi-prio that just arrived
     else {
-      const auto elt = --self->elemnum;
+      const auto elt = --job->elemnum;
       if (elt == 0) q->remove(job);
       SDL_UnlockMutex(q->mutex);
       if (elt >= 0) {
         job->run(elt);
-        if (--self->toend == 0) q->terminate(job);
+        if (--job->toend == 0) q->terminate(job);
       }
     }
     job->release();
@@ -245,52 +160,89 @@ void task::finish(void) {
   tasking::queues = vector<tasking::queue*>();
 }
 
-task::task(const char *name, u32 n, u32 waiternum, u32 queue, u16 policy) {
+task::task(const char *name, u32 n, u32 waiternum, u32 queue, u16 policy) :
+  owner(tasking::queues[queue]), name(name), elemnum(n), tostart(1), toend(n),
+  depnum(0), waiternum(waiternum), tasktostartnum(0), tasktoendnum(0),
+  policy(policy), state(tasking::UNSCHEDULED)
+{
   assert(n > 0 && "cannot create a task with no work to do");
-  new (opaque) tasking::internal(name,n,waiternum,queue,policy);
 }
-task::~task(void) { tasking::inner(this).~internal(); }
 
 void task::run(u32 elt) {}
 
 void task::scheduled(void) {
-  auto &self = tasking::inner(this);
-  assert(self.state == tasking::UNSCHEDULED);
-  storerelease(&self.state, u16(tasking::SCHEDULED));
-  if (--self.tostart == 0) {
-    storerelease(&self.state, u16(tasking::RUNNING));
-    self.owner->append(this);
+  assert(state == tasking::UNSCHEDULED);
+  storerelease(&state, u16(tasking::SCHEDULED));
+  if (--tostart == 0) {
+    storerelease(&state, u16(tasking::RUNNING));
+    owner->append(this);
   }
 }
 
-void task::wait(void) {tasking::inner(this).wait(false);}
-
-void task::starts(task &dep) {
-  auto &self = tasking::inner(this);
-  auto &other = tasking::inner(&dep);
-  assert(self.state == tasking::UNSCHEDULED && other.state == tasking::UNSCHEDULED);
-  const u32 startindex = self.tasktostartnum++;
+void task::starts(task &other) {
+  assert(state == tasking::UNSCHEDULED && other.state == tasking::UNSCHEDULED);
+  const u32 startindex = tasktostartnum++;
   const u32 depindex = other.depnum++;
   assert(startindex < tasking::MAXSTART && depindex < tasking::MAXDEP);
-  self.taskstostart[startindex] = &dep;
+  taskstostart[startindex] = &other;
   other.deps[depindex] = this;
   acquire();
-  dep.acquire();
+  other.acquire();
   other.tostart++;
 }
 
-void task::ends(task &dep) {
-  auto &self = tasking::inner(this);
-  auto &other = tasking::inner(&dep);
-  assert(self.state == tasking::UNSCHEDULED && other.state < tasking::DONE);
-  const u32 endindex = self.tasktoendnum++;
+void task::ends(task &other) {
+  assert(state == tasking::UNSCHEDULED && other.state < tasking::DONE);
+  const u32 endindex = tasktoendnum++;
   const u32 depindex = other.depnum++;
   assert(endindex < tasking::MAXEND && depindex < tasking::MAXDEP);
-  self.taskstoend[endindex] = &dep;
+  taskstoend[endindex] = &other;
   other.deps[depindex] = this;
   acquire();
-  dep.acquire();
+  other.acquire();
   other.toend++;
 }
+
+void task::wait(bool recursivewait) {
+  assert((recursivewait||state >= tasking::SCHEDULED) &&
+         (recursivewait||waiternum > 0));
+  acquire();
+
+  // execute all starting dependencies
+  while (tostart) loopi(depnum)
+    if (deps[i]->toend) deps[i]->wait(true);
+
+  // execute the run function
+  for (;;) {
+    const auto elt = --elemnum;
+    if (elt == 0) owner->remove(this);
+    if (elt >= 0) {
+      run(elt);
+      if (--toend == 0) owner->terminate(this);
+    }
+    if (elt <= 0) break;
+  }
+
+  // execute all ending dependencies. n.a.u.g.h.t.y -> busy waiting here
+#if defined(__SSE__)
+  int pausenum = 1;
+#endif /* __SSE__ */
+
+  while (toend) {
+    loopi(depnum)
+      if (deps[i]->toend) deps[i]->wait(true);
+#if defined(__SSE__)
+      else
+        loopj(pausenum) _mm_pause();
+      pausenum = min(pausenum*2, 64);
+#endif /* __SSE__ */
+  }
+
+  // finished and no more waiters, we can safely release the dependency array
+  if (!recursivewait && --waiternum == 0)
+    loopi(depnum) deps[i]->release();
+  release();
+}
+
 } /* namespace q */
 
