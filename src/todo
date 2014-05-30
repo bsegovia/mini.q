@@ -21,9 +21,7 @@
 * properly handle opengl version
 * check problem when mouse is locked
 * release all keys when getting ouf of focus
-* remove internal::task crap. just useless complications
-* rename all tasks more consistently
 * improve naming (make it more consistent regarding '_')
 * make sharpen mesh parallel to bvh building
 * replace zlib by lz4+fse
-
+* cleanup headers

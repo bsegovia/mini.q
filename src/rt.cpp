@@ -103,9 +103,9 @@ camera::camera(vec3f org, vec3f up, vec3f view, float fov, float ratio) :
 static const vec3f lpos(35.f, 10.f, 11.f);
 //static const vec3f lpos(0.f, 4.f, 0.f);
 static atomic totalraynum;
-struct raycasttask : public task {
-  raycasttask(intersector *bvhisec, const camera &cam, int *pixels, vec2i dim, vec2i tile) :
-    task("raycasttask", tile.x*tile.y, 1, 0, UNFAIR),
+struct task_raycast : public task {
+  task_raycast(intersector *bvhisec, const camera &cam, int *pixels, vec2i dim, vec2i tile) :
+    task("task_raycast", tile.x*tile.y, 1, 0, UNFAIR),
     bvhisec(bvhisec), cam(cam), pixels(pixels), dim(dim), tile(tile)
   {}
   INLINE u32 primarypoint(vec2i tileorg, array3f &pos, array3f &nor, arrayi &mask) {
@@ -165,7 +165,7 @@ void raytrace(int *pixels, const vec3f &pos, const vec3f &ypr,
   const camera cam(pos, -r.vy, -r.vz, fovy, aspect);
   const vec2i dim(w,h), tile(dim/int(TILESIZE));
   totalraynum=0;
-  ref<task> isectask = NEW(raycasttask, world, cam, pixels, dim, tile);
+  ref<task> isectask = NEW(task_raycast, world, cam, pixels, dim, tile);
   isectask->scheduled();
   isectask->wait();
 }

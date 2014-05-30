@@ -822,21 +822,6 @@ struct task_iso : public task {
 ref<task> create_task(octree &o, const csg::node &node, const vec3f &org, u32 cellnum, float cellsize) {
   return NEW(task_iso, o, node, org, cellsize, cellnum);
 }
-#if 0
-geom::mesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::node &csgnode) {
-  octree o(cellnum);
-  geom::mesh m;
-
-  ref<task> meshtask = geom::buildmesh(m, o, cellsize);
-  ref<task> isotask = NEW(task_iso, o, csgnode, org, cellsize, cellnum);
-  isotask->starts(*meshtask);
-  meshtask->scheduled();
-  isotask->scheduled();
-  meshtask->wait();
-
-  return m;
-}
-#endif
 
 void start() {
   using namespace sys;
@@ -852,6 +837,7 @@ void start() {
   }
   ctx = NEWE(context);
 }
+
 void finish() {
   if (ctx == NULL) return;
 #if !defined(RELEASE)
