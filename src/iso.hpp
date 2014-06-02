@@ -61,7 +61,7 @@ struct leafoctree : leafoctreebase {
  - spatial segmentation used for iso surface extraction
  -------------------------------------------------------------------------*/
 struct octree {
-  struct qefpoint {
+  struct point {
     vec3f pos;
     int idx;
   };
@@ -70,7 +70,7 @@ struct octree {
     ~node();
     union {
       node *children;
-      leafoctree<qefpoint> *leaf;
+      leafoctree<point> *leaf;
     };
     ref<rt::intersector> bvh;
     vec3i org;
@@ -79,7 +79,7 @@ struct octree {
     u32 empty:1;
     u32 flag;
   };
-  typedef leafoctree<qefpoint> leaftype;
+  typedef leafoctree<point> leaftype;
 
   INLINE octree(u32 dim) : m_dim(dim), m_logdim(ilog2(dim)) {}
   const node *findleaf(vec3i xyz) const;

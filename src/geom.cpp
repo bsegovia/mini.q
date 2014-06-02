@@ -44,7 +44,7 @@ static const quadmesh qmesh[2] = {{{{0,1,2},{0,2,3}}},{{{0,1,3},{3,1,2}}}};
 
 // test first configuration for non self intersection. If ok, take it, otherwise
 // take the other one
-static INLINE const quadmesh &findbestmesh(iso::octree::qefpoint **pt) {
+static INLINE const quadmesh &findbestmesh(iso::octree::point **pt) {
   const auto qm0 = qmesh[0].tri;
   const auto e00 = pt[qm0[0][0]]->pos-pt[qm0[0][1]]->pos;
   const auto e01 = pt[qm0[0][0]]->pos-pt[qm0[0][2]]->pos;
@@ -60,14 +60,15 @@ static INLINE const quadmesh &findbestmesh(iso::octree::qefpoint **pt) {
  -------------------------------------------------------------------------*/
 struct procmesh {
   vector<vec3f> pos, nor;
+  vector<vec3i> ipos;
   vector<u32> idx, mat;
   vector<iso::octree::node*> owner;
   INLINE int trinum() const {return idx.size()/3;}
 };
 
-static void buildmesh(const iso::octree &o, const iso::octree::node &node, procmesh &pm) {
+static void build_mesh(const iso::octree &o, const iso::octree::node &node, procmesh &pm) {
   if (!node.isleaf) {
-    loopi(8) buildmesh(o, node.children[i], pm);
+    loopi(8) build_mesh(o, node.children[i], pm);
     return;
   } else if (node.leaf == NULL)
     return;
@@ -80,7 +81,8 @@ static void buildmesh(const iso::octree &o, const iso::octree::node &node, procm
     // get four points
     const auto &q = node.leaf->quads[i];
     const auto quadmat = q.matindex;
-    iso::octree::qefpoint *pt[4];
+    iso::octree::point *pt[4];
+    vec3i ptpos[4];
     loopk(4) {
       const auto lpos = vec3i(q.index[k]);
       const auto ipos = lpos + node.org;
@@ -101,6 +103,7 @@ static void buildmesh(const iso::octree &o, const iso::octree::node &node, procm
       const auto qef = leaf->leaf->get(vidx);
       assert(qef != NULL && "point is missing from leaf octree");
       pt[k] = qef;
+      ptpos[k] = ipos;
     }
 
 #if DEBUGOCTREE
@@ -122,6 +125,7 @@ static void buildmesh(const iso::octree &o, const iso::octree::node &node, procm
         if (qef->idx == -1) {
           qef->idx = pm.pos.size();
           pm.pos.push_back(qef->pos);
+          pm.ipos.push_back(ptpos[t[l]]);
         }
         pm.idx.push_back(qef->idx);
       }
@@ -161,12 +165,12 @@ INLINE bool operator< (const qemheapitem &i0, const qemheapitem &i1) {
 }
 
 struct qemcontext {
-  vector<int> vidx;          // list of triangle per vertex
-  vector<pair<int,int>> vtri;// <trinum, firstidx> triangle list per vertex
-  vector<qef::qem> vqem;     // qem per vertex
-  vector<qemedge> eqem;      // qem information per edge
-  vector<qemheapitem> heap;  // heap to decimate the mesh
-  vector<int> mergelist;     // temporary structure when merging triangle lists
+  vector<int> vidx;           // list of triangle per vertex
+  vector<pair<int,int>> vtri; // <trinum, firstidx> triangle list per vertex
+  vector<qef::qem> vqem;      // qem per vertex
+  vector<qemedge> eqem;       // qem information per edge
+  vector<qemheapitem> heap;   // heap to decimate the mesh
+  vector<int> mergelist;      // temporary structure when merging triangle lists
 };
 
 static void extraplane(const procmesh &pm, const qemedge &edge, int tri,
@@ -191,7 +195,7 @@ static void extraplane(const procmesh &pm, const qemedge &edge, int tri,
   }
 }
 
-static void buildedges(qemcontext &ctx, const procmesh &pm) {
+static void build_edges(qemcontext &ctx, const procmesh &pm) {
   auto &e = ctx.eqem;
   auto &v = ctx.vqem;
 
@@ -271,7 +275,7 @@ static void buildedges(qemcontext &ctx, const procmesh &pm) {
   }
 }
 
-static void buildheap(qemcontext &ctx, procmesh &pm) {
+static void build_heap(qemcontext &ctx, procmesh &pm) {
   auto &h = ctx.heap;
   auto &e = ctx.eqem;
   auto &v = ctx.vqem;
@@ -377,7 +381,7 @@ static bool merge(qemcontext &ctx, procmesh &pm, const qemedge &edge, int idx0, 
   return true;
 }
 
-static void decimatemesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
+static void decimate_mesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
   auto &heap = ctx.heap;
   auto &vqem = ctx.vqem;
   auto &eqem = ctx.eqem;
@@ -474,7 +478,7 @@ static void decimatemesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
   pm.pos = move(newpos);
 }
 
-static void buildqem(qemcontext &ctx, procmesh &pm) {
+static void build_qem(qemcontext &ctx, procmesh &pm) {
   auto &v = ctx.vqem;
   v.resize(pm.pos.size());
   loopi(pm.trinum()) {
@@ -491,7 +495,7 @@ static void buildqem(qemcontext &ctx, procmesh &pm) {
   }
 }
 
-static void buildtrianglelists(qemcontext &ctx, const procmesh &pm) {
+static void build_triangle_lists(qemcontext &ctx, const procmesh &pm) {
   auto &vtri = ctx.vtri;
   auto &vidx = ctx.vidx;
   vtri.resize(pm.pos.size());
@@ -515,28 +519,28 @@ static void buildtrianglelists(qemcontext &ctx, const procmesh &pm) {
   }
 }
 
-static void decimatemesh(procmesh &pm, float cellsize) {
+static void decimate_mesh(procmesh &pm, float cellsize) {
   if (pm.idx.size() == 0) return;
   qemcontext ctx;
   // printf("before\n");
   // compute_quad_count(pm);
 
   // we go over all triangles and build all vertex qem
-  buildqem(ctx, pm);
+  build_qem(ctx, pm);
 
   // build the list of edges. append extra planes when needed (border and
   // multi-material edges)
-  buildedges(ctx, pm);
+  build_edges(ctx, pm);
 
   // evaluate the cost for each edge and build the heap
-  buildheap(ctx, pm);
+  build_heap(ctx, pm);
 
   // generate the lists of triangles per-vertex
-  buildtrianglelists(ctx, pm);
+  build_triangle_lists(ctx, pm);
 
   // decimate the mesh using quadric error functions
   const auto minlen = cellsize*MIN_EDGE_FACTOR;
-  decimatemesh(ctx, pm, minlen);
+  decimate_mesh(ctx, pm, minlen);
   // printf("after\n");
   // compute_quad_count(pm);
   // fflush(stdout);
@@ -545,7 +549,7 @@ static void decimatemesh(procmesh &pm, float cellsize) {
 /*-------------------------------------------------------------------------
  - sharpen mesh i.e. duplicate sharp points and compute vertex normals
  -------------------------------------------------------------------------*/
-static void sharpenmesh(procmesh &pm) {
+static void sharpen_mesh(procmesh &pm) {
   if (pm.idx.size() == 0) return;
   const auto trinum = pm.trinum();
   vector<int> vertlist(pm.pos.size());
@@ -757,13 +761,13 @@ struct task_build_bvh : public task {
  - build a final mesh from the qef points and quads stored in the octree
  -------------------------------------------------------------------------*/
 
-// build a first mesh from contoured octree
+// build a procmesh from a contoured octree
 struct task_iso_mesh : public task {
   INLINE task_iso_mesh(iso::octree &o, procmesh &pm) :
     task("task_iso_mesh"), o(o), pm(pm)
   {}
   virtual void run(u32) {
-    buildmesh(o, o.m_root, pm);
+    build_mesh(o, o.m_root, pm);
     con::out("iso: procmesh: %d vertices", pm.pos.size());
     con::out("iso: procmesh: %d triangles", pm.idx.size()/3);
   }
@@ -776,7 +780,7 @@ struct task_decimate : public task {
   INLINE task_decimate(procmesh &pm, float cellsize) :
     task("task_decimate"), pm(pm), cellsize(cellsize)
   {}
-  virtual void run(u32) { decimatemesh(pm, cellsize); }
+  virtual void run(u32) { decimate_mesh(pm, cellsize); }
   procmesh &pm;
   float cellsize;
 };
@@ -788,7 +792,7 @@ struct task_finish_mesh : public task {
   {}
   virtual void run(u32) {
     // handle sharp edges and create normals
-    sharpenmesh(pm);
+    sharpen_mesh(pm);
 
     // build the segment list
     vector<segment> seg;

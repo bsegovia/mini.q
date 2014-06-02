@@ -619,7 +619,7 @@ struct gridbuilder {
     }
   }
 
-  void outputoctree(octree::node &node, int src = 0, int dst = 0) {
+  void output_octree(octree::node &node, int src = 0, int dst = 0) {
     const auto from = pl.leaf.getnode(src);
     const auto to = node.leaf->getnode(dst);
     to->isleaf = from->isleaf;
@@ -638,12 +638,12 @@ struct gridbuilder {
     const auto idx = node.leaf->root.size();
     to->idx = idx;
     node.leaf->root.resize(idx+8);
-    loopi(8) outputoctree(node, from->idx+i, idx+i);
+    loopi(8) output_octree(node, from->idx+i, idx+i);
   }
 
   void output(octree::node &node) {
     node.leaf->root.resize(1);
-    outputoctree(node);
+    output_octree(node);
     // node.leaf->root.refit(); XXX implement this in vector class
     // node.leaf->pts.refit(); XXX implement this in vector class
     node.leaf->quads = move(pl.leaf.quads);
