@@ -7,6 +7,7 @@
 #include "iso.hpp"
 #include "base/task.hpp"
 #include "base/vector.hpp"
+#include "base/hash_map.hpp"
 #include "base/console.hpp"
 
 namespace q {
@@ -66,9 +67,36 @@ struct procmesh {
   INLINE int trinum() const {return idx.size()/3;}
 };
 
-static void build_mesh(const iso::octree &o, const iso::octree::node &node, procmesh &pm) {
+template <int ptrsize> struct fastptrhash {};
+template <>
+struct fastptrhash<8> {
+  u32 operator()(uintptr ptr) const {
+    const auto shr = ptr >> 2;
+    return u32((shr & 0xffffffffull) ^ (shr >> 32ull));
+  }
+};
+template <>
+struct fastptrhash<4> {
+  u32 operator()(uintptr ptr) const {return ptr >> 2;}
+};
+
+static u32 compute_vertex_count(const iso::octree::node &node) {
+  if (node.isleaf)
+    return node.leaf != NULL ? node.leaf->pts.size() : 0;
+  u32 tot = 0;
+  loopi(8) tot += compute_vertex_count(node.children[i]);
+  return tot;
+}
+
+static const int LOADFACTOR = 4;
+typedef hash_map<uintptr,int,fastptrhash<sizeof(uintptr)>,LOADFACTOR> point_hash_map;
+static void build_mesh(const iso::octree &o,
+                       const iso::octree::node &node,
+                       point_hash_map &vert_map,
+                       procmesh &pm)
+{
   if (!node.isleaf) {
-    loopi(8) build_mesh(o, node.children[i], pm);
+    loopi(8) build_mesh(o, node.children[i], vert_map, pm);
     return;
   } else if (node.leaf == NULL)
     return;
@@ -122,12 +150,14 @@ static void build_mesh(const iso::octree &o, const iso::octree::node &node, proc
       pm.mat.push_back(quadmat);
       loopl(3) {
         const auto qef = pt[t[l]];
-        if (qef->idx == -1) {
-          qef->idx = pm.pos.size();
+        const auto it = vert_map.find(uintptr(qef));
+        if (it == vert_map.end()) {
+          const auto idx = int(pm.pos.size());
+          vert_map.insert(makepair(uintptr(qef), idx));
           pm.pos.push_back(qef->pos);
-          pm.ipos.push_back(ptpos[t[l]]);
-        }
-        pm.idx.push_back(qef->idx);
+          pm.idx.push_back(idx);
+        } else
+          pm.idx.push_back(it->second);
       }
       pm.owner.push_back(&const_cast<iso::octree::node&>(node));
     }
@@ -767,7 +797,10 @@ struct task_iso_mesh : public task {
     task("task_iso_mesh"), o(o), pm(pm)
   {}
   virtual void run(u32) {
-    build_mesh(o, o.m_root, pm);
+    point_hash_map vert_map;
+    const auto vertcount = compute_vertex_count(o.m_root);
+    vert_map.reserve(vertcount * LOADFACTOR);
+    build_mesh(o, o.m_root, vert_map, pm);
     con::out("iso: procmesh: %d vertices", pm.pos.size());
     con::out("iso: procmesh: %d triangles", pm.idx.size()/3);
   }

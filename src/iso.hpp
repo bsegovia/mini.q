@@ -63,7 +63,6 @@ struct leafoctree : leafoctreebase {
 struct octree {
   struct point {
     vec3f pos;
-    int idx;
   };
   struct node {
     INLINE node() : children(NULL), level(0), isleaf(0), empty(0), flag(0) {}

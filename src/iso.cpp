@@ -629,7 +629,7 @@ struct gridbuilder {
     if (from->isleaf) {
       if (!from->empty) {
         to->idx = node.leaf->pts.size();
-        node.leaf->pts.push_back({pl.leaf.pts[from->idx].world,-1});
+        node.leaf->pts.push_back({pl.leaf.pts[from->idx].world});
       }
       return;
     }
@@ -832,7 +832,7 @@ void start() {
     con::out("iso: sse path selected");
     isodist = csg::sse::dist;
   } else {
-    con::out("iso: warning slow path chosen for isosurface extraction");
+    con::out("iso: warning: slow path for isosurface extraction");
     isodist = csg::dist;
   }
   ctx = NEWE(context);
