@@ -2,7 +2,6 @@
  - mini.q - a minimalistic multiplayer FPS
  - sound.cpp -> sound related code
  -------------------------------------------------------------------------*/
-#include "mini.q.hpp"
 #include "game.hpp"
 #include "base/vector.hpp"
 #include "base/allocator.hpp"

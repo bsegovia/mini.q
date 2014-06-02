@@ -3,7 +3,6 @@
  - game.cpp -> implements game routines and variables
  -------------------------------------------------------------------------*/
 #if !defined(STANDALONE)
-#include "mini.q.hpp"
 #include "client.hpp"
 #include "demo.hpp"
 #include "game.hpp"

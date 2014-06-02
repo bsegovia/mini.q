@@ -2,7 +2,6 @@
  - mini.q - a minimalistic multiplayer FPS
  - demo.cpp -> implements demo record / play back
  -------------------------------------------------------------------------*/
-#include "mini.q.hpp"
 #include "client.hpp"
 #include "demo.hpp"
 #include "game.hpp"

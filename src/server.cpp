@@ -2,7 +2,6 @@
  - mini.q - a minimalistic multiplayer FPS
  - server.hpp -> implements server specific code
  -------------------------------------------------------------------------*/
-#include "mini.q.hpp"
 #include "game.hpp"
 #include "network.hpp"
 #include "server.hpp"

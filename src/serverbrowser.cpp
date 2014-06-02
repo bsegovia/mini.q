@@ -2,7 +2,6 @@
  - mini.q - a minimalistic multiplayer FPS
  - serverbrowser.cpp -> implements routines to list servers
  -------------------------------------------------------------------------*/
-#include "mini.q.hpp"
 #include "game.hpp"
 #include "menu.hpp"
 #include "network.hpp"

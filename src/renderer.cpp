@@ -2,7 +2,6 @@
  - mini.q - a minimalistic multiplayer FPS
  - renderer.cpp -> handles rendering routines
  -------------------------------------------------------------------------*/
-#include "mini.q.hpp"
 #include "csg.hpp"
 #include "demo.hpp"
 #include "game.hpp"
@@ -22,6 +21,7 @@
 #include "base/script.hpp"
 
 namespace q {
+extern int fov;
 namespace rr {
 
 /*--------------------------------------------------------------------------

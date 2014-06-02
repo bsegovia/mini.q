@@ -2,7 +2,6 @@
  - mini.q - a minimalistic multiplayer FPS
  - monster.hpp -> implements monster AI
  -------------------------------------------------------------------------*/
-#include "mini.q.hpp"
 #include "editing.hpp"
 #include "game.hpp"
 #include "network.hpp"

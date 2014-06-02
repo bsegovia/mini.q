@@ -2,14 +2,14 @@
  - mini.q - a minimalistic multiplayer FPS
  - mini.q.iso.cpp -> test iso surface extractor
  -------------------------------------------------------------------------*/
+#include "csg.hpp"
+#include "iso.hpp"
+#include "mini.q.hpp"
 #include "base/console.hpp"
 #include "base/task.hpp"
 #include "base/string.hpp"
 #include "base/script.hpp"
 #include "base/sys.hpp"
-#include "csg.hpp"
-#include "iso.hpp"
-#include "mini.q.hpp"
 
 using namespace q;
 static void outputcpufeatures() {

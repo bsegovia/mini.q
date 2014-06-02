@@ -13,6 +13,7 @@
 #include <zlib.h>
 
 namespace q {
+extern int fov;
 static void playerpos(int x, int y, int z) {game::player1->o = vec3f(vec3i(x,y,z));}
 static void playerypr(int x, int y, int z) {game::player1->ypr = vec3f(vec3i(x,y,z));}
 CMD(playerpos);

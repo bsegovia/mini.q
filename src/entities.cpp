@@ -3,7 +3,6 @@
  - entities.hpp -> implement shared routines for entities
  - (monsters,players...)
  -------------------------------------------------------------------------*/
-#include "mini.q.hpp"
 #include "client.hpp"
 #include "editing.hpp"
 #include "entities.hpp"

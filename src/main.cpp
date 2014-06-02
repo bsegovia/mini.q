@@ -15,7 +15,7 @@
 #include <SDL_main.h>
 
 namespace q {
-
+extern int gamespeed, minmillis, fov, farplane;
 static void computetarget() {
   const float w = float(sys::scrw), h = float(sys::scrh);
   const vec4f nc(w/2,h/2,1.f,1.f);
