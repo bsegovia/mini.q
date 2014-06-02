@@ -362,12 +362,10 @@ private:
 
     // guarantees loop termination
     assert(m_capacity == 0 || m_numUsed < m_capacity);
-    while (!n->is_unused())
-    {
+    while (!n->is_unused()) {
       ++numProbes;
       i = (i + numProbes) & m_capacityMask;
       n = m_nodes + i;
-
       if (compare_key(n, key, hash))
         return n;
     }

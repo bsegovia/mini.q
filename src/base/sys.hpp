@@ -9,8 +9,14 @@
  -------------------------------------------------------------------------*/
 #if defined(__x86_64__) || defined(__ia64__) || defined(_M_X64)
 #define __X86_64__
-#elif !defined(EMSCRIPTEN)
+#define POINTER_BIT_SIZE 64
+#define POINTER_BYTE_SIZE 8
+#elif defined(_M_IX86) || defined(__i386__) || defined(__i386)
 #define __X86__
+#define POINTER_BIT_SIZE 32
+#define POINTER_BYTE_SIZE 4
+#else
+#error "unknown platform"
 #endif
 
 /*-------------------------------------------------------------------------

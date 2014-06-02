@@ -631,8 +631,10 @@ struct gridbuilder {
         to->idx = node.leaf->pts.size();
         const octree::point pt = {
           pl.leaf.pts[from->idx].world,
-          uintptr(node.leaf),
-          0
+          u32(uintptr(node.leaf)),
+#if POINTER_BYTE_SIZE == 8
+          u32(uintptr(node.leaf) >> 32ull)
+#endif /* POINTER_BYTE_SIZE == 8 */
         };
         node.leaf->pts.push_back(pt);
       }

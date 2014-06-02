@@ -85,7 +85,7 @@ struct DEFAULT_ALIGNED linear_allocator {
  -------------------------------------------------------------------------*/
 class allocator {
 public:
-  explicit allocator(const char* name = "DEFAULT"):  m_name(name) {}
+  explicit allocator(const char* name = "DEFAULT") : m_name(name) {}
   ~allocator(void) {}
   void *allocate(u32 bytes, int flags = 0);
   void *allocate_aligned(u32 bytes, u32 alignment, int flags = 0);

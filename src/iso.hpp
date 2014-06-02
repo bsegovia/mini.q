@@ -62,9 +62,19 @@ struct leafoctree : leafoctreebase {
  -------------------------------------------------------------------------*/
 struct octree {
   struct point {
-    vec3f pos;                  // world position (TODO relative and quantize)
-    uintptr owner:ptrbitsize-1; // parent leaf or other point when merged
-    uintptr merged:1;           // merged happens after mesh decimation
+    INLINE void setasmerged() {ownerlo|=1;}
+    INLINE void setptr(uintptr ptr) {
+      assert(ptr % 2 == 0 && "pointer is not properly aligned");
+      ownerlo = (ownerlo & 1) | u32(ptr);
+#if POINTER_BYTE_SIZE == 8
+      ownerhi = u32(ptr >> 32ull);
+#endif
+    }
+    vec3f pos;   // world position (TODO relative and quantize)
+    u32 ownerlo; // parent leaf or other point if collapsed with this point
+#if POINTER_BYTE_SIZE == 8
+    u32 ownerhi; // high part of the pointer
+#endif
   };
   struct node {
     INLINE node() : children(NULL), level(0), isleaf(0), empty(0), flag(0) {}

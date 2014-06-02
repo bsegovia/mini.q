@@ -24,4 +24,7 @@
 * improve naming (make it more consistent regarding '_')
 * make sharpen mesh parallel to bvh building
 * replace zlib by lz4+fse
-* cleanup headers
+* implement a simple fixed size hashmap for the mesh construction in geom.cpp
+* other idea for mesh construction and hash map is to use a local hash map for
+  all points that are going to be used *only* inside the given leaf
+
