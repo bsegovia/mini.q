@@ -92,7 +92,7 @@ static u32 compute_vertex_count(const iso::octree::node &node) {
 }
 
 static const int LOADFACTOR = 4;
-typedef hash_map<uintptr,int,fastptrhash<sizeof(uintptr)>,LOADFACTOR> point_hash_map;
+typedef hash_map<uintptr,int,fastptrhash<ptrbytesize>,LOADFACTOR> point_hash_map;
 static void build_mesh(const iso::octree &o,
                        const iso::octree::node &node,
                        point_hash_map &vert_map,

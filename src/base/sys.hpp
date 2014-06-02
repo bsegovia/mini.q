@@ -635,8 +635,10 @@ namespace q {
 template <u32 sz> struct ptrtype {};
 template <> struct ptrtype<4> { typedef s32 stype; typedef u32 utype; };
 template <> struct ptrtype<8> { typedef s64 stype; typedef u64 utype; };
-typedef ptrtype<sizeof(void*)>::utype uintptr;
-typedef ptrtype<sizeof(void*)>::stype intptr;
+static const u32 ptrbytesize = sizeof(void*);
+static const u32 ptrbitsize = 8*ptrbytesize;
+typedef ptrtype<ptrbytesize>::utype uintptr;
+typedef ptrtype<ptrbytesize>::stype intptr;
 static struct niltype {niltype(){}} nil MAYBE_UNUSED;
 
 namespace sys {

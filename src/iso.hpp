@@ -62,7 +62,9 @@ struct leafoctree : leafoctreebase {
  -------------------------------------------------------------------------*/
 struct octree {
   struct point {
-    vec3f pos;
+    vec3f pos;                  // world position (TODO relative and quantize)
+    uintptr owner:ptrbitsize-1; // parent leaf or other point when merged
+    uintptr merged:1;           // merged happens after mesh decimation
   };
   struct node {
     INLINE node() : children(NULL), level(0), isleaf(0), empty(0), flag(0) {}

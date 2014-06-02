@@ -629,7 +629,12 @@ struct gridbuilder {
     if (from->isleaf) {
       if (!from->empty) {
         to->idx = node.leaf->pts.size();
-        node.leaf->pts.push_back({pl.leaf.pts[from->idx].world});
+        const octree::point pt = {
+          pl.leaf.pts[from->idx].world,
+          uintptr(node.leaf),
+          0
+        };
+        node.leaf->pts.push_back(pt);
       }
       return;
     }
