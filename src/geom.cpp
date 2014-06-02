@@ -69,15 +69,18 @@ struct procmesh {
 
 template <int ptrsize> struct fastptrhash {};
 template <>
-struct fastptrhash<8> {
-  u32 operator()(uintptr ptr) const {
-    const auto shr = ptr >> 2;
-    return u32((shr & 0xffffffffull) ^ (shr >> 32ull));
+struct fastptrhash<4> {
+  static INLINE u32 hash(u32 key) {
+    return u32((key>>24ull) ^ (key>>16ull) ^ (key>>8ull) ^ key);
   }
+  u32 operator()(uintptr ptr) const {return hash(ptr>>2);}
 };
 template <>
-struct fastptrhash<4> {
-  u32 operator()(uintptr ptr) const {return ptr >> 2;}
+struct fastptrhash<8> {
+  static INLINE u32 hash(u64 key) {
+    return u32((key>>32ull) ^ (key>>24ull) ^ (key>>16ull) ^ (key>>8ull) ^ key);
+  }
+  u32 operator()(uintptr ptr) const {return hash(ptr>>2);}
 };
 
 static u32 compute_vertex_count(const iso::octree::node &node) {
