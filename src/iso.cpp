@@ -931,6 +931,7 @@ struct task_build_voxel : public task_iso {
     ref<task> bvhtask = NEW(task_build_voxel_bvh, items);
     subbvhtask->starts(*bvhtask);
     bvhtask->ends(*this);
+    subbvhtask->scheduled();
     bvhtask->scheduled();
   }
 };
@@ -940,7 +941,7 @@ ref<task> create_task(octree &o, const csg::node &node, const vec3f &org, u32 ce
 }
 
 ref<task> create_voxel_task(octree &o, const csg::node &node, const vec3f &org, u32 cellnum, float cellsize) {
-	return NEW(task_build_voxel, o, node, org, cellsize, cellnum);
+  return NEW(task_build_voxel, o, node, org, cellsize, cellnum);
 }
 
 void start() {
