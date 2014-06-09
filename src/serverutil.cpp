@@ -36,7 +36,7 @@ ENetPacket *recvmap(int n) {
   putint(p, copysize);
   memcpy(p, copydata, copysize);
   p += copysize;
-  *(u16 *)start = ENET_HOST_TO_NET_16(p-start);
+  *(u16 *)start = ENET_HOST_TO_NET_16(int(p-start));
   enet_packet_resize(packet, p-start);
   return packet;
 }

@@ -113,7 +113,7 @@ INLINE void allocator::deallocate(void* ptr, u32) {
 namespace q {
 template <u32 size, u32 align>
 INLINE char *linear_allocator<size,align>::newstring(const char *s, u32 l) {
-  if (l==~0u) l=strlen(s);
+  if (l==~0u) l=int(strlen(s));
   auto d = strncpy(alloc(l+1),s,l); d[l]=0;
   return d;
 }

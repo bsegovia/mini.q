@@ -63,7 +63,7 @@ struct glext {
         if (!*exts) break;
         const char *ext = exts;
         while (*exts && *exts != ' ') exts++;
-        if (exts > ext) glexts.insert(string(ext, size_t(exts-ext)));
+        if (exts > ext) glexts.insert(string(ext, int(exts-ext)));
       }
     }
   }

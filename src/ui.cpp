@@ -55,7 +55,7 @@ static const gfx *getrenderqueue() { return g_gfxqueue; }
 static int getrenderqueuesize() { return g_gfxqueuesize; }
 
 static const char *allocText(const char *text) {
-  u32 len = strlen(text)+1;
+  u32 len = u32(strlen(text))+1;
   if (g_textpoolsize + len >= TEXT_POOL_SIZE) return 0;
   char *dst = &g_textpool[g_textpoolsize];
   memcpy(dst, text, len);

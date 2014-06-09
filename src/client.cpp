@@ -295,9 +295,9 @@ void c2sinfo(const game::dynent *d) {
     }
   }
 
-  *(u16 *)start = ENET_HOST_TO_NET_16(p-start);
+  *(u16 *)start = ENET_HOST_TO_NET_16(enet_uint32(p-start));
   enet_packet_resize(packet, p-start);
-  demo::incomingdata(start, p-start, true);
+  demo::incomingdata(start, enet_uint32(p - start), true);
   if (clienthost) {
     enet_host_broadcast(clienthost, 0, packet);
     enet_host_flush(clienthost);
@@ -635,7 +635,7 @@ void gets2c(void) {
         if (disconnecting)
           con::out("attempting to disconnect...");
         else
-          localservertoclient(event.packet->data, event.packet->dataLength);
+          localservertoclient(event.packet->data, int(event.packet->dataLength));
         enet_packet_destroy(event.packet);
       break;
       case ENET_EVENT_TYPE_DISCONNECT:

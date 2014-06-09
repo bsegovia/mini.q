@@ -347,7 +347,7 @@ void writebmp(const int *data, int w, int h, const char *filename) {
       x++;
     } // pad to dword
   }
-  int sizeraw = p - raw;
+  int sizeraw = int(p - raw);
   int scanline = (w * 3 + 3) & ~3;
   assert(sizeraw == scanline * h);
 

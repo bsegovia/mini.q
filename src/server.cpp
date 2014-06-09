@@ -61,10 +61,10 @@ void send(int n, ENetPacket *packet) {
   switch (clients[n].type) {
     case ST_TCPIP:
       enet_peer_send(clients[n].peer, 0, packet);
-      bsend += packet->dataLength;
+      bsend += int(packet->dataLength);
       break;
     case ST_LOCAL:
-      client::localservertoclient(packet->data, packet->dataLength);
+      client::localservertoclient(packet->data, int(packet->dataLength));
       break;
   }
 }
@@ -75,7 +75,7 @@ void send2(bool rel, int cn, int a, int b) {
   u8 *p = start+2;
   putint(p, a);
   putint(p, b);
-  *(u16 *)start = ENET_HOST_TO_NET_16(p-start);
+  *(u16 *)start = ENET_HOST_TO_NET_16(int(p-start));
   enet_packet_resize(packet, p-start);
   if (cn<0) process(packet, -1);
   else send(cn, packet);
@@ -88,7 +88,7 @@ void sendservmsg(const char *msg) {
   u8 *p = start+2;
   putint(p, SV_SERVMSG);
   sendstring(msg, p);
-  *(u16 *)start = ENET_HOST_TO_NET_16(p-start);
+  *(u16 *)start = ENET_HOST_TO_NET_16(int(p-start));
   enet_packet_resize(packet, p-start);
   multicast(packet, -1);
   if (packet->referenceCount==0) enet_packet_destroy(packet);
@@ -251,7 +251,7 @@ void send_welcome(int n) {
     loopv(sents) if (sents[i].spawned) putint(p, i);
     putint(p, -1);
   }
-  *(u16 *)start = ENET_HOST_TO_NET_16(p-start);
+  *(u16 *)start = ENET_HOST_TO_NET_16(int(p-start));
   enet_packet_resize(packet, p-start);
   send(n, packet);
 }
@@ -354,20 +354,20 @@ void slice(int seconds, unsigned int timeout) {
         const auto host = enet_address_get_host(&c.peer->address,hn,sizeof(hn))==0;
         strcpy_s(c.hostname, host ? hn : "localhost");
         printf("client connected (%s)\n", c.hostname.c_str());
-        send_welcome(lastconnect = &c-&clients[0]);
+        send_welcome(lastconnect = int(&c-&clients[0]));
         break;
       }
       case ENET_EVENT_TYPE_RECEIVE:
-        brec += event.packet->dataLength;
-        process(event.packet, (intptr_t)event.peer->data); 
+        brec += int(event.packet->dataLength);
+        process(event.packet, int(event.peer->data)); 
         if (event.packet->referenceCount==0) enet_packet_destroy(event.packet);
       break;
       case ENET_EVENT_TYPE_DISCONNECT: 
         if (intptr(event.peer->data)<0) break;
         printf("client::disconnected client (%s)\n",
-          clients[uintptr(event.peer->data)].hostname.c_str());
-        clients[uintptr(event.peer->data)].type = ST_EMPTY;
-        send2(true, -1, SV_CDIS, intptr(event.peer->data));
+          clients[int(event.peer->data)].hostname.c_str());
+		clients[int(event.peer->data)].type = ST_EMPTY;
+        send2(true, -1, SV_CDIS, int(event.peer->data));
         event.peer->data = (void *)-1;
       break;
       default: break;
@@ -390,7 +390,7 @@ void localconnect(void) {
   drawarray &c = addclient();
   c.type = ST_LOCAL;
   strcpy_s(c.hostname, "local");
-  send_welcome(&c-&clients[0]); 
+  send_welcome(int(&c-&clients[0])); 
 }
 
 void init(bool dedicated, int uprate, const char *sdesc, const char *ip, const char *master, const char *passwd, int maxcl) {

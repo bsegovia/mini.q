@@ -130,7 +130,7 @@ void servermsinit(const char *master, const char *sdesc, bool listen) {
   const char *mid = strstr(master, "/");
   if (!mid) mid = master;
   strcpy_s(masterpath, mid);
-  strn0cpy(masterbase.c_str(), master, mid-master+1);
+  strn0cpy(masterbase.c_str(), master, int(mid-master+1));
   strcpy_s(serverdesc, sdesc);
 
   if (listen) {

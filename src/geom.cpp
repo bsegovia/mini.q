@@ -73,14 +73,14 @@ struct fastptrhash<4> {
   static INLINE u32 hash(u32 key) {
     return u32((key>>24ull) ^ (key>>16ull) ^ (key>>8ull) ^ key);
   }
-  u32 operator()(uintptr ptr) const {return hash(ptr>>2);}
+  u32 operator()(u32 ptr) const {return hash(ptr>>2);}
 };
 template <>
 struct fastptrhash<8> {
   static INLINE u32 hash(u64 key) {
     return u32((key>>32ull) ^ (key>>24ull) ^ (key>>16ull) ^ (key>>8ull) ^ key);
   }
-  u32 operator()(uintptr ptr) const {return hash(ptr>>2);}
+  u32 operator()(u64 ptr) const {return hash(ptr>>2);}
 };
 
 static u32 compute_vertex_count(const iso::octree::node &node) {
