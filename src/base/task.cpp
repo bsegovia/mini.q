@@ -71,21 +71,17 @@ void queue::terminate(task *job) {
 
   // go over all tasks that depend on us
   loopi(job->tasktostartnum) {
-    if (--job->taskstostart[i]->tostart == 0)
-      append(job->taskstostart[i]);
-    job->taskstostart[i]->release();
+    if (--job->tasktostart[i]->tostart == 0)
+      append(job->tasktostart[i]);
+    job->tasktostart[i] = NULL;
   }
   loopi(job->tasktoendnum) {
-    if (--job->taskstoend[i]->toend == 0)
-      terminate(job->taskstoend[i]);
-    job->taskstoend[i]->release();
+    if (--job->tasktoend[i]->toend == 0)
+      terminate(job->tasktoend[i]);
+    job->tasktoend[i] = NULL;
   }
-
-  // if no more waiters, we can safely free all dependencies since we are done
-  if (job->waiternum == 0) {
-    loopi(job->depnum) job->deps[i]->release();
-    job->depnum = 0;
-  }
+  job->tasktoendnum = 0;
+  job->tasktostartnum = 0;
 }
 
 struct thread_data {
@@ -178,7 +174,7 @@ task::~task() {}
 void task::start(const u32 *queueinfo, u32 n) {
   // sys::set_affinity(0);
   tasking::queues.resize(n);
-  loopi(s32(n)) tasking::queues[i] = NEW(tasking::queue, queueinfo[i]);
+  loopi(n) tasking::queues[i] = NEW(tasking::queue, queueinfo[i]);
 }
 
 void task::finish(void) {
@@ -197,26 +193,44 @@ void task::scheduled(void) {
 
 void task::starts(task &other) {
   assert(state == tasking::UNSCHEDULED && other.state == tasking::UNSCHEDULED);
-  const u32 startindex = tasktostartnum++;
-  const u32 depindex = other.depnum++;
-  assert(startindex < task::MAXSTART && depindex < task::MAXDEP);
-  taskstostart[startindex] = &other;
-  other.deps[depindex] = this;
-  acquire();
-  other.acquire();
   other.tostart++;
+
+  // compare-and-swap loop to safely both number of tasks to start and the task
+  // itself. Be careful with race condition, we first need to put the task and
+  // then to update the counter
+  auto old = 0;
+  do {
+    old = tasktostartnum;
+    assert(old < task::MAXSTART);
+    tasktostart[old] = &other;
+  } while (cmpxchg(tasktostartnum, old+1, old));
+
+  // same strategy for the dependency array
+  do {
+    old = other.depnum;
+    assert(old < task::MAXDEP);
+    other.deps[old] = this;
+  } while (cmpxchg(other.depnum, old+1, old));
 }
 
 void task::ends(task &other) {
   assert(state == tasking::UNSCHEDULED && other.state < tasking::DONE);
-  const u32 endindex = tasktoendnum++;
-  const u32 depindex = other.depnum++;
-  assert(endindex < task::MAXEND && depindex < task::MAXDEP);
-  taskstoend[endindex] = &other;
-  other.deps[depindex] = this;
-  acquire();
-  other.acquire();
   other.toend++;
+
+  // compare-and-swap loop as above
+  auto old = 0;
+  do {
+    old = tasktoendnum;
+    assert(old < task::MAXEND);
+    tasktoend[old] = &other;
+  } while (old != cmpxchg(tasktoendnum, old+1, old));
+
+  // same strategy for the dependency array
+  do {
+    old = other.depnum;
+    assert(old < task::MAXDEP);
+    other.deps[old] = this;
+  } while (old != cmpxchg(other.depnum, old+1, old));
 }
 
 void task::wait(bool recursivewait) {
@@ -252,12 +266,6 @@ void task::wait(bool recursivewait) {
         loopj(pausenum) _mm_pause();
       pausenum = min(pausenum*2, 64);
 #endif /* __SSE__ */
-  }
-
-  // finished and no more waiters, we can safely release the dependency array
-  if (!recursivewait && --waiternum == 0) {
-    loopi(depnum) deps[i]->release();
-    depnum = 0;
   }
   release();
 }

@@ -370,7 +370,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>false</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;USE_ENET;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>MEMORY_DEBUGGER;WIN32;NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;USE_ENET;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>../src/;../enet/include;../include/SDL2/;../include/;../</AdditionalIncludeDirectories>
       <StringPooling>true</StringPooling>
       <ExceptionHandling>false</ExceptionHandling>

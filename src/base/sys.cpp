@@ -158,9 +158,10 @@ static void memoutputalloc(void) {
       fprintf(stderr, "unfreed allocation: %s\n", unfreed.c_str());
       sz += it->size;
     }
-    if (sz > 0) fprintf(stderr, "total unfreed: %fKB \n", float(sz)/1000.f);
-    delete memlist;
-    _exit(EXIT_FAILURE);
+    fprintf(stderr, "total unfreed: %fKB \n", float(sz)/1000.f);
+	fflush(stderr);
+	delete memlist;
+    if (sz != 0) _exit(EXIT_FAILURE);
   }
 }
 

@@ -33,10 +33,10 @@ public:
   static const u32 MAXDEP   = 8; // maximum number of tasks we may depend on
 private:
   friend tasking::queue;
-  task *taskstostart[MAXSTART];// all the tasks that wait for us to start
-  task *taskstoend[MAXEND];    // all the tasks that wait for us to finish
-  task *deps[MAXDEP];          // all the tasks we depend on to finish or start
-  tasking::queue *const owner; // where the task runs when ready
+  ref<task> tasktostart[MAXSTART]; // all the tasks that wait for us to start
+  ref<task> tasktoend[MAXEND];     // all the tasks that wait for us to finish
+  ref<task> deps[MAXDEP];          // all the tasks we depend on to finish or start
+  tasking::queue * const owner;// where the task runs when ready
   const char *name;            // name of the task (may be NULL)
   atomic elemnum;              // number of items still to run in the set
   atomic tostart;              // mbz to start
