@@ -64,7 +64,9 @@
     <ClCompile Include="..\src\client.cpp" />
     <ClCompile Include="..\src\csg.cpp" />
     <ClCompile Include="..\src\csgsse.cpp" />
-    <ClCompile Include="..\src\csgavx.cpp" />
+    <ClCompile Include="..\src\csgavx.cpp">
+      <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">AdvancedVectorExtensions</EnableEnhancedInstructionSet>
+    </ClCompile>
     <ClCompile Include="..\src\bvh.cpp" />
     <ClCompile Include="..\src\demo.cpp" />
     <ClCompile Include="..\src\editing.cpp" />
@@ -83,7 +85,9 @@
     <ClCompile Include="..\src\rt.cpp" />
     <ClCompile Include="..\src\rtscalar.cpp" />
     <ClCompile Include="..\src\rtsse.cpp" />
-    <ClCompile Include="..\src\rtavx.cpp" />
+    <ClCompile Include="..\src\rtavx.cpp">
+      <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">AdvancedVectorExtensions</EnableEnhancedInstructionSet>
+    </ClCompile>
     <ClCompile Include="..\src\renderer.cpp" />
     <ClCompile Include="..\src\server.cpp" />
     <ClCompile Include="..\src\serverbrowser.cpp" />

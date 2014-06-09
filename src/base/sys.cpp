@@ -29,7 +29,7 @@ void endianswap(void *memory, int stride, int length) {
   }
 }
 
-#if defined __WIN32__
+#if defined(__WIN32__)
 u32 threadnumber() {
 #if (_WIN32_WINNT >= 0x0601)
   int groups = GetActiveProcessorGroupCount();
@@ -45,6 +45,70 @@ u32 threadnumber() {
 }
 #else
 u32 threadnumber() { return sysconf(_SC_NPROCESSORS_CONF); }
+#endif
+
+#if defined(__WIN32__)
+static void set_affinity(HANDLE thread, int affinity) {
+#if (_WIN32_WINNT >= 0x0601) // FIXME: use getProcAddress to activate this feature only if supported by Windows
+    int groups = GetActiveProcessorGroupCount();
+    int totalProcessors = 0, group = 0, number = 0;
+    for (int i = 0; i<groups; i++) {
+      int processors = GetActiveProcessorCount(i);
+      if (totalProcessors + processors > affinity) {
+        group = i;
+        number = (int)affinity - totalProcessors;
+        break;
+      }
+      totalProcessors += processors;
+    }
+
+    GROUP_AFFINITY groupAffinity;
+    groupAffinity.Group = (WORD)group;
+    groupAffinity.Mask = (KAFFINITY)(u64(1) << number);
+    groupAffinity.Reserved[0] = 0;
+    groupAffinity.Reserved[1] = 0;
+    groupAffinity.Reserved[2] = 0;
+    if (!SetThreadGroupAffinity(thread, &groupAffinity, NULL))
+      fatal("thread: cannot set thread group affinity");
+
+    PROCESSOR_NUMBER processorNumber;
+    processorNumber.Group = group;
+    processorNumber.Number = number;
+    processorNumber.Reserved = 0;
+    if (!SetThreadIdealProcessorEx(thread, &processorNumber, NULL))
+      fatal("thread: cannot set ideal processor");
+#else
+    if (!SetThreadAffinityMask(thread, DWORD_PTR(u64(1) << affinity)))
+      fatal("thread: cannot set thread affinity mask");
+    if (SetThreadIdealProcessor(thread, (DWORD)affinity) == (DWORD)-1)
+      fatal("thread: cannot set ideal processor");
+#endif
+}
+void set_affinity(int affinity) {
+  set_affinity(GetCurrentThread(), affinity);
+}
+#elif defined(__MACOSX__)
+void set_affinity(int affinity) {
+  if (affinity >= 0) {
+    thread_affinity_policy ap;
+    ap.affinity_tag = affinity;
+    if (thread_policy_set(mach_thread_self(),THREAD_AFFINITY_POLICY,
+        (integer_t*)&ap,THREAD_AFFINITY_POLICY_COUNT) != KERN_SUCCESS)
+      con::out("thread: cannot set affinity");
+  }
+}
+#elif defined(__LINUX__)
+void set_affinity(int affinity) {
+  int wrap = getNumberOfLogicalThreads()/2;
+  affinity = (affinity/2) + wrap*(affinity%2);
+  if (affinity >= 0 && affinity < 64*64) {
+    union { u64 u; cpu_set_t set; } mask[64];
+    for (size_t i=0; i<64; i++) mask[i].u = 0;
+    mask[affinity/64].u= u64(1) << (affinity % 64);
+    if (pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask[0].set) < 0)
+      con::out("thread: cannot set affinity");
+  }
+}
 #endif
 
 #if defined(MEMORY_DEBUGGER)
@@ -307,6 +371,36 @@ void writebmp(const int *data, int w, int h, const char *filename) {
   fwrite(raw, 1, hdr.sizeraw, fp);
   fclose(fp);
   FREE(raw);
+}
+
+const char *get_platform_name() {
+#if defined(__LINUX__) && !defined(__X86_64__)
+  return "Linux (32bit)";
+#elif defined(__LINUX__) && defined(__X86_64__)
+  return "Linux (64bit)";
+#elif defined(__FREEBSD__) && !defined(__X86_64__)
+  return "FreeBSD (32bit)";
+#elif defined(__FREEBSD__) && defined(__X86_64__)
+  return "FreeBSD (64bit)";
+#elif defined(__CYGWIN__) && !defined(__X86_64__)
+  return "Cygwin (32bit)";
+#elif defined(__CYGWIN__) && defined(__X86_64__)
+  return "Cygwin (64bit)";
+#elif defined(__WIN32__) && !defined(__X86_64__)
+  return "Windows (32bit)";
+#elif defined(__WIN32__) && defined(__X86_64__)
+  return "Windows (64bit)";
+#elif defined(__MACOSX__) && !defined(__X86_64__)
+  return "MacOS (32bit)";
+#elif defined(__MACOSX__) && defined(__X86_64__)
+  return "MacOS (64bit)";
+#elif defined(__UNIX__) && !defined(__X86_64__)
+  return "Unix (32bit)";
+#elif defined(__UNIX__) && defined(__X86_64__)
+  return "Unix (64bit)";
+#else
+  return "Unknown";
+#endif
 }
 
 enum {eax=0, ebx=1, ecx=2, edx=3};

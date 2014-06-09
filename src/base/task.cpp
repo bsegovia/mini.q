@@ -6,6 +6,7 @@
 #include "base/vector.hpp"
 #include "base/math.hpp"
 #include "base/intrusive_list.hpp"
+#include "base/sys.hpp"
 #include <SDL_thread.h>
 
 namespace q {
@@ -85,12 +86,20 @@ void queue::terminate(task *job) {
     loopi(job->depnum) job->deps[i]->release();
 }
 
+struct thread_data {
+  queue *q;
+  int index;
+};
+
 int queue::threadfunc(void *data) {
 #if defined(__X86__) || defined(__X86_64__)
   // flush to zero and no denormals
   _mm_setcsr(_mm_getcsr() | (1<<15) | (1<<6));
 #endif
-  auto q = (queue*) data;
+  const auto td = (thread_data*) data;
+  const auto q = (queue*) td->q;
+  // sys::set_affinity(td->index+1);
+  DEL(td);
   for (;;) {
     SDL_LockMutex(q->mutex);
     while (q->readylist.empty() && !q->terminatethreads)
@@ -136,7 +145,12 @@ int queue::threadfunc(void *data) {
 queue::queue(u32 threadnum) : terminatethreads(false) {
   mutex = SDL_CreateMutex();
   cond = SDL_CreateCond();
-  loopi(s32(threadnum)) threads.push_back(SDL_CreateThread(threadfunc, "worker thread", this));
+  loopi(threadnum) {
+    const auto td = NEWE(thread_data);
+    td->index = i;
+    td->q = this;
+    threads.push_back(SDL_CreateThread(threadfunc, "worker thread", td));
+  }
 }
 
 queue::~queue(void) {
@@ -160,6 +174,7 @@ task::task(const char *name, u32 n, u32 waiternum, u32 queue, u16 policy) :
 task::~task() {}
 
 void task::start(const u32 *queueinfo, u32 n) {
+  // sys::set_affinity(0);
   tasking::queues.resize(n);
   loopi(s32(n)) tasking::queues[i] = NEW(tasking::queue, queueinfo[i]);
 }

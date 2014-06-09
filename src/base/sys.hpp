@@ -663,6 +663,7 @@ void initendiancheck();
 int islittleendian();
 void endianswap(void *memory, int stride, int length);
 u32 threadnumber();
+void set_affinity(int affinity);
 void writebmp(const int *data, int w, int h, const char *filename);
 void textinput(bool on);
 

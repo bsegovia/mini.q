@@ -185,9 +185,9 @@ INLINE avxf select(const avxb& m, const avxf& t, const avxf& f) {
 }
 
 #if !defined(__clang__)
-INLINE avxf select(const int m, const avxf& t, const avxf& f) {
-  return _mm256_blend_ps(f, t, m);
-}
+//INLINE avxf select(const int m, const avxf& t, const avxf& f) {
+// return _mm256_blend_ps(f, t, m);
+//}
 #else
 INLINE avxf select(const int m, const avxf& t, const avxf& f) {
   return select(avxb(m),t,f);

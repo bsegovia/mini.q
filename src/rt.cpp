@@ -68,7 +68,7 @@ static void (*rtclear)(const vec2i&, const vec2i&, int*);
 
 void start() {
   using namespace sys;
-  if (hasfeature(CPU_YMM) && sys::hasfeature(CPU_AVX)) {
+  if (/*hasfeature(CPU_YMM) && */sys::hasfeature(CPU_AVX)) {
     con::out("rt: avx path selected");
     LOAD(rt::avx);
   } else if (hasfeature(CPU_SSE) && hasfeature(CPU_SSE2)) {
