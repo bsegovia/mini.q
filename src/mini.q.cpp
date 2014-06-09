@@ -13,6 +13,7 @@
 #include "server.hpp"
 #include "shaders.hpp"
 #include "renderer.hpp"
+#include "text.hpp"
 #include "enet/enet.h"
 #include "base/script.hpp"
 #include "base/console.hpp"

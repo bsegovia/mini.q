@@ -120,7 +120,6 @@ GAME_OBJS=\
   monster.o\
   network.o\
   ogl.o\
-  polygon.o\
   physics.o\
   qef.o\
   renderer.o\

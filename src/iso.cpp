@@ -361,14 +361,14 @@ struct gridbuilder {
   }
 
   void initedge() {
-    m_edge_index.memset(0xff);
+    m_edge_index.memset(u8(0xff));
     m_edges.resize(0);
     delayed_edges.resize(0);
   }
 
   void initqef() {
     m_qefnum = 0;
-    m_qef_index.memset(0xff);
+    m_qef_index.memset(u8(0xff));
     delayed_qef.resize(0);
   }
 
