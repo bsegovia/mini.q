@@ -783,8 +783,8 @@ struct task_iso : public task {
   typedef task_contouring::workitem workitem;
   INLINE task_iso(octree &o, const csg::node &csgnode,
                  const vec3f &org, float cellsize,
-                 u32 dim) :
-    task("task_iso"),
+                 u32 dim, u32 waiternum = 0) :
+    task("task_iso", 1, waiternum),
     oct(&o), csgnode(&csgnode),
     org(org), cellsize(cellsize), dim(dim)
   {
@@ -923,7 +923,7 @@ struct task_build_voxel : public task_iso {
   INLINE task_build_voxel(octree &o, const csg::node &csgnode,
                           const vec3f &org, float cellsize,
                           u32 dim) :
-    task_iso(o, csgnode, org, cellsize, dim) {}
+    task_iso(o, csgnode, org, cellsize, dim, 1) {}
   virtual void run(u32) {
     build(oct->m_root);
     build_iso_jobs(oct->m_root);

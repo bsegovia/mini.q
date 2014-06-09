@@ -234,8 +234,8 @@ void task::ends(task &other) {
 }
 
 void task::wait(bool recursivewait) {
-  assert((recursivewait||state >= tasking::SCHEDULED) &&
-         (recursivewait||waiternum > 0));
+  assert((recursivewait || state >= tasking::SCHEDULED) &&
+         (recursivewait || waiternum > 0));
   acquire();
 
   // execute all starting dependencies
