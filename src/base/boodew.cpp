@@ -72,16 +72,16 @@ static value getvar(args arg) {
   return verr(format("unknown identifier %s", key.c_str()));
 }
 
-static value ex(const string &s, size_t curr=0);
-static pair<value,size_t> expr(const string &s, char c, size_t curr) {
+static value ex(const string &s, int curr=0);
+static pair<value,int> expr(const string &s, char c, int curr) {
   const char *match = c=='['?"[]@":"()";
   stringstream ss;
-  size_t opened = 1, next = curr;
+  int opened = 1, next = curr;
   while (opened) {
     if ((next = s.find_first_of(match,next+1)) == size_t(string::npos))
       return makepair(verr(format("missing %c", c=='['?']':')')),0);
     if (c == '[' && s[next] == '@') {
-      ss << s.substr(curr+1, next-curr-1);
+      ss << s.substr(curr+1, int(next-curr-1));
       if (s[next+1] == '(') {
         const auto v = expr(s, '(', next+1);
         if (earlyout(v.first)) return v;
@@ -97,7 +97,7 @@ static pair<value,size_t> expr(const string &s, char c, size_t curr) {
   if (next>curr) ss << s.substr(curr+1, next-curr-1);
   return makepair((c=='[' ? stov(ss.str()) : ex(ss.str())), next+1);
 }
-static value ex(const string &s, size_t curr) {
+static value ex(const string &s, int curr) {
   value ret, id;
   bool running = true;
   while (running) {

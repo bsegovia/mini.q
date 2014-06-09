@@ -444,7 +444,7 @@ struct Stack <string>
   {
     size_t len;
     const char *str = luaL_checklstring(L, index, &len);
-    return string (str, len);
+    return string (str, int(len));
   }
 };
 
@@ -464,6 +464,6 @@ struct Stack <string const&>
   {
     size_t len;
     const char *str = luaL_checklstring(L, index, &len);
-    return string (str, len);
+    return string (str, int(len));
   }
 };

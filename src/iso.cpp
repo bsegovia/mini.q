@@ -364,39 +364,6 @@ struct gridbuilder {
         ++index;
       }
     }
-#if TEST_VOXEL_INTERSECTOR
-    bvh = NULL;
-    vector<rt::primitive> voxels;
-    stepxyz(vec3i(zero), vec3i(SUBGRID), vec3i(4)) {
-      auto &pos = stack->p;
-      auto &d = stack->d;
-      auto &m = stack->m;
-      const auto p = vertex(sxyz);
-      const auto box = aabb(p-2.f*cellsize, p+6.f*cellsize);
-      int index = 0;
-      const auto end = sxyz+4;
-      loopxyz(sxyz, end) csg::set(pos, vertex(xyz)+0.5f*vec3f(cellsize), index++);
-      isodist(m_node, pos, NULL, d, m, index, box);
-#if !defined(NDEBUG)
-      loopi(index) assert(d[i] <= 0.f || m[i] == csg::MAT_AIR_INDEX);
-      loopi(index) assert(d[i] >= 0.f || m[i] != csg::MAT_AIR_INDEX);
-#endif /* NDEBUG */
-      STATS_ADD(iso_num, index);
-      STATS_ADD(iso_grid_num, index);
-      index = 0;
-      loopxyz(sxyz, end) {
-        if (d[index] <= 0.f && d[index] < 0.5f*cellsize*sqrt(3.f)) {
-          const aabb box(vertex(xyz), vertex(xyz)+vec3f(cellsize));
-          voxels.push_back(rt::primitive(box));
-        }
-        ++index;
-      }
-    }
-    if (voxels.size() > 0) {
-      bvh = NEW(rt::intersector, &voxels[0], voxels.size());
-      voxel_num += voxels.size();
-    }
-#endif /* TEST_VOXEL_INTERSECTOR */
   }
 
   void initedge() {
@@ -707,6 +674,40 @@ struct gridbuilder {
     output(node);
   }
 
+  void create_voxels(octree::node &node) {
+    bvh = NULL;
+    vector<rt::primitive> voxels;
+    stepxyz(vec3i(zero), vec3i(SUBGRID), vec3i(4)) {
+      auto &pos = stack->p;
+      auto &d = stack->d;
+      auto &m = stack->m;
+      const auto p = vertex(sxyz);
+      const auto box = aabb(p-2.f*cellsize, p+6.f*cellsize);
+      int index = 0;
+      const auto end = sxyz+4;
+      loopxyz(sxyz, end) csg::set(pos, vertex(xyz)+0.5f*vec3f(cellsize), index++);
+      isodist(m_node, pos, NULL, d, m, index, box);
+#if !defined(NDEBUG)
+      loopi(index) assert(d[i] <= 0.f || m[i] == csg::MAT_AIR_INDEX);
+      loopi(index) assert(d[i] >= 0.f || m[i] != csg::MAT_AIR_INDEX);
+#endif /* NDEBUG */
+      STATS_ADD(iso_num, index);
+      STATS_ADD(iso_grid_num, index);
+      index = 0;
+      loopxyz(sxyz, end) {
+        if (d[index] <= 0.f && d[index] < 0.5f*cellsize*sqrt(3.f)) {
+          const aabb box(vertex(xyz), vertex(xyz)+vec3f(cellsize));
+          voxels.push_back(rt::primitive(box));
+        }
+        ++index;
+      }
+    }
+    if (voxels.size() > 0) {
+      bvh = NEW(rt::intersector, &voxels[0], voxels.size());
+      voxel_num += voxels.size();
+    }
+  }
+
   const csg::node *m_node;
   ref<rt::intersector> bvh;
   vector<fielditem> m_field;
@@ -738,7 +739,6 @@ static context *ctx = NULL;
 
 // run the contouring part per leaf of octree using small grids
 struct task_contouring : public task {
-
   // what to run per task iteration
   struct workitem {
     const csg::node *csgnode;
@@ -774,31 +774,9 @@ struct task_contouring : public task {
     localbuilder->setnode(job.csgnode);
     localbuilder->setorg(job.org);
     localbuilder->build(*job.octnode);
-    items[idx].bvh = localbuilder->bvh;
   }
   vector<workitem> &items;
 };
-
-#if TEST_VOXEL_INTERSECTOR
-struct task_build_voxel_bvh : public task {
-  typedef task_contouring::workitem workitem;
-
-  INLINE task_build_voxel_bvh(vector<workitem> &items) :
-    task("task_build_voxel_bvh"), items(items)
-  {}
-
-  virtual void run(u32) {
-    vector<rt::primitive> subbvh;
-    loopv(items) if (items[i].bvh) subbvh.push_back(rt::primitive(items[i].bvh));
-    con::out("voxel bvh: %d sub-bvhs", subbvh.size());
-    con::out("voxel num: %d", int(voxel_num));
-    con::out("average voxel per sub-bvh: %f", float(int(voxel_num))/ float(subbvh.size()));
-    if (subbvh.size() > 0)
-      voxelbvh = NEW(rt::intersector, &subbvh[0], subbvh.size());
-  }
-  vector<workitem> &items;
-};
-#endif /* TEST_VOXEL_INTERSECTOR */
 
 // build the octree topology needed to run contouring
 struct task_iso : public task {
@@ -818,16 +796,8 @@ struct task_iso : public task {
     build(oct->m_root);
     build_iso_jobs(oct->m_root);
     ref<task> contouring = NEW(task_contouring, items);
-#if TEST_VOXEL_INTERSECTOR
-    ref<task> voxelbvh = NEW(task_build_voxel_bvh, items);
-    voxelbvh->ends(*this);
-    contouring->starts(*voxelbvh);
-    voxelbvh->scheduled();	
-    contouring->scheduled();
-#else
     contouring->ends(*this);
     contouring->scheduled();
-#endif
   }
 
   INLINE vec3f pos(const vec3i &xyz) {return org+cellsize*vec3f(xyz);}
@@ -899,8 +869,78 @@ struct task_iso : public task {
   u32 dim, maxlvl;
 };
 
+// build the bvh of voxel bvh
+struct task_build_voxel_bvh : public task {
+  typedef task_contouring::workitem workitem;
+
+  INLINE task_build_voxel_bvh(vector<workitem> &items) :
+    task("task_build_voxel_bvh"), items(items)
+  {}
+  virtual void run(u32) {
+    vector<rt::primitive> subbvh;
+    loopv(items) if (items[i].bvh) subbvh.push_back(rt::primitive(items[i].bvh));
+    con::out("voxel bvh: %d sub-bvhs", subbvh.size());
+    con::out("voxel num: %d", int(voxel_num));
+    con::out("average voxel per sub-bvh: %f", float(int(voxel_num))/ float(subbvh.size()));
+    if (subbvh.size() > 0)
+      voxelbvh = NEW(rt::intersector, &subbvh[0], subbvh.size());
+  }
+  vector<workitem> &items;
+};
+
+// create the small sub-bvh of voxels
+struct task_build_voxel_subbvh : public task {
+  typedef task_contouring::workitem workitem;
+
+  INLINE task_build_voxel_subbvh(vector<workitem> &items) :
+    task("task_build_voxel_subbvh", items.size()), items(items)
+  {}
+
+  virtual void run(u32 idx) {
+    if (localbuilder == NULL) {
+      localbuilder = NEWE(gridbuilder);
+      SDL_LockMutex(ctx->m_mutex);
+      ctx->m_builders.push_back(localbuilder);
+      SDL_UnlockMutex(ctx->m_mutex);
+    }
+    const auto &job = items[idx];
+    localbuilder->m_octree = job.oct;
+    localbuilder->m_iorg = job.iorg;
+    localbuilder->level = job.octnode->level;
+    localbuilder->maxlvl = job.maxlvl;
+    localbuilder->setcellsize(job.cellsize);
+    localbuilder->setnode(job.csgnode);
+    localbuilder->setorg(job.org);
+    localbuilder->create_voxels(*job.octnode);
+    items[idx].bvh = localbuilder->bvh;
+  }
+  vector<workitem> &items;
+};
+
+// create the bvh of voxels
+struct task_build_voxel : public task_iso {
+  typedef task_contouring::workitem workitem;
+  INLINE task_build_voxel(octree &o, const csg::node &csgnode,
+                          const vec3f &org, float cellsize,
+                          u32 dim) :
+    task_iso(o, csgnode, org, cellsize, dim) {}
+  virtual void run(u32) {
+    build(oct->m_root);
+    build_iso_jobs(oct->m_root);
+    ref<task> subbvhtask = NEW(task_build_voxel_subbvh, items);
+    ref<task> bvhtask = NEW(task_build_voxel_bvh, items);
+    subbvhtask->starts(*bvhtask);
+    bvhtask->ends(*this);
+    bvhtask->scheduled();
+  }
+};
+
 ref<task> create_task(octree &o, const csg::node &node, const vec3f &org, u32 cellnum, float cellsize) {
   return NEW(task_iso, o, node, org, cellsize, cellnum);
+}
+
+ref<task> create_voxel_task(octree &o, const csg::node &node, const vec3f &org, u32 cellnum, float cellsize) {
+	return NEW(task_build_voxel, o, node, org, cellsize, cellnum);
 }
 
 void start() {

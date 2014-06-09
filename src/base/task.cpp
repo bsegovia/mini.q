@@ -199,7 +199,7 @@ void task::starts(task &other) {
   assert(state == tasking::UNSCHEDULED && other.state == tasking::UNSCHEDULED);
   const u32 startindex = tasktostartnum++;
   const u32 depindex = other.depnum++;
-  assert(startindex < tasking::MAXSTART && depindex < tasking::MAXDEP);
+  assert(startindex < task::MAXSTART && depindex < task::MAXDEP);
   taskstostart[startindex] = &other;
   other.deps[depindex] = this;
   acquire();
@@ -211,7 +211,7 @@ void task::ends(task &other) {
   assert(state == tasking::UNSCHEDULED && other.state < tasking::DONE);
   const u32 endindex = tasktoendnum++;
   const u32 depindex = other.depnum++;
-  assert(endindex < tasking::MAXEND && depindex < tasking::MAXDEP);
+  assert(endindex < task::MAXEND && depindex < task::MAXDEP);
   taskstoend[endindex] = &other;
   other.deps[depindex] = this;
   acquire();

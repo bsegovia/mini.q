@@ -621,7 +621,7 @@ static geom::mesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::n
   return m;
 }
 
-static const float CELLSIZE = 0.1f;
+static const float CELLSIZE = 0.05f;
 static void makescene() {
   if (initialized_m) return;
 

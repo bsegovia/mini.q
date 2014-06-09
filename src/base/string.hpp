@@ -29,7 +29,7 @@ bool strequal(const char *s1, const char *s2);
 bool contains(const char *haystack, const char *needle);
 INLINE char *strn0cpy(char *d, const char *s, int m) {strncpy(d,s,m); d[m-1]=0; return d;}
 INLINE void strcpy_cs(char *d, const char *s) { strn0cpy(d,s,MAXDEFSTR); }
-INLINE void strcat_cs(char *d, const char *s) { const auto n = strlen(d); strn0cpy(d+n,s,MAXDEFSTR-n); }
+INLINE void strcat_cs(char *d, const char *s) { const auto n = int(strlen(d)); strn0cpy(d+n,s,MAXDEFSTR-n); }
 #define ATOI(s) strtol(s, NULL, 0) // supports hexadecimal numbers
 
 /*-------------------------------------------------------------------------
@@ -85,7 +85,7 @@ public:
   string_storage(const value_type* str, const allocator_type& allocator)
     : m_allocator(allocator)
   {
-    const int len = strlen(str);
+    const auto len = int(strlen(str));
     m_data = construct_string(len, m_capacity);
     memcpy(m_data, str, len*sizeof(value_type));
     m_length = len;
@@ -270,7 +270,7 @@ public:
     TStorage::append(str, len);
   }
   void append(const basic_string& str) { append(str.c_str(), str.size()); }
-  void append(const value_type* str) { append(str, strlen(str)); }
+  void append(const value_type* str) { append(str, int(strlen(str))); }
   void append(const value_type ch) { append(&ch, 1); }
   basic_string& operator+=(const basic_string& rhs) {
     append(rhs);
@@ -496,7 +496,7 @@ INLINE bool operator< (const string_ref &x, const string_ref &y) {
 template<>
 struct hash<string_ref> {
   INLINE hash_value_t operator()(const string_ref &str) const {
-    return murmurhash2(str.c_str(), strlen(str.c_str()));
+    return murmurhash2(str.c_str(), int(strlen(str.c_str())));
   }
 };
 } /* namespace q */

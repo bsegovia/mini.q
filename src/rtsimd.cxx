@@ -286,7 +286,7 @@ INLINE u32 occluded(const waldtriangle &RESTRICT tri,
     const auto aperture = (u>=soaf(zero)) & (v>=soaf(zero)) & (u+v<=soaf(one));
     const auto m = andnot(oldoccluded, aperture&tmask);
     if (none(m)) continue;
-    occludednum += popcnt(m);
+    occludednum += u32(popcnt(m));
     store(&s.occluded[idx], oldoccluded|m);
   }
   return occludednum;
@@ -677,7 +677,7 @@ u32 primarypoint(const raypacket &RESTRICT p,
     const auto org = soa3f(p.sharedorg);
     const auto normal = normalize(unormal);
     const auto position = org + t*dir + soaf(SHADOWRAYBIAS)*normal;
-    valid += popcnt(m);
+    valid += u32(popcnt(m));
     store(&mask[i*soaf::size], m);
     sset(nor, normal, i);
     sset(pos, position, i);

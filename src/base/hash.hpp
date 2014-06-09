@@ -23,7 +23,7 @@ struct hash {
 template<>
 struct hash<const char*> {
   hash_value_t operator()(const char *str) const {
-    return murmurhash2(str, strlen(str));
+    return murmurhash2(str, int(strlen(str)));
   }
 };
 } /* namespace q */

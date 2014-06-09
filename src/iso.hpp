@@ -106,8 +106,10 @@ struct octree {
 static const int SUBGRID = 16;
 
 // tesselate along a grid the distance field with dual contouring algorithm
-// geom::mesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::node &d);
 ref<task> create_task(octree&, const csg::node&, const vec3f&, u32 cellnum, float cellsize);
+
+// create a bvh of voxels
+ref<task> create_voxel_task(octree&, const csg::node&, const vec3f&, u32 cellnum, float cellsize);
 
 void start();
 void finish();
