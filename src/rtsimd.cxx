@@ -387,7 +387,6 @@ void closest(const intersector &RESTRICT bvhtree,
         const u32 offset = node->getoffset();
         stack[stacksz++] = makepair(node+offset+farindex, first);
         node = node+offset+nearindex;
-#if BVH_SUPPORT_BOX_LEAF
       } else if (flag == intersector::BOXLEAF) {
         assert(0!= (flags & raypacket::SHAREDORG));
         const auto packetnum = p.raynum / soaf::size;
@@ -403,7 +402,6 @@ void closest(const intersector &RESTRICT bvhtree,
           maskstore(isec.isec, &hit.id[soaf::size*i], soaf(zero));
         }
         break;
-#endif /* BVH_SUPPORT_BOX_LEAF */
       } else {
         if (flag == intersector::TRILEAF) {
           auto tris = node->getptr<waldtriangle>();

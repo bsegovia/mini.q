@@ -359,15 +359,15 @@ void slice(int seconds, unsigned int timeout) {
       }
       case ENET_EVENT_TYPE_RECEIVE:
         brec += int(event.packet->dataLength);
-        process(event.packet, int(event.peer->data)); 
+        process(event.packet, int(intptr(event.peer->data)));
         if (event.packet->referenceCount==0) enet_packet_destroy(event.packet);
       break;
       case ENET_EVENT_TYPE_DISCONNECT: 
         if (intptr(event.peer->data)<0) break;
         printf("client::disconnected client (%s)\n",
-          clients[int(event.peer->data)].hostname.c_str());
-		clients[int(event.peer->data)].type = ST_EMPTY;
-        send2(true, -1, SV_CDIS, int(event.peer->data));
+          clients[int(intptr(event.peer->data))].hostname.c_str());
+        clients[int(intptr(event.peer->data))].type = ST_EMPTY;
+        send2(true, -1, SV_CDIS, int(intptr(event.peer->data)));
         event.peer->data = (void *)-1;
       break;
       default: break;

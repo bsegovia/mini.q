@@ -4,9 +4,14 @@
  -------------------------------------------------------------------------*/
 #include "mini.q.hpp"
 #include "intrusive_list.hpp"
+#include "console.hpp"
 #include "string.hpp"
 #if defined(__UNIX__)
+#include <pthread.h>
 #include <unistd.h>
+#endif
+#if defined(__LINUX__)
+#include <sched.h>
 #endif
 #if !defined(__APPLE__)
 #include <malloc.h>
@@ -94,19 +99,19 @@ void set_affinity(int affinity) {
     ap.affinity_tag = affinity;
     if (thread_policy_set(mach_thread_self(),THREAD_AFFINITY_POLICY,
         (integer_t*)&ap,THREAD_AFFINITY_POLICY_COUNT) != KERN_SUCCESS)
-      con::out("thread: cannot set affinity");
+      fatal("thread: cannot set affinity");
   }
 }
 #elif defined(__LINUX__)
 void set_affinity(int affinity) {
-  int wrap = getNumberOfLogicalThreads()/2;
+  int wrap = threadnumber()/2;
   affinity = (affinity/2) + wrap*(affinity%2);
   if (affinity >= 0 && affinity < 64*64) {
     union { u64 u; cpu_set_t set; } mask[64];
     for (size_t i=0; i<64; i++) mask[i].u = 0;
     mask[affinity/64].u= u64(1) << (affinity % 64);
     if (pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask[0].set) < 0)
-      con::out("thread: cannot set affinity");
+      fatal("thread: cannot set affinity");
   }
 }
 #endif
@@ -159,8 +164,8 @@ static void memoutputalloc(void) {
       sz += it->size;
     }
     fprintf(stderr, "total unfreed: %fKB \n", float(sz)/1000.f);
-	fflush(stderr);
-	delete memlist;
+    fflush(stderr);
+    delete memlist;
     if (sz != 0) _exit(EXIT_FAILURE);
   }
 }

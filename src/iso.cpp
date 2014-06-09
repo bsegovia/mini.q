@@ -46,7 +46,7 @@ namespace iso {
 
 #if TEST_VOXEL_INTERSECTOR
 static ref<rt::intersector> voxelbvh;
-static atomic voxel_num = 0;
+static atomic voxel_num(0);
 ref<rt::intersector> get_voxel_bvh() { return voxelbvh; }
 #endif /* TEST_VOXEL_INTERSECTOR */
 
@@ -695,7 +695,7 @@ struct gridbuilder {
       STATS_ADD(iso_grid_num, index);
       index = 0;
       loopxyz(sxyz, end) {
-        if (d[index] <= 0.f && d[index] < 0.5f*cellsize*sqrt(3.f)) {
+        if (d[index] <= 0.f && abs(d[index]) < cellsize*sqrt(3.f)) {
           const aabb box(vertex(xyz), vertex(xyz)+vec3f(cellsize));
           voxels.push_back(rt::primitive(box));
         }

@@ -8,13 +8,6 @@
 #include "base/vector.hpp"
 #include "base/sys.hpp"
 
-#define BVH_SUPPORT_BOX_LEAF 1
-#if BVH_SUPPORT_BOX_LEAF
-#define IF_BOX_LEAF(X) X
-#else
-#define IF_BOX_LEAF(X)
-#endif
-
 namespace q {
 namespace rt {
 
@@ -74,7 +67,7 @@ static_assert(sizeof(intersector::node) == 32,"invalid node size");
 
 // May be either a triangle or an intersector primitive
 struct primitive {
-  enum { TRI, INTERSECTOR, IF_BOX_LEAF(BOX) };
+  enum { TRI, INTERSECTOR, BOX };
   INLINE primitive(void) {}
   INLINE primitive(vec3f a, vec3f b, vec3f c) : isec(NULL), type(TRI) {
     v[0]=a;
