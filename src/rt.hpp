@@ -18,7 +18,7 @@ struct ray {
   float tnear, tfar;
 };
 
-static const float SHADOWRAYBIAS = 1e-2f;
+static const float SHADOWRAYBIAS = 0.1f;
 static const u32 MAXRAYNUM = 256u;
 typedef CACHE_LINE_ALIGNED q::arrayi<MAXRAYNUM> arrayi;
 typedef CACHE_LINE_ALIGNED q::arrayf<MAXRAYNUM> arrayf;

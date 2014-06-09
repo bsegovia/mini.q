@@ -53,6 +53,7 @@ struct compiler {
   vector<aabb> rlboxes;
   primitive *prims;
   vector<waldtriangle> acc;
+  vector<vec3f> plane;
   intersector::node *root;
   s32 n, accnum;
   u32 currid;
@@ -212,9 +213,16 @@ INLINE void makeleaf(compiler &c, const segment &data) {
     node.setptr(first.isec.ptr);
     first.isec->acquire();
     c.hasintersector = true;
-  } else if (first.type == primitive::BOX)
+  } else if (first.type == primitive::BOX) {
+    assert(data.last-data.first == 0);
     node.setflag(intersector::BOXLEAF);
-  else {
+    node.setptr(&c.acc[c.accnum]);
+    const auto id = c.ids[0][data.first];
+    c.acc[c.accnum].n.x = c.prims[id].v[2].x;
+    c.acc[c.accnum].n.y = c.prims[id].v[2].y;
+    c.acc[c.accnum].nd  = c.prims[id].v[2].z;
+    ++c.accnum;
+  } else {
     node.setflag(intersector::TRILEAF);
     node.setptr(&c.acc[c.accnum]);
     for (auto j = data.first; j <= data.last; ++j) {

@@ -44,11 +44,9 @@ static const float debugsize = 0.8f;
 namespace q {
 namespace iso {
 
-#if TEST_VOXEL_INTERSECTOR
 static ref<rt::intersector> voxelbvh;
 static atomic voxel_num(0);
 ref<rt::intersector> get_voxel_bvh() { return voxelbvh; }
-#endif /* TEST_VOXEL_INTERSECTOR */
 
 // callback to perform distance to iso-surface
 static void (*isodist)(
@@ -289,6 +287,10 @@ void procleaf::merge(int idx) {
   node->isleaf = 1;
   node->idx = best;
 }
+
+static const vec3f ov0(1.f/sqrt(6.f), -1.f/sqrt(2.f), -1.f/sqrt(3.f));
+static const vec3f ov1(1.f/sqrt(6.f),  1.f/sqrt(2.f), -1.f/sqrt(3.f));
+static const vec3f ov2(-sqrt(2.f/3.f),            0.f, -1.f/sqrt(3.f));
 
 /*-------------------------------------------------------------------------
  - iso surface extraction is done here
@@ -678,15 +680,15 @@ struct gridbuilder {
     bvh = NULL;
     vector<rt::primitive> voxels;
     stepxyz(vec3i(zero), vec3i(SUBGRID), vec3i(4)) {
-      auto &pos = stack->p;
+      auto &p = stack->p;
       auto &d = stack->d;
       auto &m = stack->m;
-      const auto p = vertex(sxyz);
-      const auto box = aabb(p-2.f*cellsize, p+6.f*cellsize);
+      const auto bottom = vertex(sxyz);
+      const auto box = aabb(bottom-2.f*cellsize, bottom+6.f*cellsize);
       int index = 0;
       const auto end = sxyz+4;
-      loopxyz(sxyz, end) csg::set(pos, vertex(xyz)+0.5f*vec3f(cellsize), index++);
-      isodist(m_node, pos, NULL, d, m, index, box);
+      loopxyz(sxyz, end) csg::set(p, vertex(xyz)+0.5f*vec3f(cellsize), index++);
+      isodist(m_node, p, NULL, d, m, index, box);
 #if !defined(NDEBUG)
       loopi(index) assert(d[i] <= 0.f || m[i] == csg::MAT_AIR_INDEX);
       loopi(index) assert(d[i] >= 0.f || m[i] != csg::MAT_AIR_INDEX);
@@ -694,12 +696,64 @@ struct gridbuilder {
       STATS_ADD(iso_num, index);
       STATS_ADD(iso_grid_num, index);
       index = 0;
+
+      // step 1 - find all voxel centers
+      vector<vec3f> voxcenter;
       loopxyz(sxyz, end) {
-        if (d[index] <= 0.f && abs(d[index]) < cellsize*sqrt(3.f)) {
-          const aabb box(vertex(xyz), vertex(xyz)+vec3f(cellsize));
-          voxels.push_back(rt::primitive(box));
-        }
+        if (d[index] <= 0.f && abs(d[index]) < cellsize*sqrt(3.f))
+          voxcenter.push_back(vertex(xyz)+0.5f*vec3f(cellsize));
         ++index;
+      }
+
+      // step 2 - compute normal using distance gradients. we use two gradient
+      // estimations to make it robust (i.e. we use two basis)
+      const auto num = voxcenter.size();
+      const auto dx0 = DEFAULT_GRAD_STEP * vec3f(1.f, 0.f, 0.f);
+      const auto dy0 = DEFAULT_GRAD_STEP * vec3f(0.f, 1.f, 0.f);
+      const auto dz0 = DEFAULT_GRAD_STEP * vec3f(0.f, 0.f, 1.f);
+      const auto dx1 = DEFAULT_GRAD_STEP * ov0;
+      const auto dy1 = DEFAULT_GRAD_STEP * ov1;
+      const auto dz1 = DEFAULT_GRAD_STEP * ov2;
+      for (int j = 0; j < num; j += 8) {
+        const int subnum = min(num-j, 8);
+        auto box = aabb::empty();
+        loopk(subnum) {
+          const auto center = voxcenter[j+k];
+          csg::set(p, center,     8*k+0);
+          csg::set(p, center-dx0, 8*k+1);
+          csg::set(p, center-dy0, 8*k+2);
+          csg::set(p, center-dz0, 8*k+3);
+          csg::set(p, center,     8*k+4);
+          csg::set(p, center-dx1, 8*k+5);
+          csg::set(p, center-dy1, 8*k+6);
+          csg::set(p, center-dz1, 8*k+7);
+          box.pmin = min(center, box.pmin);
+          box.pmax = max(center, box.pmax);
+        }
+        box.pmin -= 2.f*cellsize;
+        box.pmax += 2.f*cellsize;
+        isodist(m_node, p, NULL, d, m, 8*subnum, box);
+        STATS_ADD(iso_num, 8*subnum);
+        STATS_ADD(iso_gradient_num, 8*subnum);
+
+        loopk(subnum) {
+          const auto c0    = d[8*k+0];
+          const auto dfdx0 = d[8*k+1];
+          const auto dfdy0 = d[8*k+2];
+          const auto dfdz0 = d[8*k+3];
+          const auto c1    = d[8*k+4];
+          const auto dfdx1 = d[8*k+5];
+          const auto dfdy1 = d[8*k+6];
+          const auto dfdz1 = d[8*k+7];
+          const auto grad0 = vec3f(c0-dfdx0, c0-dfdy0, c0-dfdz0);
+          const auto grad1 = ov0*(c1-dfdx1) + ov1*(c1-dfdy1) + ov2*(c1-dfdz1);
+          const auto grad = grad0+grad1;
+          const auto n = grad==vec3f(zero) ? vec3f(zero) : normalize(grad);
+          const vec3f pmin = voxcenter[j+k] - vec3f(cellsize)*0.5f;
+          const vec3f pmax = voxcenter[j+k] + vec3f(cellsize)*0.5f;
+          const aabb box(pmin,pmax);
+          voxels.push_back(rt::primitive(box, n));
+        }
       }
     }
     if (voxels.size() > 0) {
@@ -749,9 +803,7 @@ struct task_contouring : public task {
     int level;
     int maxlvl;
     float cellsize;
-#if TEST_VOXEL_INTERSECTOR
     ref<rt::intersector> bvh;
-#endif /* TEST_VOXEL_INTERSECTOR */
   };
 
   INLINE task_contouring(vector<workitem> &items) :

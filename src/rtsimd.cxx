@@ -388,10 +388,11 @@ void closest(const intersector &RESTRICT bvhtree,
         stack[stacksz++] = makepair(node+offset+farindex, first);
         node = node+offset+nearindex;
       } else if (flag == intersector::BOXLEAF) {
-        assert(0!= (flags & raypacket::SHAREDORG));
+        assert(0 != (flags & raypacket::SHAREDORG));
         const auto packetnum = p.raynum / soaf::size;
         const auto pmin = soa3f(node->box.pmin - p.sharedorg);
         const auto pmax = soa3f(node->box.pmax - p.sharedorg);
+        const auto vox = node->getptr<waldtriangle>();
         rangei(first, packetnum) {
           const auto rd = sget(extra.rdir, i);
           const auto t = sget(hit.t, i);
@@ -400,11 +401,14 @@ void closest(const intersector &RESTRICT bvhtree,
           maskstore(isec.isec, &hit.u[soaf::size*i], soaf(zero));
           maskstore(isec.isec, &hit.v[soaf::size*i], soaf(zero));
           maskstore(isec.isec, &hit.id[soaf::size*i], soaf(zero));
+          maskstore(isec.isec, &hit.n[0][soaf::size*i], vox->n.x);
+          maskstore(isec.isec, &hit.n[1][soaf::size*i], vox->n.y);
+          maskstore(isec.isec, &hit.n[2][soaf::size*i], vox->nd);
         }
         break;
       } else {
         if (flag == intersector::TRILEAF) {
-          auto tris = node->getptr<waldtriangle>();
+          const auto tris = node->getptr<waldtriangle>();
           const s32 n = tris->num;
           u32 active[MAXRAYNUM/soaf::size];
           active[first] = 1;
@@ -481,6 +485,18 @@ void occluded(const intersector &RESTRICT bvhtree,
         const u32 offset = node->getoffset();
         stack[stacksz++] = makepair(node+offset+1, first);
         node = node+offset;
+      } else if (flag == intersector::BOXLEAF) {
+        assert(0 != (flags & raypacket::SHAREDORG));
+        const auto packetnum = p.raynum / soaf::size;
+        const auto pmin = soa3f(node->box.pmin - p.sharedorg);
+        const auto pmax = soa3f(node->box.pmax - p.sharedorg);
+        rangei(first, packetnum) {
+          const auto rd = sget(extra.rdir, i);
+          const auto isec = slab(pmin, pmax, rd, soaf(one));
+          const auto old = soab::load(&s.occluded[i*soaf::size]);
+          store(&s.occluded[i*soaf::size], old|isec.isec);
+        }
+        break;
       } else {
         if (flag == intersector::TRILEAF) {
           auto tris = node->getptr<waldtriangle>();
@@ -753,7 +769,8 @@ void writenormal(const packethit &RESTRICT hit,
 #endif
       const auto noisec = soai(~0x0u);
       const auto m = soai::load(&hit.id[idx*soaf::size]) != noisec;
-      const auto n = clamp(normalize(sget(hit.n, idx)));
+      //const auto n = clamp(normalize(sget(hit.n, idx)));
+      const auto n = clamp(sget(hit.n, idx));
       const auto rgb = soa3i(n*soaf(255.f));
       const auto hitcolor = rgb.x | (rgb.y<<8) | (rgb.z<<16) | soai(0xff000000);
       const auto color = select(m, hitcolor, soai(zero));

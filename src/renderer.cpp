@@ -643,7 +643,7 @@ static void makescene() {
   con::out("csg: elapsed %f ms ", float(duration));
 
   start = sys::millis();
-  voxel(vec3f(zero), 8192, 0.05F, *node);
+  voxel(vec3f(0.15f), 2*8192, 0.05f, *node);
   duration = sys::millis() - start;
   con::out("voxel: elapsed %f ms ", float(duration));
 

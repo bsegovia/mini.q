@@ -79,9 +79,10 @@ struct primitive {
     v[0]=box.pmin;
     v[1]=box.pmax;
   }
-  INLINE primitive(aabb box) : isec(NULL), type(BOX) {
+  INLINE primitive(aabb box, vec3f normal) : isec(NULL), type(BOX) {
     v[0]=box.pmin;
     v[1]=box.pmax;
+    v[2]=normal;
   }
   INLINE aabb getaabb(void) const {
     if (type == TRI)
