@@ -5,4 +5,3 @@
 #define NAMESPACE avx
 #include "rtsimd.cxx"
 #undef avx
-

@@ -36,6 +36,12 @@ void writenormal(const packethit &RESTRICT hit,
                  const vec2i &RESTRICT screensize,
                  int *RESTRICT pixels);
 
+// frame buffer write (intersection distance)
+void writedist(const packethit &RESTRICT hit,
+               const vec2i &RESTRICT tileorg,
+               const vec2i &RESTRICT screensize,
+               int *RESTRICT pixels);
+
 // frame buffer write (just simple dot product)
 void writendotl(const raypacket &RESTRICT shadow,
                 const array3f &RESTRICT nor,

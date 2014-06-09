@@ -8,6 +8,13 @@
 #include "base/vector.hpp"
 #include "base/sys.hpp"
 
+#define BVH_SUPPORT_BOX_LEAF 1
+#if BVH_SUPPORT_BOX_LEAF
+#define IF_BOX_LEAF(X) X
+#else
+#define IF_BOX_LEAF(X)
+#endif
+
 namespace q {
 namespace rt {
 
@@ -32,6 +39,7 @@ struct intersector : public refcount {
   virtual ~intersector();
   INLINE aabb getaabb() const {return root[0].box;}
   static const u32 NONLEAF = 0x0;
+  static const u32 BOXLEAF = 0x1;
   static const u32 TRILEAF = 0x2;
   static const u32 ISECLEAF = 0x3;
   static const u32 MASK = 0x3;
@@ -66,7 +74,7 @@ static_assert(sizeof(intersector::node) == 32,"invalid node size");
 
 // May be either a triangle or an intersector primitive
 struct primitive {
-  enum { TRI, INTERSECTOR };
+  enum { TRI, INTERSECTOR, IF_BOX_LEAF(BOX) };
   INLINE primitive(void) {}
   INLINE primitive(vec3f a, vec3f b, vec3f c) : isec(NULL), type(TRI) {
     v[0]=a;
@@ -75,6 +83,10 @@ struct primitive {
   }
   INLINE primitive(const ref<intersector> &isec) : isec(isec), type(INTERSECTOR) {
     const aabb box = isec->getaabb();
+    v[0]=box.pmin;
+    v[1]=box.pmax;
+  }
+  INLINE primitive(aabb box) : isec(NULL), type(BOX) {
     v[0]=box.pmin;
     v[1]=box.pmax;
   }

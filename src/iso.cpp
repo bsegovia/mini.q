@@ -44,6 +44,12 @@ static const float debugsize = 0.8f;
 namespace q {
 namespace iso {
 
+#if TEST_VOXEL_INTERSECTOR
+static ref<rt::intersector> voxelbvh;
+static atomic voxel_num = 0;
+ref<rt::intersector> get_voxel_bvh() { return voxelbvh; }
+#endif /* TEST_VOXEL_INTERSECTOR */
+
 // callback to perform distance to iso-surface
 static void (*isodist)(
   const csg::node *RESTRICT, const csg::array3f &RESTRICT,
@@ -358,6 +364,39 @@ struct gridbuilder {
         ++index;
       }
     }
+#if TEST_VOXEL_INTERSECTOR
+    bvh = NULL;
+    vector<rt::primitive> voxels;
+    stepxyz(vec3i(zero), vec3i(SUBGRID), vec3i(4)) {
+      auto &pos = stack->p;
+      auto &d = stack->d;
+      auto &m = stack->m;
+      const auto p = vertex(sxyz);
+      const auto box = aabb(p-2.f*cellsize, p+6.f*cellsize);
+      int index = 0;
+      const auto end = sxyz+4;
+      loopxyz(sxyz, end) csg::set(pos, vertex(xyz)+0.5f*vec3f(cellsize), index++);
+      isodist(m_node, pos, NULL, d, m, index, box);
+#if !defined(NDEBUG)
+      loopi(index) assert(d[i] <= 0.f || m[i] == csg::MAT_AIR_INDEX);
+      loopi(index) assert(d[i] >= 0.f || m[i] != csg::MAT_AIR_INDEX);
+#endif /* NDEBUG */
+      STATS_ADD(iso_num, index);
+      STATS_ADD(iso_grid_num, index);
+      index = 0;
+      loopxyz(sxyz, end) {
+        if (d[index] <= 0.f && d[index] < 0.5f*cellsize*sqrt(3.f)) {
+          const aabb box(vertex(xyz), vertex(xyz)+vec3f(cellsize));
+          voxels.push_back(rt::primitive(box));
+        }
+        ++index;
+      }
+    }
+    if (voxels.size() > 0) {
+      bvh = NEW(rt::intersector, &voxels[0], voxels.size());
+      voxel_num += voxels.size();
+    }
+#endif /* TEST_VOXEL_INTERSECTOR */
   }
 
   void initedge() {
@@ -669,6 +708,7 @@ struct gridbuilder {
   }
 
   const csg::node *m_node;
+  ref<rt::intersector> bvh;
   vector<fielditem> m_field;
   vector<u32> m_qef_index;
   vector<u32> m_edge_index;
@@ -709,6 +749,9 @@ struct task_contouring : public task {
     int level;
     int maxlvl;
     float cellsize;
+#if TEST_VOXEL_INTERSECTOR
+    ref<rt::intersector> bvh;
+#endif /* TEST_VOXEL_INTERSECTOR */
   };
 
   INLINE task_contouring(vector<workitem> &items) :
@@ -731,9 +774,31 @@ struct task_contouring : public task {
     localbuilder->setnode(job.csgnode);
     localbuilder->setorg(job.org);
     localbuilder->build(*job.octnode);
+    items[idx].bvh = localbuilder->bvh;
   }
   vector<workitem> &items;
 };
+
+#if TEST_VOXEL_INTERSECTOR
+struct task_build_voxel_bvh : public task {
+  typedef task_contouring::workitem workitem;
+
+  INLINE task_build_voxel_bvh(vector<workitem> &items) :
+    task("task_build_voxel_bvh"), items(items)
+  {}
+
+  virtual void run(u32) {
+    vector<rt::primitive> subbvh;
+    loopv(items) if (items[i].bvh) subbvh.push_back(rt::primitive(items[i].bvh));
+    con::out("voxel bvh: %d sub-bvhs", subbvh.size());
+    con::out("voxel num: %d", int(voxel_num));
+    con::out("average voxel per sub-bvh: %f", float(int(voxel_num))/ float(subbvh.size()));
+    if (subbvh.size() > 0)
+      voxelbvh = NEW(rt::intersector, &subbvh[0], subbvh.size());
+  }
+  vector<workitem> &items;
+};
+#endif /* TEST_VOXEL_INTERSECTOR */
 
 // build the octree topology needed to run contouring
 struct task_iso : public task {
@@ -751,10 +816,18 @@ struct task_iso : public task {
 
   virtual void run(u32) {
     build(oct->m_root);
-    preparejobs(oct->m_root);
+    build_iso_jobs(oct->m_root);
     ref<task> contouring = NEW(task_contouring, items);
+#if TEST_VOXEL_INTERSECTOR
+    ref<task> voxelbvh = NEW(task_build_voxel_bvh, items);
+    voxelbvh->ends(*this);
+    contouring->starts(*voxelbvh);
+    voxelbvh->scheduled();	
+    contouring->scheduled();
+#else
     contouring->ends(*this);
     contouring->scheduled();
+#endif
   }
 
   INLINE vec3f pos(const vec3i &xyz) {return org+cellsize*vec3f(xyz);}
@@ -799,7 +872,7 @@ struct task_iso : public task {
     }
   }
 
-  void preparejobs(octree::node &node, const vec3i &xyz = vec3i(zero)) {
+  void build_iso_jobs(octree::node &node, const vec3i &xyz = vec3i(zero)) {
     if (node.isleaf && !node.empty) {
       workitem job;
       job.oct = oct;
@@ -814,7 +887,7 @@ struct task_iso : public task {
     } else if (!node.isleaf) loopi(8) {
       const auto cellnum = dim >> node.level;
       const auto childxyz = xyz+int(cellnum/2)*icubev[i];
-      preparejobs(node.children[i], childxyz);
+      build_iso_jobs(node.children[i], childxyz);
     }
   }
 
@@ -832,7 +905,7 @@ ref<task> create_task(octree &o, const csg::node &node, const vec3f &org, u32 ce
 
 void start() {
   using namespace sys;
-  if (hasfeature(CPU_YMM) && sys::hasfeature(CPU_AVX)) {
+  if (/* hasfeature(CPU_YMM) && */ sys::hasfeature(CPU_AVX)) {
     con::out("iso: avx path selected");
     isodist = csg::avx::dist;
   } else if (hasfeature(CPU_SSE) && hasfeature(CPU_SSE2)) {

@@ -82,8 +82,10 @@ void queue::terminate(task *job) {
   }
 
   // if no more waiters, we can safely free all dependencies since we are done
-  if (job->waiternum == 0)
+  if (job->waiternum == 0) {
     loopi(job->depnum) job->deps[i]->release();
+    job->depnum = 0;
+  }
 }
 
 struct thread_data {
@@ -253,8 +255,10 @@ void task::wait(bool recursivewait) {
   }
 
   // finished and no more waiters, we can safely release the dependency array
-  if (!recursivewait && --waiternum == 0)
+  if (!recursivewait && --waiternum == 0) {
     loopi(depnum) deps[i]->release();
+    depnum = 0;
+  }
   release();
 }
 

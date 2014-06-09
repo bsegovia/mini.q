@@ -212,7 +212,9 @@ INLINE void makeleaf(compiler &c, const segment &data) {
     node.setptr(first.isec.ptr);
     first.isec->acquire();
     c.hasintersector = true;
-  } else {
+  } else if (first.type == primitive::BOX)
+    node.setflag(intersector::BOXLEAF);
+  else {
     node.setflag(intersector::TRILEAF);
     node.setptr(&c.acc[c.accnum]);
     for (auto j = data.first; j <= data.last; ++j) {

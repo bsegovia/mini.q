@@ -96,15 +96,6 @@ INLINE ssei op>> (const ssei& a, const s32& n) {return _mm_srai_epi32(a.m128, n)
 INLINE ssei sra(const ssei& a, const s32& b) {return _mm_srai_epi32(a.m128, b);}
 INLINE ssei srl(const ssei& a, const s32& b) {return _mm_srli_epi32(a.m128, b);}
 
-#if defined(__SSE4_1__)
-INLINE ssei min(const ssei& a, const ssei& b) {return _mm_min_epi32(a.m128, b.m128);}
-INLINE ssei min(const ssei& a, const s32&  b) {return min(a,ssei(b));}
-INLINE ssei min(const s32&  a, const ssei& b) {return min(ssei(a),b);}
-INLINE ssei max(const ssei& a, const ssei& b) {return _mm_max_epi32(a.m128, b.m128);}
-INLINE ssei max(const ssei& a, const s32&  b) {return max(a,ssei(b));}
-INLINE ssei max(const s32&  a, const ssei& b) {return max(ssei(a),b);}
-#endif
-
 // assignment ops
 INLINE ssei& op +=(ssei& a, const ssei& b) {return a = a + b;}
 INLINE ssei& op +=(ssei& a, const s32&  b) {return a = a + b;}
@@ -159,6 +150,22 @@ INLINE const ssei select(const int m, const ssei& t, const ssei& f) {
 INLINE const ssei select(const int mask, const ssei& t, const ssei& f) {
   return select(sseb(mask),t,f);
 }
+#endif
+
+#if defined(__SSE4_1__)
+INLINE ssei min(const ssei& a, const ssei& b) {return _mm_min_epi32(a.m128, b.m128);}
+INLINE ssei min(const ssei& a, const s32&  b) {return min(a,ssei(b));}
+INLINE ssei min(const s32&  a, const ssei& b) {return min(ssei(a),b);}
+INLINE ssei max(const ssei& a, const ssei& b) {return _mm_max_epi32(a.m128, b.m128);}
+INLINE ssei max(const ssei& a, const s32&  b) {return max(a,ssei(b));}
+INLINE ssei max(const s32&  a, const ssei& b) {return max(ssei(a),b);}
+#else
+INLINE ssei min(const ssei& a, const ssei& b) {return select(a<b,a,b);}
+INLINE ssei min(const ssei& a, const s32&  b) {return min(a,ssei(b));}
+INLINE ssei min(const s32&  a, const ssei& b) {return min(ssei(a),b);}
+INLINE ssei max(const ssei& a, const ssei& b) {return select(a>b,a,b);}
+INLINE ssei max(const ssei& a, const s32&  b) {return max(a,ssei(b));}
+INLINE ssei max(const s32&  a, const ssei& b) {return max(ssei(a),b);}
 #endif
 
 // movement/shifting/shuffling functions

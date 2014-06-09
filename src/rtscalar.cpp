@@ -573,6 +573,13 @@ void writenormal(const packethit &RESTRICT hit,
   }
 }
 
+void writedist(const packethit &RESTRICT hit,
+               const vec2i &RESTRICT tileorg,
+               const vec2i &RESTRICT screensize,
+               int *RESTRICT pixels)
+{
+}
+
 void writendotl(const raypacket &RESTRICT shadow,
                 const array3f &nor,
                 const packetshadow &RESTRICT occluded,

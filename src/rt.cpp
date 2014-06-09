@@ -9,7 +9,10 @@
 #include "rtavx.hpp"
 #include "base/math.hpp"
 #include "base/console.hpp"
+#include "base/script.hpp"
 #include "base/task.hpp"
+
+#include "iso.hpp" // XXX remove this when we are done with tests
 
 namespace q {
 namespace rt {
@@ -50,6 +53,8 @@ static u32 (*rtprimarypoint)(const raypacket &RESTRICT,
 static void (*rtclearpackethit)(packethit&);
 static void (*rtwritenormal)(const packethit&, const vec2i&, const vec2i&,
                              int *RESTRICT);
+static void (*rtwritedist)(const packethit&, const vec2i&, const vec2i&,
+                           int *RESTRICT);
 static void (*rtwritendotl)(const raypacket&, const array3f&,
                             const packetshadow&, const vec2i&, const vec2i&,
                             int*);
@@ -62,6 +67,7 @@ static void (*rtclear)(const vec2i&, const vec2i&, int*);
   rtshadowpacket = NAME::shadowpacket;\
   rtprimarypoint = NAME::primarypoint;\
   rtclearpackethit = NAME::clearpackethit;\
+  rtwritedist = NAME::writedist;\
   rtwritenormal = NAME::writenormal;\
   rtwritendotl = NAME::writendotl;\
   rtclear = NAME::clear;
@@ -98,6 +104,11 @@ camera::camera(vec3f org, vec3f up, vec3f view, float fov, float ratio) :
 }
 
 #define NORMAL_ONLY 0
+#define SHADOWS 1
+#define VOXELS 2
+#define RT_MODE VOXELS
+
+VAR(rtmode, 0, 2, 2);
 
 //static const vec3f lpos(0.f, -4.f, 2.f);
 static const vec3f lpos(35.f, 10.f, 11.f);
@@ -120,34 +131,44 @@ struct task_raycast : public task {
     const vec2i tilexy(tileID%tile.x, tileID/tile.x);
     const vec2i tileorg = int(TILESIZE) * tilexy;
 
-#if NORMAL_ONLY
-    // primary intersections
-    raypacket p;
-    packethit hit;
-    rtvisibilitypacket(cam, p, tileorg, dim);
-    rtclearpackethit(hit);
-    rtclosest(*bvhisec, p, hit);
-    rtwritenormal(hit, tileorg, dim, pixels);
-    totalraynum += TILESIZE*TILESIZE;
-#else
-    // shadow rays toward the light source
-    array3f pos, nor;
-    arrayi mask;
-    raypacket shadow;
-    packetshadow occluded;
-    const auto validnum = primarypoint(tileorg, pos, nor, mask);
-    if (validnum == 0) {
-      rtclear(tileorg, dim, pixels);
+    if (rtmode == NORMAL_ONLY) {
+      // primary intersections
+      raypacket p;
+      packethit hit;
+      rtvisibilitypacket(cam, p, tileorg, dim);
+      rtclearpackethit(hit);
+      rtclosest(*bvhisec, p, hit);
+      rtwritenormal(hit, tileorg, dim, pixels);
       totalraynum += TILESIZE*TILESIZE;
-    } else {
-      //const auto sec = game::lastmillis()/1000.f;
-      const auto newpos = lpos;// + vec3f(10.f*sin(sec),0.f, 10.f*cos(sec));
-      rtshadowpacket(pos, mask, newpos, shadow, occluded, TILESIZE*TILESIZE);
-      rtoccluded(*bvhisec, shadow, occluded);
-      rtwritendotl(shadow, nor, occluded, tileorg, dim, pixels);
-      totalraynum += shadow.raynum+TILESIZE*TILESIZE;
+    } else if (rtmode == SHADOWS) {
+      // shadow rays toward the light source
+      array3f pos, nor;
+      arrayi mask;
+      raypacket shadow;
+      packetshadow occluded;
+      const auto validnum = primarypoint(tileorg, pos, nor, mask);
+      if (validnum == 0) {
+        rtclear(tileorg, dim, pixels);
+        totalraynum += TILESIZE*TILESIZE;
+      } else {
+        //const auto sec = game::lastmillis()/1000.f;
+        const auto newpos = lpos;// + vec3f(10.f*sin(sec),0.f, 10.f*cos(sec));
+        rtshadowpacket(pos, mask, newpos, shadow, occluded, TILESIZE*TILESIZE);
+        rtoccluded(*bvhisec, shadow, occluded);
+        rtwritendotl(shadow, nor, occluded, tileorg, dim, pixels);
+        totalraynum += shadow.raynum+TILESIZE*TILESIZE;
+      }
+    } else if (rtmode == VOXELS) {
+      const auto voxelbvh = iso::get_voxel_bvh();
+      if (voxelbvh) {
+        raypacket p;
+        packethit hit;
+        rtvisibilitypacket(cam, p, tileorg, dim);
+        rtclearpackethit(hit);
+        rtclosest(*voxelbvh, p, hit);
+        rtwritedist(hit, tileorg, dim, pixels);
+      }
     }
-#endif
   }
   intersector *bvhisec;
   const camera &cam;

@@ -387,6 +387,23 @@ void closest(const intersector &RESTRICT bvhtree,
         const u32 offset = node->getoffset();
         stack[stacksz++] = makepair(node+offset+farindex, first);
         node = node+offset+nearindex;
+#if BVH_SUPPORT_BOX_LEAF
+      } else if (flag == intersector::BOXLEAF) {
+        assert(0!= (flags & raypacket::SHAREDORG));
+        const auto packetnum = p.raynum / soaf::size;
+        const auto pmin = soa3f(node->box.pmin - p.sharedorg);
+        const auto pmax = soa3f(node->box.pmax - p.sharedorg);
+        rangei(first, packetnum) {
+          const auto rd = sget(extra.rdir, i);
+          const auto t = sget(hit.t, i);
+          const auto isec = slab(pmin, pmax, rd, t);
+          maskstore(isec.isec, &hit.t[soaf::size*i], isec.t);
+          maskstore(isec.isec, &hit.u[soaf::size*i], soaf(zero));
+          maskstore(isec.isec, &hit.v[soaf::size*i], soaf(zero));
+          maskstore(isec.isec, &hit.id[soaf::size*i], soaf(zero));
+        }
+        break;
+#endif /* BVH_SUPPORT_BOX_LEAF */
       } else {
         if (flag == intersector::TRILEAF) {
           auto tris = node->getptr<waldtriangle>();
@@ -736,7 +753,8 @@ void writenormal(const packethit &RESTRICT hit,
   for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y, yoffset+=w) {
     for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size, ++idx) {
 #endif
-      const auto m = soaf::load(&hit.id[idx*soaf::size]) != soaf(0.f);
+      const auto noisec = soai(~0x0u);
+      const auto m = soai::load(&hit.id[idx*soaf::size]) != noisec;
       const auto n = clamp(normalize(sget(hit.n, idx)));
       const auto rgb = soa3i(n*soaf(255.f));
       const auto hitcolor = rgb.x | (rgb.y<<8) | (rgb.z<<16) | soai(0xff000000);
@@ -751,6 +769,41 @@ void writenormal(const packethit &RESTRICT hit,
   }
   AVX_ZERO_UPPER();
 }
+
+void writedist(const packethit &RESTRICT hit,
+               const vec2i &RESTRICT tileorg,
+               const vec2i &RESTRICT screensize,
+               int *RESTRICT pixels)
+{
+  u32 idx = 0;
+  const auto w = screensize.x;
+#if defined(__AVX__)
+  auto yoffset0 = w*tileorg.y;
+  auto yoffset1 = w+yoffset0;
+  for (auto y = tileorg.y; y < tileorg.y+TILESIZE; y+=2, yoffset0+=2*w, yoffset1+=2*w) {
+    for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size/2, ++idx) {
+#else
+  auto yoffset = w*tileorg.y;
+  for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y, yoffset+=w) {
+    for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size, ++idx) {
+#endif
+      const auto noisec = soai(~0x0u);
+      const auto m = soai::load(&hit.id[idx*soaf::size]) != noisec;
+      const auto t = 8.f*soaf::load(&hit.t[idx*soaf::size]);
+      const auto rgb = clamp(soai(t), soai(zero), soai(255));
+      const auto hitcolor = rgb | (rgb<<8) | (rgb<<16) | soai(0xff000000);
+      const auto color = select(m, hitcolor, soai(zero));
+#if defined(__AVX__)
+      store4i_nt(pixels+yoffset0+x, extract<0>(color));
+      store4i_nt(pixels+yoffset1+x, extract<1>(color));
+#else
+      storent(pixels+yoffset+x, color);
+#endif
+    }
+  }
+  AVX_ZERO_UPPER();
+}
+
 
 void writendotl(const raypacket &RESTRICT shadow,
                 const array3f &nor,
