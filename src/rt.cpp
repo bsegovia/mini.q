@@ -59,6 +59,7 @@ static void (*rtwritendotl)(const raypacket&, const array3f&,
                             const packetshadow&, const vec2i&, const vec2i&,
                             int*);
 static void (*rtclear)(const vec2i&, const vec2i&, int*);
+IF_STATS(static void (*rtstats)());
 
 #define LOAD(NAME) \
   rtclosest = NAME::closest;\
@@ -70,7 +71,8 @@ static void (*rtclear)(const vec2i&, const vec2i&, int*);
   rtwritedist = NAME::writedist;\
   rtwritenormal = NAME::writenormal;\
   rtwritendotl = NAME::writendotl;\
-  rtclear = NAME::clear;
+  rtclear = NAME::clear;\
+  IF_STATS(rtstats = NAME::stats);
 
 void start() {
   using namespace sys;
@@ -85,7 +87,10 @@ void start() {
     LOAD(rt);
   }
 }
-void finish() {world=NULL;}
+void finish() {
+  IF_STATS(rtstats());
+  world=NULL;
+}
 
 camera::camera(vec3f org, vec3f up, vec3f view, float fov, float ratio) :
   org(org), up(up), view(view), fov(fov), ratio(ratio)
@@ -169,7 +174,7 @@ struct task_raycast : public task {
     } else if (rtmode == VOXELS) {
       const auto voxelbvh = iso::get_voxel_bvh();
       if (voxelbvh) {
-#if 0
+#if 1
         raypacket p;
         packethit hit;
         rtvisibilitypacket(cam, p, tileorg, dim);
@@ -186,7 +191,7 @@ struct task_raycast : public task {
         rtclear(tileorg, dim, pixels);
         totalraynum += TILESIZE*TILESIZE;
       } else {
-        const auto newpos = lpos1;
+        const auto newpos = lpos0;
         rtshadowpacket(pos, mask, newpos, shadow, occluded, TILESIZE*TILESIZE);
         rtoccluded(*voxelbvh, shadow, occluded);
         rtwritendotl(shadow, nor, occluded, tileorg, dim, pixels);

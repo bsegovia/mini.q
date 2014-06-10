@@ -44,7 +44,7 @@ static void bindkey(const string &key, const string &action) {
   if (it == key_map.end())
     out("unknown key \"%s\"", key.c_str());
   else
-    action_map.insert(makepair(it->second, action));
+    action_map[it->second] = action;
 }
 CMDN(bind, bindkey);
 

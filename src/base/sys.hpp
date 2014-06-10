@@ -239,12 +239,16 @@ INLINE void NAME##v(First first, Rest... rest) {\
 #define _DO_STRINGIFY(X) #X
 
 #if !defined(RELEASE)
+#define USE_STATS 1
+#define IF_STATS(X) X
 #define STATS(X) q::s32 X = 0;
 #define STATS_ADD(X,Y) (atomic_add(&X,Y))
 #define STATS_INC(X) (atomic_add(&X,1))
 #define STATS_OUT(X) { printf(#X": %.0lf\n", double(X)); }
 #define STATS_RATIO(X,Y) printf(#X": %.2lf%% (" #Y ")\n", double(X)/double(Y)*100.0)
 #else
+#define USE_STATS 0
+#define IF_STATS(X)
 #define STATS(X)
 #define STATS_ADD(X,Y)
 #define STATS_INC(X)

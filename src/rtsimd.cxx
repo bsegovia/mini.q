@@ -18,6 +18,22 @@
 namespace q {
 namespace rt {
 namespace NAMESPACE {
+STATS(closest_ia_early_out);
+STATS(closest_first_active);
+STATS(closest_scan);
+STATS(closest_leaf_total);
+STATS(closest_leaf_active);
+STATS(closest_leaf_isec);
+STATS(closest_leaf_isec_occupancy);
+STATS(closest_leaf_isec_occupancy_total);
+STATS(closest_slab_test_leaf);
+STATS(closest_slab_test_non_leaf_ia);
+STATS(closest_slab_test_non_leaf_first_active);
+STATS(closest_slab_test_non_leaf_scan);
+STATS(occluded_ia_early_out);
+STATS(occluded_first_active);
+STATS(occluded_scan);
+
 struct raypacketextra {
   array3f rdir;             // used by ray/box intersection
   interval3f iaorg, iardir; // only used when INTERVALARITH is set
@@ -364,21 +380,44 @@ void closest(const intersector &RESTRICT bvhtree,
       bool res = false;
       if (flags & raypacket::INTERVALARITH) {
         if (flags & raypacket::SHAREDORG) {
+          STATS_INC(closest_slab_test_non_leaf_first_active);
           res = slaboneco(node->box, p, extra, first, hit.t);
-          if (res) goto processnode;
-          if (culliaco(node->box, p, extra)) break;
+          if (res) {
+            STATS_INC(closest_first_active);
+            goto processnode;
+          }
+          STATS_INC(closest_slab_test_non_leaf_ia);
+          if (culliaco(node->box, p, extra)) {
+            STATS_INC(closest_ia_early_out);
+            break;
+          }
         } else {
+          STATS_INC(closest_slab_test_non_leaf_first_active);
           res = slabone(node->box, p, extra, first, hit.t);
-          if (res) goto processnode;
-          if (cullia(node->box, p, extra)) break;
+          if (res) {
+            STATS_INC(closest_first_active);
+            goto processnode;
+          }
+          if (cullia(node->box, p, extra)) {
+            STATS_INC(closest_ia_early_out);
+            break;
+          }
         }
         ++first;
       }
-      if (flags & raypacket::SHAREDORG)
-        res = slabfirstco(node->box, p, extra, first, hit.t);
-      else
-        res = slabfirst(node->box, p, extra, first, hit.t);
-      if (!res) break;
+      STATS_INC(closest_scan);
+      {
+#if USE_STATS
+        const auto initial = first;
+#endif /* USE_STATS */
+
+        if (flags & raypacket::SHAREDORG)
+          res = slabfirstco(node->box, p, extra, first, hit.t);
+        else
+          res = slabfirst(node->box, p, extra, first, hit.t);
+        STATS_ADD(closest_slab_test_non_leaf_scan, first-initial+1);
+        if (!res) break;
+      }
     processnode:
       const u32 flag = node->getflag();
       if (flag == intersector::NONLEAF) {
@@ -393,13 +432,22 @@ void closest(const intersector &RESTRICT bvhtree,
         const auto pmin = soa3f(node->box.pmin - p.sharedorg);
         const auto pmax = soa3f(node->box.pmax - p.sharedorg);
         const auto vox = node->getptr<waldtriangle>();
+        STATS_ADD(closest_leaf_total, packetnum);
+        STATS_ADD(closest_leaf_active, packetnum-first);
+        STATS_ADD(closest_slab_test_leaf, packetnum-first);
         rangei(first, packetnum) {
           const auto rd = sget(extra.rdir, i);
           const auto t = sget(hit.t, i);
           const auto isec = slab(pmin, pmax, rd, t);
+          if (none(isec.isec))
+            continue;
+          STATS_INC(closest_leaf_isec);
+#if USE_STATS
+          const auto cnt = popcnt(isec.isec);
+          STATS_ADD(closest_leaf_isec_occupancy, cnt);
+          STATS_ADD(closest_leaf_isec_occupancy_total, soaf::size);
+#endif /* USE_STATS */
           maskstore(isec.isec, &hit.t[soaf::size*i], isec.t);
-          maskstore(isec.isec, &hit.u[soaf::size*i], soaf(zero));
-          maskstore(isec.isec, &hit.v[soaf::size*i], soaf(zero));
           maskstore(isec.isec, &hit.id[soaf::size*i], soaf(zero));
           maskstore(isec.isec, &hit.n[0][soaf::size*i], vox->n.x);
           maskstore(isec.isec, &hit.n[1][soaf::size*i], vox->n.y);
@@ -493,6 +541,7 @@ void occluded(const intersector &RESTRICT bvhtree,
         rangei(first, packetnum) {
           const auto rd = sget(extra.rdir, i);
           const auto isec = slab(pmin, pmax, rd, soaf(one));
+          if (none(isec.isec)) continue;
           const auto old = soab::load(&s.occluded[i*soaf::size]);
           store(&s.occluded[i*soaf::size], old|isec.isec);
         }
@@ -889,6 +938,35 @@ void clear(const vec2i &RESTRICT tileorg,
       storeu(pixels+yoffset+x, soaf(zero));
   AVX_ZERO_UPPER();
 }
+#if USE_STATS
+void stats() {
+  const auto slab_test = closest_slab_test_leaf +
+                         closest_slab_test_non_leaf_ia +
+                         closest_slab_test_non_leaf_first_active +
+                         closest_slab_test_non_leaf_scan;
+  const auto testsnum = closest_ia_early_out +
+                        closest_first_active +
+                        closest_scan;
+  printf("\n");
+  printf("*************************************************\n");
+  printf("** ray tracing stats\n");
+  printf("*************************************************\n");
+  STATS_RATIO(closest_ia_early_out, testsnum);
+  STATS_RATIO(closest_first_active, testsnum);
+  STATS_RATIO(closest_scan, testsnum);
+  STATS_RATIO(closest_leaf_active, closest_leaf_total);
+  STATS_RATIO(closest_leaf_isec, closest_leaf_active);
+  STATS_RATIO(closest_leaf_isec_occupancy, closest_leaf_isec_occupancy_total);
+  STATS_RATIO(closest_slab_test_leaf, slab_test);
+  STATS_RATIO(closest_slab_test_non_leaf_ia, slab_test);
+  STATS_RATIO(closest_slab_test_non_leaf_first_active, slab_test);
+  STATS_RATIO(closest_slab_test_non_leaf_scan, slab_test);
+  STATS_OUT(occluded_ia_early_out);
+  STATS_OUT(occluded_first_active);
+  STATS_OUT(occluded_scan);
+  printf("\n");
+}
+#endif
 } /* namespace NAMESPACE */
 } /* namespace rt */
 } /* namespace q */
