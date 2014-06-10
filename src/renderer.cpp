@@ -629,6 +629,16 @@ static void voxel(const vec3f &org, u32 cellnum, float cellsize, const csg::node
   voxel_task->wait();
 }
 
+static void voxelize(float d) {
+  const auto node = csg::makescene();
+  assert(node != NULL);
+  const auto start = sys::millis();
+  voxel(vec3f(zero), 2*8192, d, *node);
+  const auto duration = sys::millis() - start;
+  con::out("voxel: elapsed %f ms ", float(duration));
+}
+CMD(voxelize);
+
 static const float CELLSIZE = 0.1f;
 static void makescene() {
   if (initialized_m) return;
@@ -641,11 +651,7 @@ static void makescene() {
   m = dc(vec3f(0.15f), 4096, CELLSIZE, *node);
   auto duration = sys::millis() - start;
   con::out("csg: elapsed %f ms ", float(duration));
-
-  start = sys::millis();
-  voxel(vec3f(0.15f), 2*8192, 0.05f, *node);
-  duration = sys::millis() - start;
-  con::out("voxel: elapsed %f ms ", float(duration));
+  voxelize(0.05f);
 
   ogl::genbuffers(1, &sceneposbo);
   ogl::bindbuffer(ogl::ARRAY_BUFFER, sceneposbo);

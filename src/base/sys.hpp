@@ -250,10 +250,10 @@ INLINE void NAME##v(First first, Rest... rest) {\
 #define USE_STATS 0
 #define IF_STATS(X)
 #define STATS(X)
-#define STATS_ADD(X,Y)
-#define STATS_INC(X)
-#define STATS_OUT(X)
-#define STATS_RATIO(X,Y)
+#define STATS_ADD(X,Y) do {} while (0)
+#define STATS_INC(X) do {} while (0)
+#define STATS_OUT(X) do {} while (0)
+#define STATS_RATIO(X,Y) do {} while (0)
 #endif
 
 // global variable setter / getter
