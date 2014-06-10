@@ -52,6 +52,24 @@ INLINE soaisec slab(const soa3f &pmin, const soa3f &pmax, const soa3f &rdir, con
   return soaisec(isec, tisec);
 }
 
+struct soaisec2 {
+  INLINE soaisec2(const soab &isec, const soaf &tmin, const soaf &tmax) :
+    tmin(tmin), tmax(tmax), isec(isec) {}
+  soaf tmin, tmax;
+  soab isec;
+};
+
+// XXX Remove that!
+INLINE soaisec2 slab2(const soa3f &pmin, const soa3f &pmax, const soa3f &rdir, const soaf &t) {
+  const auto l1 = pmin*rdir;
+  const auto l2 = pmax*rdir;
+  const auto tfar = reducemin(max(l1,l2));
+  const auto tnear = reducemax(min(l1,l2));
+  const auto isec = (tfar >= tnear) & (tfar >= soaf(zero)) & (tnear < t);
+  const auto tisec = max(soaf(zero),tnear);
+  return soaisec2(isec, tnear, tfar);
+}
+
 INLINE bool slabfirst(const aabb &RESTRICT box,
                       const raypacket &RESTRICT p,
                       const raypacketextra &RESTRICT extra,
@@ -396,14 +414,26 @@ void closest(const intersector &RESTRICT bvhtree,
         rangei(first, packetnum) {
           const auto rd = sget(extra.rdir, i);
           const auto t = sget(hit.t, i);
-          const auto isec = slab(pmin, pmax, rd, t);
-          maskstore(isec.isec, &hit.t[soaf::size*i], isec.t);
-          maskstore(isec.isec, &hit.u[soaf::size*i], soaf(zero));
-          maskstore(isec.isec, &hit.v[soaf::size*i], soaf(zero));
-          maskstore(isec.isec, &hit.id[soaf::size*i], soaf(zero));
-          maskstore(isec.isec, &hit.n[0][soaf::size*i], vox->n.x);
-          maskstore(isec.isec, &hit.n[1][soaf::size*i], vox->n.y);
-          maskstore(isec.isec, &hit.n[2][soaf::size*i], vox->nd);
+          const auto isec = slab2(pmin, pmax, rd, t);
+          if (none(isec.isec))
+            continue;
+          const auto n = soa3f(vox->n.x, vox->n.y, vox->nd);
+          const auto d0 = vox->bn.x;
+          const auto d1 = vox->bn.y;
+          const auto r = rcp(dot(sget(p.vdir,i),n));
+		  const auto o = dot(p.sharedorg, vec3f(vox->n.x, vox->n.y, vox->nd));
+          const auto t0 = (-d0 - o) * r;
+          const auto t1 = (-d1 - o) * r;
+          const auto tnear = max(min(t0,t1), isec.tmin);
+          const auto tfar = min(max(t0,t1), isec.tmax);
+          const auto m = isec.isec & (tnear <= tfar);
+          maskstore(m, &hit.t[soaf::size*i], tnear);
+          maskstore(m, &hit.u[soaf::size*i], soaf(zero));
+          maskstore(m, &hit.v[soaf::size*i], soaf(zero));
+          maskstore(m, &hit.id[soaf::size*i], soaf(zero));
+          maskstore(m, &hit.n[0][soaf::size*i], vox->n.x);
+          maskstore(m, &hit.n[1][soaf::size*i], vox->n.y);
+          maskstore(m, &hit.n[2][soaf::size*i], vox->nd);
         }
         break;
       } else {
@@ -493,6 +523,8 @@ void occluded(const intersector &RESTRICT bvhtree,
         rangei(first, packetnum) {
           const auto rd = sget(extra.rdir, i);
           const auto isec = slab(pmin, pmax, rd, soaf(one));
+          if (none(isec.isec))
+            continue;
           const auto old = soab::load(&s.occluded[i*soaf::size]);
           store(&s.occluded[i*soaf::size], old|isec.isec);
         }

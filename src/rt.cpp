@@ -169,7 +169,7 @@ struct task_raycast : public task {
     } else if (rtmode == VOXELS) {
       const auto voxelbvh = iso::get_voxel_bvh();
       if (voxelbvh) {
-#if 0
+#if 1
         raypacket p;
         packethit hit;
         rtvisibilitypacket(cam, p, tileorg, dim);
@@ -186,7 +186,7 @@ struct task_raycast : public task {
         rtclear(tileorg, dim, pixels);
         totalraynum += TILESIZE*TILESIZE;
       } else {
-        const auto newpos = lpos1;
+        const auto newpos = lpos0;
         rtshadowpacket(pos, mask, newpos, shadow, occluded, TILESIZE*TILESIZE);
         rtoccluded(*voxelbvh, shadow, occluded);
         rtwritendotl(shadow, nor, occluded, tileorg, dim, pixels);

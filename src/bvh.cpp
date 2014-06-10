@@ -218,6 +218,7 @@ INLINE void makeleaf(compiler &c, const segment &data) {
     node.setflag(intersector::BOXLEAF);
     node.setptr(&c.acc[c.accnum]);
     const auto id = c.ids[0][data.first];
+    c.acc[c.accnum].bn  = c.prims[id].d;
     c.acc[c.accnum].n.x = c.prims[id].v[2].x;
     c.acc[c.accnum].n.y = c.prims[id].v[2].y;
     c.acc[c.accnum].nd  = c.prims[id].v[2].z;

@@ -79,10 +79,11 @@ struct primitive {
     v[0]=box.pmin;
     v[1]=box.pmax;
   }
-  INLINE primitive(aabb box, vec3f normal) : isec(NULL), type(BOX) {
+  INLINE primitive(aabb box, vec3f normal, float d0, float d1) : isec(NULL), type(BOX) {
     v[0]=box.pmin;
     v[1]=box.pmax;
     v[2]=normal;
+    d=vec2f(d0, d1);
   }
   INLINE aabb getaabb(void) const {
     if (type == TRI)
@@ -92,6 +93,7 @@ struct primitive {
   }
   ref<intersector> isec;
   vec3f v[3];
+  vec2f d;
   u32 type;
 };
 } /* namespace rt */

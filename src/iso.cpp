@@ -749,10 +749,12 @@ struct gridbuilder {
           const auto grad1 = ov0*(c1-dfdx1) + ov1*(c1-dfdy1) + ov2*(c1-dfdz1);
           const auto grad = grad0+grad1;
           const auto n = grad==vec3f(zero) ? vec3f(zero) : normalize(grad);
-          const vec3f pmin = voxcenter[j+k] - vec3f(cellsize)*0.5f;
-          const vec3f pmax = voxcenter[j+k] + vec3f(cellsize)*0.5f;
+          const auto pmin = voxcenter[j+k] - vec3f(cellsize)*0.5f;
+		  const auto pmax = voxcenter[j + k] + vec3f(cellsize)*0.5f;
           const aabb box(pmin,pmax);
-          voxels.push_back(rt::primitive(box, n));
+          const auto d0 = c0 - dot(voxcenter[j+k], n);
+		  const auto d1 = d0 + cellsize;
+		  voxels.push_back(rt::primitive(box, n, d0, d1));
         }
       }
     }
