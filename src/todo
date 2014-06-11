@@ -28,4 +28,10 @@
 * other idea for mesh construction and hash map is to use a local hash map for
   all points that are going to be used *only* inside the given leaf
 * add larger tiles for the ray tracing tasks
+* adapt mini.q.rt for voxels
+* rt: use min/max in final test for slab (saves 2 insn)
+* rt: track first and last in packet to help for leaves
+* rt: embed early-in and early-out
+* rt: handle the case where there is only one ray alive (i.e. no
+      early-in/early-out anymore)
 
