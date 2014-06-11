@@ -59,6 +59,7 @@ static void (*rtwritendotl)(const raypacket&, const array3f&,
                             const packetshadow&, const vec2i&, const vec2i&,
                             int*);
 static void (*rtclear)(const vec2i&, const vec2i&, int*);
+IF_STATS(static void (*rtstats)());
 
 #define LOAD(NAME) \
   rtclosest = NAME::closest;\
@@ -70,7 +71,8 @@ static void (*rtclear)(const vec2i&, const vec2i&, int*);
   rtwritedist = NAME::writedist;\
   rtwritenormal = NAME::writenormal;\
   rtwritendotl = NAME::writendotl;\
-  rtclear = NAME::clear;
+  rtclear = NAME::clear;\
+  IF_STATS(rtstats = NAME::stats);
 
 void start() {
   using namespace sys;
@@ -85,7 +87,10 @@ void start() {
     LOAD(rt);
   }
 }
-void finish() {world=NULL;}
+void finish() {
+  IF_STATS(rtstats());
+  world=NULL;
+}
 
 camera::camera(vec3f org, vec3f up, vec3f view, float fov, float ratio) :
   org(org), up(up), view(view), fov(fov), ratio(ratio)

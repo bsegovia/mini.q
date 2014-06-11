@@ -55,3 +55,5 @@ void clear(const vec2i &RESTRICT tileorg,
            const vec2i &RESTRICT screensize,
            int *RESTRICT pixels);
 
+// print out statistics
+void stats();

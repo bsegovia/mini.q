@@ -96,7 +96,9 @@ int queue::threadfunc(void *data) {
 #endif
   const auto td = (thread_data*) data;
   const auto q = (queue*) td->q;
-  // sys::set_affinity(td->index+1);
+#if defined(__WIN32__) // TODO investigate why this is a disaster on the workstation
+  sys::set_affinity(td->index+1);
+#endif /* __WIN32__ */
   DEL(td);
   for (;;) {
     SDL_LockMutex(q->mutex);
@@ -172,7 +174,9 @@ task::task(const char *name, u32 n, u32 waiternum, u32 queue, u16 policy) :
 task::~task() {}
 
 void task::start(const u32 *queueinfo, u32 n) {
-  // sys::set_affinity(0);
+#if defined(__WIN32__) // TODO investigate why this is a disaster on the workstation
+  sys::set_affinity(0);
+#endif /* __WIN32__ */
   tasking::queues.resize(n);
   loopi(n) tasking::queues[i] = NEW(tasking::queue, queueinfo[i]);
 }

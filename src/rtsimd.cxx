@@ -18,6 +18,26 @@
 namespace q {
 namespace rt {
 namespace NAMESPACE {
+STATS(closest_ia_early_out);
+STATS(closest_first_active);
+STATS(closest_scan);
+STATS(closest_scan_exit);
+STATS(closest_scan_continue);
+STATS(closest_leaf_total);
+STATS(closest_leaf_active);
+STATS(closest_leaf_isec);
+STATS(closest_leaf_isec_occupancy);
+STATS(closest_leaf_isec_occupancy_total);
+STATS(closest_slab_test_leaf);
+STATS(closest_slab_test_non_leaf_ia);
+STATS(closest_slab_test_non_leaf_first_active);
+STATS(closest_slab_test_non_leaf_scan);
+STATS(closest_slab_test_non_leaf_scan_exit);
+STATS(closest_slab_test_non_leaf_scan_continue);
+STATS(occluded_ia_early_out);
+STATS(occluded_first_active);
+STATS(occluded_scan);
+
 struct raypacketextra {
   array3f rdir;             // used by ray/box intersection
   interval3f iaorg, iardir; // only used when INTERVALARITH is set
@@ -382,21 +402,66 @@ void closest(const intersector &RESTRICT bvhtree,
       bool res = false;
       if (flags & raypacket::INTERVALARITH) {
         if (flags & raypacket::SHAREDORG) {
+          STATS_INC(closest_slab_test_non_leaf_first_active);
           res = slaboneco(node->box, p, extra, first, hit.t);
-          if (res) goto processnode;
-          if (culliaco(node->box, p, extra)) break;
+          if (res) {
+            STATS_INC(closest_first_active);
+            goto processnode;
+          }
+          STATS_INC(closest_slab_test_non_leaf_ia);
+          if (culliaco(node->box, p, extra)) {
+            STATS_INC(closest_ia_early_out);
+            break;
+          }
         } else {
+          STATS_INC(closest_slab_test_non_leaf_first_active);
           res = slabone(node->box, p, extra, first, hit.t);
-          if (res) goto processnode;
-          if (cullia(node->box, p, extra)) break;
+          if (res) {
+            STATS_INC(closest_first_active);
+            goto processnode;
+          }
+          if (cullia(node->box, p, extra)) {
+            STATS_INC(closest_ia_early_out);
+            break;
+          }
         }
         ++first;
       }
-      if (flags & raypacket::SHAREDORG)
-        res = slabfirstco(node->box, p, extra, first, hit.t);
-      else
-        res = slabfirst(node->box, p, extra, first, hit.t);
-      if (!res) break;
+      STATS_INC(closest_scan);
+      {
+#if USE_STATS
+        const auto initial = first;
+#endif /* USE_STATS */
+
+        if (flags & raypacket::SHAREDORG)
+          res = slabfirstco(node->box, p, extra, first, hit.t);
+        else
+          res = slabfirst(node->box, p, extra, first, hit.t);
+// let's speculate
+#if 1
+        STATS_ADD(closest_slab_test_non_leaf_scan, first-initial+1);
+        if (!res) {
+          STATS_ADD(closest_slab_test_non_leaf_scan_exit, first-initial+1);
+          STATS_INC(closest_scan_exit);
+          break;
+        } else {
+          STATS_ADD(closest_slab_test_non_leaf_scan_continue, first-initial+1);
+          STATS_INC(closest_scan_continue);
+        }
+      }
+#else
+        STATS_ADD(closest_slab_test_non_leaf_scan, p.raynum/soaf::size-initial+1);
+        if (!res) {
+          STATS_ADD(closest_slab_test_non_leaf_scan_exit, p.raynum/soaf::size-initial+1);
+          STATS_INC(closest_scan_exit);
+          break;
+        } else {
+          STATS_ADD(closest_slab_test_non_leaf_scan_continue, p.raynum/soaf::size-initial+1);
+          STATS_INC(closest_scan_continue);
+        }
+      }
+
+#endif
     processnode:
       const u32 flag = node->getflag();
       if (flag == intersector::NONLEAF) {
@@ -411,17 +476,21 @@ void closest(const intersector &RESTRICT bvhtree,
         const auto pmin = soa3f(node->box.pmin - p.sharedorg);
         const auto pmax = soa3f(node->box.pmax - p.sharedorg);
         const auto vox = node->getptr<waldtriangle>();
+        STATS_ADD(closest_leaf_total, packetnum);
+        STATS_ADD(closest_leaf_active, packetnum-first);
+        STATS_ADD(closest_slab_test_leaf, packetnum-first);
         rangei(first, packetnum) {
           const auto rd = sget(extra.rdir, i);
           const auto t = sget(hit.t, i);
+#if 0
           const auto isec = slab2(pmin, pmax, rd, t);
           if (none(isec.isec))
             continue;
-          const auto n = soa3f(vox->n.x, vox->n.y, vox->nd);
+          c9onst auto n = soa3f(vox->n.x, vox->n.y, vox->nd);
           const auto d0 = vox->bn.x;
           const auto d1 = vox->bn.y;
           const auto r = rcp(dot(sget(p.vdir,i),n));
-		  const auto o = dot(p.sharedorg, vec3f(vox->n.x, vox->n.y, vox->nd));
+          const auto o = dot(p.sharedorg, vec3f(vox->n.x, vox->n.y, vox->nd));
           const auto t0 = (-d0 - o) * r;
           const auto t1 = (-d1 - o) * r;
           const auto tnear = max(min(t0,t1), isec.tmin);
@@ -434,6 +503,19 @@ void closest(const intersector &RESTRICT bvhtree,
           maskstore(m, &hit.n[0][soaf::size*i], vox->n.x);
           maskstore(m, &hit.n[1][soaf::size*i], vox->n.y);
           maskstore(m, &hit.n[2][soaf::size*i], vox->nd);
+#else
+          const auto isec = slab(pmin, pmax, rd, t);
+          if (none(isec.isec))
+            continue;
+          STATS_INC(closest_leaf_isec);
+          STATS_ADD(closest_leaf_isec_occupancy, popcnt(isec.isec));
+          STATS_ADD(closest_leaf_isec_occupancy_total, soaf::size);
+          maskstore(isec.isec, &hit.t[soaf::size*i], isec.t);
+          maskstore(isec.isec, &hit.id[soaf::size*i], soaf(zero));
+          maskstore(isec.isec, &hit.n[0][soaf::size*i], vox->n.x);
+          maskstore(isec.isec, &hit.n[1][soaf::size*i], vox->n.y);
+          maskstore(isec.isec, &hit.n[2][soaf::size*i], vox->nd);
+#endif
         }
         break;
       } else {
@@ -636,7 +718,7 @@ static const soaf packety(0.f,0.f,0.f,0.f,1.f,1.f,1.f,1.f);
 #elif defined(__SSE__)
 static const soaf identityf(0.f,1.f,2.f,3.f);
 static const soai identityi(0,1,2,3);
-#endif
+#endif /* __AVX__ */
 static const ssef tilecrx(0.f,0.f,float(TILESIZE),float(TILESIZE));
 static const ssef tilecry(0.f,float(TILESIZE),0.f,float(TILESIZE));
 
@@ -681,7 +763,7 @@ void visibilitypacket(const camera &RESTRICT cam,
   const auto crdir = sseimgplaneorg+cry*ssezaxis+crx*ssexaxis;
 #else
   const auto crdir = imgplaneorg+cry*zaxis+crx*xaxis;
-#endif
+#endif /* __AVX__ */
   store4f(p.crx,crdir.x);
   store4f(p.cry,crdir.y);
   store4f(p.crz,crdir.z);
@@ -798,7 +880,7 @@ void writenormal(const packethit &RESTRICT hit,
   auto yoffset = w*tileorg.y;
   for (auto y = tileorg.y; y < tileorg.y+TILESIZE; ++y, yoffset+=w) {
     for (auto x = tileorg.x; x < tileorg.x+TILESIZE; x+=soaf::size, ++idx) {
-#endif
+#endif /* __AVX__ */
       const auto noisec = soai(~0x0u);
       const auto m = soai::load(&hit.id[idx*soaf::size]) != noisec;
       //const auto n = clamp(normalize(sget(hit.n, idx)));
@@ -811,7 +893,7 @@ void writenormal(const packethit &RESTRICT hit,
       store4i_nt(pixels+yoffset1+x, extract<1>(color));
 #else
       storent(pixels+yoffset+x, color);
-#endif
+#endif /* __AVX__ */
     }
   }
   AVX_ZERO_UPPER();
@@ -921,6 +1003,39 @@ void clear(const vec2i &RESTRICT tileorg,
       storeu(pixels+yoffset+x, soaf(zero));
   AVX_ZERO_UPPER();
 }
+#if USE_STATS
+void stats() {
+  const auto slab_test = closest_slab_test_leaf +
+                         closest_slab_test_non_leaf_ia +
+                         closest_slab_test_non_leaf_first_active +
+                         closest_slab_test_non_leaf_scan;
+  const auto testsnum = closest_ia_early_out +
+                        closest_first_active +
+                        closest_scan;
+  printf("\n");
+  printf("*************************************************\n");
+  printf("** ray tracing stats\n");
+  printf("*************************************************\n");
+  STATS_RATIO(closest_ia_early_out, testsnum);
+  STATS_RATIO(closest_first_active, testsnum);
+  STATS_RATIO(closest_scan, testsnum);
+  STATS_RATIO(closest_scan_exit, closest_scan);
+  STATS_RATIO(closest_scan_continue, closest_scan);
+  STATS_RATIO(closest_leaf_active, closest_leaf_total);
+  STATS_RATIO(closest_leaf_isec, closest_leaf_active);
+  STATS_RATIO(closest_leaf_isec_occupancy, closest_leaf_isec_occupancy_total);
+  STATS_RATIO(closest_slab_test_leaf, slab_test);
+  STATS_RATIO(closest_slab_test_non_leaf_ia, slab_test);
+  STATS_RATIO(closest_slab_test_non_leaf_first_active, slab_test);
+  STATS_RATIO(closest_slab_test_non_leaf_scan, slab_test);
+  STATS_RATIO(closest_slab_test_non_leaf_scan_exit, closest_slab_test_non_leaf_scan);
+  STATS_RATIO(closest_slab_test_non_leaf_scan_continue, closest_slab_test_non_leaf_scan);
+  STATS_OUT(occluded_ia_early_out);
+  STATS_OUT(occluded_first_active);
+  STATS_OUT(occluded_scan);
+  printf("\n");
+}
+#endif
 } /* namespace NAMESPACE */
 } /* namespace rt */
 } /* namespace q */

@@ -7,7 +7,7 @@ bind('L', [[
   playerpos(21, 3, 11)
   playerypr(247, 9, 0)
   debug()
-  linemode = 1
-]]);
+  raytrace = 1
+]])
 execscript('pos.lua')
 

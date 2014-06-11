@@ -24,6 +24,10 @@ STATS(iso_edgepos);
 
 #if !defined(RELEASE)
 static void stats() {
+  printf("\n");
+  printf("*************************************************\n");
+  printf("** iso-surface stats\n");
+  printf("*************************************************\n");
   STATS_OUT(iso_num);
   STATS_OUT(iso_qef_num);
   STATS_OUT(iso_edge_num);
@@ -32,6 +36,7 @@ static void stats() {
   STATS_RATIO(iso_gradient_num, iso_num);
   STATS_RATIO(iso_grid_num, iso_num);
   STATS_RATIO(iso_octree_num, iso_num);
+  printf("\n");
 }
 #endif /* defined(RELEASE) */
 

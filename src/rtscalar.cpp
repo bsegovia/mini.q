@@ -615,6 +615,8 @@ void clear(const vec2i &RESTRICT tileorg,
     for (auto x = tileorg.x; x < tileorg.x+TILESIZE; ++x)
         pixels[x+yoffset] = 0;
 }
+
+void stats() {}
 } /* namespace rt */
 } /* namespace q */
 
