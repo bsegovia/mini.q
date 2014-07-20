@@ -14,7 +14,7 @@ FLAGS+=-I../include/SDL2 -I../include/
 endif
 
 ifneq (,$(findstring g++, $(CXX)))
-FLAGS+=-fabi-version=6
+FLAGS+=-fabi-version=6 -Wno-strict-overflow
 endif
 ifeq (,$(findstring icc, $(CXX)))
 CXXCOMMONFLAGS+=-fno-unwind-tables

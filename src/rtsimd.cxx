@@ -498,8 +498,13 @@ void closest(const intersector &RESTRICT bvhtree,
           const auto o = dot(p.sharedorg, vec3f(vox->n.x, vox->n.y, vox->nd));
           const auto t0 = (-d0 - o) * r;
           const auto t1 = (-d1 - o) * r;
+#if 1
           const auto tnear = max(min(t0,t1), isec.tmin);
           const auto tfar = min(max(t0,t1), isec.tmax);
+#else
+          const auto tnear = max(t0, isec.tmin);
+          const auto tfar = min(t0, isec.tmax);
+#endif
           const auto m = isec.isec & (tnear <= tfar);
           if (none(m)) continue;
 #if 0
@@ -520,12 +525,13 @@ void closest(const intersector &RESTRICT bvhtree,
             normal.z = select(isecy, zero, normal.z);
             normal.z = select(isecz, one, normal.z);
             normal.z = select(isecp, n.z, normal.z);
-            maskstore(m, &hit.n[0][soaf::size*i], normal.x);
-            maskstore(m, &hit.n[1][soaf::size*i], normal.y);
-            maskstore(m, &hit.n[2][soaf::size*i], normal.z);
-            maskstore(m, &hit.n[0][soaf::size*i], one);
-            maskstore(m, &hit.n[1][soaf::size*i], one);
-            maskstore(m, &hit.n[2][soaf::size*i], one);
+            const auto sign = -dot(normal, sget(p.vdir,i)) & soaf(asfloat(0x80000000));
+            maskstore(m, &hit.n[0][soaf::size*i], sign^normal.x);
+            maskstore(m, &hit.n[1][soaf::size*i], sign^normal.y);
+            maskstore(m, &hit.n[2][soaf::size*i], sign^normal.z);
+            //maskstore(m, &hit.n[0][soaf::size*i], one);
+            //maskstore(m, &hit.n[1][soaf::size*i], one);
+            //maskstore(m, &hit.n[2][soaf::size*i], one);
           } else {
             maskstore(m, &hit.n[0][soaf::size*i], vox->n.x);
             maskstore(m, &hit.n[1][soaf::size*i], vox->n.y);

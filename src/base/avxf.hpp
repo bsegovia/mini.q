@@ -114,7 +114,8 @@ INLINE avxf op/ (const avxf& a, const float b) {return a / avxf(b);}
 INLINE avxf op/ (const float a, const avxf& b) {return avxf(a) / b;}
 INLINE avxf op^ (const avxf& a, const avxf& b) {return _mm256_xor_ps(a.m256,b.m256);}
 INLINE avxf op^ (const avxf& a, const avxi& b) {return _mm256_xor_ps(a.m256,_mm256_castsi256_ps(b.m256));}
-INLINE avxf op&(const avxf& a, const avxf& b) {return _mm256_and_ps(a.m256,b.m256);}
+INLINE avxf op& (const avxf& a, const avxf& b) {return _mm256_and_ps(a.m256,b.m256);}
+INLINE avxf op& (const avxf& a, const avxi& b) {return _mm256_and_ps(a.m256,_mm256_castsi256_ps(b.m256));}
 INLINE avxf min(const avxf& a, const avxf& b) {return _mm256_min_ps(a.m256, b.m256);}
 INLINE avxf min(const avxf& a, const float b) {return _mm256_min_ps(a.m256, avxf(b));}
 INLINE avxf min(const float a, const avxf& b) {return _mm256_min_ps(avxf(a), b.m256);}

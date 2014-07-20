@@ -111,6 +111,8 @@ INLINE ssef op /(const ssef& a, const float& b) {return a/ssef(b);}
 INLINE ssef op /(const float& a, const ssef& b) {return ssef(a)/b;}
 INLINE ssef op^(const ssef& a, const ssef& b) {return _mm_xor_ps(a.m128,b.m128);}
 INLINE ssef op^(const ssef& a, const ssei& b) {return _mm_xor_ps(a.m128,_mm_castsi128_ps(b.m128));}
+INLINE ssef op&(const ssef& a, const ssef& b) {return _mm_and_ps(a.m128,b.m128);}
+INLINE ssef op&(const ssef& a, const ssei& b) {return _mm_and_ps(a.m128,_mm_castsi128_ps(b.m128));}
 INLINE ssef min(const ssef& a, const ssef& b) {return _mm_min_ps(a.m128,b.m128);}
 INLINE ssef min(const ssef& a, const float& b) {return _mm_min_ps(a.m128,ssef(b));}
 INLINE ssef min(const float& a, const ssef& b) {return _mm_min_ps(ssef(a),b.m128);}

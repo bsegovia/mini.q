@@ -348,7 +348,7 @@ struct gridbuilder {
   }
   INLINE fielditem &field(const vec3i &xyz) {return m_field[field_index(xyz)];}
 
-  void init_field() {
+  void init_fields() {
     stepxyz(vec3i(zero), vec3i(FIELDDIM), vec3i(4)) {
       auto &pos = stack->p;
       auto &d = stack->d;
@@ -373,10 +373,10 @@ struct gridbuilder {
     }
   }
 
-  void init_edge() {
+  void init_edges() {
     m_edge_index.memset(u8(0xff));
     m_edges.resize(0);
-    delayed_edges.resize(0);
+    m_delayed_edges.resize(0);
   }
 
   void init_qef() {
@@ -385,7 +385,7 @@ struct gridbuilder {
     delayed_qef.resize(0);
   }
 
-  int delayed_qef_vertex(const mcell &cell, const vec3i &xyz) {
+  int delayed_voxel(const mcell &cell, const vec3i &xyz) {
     int edgemap = 0;
     loopi(12) {
       const auto idx0 = interptable[i][0], idx1 = interptable[i][1];
@@ -394,8 +394,8 @@ struct gridbuilder {
       const auto e = getedge(icubev[idx0], icubev[idx1]);
       auto &idx = m_edge_index[edge_index(xyz+e.first, e.second)];
       if (idx == NOINDEX) {
-        idx = delayed_edges.size();
-        delayed_edges.push_back(makepair(xyz, vec4i(idx0, idx1, m0, m1)));
+        idx = m_delayed_edges.size();
+        m_delayed_edges.push_back(makepair(xyz, vec4i(idx0, idx1, m0, m1)));
       }
       edgemap |= 1<<i;
     }
@@ -449,7 +449,7 @@ struct gridbuilder {
   }
 
   void finish_edges() {
-    const auto len = delayed_edges.size();
+    const auto len = m_delayed_edges.size();
     STATS_ADD(iso_edge_num, len);
     for (int i = 0; i < len; i += 64) {
       auto &it = stack->it;
@@ -460,7 +460,7 @@ struct gridbuilder {
       // exact same result
       const int num = min(64, len-i);
       loopj(num) {
-        const auto &e = delayed_edges[i+j];
+        const auto &e = m_delayed_edges[i+j];
         const auto idx0 = e.second.x, idx1 = e.second.y;
         const auto xyz = e.first;
         const auto edge = getedge(icubev[idx0], icubev[idx1]);
@@ -532,7 +532,7 @@ struct gridbuilder {
       const auto xyz = item.first;
       const auto edgemap = item.second;
 
-      // this vertex does not belong this leaf. skip it. we test all three sign
+      // if this vertex does not belong this leaf, skip it. we test all signs
       if ((xyz.x|xyz.y|xyz.z)>>31) continue;
 
       // get the intersection points between the surface and the cube edges
@@ -615,7 +615,7 @@ struct gridbuilder {
             mcell cell;
             loopk(8) cell[k] = field(np+icubev[k]);
             m_qef_index[idx] = m_qefnum++;
-            delayed_qef.push_back(makepair(np, delayed_qef_vertex(cell, np)));
+            delayed_qef.push_back(makepair(np, delayed_voxel(cell, np)));
             STATS_INC(iso_qef_num);
           }
         }
@@ -671,8 +671,8 @@ struct gridbuilder {
 
   void build(octree::node &node) {
     pl.leaf.init();
-    init_field();
-    init_edge();
+    init_fields();
+    init_edges();
     init_qef();
     tesselate();
     finish_edges();
@@ -681,12 +681,260 @@ struct gridbuilder {
     output(node);
   }
 
-  void create_voxels(octree::node &node) {
+  const csg::node *m_node;
+  ref<rt::intersector> bvh;
+  vector<fielditem> m_field;
+  vector<u32> m_qef_index;
+  vector<u32> m_edge_index;
+  vector<edge> m_edges;
+  vector<pair<vec3i,vec4i>> m_delayed_edges;
+  vector<pair<vec3i,int>> delayed_qef;
+  edgestack *stack;
+  const octree *m_octree;
+  procleaf pl;
+  vec3f m_org;
+  vec3i m_iorg;
+  float cellsize;
+  u32 m_qefnum;
+  u32 maxlvl, level;
+};
+
+/*-------------------------------------------------------------------------
+ - voxel creation is done here
+ -------------------------------------------------------------------------*/
+struct voxelbuilder {
+  voxelbuilder() :
+    m_node(NULL),
+    m_field(FIELDNUM),
+    m_edge_index(6*FIELDNUM),
+    stack((edgestack*)ALIGNEDMALLOC(sizeof(edgestack), CACHE_LINE_ALIGNMENT)),
+    m_octree(NULL),
+    m_iorg(zero),
+    maxlvl(0),
+    level(0)
+  {}
+  ~voxelbuilder() {ALIGNEDFREE(stack);}
+
+  struct edge {
+    vec3f p, n;
+    vec2i mat;
+  };
+
+  INLINE vec3f vertex(const vec3i &p) {
+    const vec3i ipos = m_iorg+(p<<(int(maxlvl-level)));
+    return vec3f(ipos)*cellsize;
+  }
+  INLINE void setoctree(const octree &o) { m_octree = &o; }
+  INLINE void setorg(const vec3f &org) { m_org = org; }
+  INLINE void setcellsize(float size) { cellsize = size; }
+  INLINE void setnode(const csg::node *node) { m_node = node; }
+  INLINE u32 field_index(const vec3i &xyz) {
+    assert(all(ge(xyz,vec3i(zero))) && all(lt(xyz,vec3i(FIELDDIM))));
+    return xyz.x + (xyz.y + xyz.z * FIELDDIM) * FIELDDIM;
+  }
+  INLINE u32 edge_index(const vec3i &start, int edge) {
+    assert(all(ge(start,vec3i(zero))) && all(lt(start,vec3i(FIELDDIM))));
+    const auto offset = start.x + (start.y + start.z * FIELDDIM) * FIELDDIM;
+    return offset + edge * FIELDNUM;
+  }
+  INLINE fielditem &field(const vec3i &xyz) {return m_field[field_index(xyz)];}
+
+  void edgepos(const csg::node *node, edgestack &stack, int num) {
+    assert(num <= 64);
+    auto &it = stack.it;
+    auto &pos = stack.pos, &p = stack.p;
+    auto &d = stack.d;
+    auto &m = stack.m;
+
+    loopk(MAX_STEPS) {
+      auto box = aabb::empty();
+      loopi(num) {
+        const auto mid = (it[i].p0 + it[i].p1) * 0.5f;
+        const auto worldmid = it[i].org+cellsize*mid;
+        csg::set(p, mid, i);
+        csg::set(pos, worldmid, i);
+        box.pmin = min(worldmid, box.pmin);
+        box.pmax = max(worldmid, box.pmax);
+      }
+      box.pmin -= 3.f * cellsize;
+      box.pmax += 3.f * cellsize;
+      isodist(m_node, pos, NULL, d, m, num, box);
+      if (k != MAX_STEPS-1) {
+        loopi(num) {
+          assert(!isnan(d[i]));
+          if (m[i] == int(it[i].m0)) {
+            it[i].p0 = csg::get(p,i);
+            it[i].v0 = d[i];
+          } else {
+            it[i].p1 = csg::get(p,i);
+            it[i].v1 = d[i];
+          }
+        }
+      } else {
+        loopi(num) {
+          const auto src = csg::get(p,i);
+          it[i].p0 = src;
+#if !defined(NDEBUG)
+          assert(!isnan(src.x)&&!isnan(src.y)&&!isnan(src.z));
+          assert(!isinf(src.x)&&!isinf(src.y)&&!isinf(src.z));
+#endif /* !defined(NDEBUG) */
+        }
+      }
+    }
+    STATS_ADD(iso_edgepos_num, num*MAX_STEPS);
+    STATS_ADD(iso_num, num*MAX_STEPS);
+  }
+
+  int delayed_voxel(const mcell &cell, const vec3i &xyz) {
+    int edgemap = 0;
+    loopi(12) {
+      const auto idx0 = interptable[i][0], idx1 = interptable[i][1];
+      const auto m0 = cell[idx0].m, m1 = cell[idx1].m;
+      if (m0 == m1) continue;
+      const auto e = getedge(icubev[idx0], icubev[idx1]);
+      auto &idx = m_edge_index[edge_index(xyz+e.first, e.second)];
+      if (idx == NOINDEX) {
+        idx = m_delayed_edges.size();
+        m_delayed_edges.push_back(makepair(xyz, vec4i(idx0, idx1, m0, m1)));
+      }
+      edgemap |= 1<<i;
+    }
+    return edgemap;
+  }
+
+  void init_fields() {
+    stepxyz(vec3i(zero), vec3i(FIELDDIM), vec3i(4)) {
+      auto &pos = stack->p;
+      auto &d = stack->d;
+      auto &m = stack->m;
+      const auto p = vertex(sxyz);
+      const auto box = aabb(p-2.f*cellsize, p+6.f*cellsize);
+      int index = 0;
+      const auto end = min(sxyz+4,vec3i(FIELDDIM));
+      loopxyz(sxyz, end) csg::set(pos, vertex(xyz), index++);
+      isodist(m_node, pos, NULL, d, m, index, box);
+#if !defined(NDEBUG)
+      loopi(index) assert(d[i] <= 0.f || m[i] == csg::MAT_AIR_INDEX);
+      loopi(index) assert(d[i] >= 0.f || m[i] != csg::MAT_AIR_INDEX);
+#endif /* NDEBUG */
+      STATS_ADD(iso_num, index);
+      STATS_ADD(iso_grid_num, index);
+      index = 0;
+      loopxyz(sxyz, end) {
+        field(xyz) = fielditem(d[index], m[index]);
+        ++index;
+      }
+    }
+  }
+
+  void init_edges() {
+    m_edge_index.memset(u8(0xff));
+    m_edges.resize(0);
+    m_delayed_edges.resize(0);
+  }
+
+  void init_voxels() {
+    m_delayed_voxels.resize(0);
+    loopxyz(zero, SUBGRID) {
+      if (abs(field(xyz).d) > 2.f*cellsize) continue;
+
+      // figure out if the voxel lies on an boundary
+      mcell cell;
+      loopk(8) cell[k] = field(xyz+icubev[k]);
+      const auto res = delayed_voxel(cell,xyz);
+      if (res == 0 || res == 0xff) continue;
+
+      // if so, we will need to process it. pass 'finish_edges' will compute the
+      // intersection point on the edge and their normals
+      m_delayed_voxels.push_back(makepair(xyz, res));
+    }
+  }
+
+  void finish_edges() {
+    const auto len = m_delayed_edges.size();
+    STATS_ADD(iso_edge_num, len);
+    for (int i = 0; i < len; i += 64) {
+      auto &it = stack->it;
+
+      // step 1 - run bisection with packets of (up-to) 64 points. we need
+      // to be careful FP wise. We ensure here that the position computation is
+      // invariant from grids to grids such that neighbor grids will output the
+      // exact same result
+      const int num = min(64, len-i);
+      loopj(num) {
+        const auto &e = m_delayed_edges[i+j];
+        const auto idx0 = e.second.x, idx1 = e.second.y;
+        const auto xyz = e.first;
+        const auto edge = getedge(icubev[idx0], icubev[idx1]);
+        it[j].org = vertex(xyz+edge.first);
+        it[j].p0 = vec3f(icubev[idx0]-edge.first);
+        it[j].p1 = vec3f(icubev[idx1]-edge.first);
+        it[j].v0 = field(xyz + icubev[idx0]).d;
+        it[j].v1 = field(xyz + icubev[idx1]).d;
+        it[j].m0 = e.second.z;
+        it[j].m1 = e.second.w;
+        if (it[j].v1 < 0.f) {
+          swap(it[j].p0,it[j].p1);
+          swap(it[j].v0,it[j].v1);
+          swap(it[j].m0,it[j].m1);
+        }
+      }
+      edgepos(m_node, *stack, num);
+
+      // step 2 - compute normals for each point using packets of 16x4 points
+      const auto dx = vec3f(DEFAULT_GRAD_STEP, 0.f, 0.f);
+      const auto dy = vec3f(0.f, DEFAULT_GRAD_STEP, 0.f);
+      const auto dz = vec3f(0.f, 0.f, DEFAULT_GRAD_STEP);
+      for (int j = 0; j < num; j += 16) {
+        const int subnum = min(num-j, 16);
+        auto &p = stack->p;
+        auto &d = stack->d;
+        auto &m = stack->m;
+        auto &nd = stack->nd;
+        auto box = aabb::empty();
+        loopk(subnum) {
+          const auto center = it[j+k].org + it[j+k].p0 * cellsize;
+          csg::set(p, center,    4*k+0);
+          csg::set(p, center-dx, 4*k+1);
+          csg::set(p, center-dy, 4*k+2);
+          csg::set(p, center-dz, 4*k+3);
+          box.pmin = min(center, box.pmin);
+          box.pmax = max(center, box.pmax);
+        }
+        box.pmin -= 3.f * cellsize;
+        box.pmax += 3.f * cellsize;
+
+        loopk(4*subnum) {
+          const auto m0 = it[j+k/4].m0;
+          const auto m1 = it[j+k/4].m1;
+          bool const solidsolid = m0 != csg::MAT_AIR_INDEX && m1 != csg::MAT_AIR_INDEX;
+          nd[k] = solidsolid ? cellsize : 0.f;
+        }
+        isodist(m_node, p, &nd, d, m, 4*subnum, box);
+        STATS_ADD(iso_num, 4*subnum);
+        STATS_ADD(iso_gradient_num, 4*subnum);
+
+        loopk(subnum) {
+          const auto c    = d[4*k+0];
+          const auto dfdx = d[4*k+1];
+          const auto dfdy = d[4*k+2];
+          const auto dfdz = d[4*k+3];
+          const auto grad = vec3f(c-dfdx, c-dfdy, c-dfdz);
+          const auto n = grad==vec3f(zero) ? vec3f(zero) : normalize(grad);
+          const auto p = it[j+k].p0;
+          m_edges.push_back({p,n,vec2i(it[j+k].m0,it[j+k].m1)});
+        }
+      }
+    }
+  }
+
+  void finish_voxels(octree::node &node) {
     bvh = NULL;
     vector<rt::primitive> voxels;
+#if 0
     stepxyz(zero, SUBGRID, 4) {
 
-      // step 1 - find all voxel centers using distance computed in init_field
+      // step 1 - find all voxel centers using distance computed in init_fields
       vector<vec3f> voxcenter;
       loopxyz(sxyz, sxyz+4) {
         u32 msk = 0;
@@ -754,6 +1002,69 @@ struct gridbuilder {
         }
       }
     }
+#else
+    loopv(m_delayed_voxels) {
+      const auto &item = m_delayed_voxels[i];
+      const auto xyz = item.first;
+      const auto edgemap = item.second;
+
+      // if this vertex does not belong this leaf, skip it. we test all signs
+      if ((xyz.x|xyz.y|xyz.z)>>31) continue;
+
+      // get the edge from the list of edges we initialized in
+      // previous pass 'init_edges'
+      array<vec3f,12> p, n;
+      int num = 0;
+      loopi(12) {
+        if ((edgemap & (1<<i)) == 0) continue;
+
+        // fetch the edge
+        const auto idx0 = interptable[i][0], idx1 = interptable[i][1];
+        const auto e = getedge(icubev[idx0], icubev[idx1]);
+        const auto idx = m_edge_index[edge_index(xyz+e.first, e.second)];
+        assert(idx != NOINDEX);
+
+        // we do not care about multi-material edges for voxel rendering
+        if (m_edges[idx].mat.x != csg::MAT_AIR_INDEX &&
+            m_edges[idx].mat.y != csg::MAT_AIR_INDEX)
+          continue;
+        p[num] = vertex(xyz)+cellsize*(m_edges[idx].p+vec3f(e.first));
+        n[num] = m_edges[idx].n;
+        ++num;
+      }
+      if (num == 0) continue;
+
+      // now figure out if the voxels contains some discontinuities
+      bool discontinuous = false;
+      rangei(1,num) if (dot(n[i],n[0]) < 0.9f) {
+        discontinuous = true;
+        break;
+      }
+
+      // since we use only one plane, try to find the best one i.e. the one
+      // which is as different as possible as the principal axis
+      int best = -1;
+      float best_score = FLT_MAX;
+      loopi(num) {
+        const auto scorex = abs(dot(n[i], vec3f(1.f,0.f,0.f)));
+        const auto scorey = abs(dot(n[i], vec3f(0.f,1.f,0.f)));
+        const auto scorez = abs(dot(n[i], vec3f(0.f,0.f,1.f)));
+        const auto score = max(scorex, scorey, scorez);
+        if (score < best_score) {
+          best = i;
+          best_score = score;
+        }
+      }
+
+      // for now, we just encode one plane. TODO encode more planes
+      const auto pmin = vertex(xyz);
+      const auto pmax = pmin + vec3f(cellsize);
+      const aabb box(pmin, pmax);
+      const auto d0 = -dot(p[best], n[best]);
+      const auto d1 = d0 + cellsize;
+      voxels.push_back(rt::primitive(box, n[best], d0, d1, discontinuous));
+    }
+#endif
 
     if (voxels.size() > 0) {
       bvh = NEW(rt::intersector, &voxels[0], voxels.size());
@@ -761,17 +1072,23 @@ struct gridbuilder {
     }
   }
 
+  void build(octree::node &node) {
+    init_fields();
+    init_edges();
+    init_voxels();
+    finish_edges();
+    finish_voxels(node);
+  }
+
   const csg::node *m_node;
   ref<rt::intersector> bvh;
   vector<fielditem> m_field;
-  vector<u32> m_qef_index;
   vector<u32> m_edge_index;
   vector<edge> m_edges;
-  vector<pair<vec3i,vec4i>> delayed_edges;
-  vector<pair<vec3i,int>> delayed_qef;
+  vector<pair<vec3i,vec4i>> m_delayed_edges;
+  vector<pair<vec3i,int>> m_delayed_voxels;
   edgestack *stack;
   const octree *m_octree;
-  procleaf pl;
   vec3f m_org;
   vec3i m_iorg;
   float cellsize;
@@ -783,15 +1100,18 @@ struct gridbuilder {
  - multi-threaded implementation of the iso surface extraction
  -------------------------------------------------------------------------*/
 static THREAD gridbuilder *localbuilder = NULL;
+static THREAD voxelbuilder *voxbuilder = NULL;
 struct context {
   INLINE context() : m_mutex(SDL_CreateMutex()) {}
   SDL_mutex *m_mutex;
   vector<gridbuilder*> m_builders;
+  vector<voxelbuilder*> m_voxbuilders;
 };
 static context *ctx = NULL;
 
 // run the contouring part per leaf of octree using small grids
 struct task_contouring : public task {
+
   // what to run per task iteration
   struct workitem {
     const csg::node *csgnode;
@@ -920,6 +1240,10 @@ struct task_iso : public task {
   u32 dim, maxlvl;
 };
 
+/*-------------------------------------------------------------------------
+ - multi-threaded implementation of the (hierarchical) voxel creation
+ -------------------------------------------------------------------------*/
+
 // build the bvh of voxel bvh
 struct task_build_voxel_bvh : public task {
   typedef task_contouring::workitem workitem;
@@ -948,23 +1272,22 @@ struct task_build_voxel_subbvh : public task {
   {}
 
   virtual void run(u32 idx) {
-    if (localbuilder == NULL) {
-      localbuilder = NEWE(gridbuilder);
+    if (voxbuilder == NULL) {
+      voxbuilder = NEWE(voxelbuilder);
       SDL_LockMutex(ctx->m_mutex);
-      ctx->m_builders.push_back(localbuilder);
+      ctx->m_voxbuilders.push_back(voxbuilder);
       SDL_UnlockMutex(ctx->m_mutex);
     }
     const auto &job = items[idx];
-    localbuilder->m_octree = job.oct;
-    localbuilder->m_iorg = job.iorg;
-    localbuilder->level = job.octnode->level;
-    localbuilder->maxlvl = job.maxlvl;
-    localbuilder->setcellsize(job.cellsize);
-    localbuilder->setnode(job.csgnode);
-    localbuilder->setorg(job.org);
-    localbuilder->init_field();
-    localbuilder->create_voxels(*job.octnode);
-    items[idx].bvh = localbuilder->bvh;
+    voxbuilder->m_octree = job.oct;
+    voxbuilder->m_iorg = job.iorg;
+    voxbuilder->level = job.octnode->level;
+    voxbuilder->maxlvl = job.maxlvl;
+    voxbuilder->setcellsize(job.cellsize);
+    voxbuilder->setnode(job.csgnode);
+    voxbuilder->setorg(job.org);
+    voxbuilder->build(*job.octnode);
+    items[idx].bvh = voxbuilder->bvh;
   }
   vector<workitem> &items;
 };
@@ -1017,6 +1340,7 @@ void finish() {
   stats();
 #endif
   loopv(ctx->m_builders) SAFE_DEL(ctx->m_builders[i]);
+  loopv(ctx->m_voxbuilders) SAFE_DEL(ctx->m_voxbuilders[i]);
   DEL(ctx);
 }
 } /* namespace iso */
