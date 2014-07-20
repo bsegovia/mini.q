@@ -6,7 +6,8 @@
 #include "demo.hpp"
 #include "game.hpp"
 #include "geom.hpp"
-#include "iso.hpp"
+#include "iso_mesh.hpp"
+#include "iso_voxel.hpp"
 #include "menu.hpp"
 #include "md2.hpp"
 #include "monster.hpp"
@@ -608,11 +609,11 @@ void finish() {
 }
 #endif
 
-static geom::mesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::node &root) {
-  iso::octree o(cellnum);
-  geom::mesh m;
+static geom::dcmesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::node &root) {
+  iso::mesh::octree o(cellnum);
+  geom::dcmesh m;
   ref<task> geom_task = geom::create_task(m, o, cellsize);
-  ref<task> iso_task = iso::create_task(o, root, org, cellnum, cellsize);
+  ref<task> iso_task = iso::mesh::create_task(o, root, org, cellnum, cellsize);
   iso_task->starts(*geom_task);
   iso_task->scheduled();
   geom_task->scheduled();
@@ -622,9 +623,8 @@ static geom::mesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::n
 }
 
 static void voxel(const vec3f &org, u32 cellnum, float cellsize, const csg::node &root) {
-  iso::octree o(cellnum);
-  geom::mesh m;
-  ref<task> voxel_task = iso::create_voxel_task(o, root, org, cellnum, cellsize);
+  iso::voxel::octree o(cellnum);
+  ref<task> voxel_task = iso::voxel::create_task(o, root, org, cellnum, cellsize);
   voxel_task->scheduled();
   voxel_task->wait();
 }
@@ -644,7 +644,7 @@ static void makescene() {
   if (initialized_m) return;
 
   // create the indexed mesh from the scene description
-  geom::mesh m;
+  geom::dcmesh m;
   auto start = sys::millis();
   const auto node = csg::makescene();
   assert(node != NULL);

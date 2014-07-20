@@ -3,13 +3,13 @@
  - mini.q.iso.cpp -> test iso surface extractor
  -------------------------------------------------------------------------*/
 #include "csg.hpp"
-#include "iso.hpp"
-#include "mini.q.hpp"
+#include "iso_mesh.hpp"
 #include "base/console.hpp"
 #include "base/task.hpp"
 #include "base/string.hpp"
 #include "base/script.hpp"
 #include "base/sys.hpp"
+#include "mini.q.hpp"
 
 using namespace q;
 static void outputcpufeatures() {
@@ -23,11 +23,11 @@ static void outputcpufeatures() {
   }
   con::out(features.c_str());
 }
-static geom::mesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::node &root) {
-  iso::octree o(cellnum);
-  geom::mesh m;
+static geom::dcmesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::node &root) {
+  iso::mesh::octree o(cellnum);
+  geom::dcmesh m;
   ref<task> geom_task = geom::create_task(m, o, cellsize);
-  ref<task> iso_task = iso::create_task(o, root, org, cellnum, cellsize);
+  ref<task> iso_task = iso::mesh::create_task(o, root, org, cellnum, cellsize);
   iso_task->starts(*geom_task);
   iso_task->scheduled();
   geom_task->scheduled();
@@ -53,7 +53,7 @@ int main(int argc, const char **argv) {
   con::out("init: script module");
   script::start();
   con::out("init: isosurface module");
-  iso::start();
+  iso::mesh::start();
   con::out("init: csg module");
   csg::start();
 
@@ -74,3 +74,4 @@ int main(int argc, const char **argv) {
   finish();
 #endif /* !defined(NDEBUG) */
 }
+

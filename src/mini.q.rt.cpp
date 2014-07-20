@@ -5,7 +5,8 @@
 #include "mini.q.hpp"
 #include "bvh.hpp"
 #include "csg.hpp"
-#include "iso.hpp"
+#include "iso_mesh.hpp"
+#include "iso_voxel.hpp"
 #include "game.hpp"
 #include "rt.hpp"
 #include "base/console.hpp"
@@ -19,7 +20,7 @@ static void playerypr(int x, int y, int z) {game::player1->ypr = vec3f(vec3i(x,y
 CMD(playerpos);
 CMD(playerypr);
 static void loadworld(const char *name) {
-  geom::mesh m;
+  geom::dcmesh m;
   con::out("init: loading %s", name);
   const auto start = sys::millis();
   auto f = gzopen(name, "rb");
@@ -51,8 +52,10 @@ static void run(int argc, const char *argv[]) {
   const u32 threadnum = sys::threadnumber() - 1;
   con::out("init: tasking system: %d threads created", threadnum);
   task::start(&threadnum, 1);
-  con::out("init: isosurface module");
-  iso::start();
+  con::out("init: iso::mesh module");
+  iso::mesh::start();
+  con::out("init: iso::voxel module");
+  iso::voxel::start();
 
   // load everything
   script::execscript(argv[1]);

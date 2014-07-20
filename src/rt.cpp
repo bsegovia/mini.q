@@ -11,8 +11,8 @@
 #include "base/console.hpp"
 #include "base/script.hpp"
 #include "base/task.hpp"
-
-#include "iso.hpp" // XXX remove this when we are done with tests
+#include "iso_voxel.hpp" // XXX remove this when we are done with tests
+#include "iso_mesh.hpp"  // XXX remove this when we are done with tests
 
 namespace q {
 namespace rt {
@@ -83,7 +83,7 @@ void start() {
     con::out("rt: sse path selected");
     LOAD(rt::sse);
   } else {
-    con::out("rt: warning slow path chosen for isosurface extraction");
+    con::out("rt: warning slow path chosen for ray tracing");
     LOAD(rt);
   }
 }
@@ -133,7 +133,7 @@ struct task_raycast : public task {
     return rtprimarypoint(p, hit, pos, nor, mask);
   }
   INLINE u32 primarypoint2(vec2i tileorg, array3f &pos, array3f &nor, arrayi &mask) {
-    const auto voxelbvh = iso::get_voxel_bvh();
+    const auto voxelbvh = iso::voxel::get_bvh();
     raypacket p;
     packethit hit;
     rtvisibilitypacket(cam, p, tileorg, dim);
@@ -172,7 +172,7 @@ struct task_raycast : public task {
         totalraynum += shadow.raynum+TILESIZE*TILESIZE;
       }
     } else if (rtmode == VOXELS) {
-      const auto voxelbvh = iso::get_voxel_bvh();
+      const auto voxelbvh = iso::voxel::get_bvh();
       if (voxelbvh) {
 #if 1
         raypacket p;

@@ -113,7 +113,7 @@ GAME_OBJS=\
   entities.o\
   game.o\
   geom.o\
-  iso.o\
+  iso_mesh.o\
   iso_voxel.o\
   md2.o\
   menu.o\

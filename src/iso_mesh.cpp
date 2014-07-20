@@ -52,10 +52,6 @@ namespace q {
 namespace iso {
 namespace mesh {
 
-static ref<rt::intersector> voxelbvh;
-static atomic voxel_num(0);
-ref<rt::intersector> get_voxel_bvh() { return voxelbvh; }
-
 // callback to perform distance to iso-surface
 static void (*isodist)(
   const csg::node *RESTRICT, const csg::array3f &RESTRICT,
@@ -700,12 +696,10 @@ struct gridbuilder {
  - multi-threaded implementation of the iso surface extraction
  -------------------------------------------------------------------------*/
 static THREAD gridbuilder *localbuilder = NULL;
-static THREAD voxelbuilder *voxbuilder = NULL;
 struct context {
   INLINE context() : m_mutex(SDL_CreateMutex()) {}
   SDL_mutex *m_mutex;
   vector<gridbuilder*> m_builders;
-  vector<voxelbuilder*> m_voxbuilders;
 };
 static context *ctx = NULL;
 
@@ -865,7 +859,6 @@ void finish() {
   stats();
 #endif
   loopv(ctx->m_builders) SAFE_DEL(ctx->m_builders[i]);
-  loopv(ctx->m_voxbuilders) SAFE_DEL(ctx->m_voxbuilders[i]);
   DEL(ctx);
 }
 } /* namespace mesh */

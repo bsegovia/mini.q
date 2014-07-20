@@ -2,13 +2,11 @@
  - mini.q - a minimalistic multiplayer fps
  - iso_mesh.cpp -> implements routines to compute hierchical voxel
  -------------------------------------------------------------------------*/
-#include "iso.hpp"
+#include "iso_voxel.hpp"
 #include "csg.hpp"
-#include "qef.hpp"
 #include "csg.scalar.hpp"
 #include "csg.sse.hpp"
 #include "csg.avx.hpp"
-#include "geom.hpp"
 #include "base/vector.hpp"
 #include "base/task.hpp"
 #include "base/console.hpp"
@@ -46,7 +44,7 @@ namespace voxel {
 
 static ref<rt::intersector> voxelbvh;
 static atomic voxel_num(0);
-ref<rt::intersector> get_voxel_bvh() { return voxelbvh; }
+ref<rt::intersector> get_bvh() { return voxelbvh; }
 
 // callback to perform distance to iso-surface
 static void (*isodist)(
@@ -92,6 +90,35 @@ static const u32 FIELDDIM = SUBGRID+2;
 static const u32 FIELDNUM = FIELDDIM*FIELDDIM*FIELDDIM;
 static const u32 QEFNUM = SUBGRID*SUBGRID*SUBGRID;
 static const u32 NOINDEX = ~0x0u;
+
+/*-------------------------------------------------------------------------
+ - global octree implementation
+ -------------------------------------------------------------------------*/
+octree::node::~node() {
+  if (isleaf)
+    SAFE_DEL(leaf);
+  else
+    SAFE_DELA(children);
+}
+
+const octree::node *octree::findleaf(vec3i xyz) const {
+  if (any(lt(xyz,vec3i(zero))) || any(ge(xyz,vec3i(m_dim)))) return NULL;
+  int level = 0;
+  const node *node = &m_root;
+  for (;;) {
+    if (node->isleaf) return node;
+    assert(m_logdim > u32(level));
+    const auto logsize = vec3i(m_logdim-level-1);
+    const auto bits = xyz >> logsize;
+    const auto child = octreechildmap[bits.x | (bits.y<<1) | (bits.z<<2)];
+    assert(all(ge(xyz, icubev[child] << logsize)));
+    xyz -= icubev[child] << logsize;
+    node = node->children + child;
+    ++level;
+  }
+  assert("unreachable" && false);
+  return NULL;
+}
 
 struct edgeitem {
   vec3f org, p0, p1;
@@ -599,7 +626,7 @@ struct task_build_voxel : public task {
   u32 dim, maxlvl;
 };
 
-ref<task> create_voxel_task(octree &o, const csg::node &node, const vec3f &org, u32 cellnum, float cellsize) {
+ref<task> create_task(octree &o, const csg::node &node, const vec3f &org, u32 cellnum, float cellsize) {
   return NEW(task_build_voxel, o, node, org, cellsize, cellnum);
 }
 

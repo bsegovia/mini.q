@@ -4,7 +4,7 @@
  -------------------------------------------------------------------------*/
 #include "geom.hpp"
 #include "qef.hpp"
-#include "iso.hpp"
+#include "iso_mesh.hpp"
 #include "base/task.hpp"
 #include "base/vector.hpp"
 #include "base/hash_map.hpp"
@@ -15,13 +15,6 @@ namespace geom {
 
 template <typename T>
 INLINE bool isdegenerated(T a, T b, T c) { return a==b || a==c || b==c; }
-
-void mesh::destroy() {
-  if (m_pos) {FREE(m_pos); m_pos=NULL;}
-  if (m_nor) {FREE(m_nor); m_nor=NULL;}
-  if (m_index) {FREE(m_index); m_index=NULL;}
-  if (m_segment) {FREE(m_segment); m_segment=NULL;}
-}
 
 // error below which we merge vertices
 static const double QEM_MIN_ERROR = 1e-8;
@@ -45,7 +38,7 @@ static const quadmesh qmesh[2] = {{{{0,1,2},{0,2,3}}},{{{0,1,3},{3,1,2}}}};
 
 // test first configuration for non self intersection. If ok, take it, otherwise
 // take the other one
-static INLINE const quadmesh &findbestmesh(iso::octree::point **pt) {
+static INLINE const quadmesh &findbestmesh(iso::mesh::octree::point **pt) {
   const auto qm0 = qmesh[0].tri;
   const auto e00 = pt[qm0[0][0]]->pos-pt[qm0[0][1]]->pos;
   const auto e01 = pt[qm0[0][0]]->pos-pt[qm0[0][2]]->pos;
@@ -63,7 +56,7 @@ struct procmesh {
   vector<vec3f> pos, nor;
   vector<vec3i> ipos;
   vector<u32> idx, mat;
-  vector<iso::octree::node*> owner;
+  vector<iso::mesh::octree::node*> owner;
   INLINE int trinum() const {return idx.size()/3;}
 };
 
@@ -83,7 +76,7 @@ struct fastptrhash<8> {
   u32 operator()(u64 ptr) const {return hash(ptr>>2);}
 };
 
-static u32 compute_vertex_count(const iso::octree::node &node) {
+static u32 compute_vertex_count(const iso::mesh::octree::node &node) {
   if (node.isleaf)
     return node.leaf != NULL ? node.leaf->pts.size() : 0;
   u32 tot = 0;
@@ -93,8 +86,8 @@ static u32 compute_vertex_count(const iso::octree::node &node) {
 
 static const int LOADFACTOR = 4;
 typedef hash_map<uintptr,int,fastptrhash<ptrbytesize>,LOADFACTOR> point_hash_map;
-static void build_mesh(const iso::octree &o,
-                       const iso::octree::node &node,
+static void build_mesh(const iso::mesh::octree &o,
+                       const iso::mesh::octree::node &node,
                        point_hash_map &vert_map,
                        procmesh &pm)
 {
@@ -112,13 +105,13 @@ static void build_mesh(const iso::octree &o,
     // get four points
     const auto &q = node.leaf->quads[i];
     const auto quadmat = q.matindex;
-    iso::octree::point *pt[4];
+    iso::mesh::octree::point *pt[4];
     vec3i ptpos[4];
     loopk(4) {
       const auto lpos = vec3i(q.index[k]);
       const auto ipos = lpos + node.org;
       assert(all(ge(lpos,vec3i(zero))) && "inconsistant position");
-      const auto leaf = all(lt(lpos,iso::SUBGRID)) ? &node : o.findleaf(ipos);
+      const auto leaf = all(lt(lpos,iso::mesh::SUBGRID)) ? &node : o.findleaf(ipos);
 
 #if DEBUGOCTREE
       if (leaf == NULL || leaf->leaf == NULL) {
@@ -130,7 +123,7 @@ static void build_mesh(const iso::octree &o,
         "leaf node is missing from the octree");
 #endif /* DEBUGOCTREE */
 
-      const auto vidx = ipos % iso::SUBGRID;
+      const auto vidx = ipos % iso::mesh::SUBGRID;
       const auto qef = leaf->leaf->get(vidx);
       assert(qef != NULL && "point is missing from leaf octree");
       pt[k] = qef;
@@ -162,7 +155,7 @@ static void build_mesh(const iso::octree &o,
         } else
           pm.idx.push_back(it->second);
       }
-      pm.owner.push_back(&const_cast<iso::octree::node&>(node));
+      pm.owner.push_back(&const_cast<iso::mesh::octree::node&>(node));
     }
   }
 }
@@ -487,7 +480,7 @@ static void decimate_mesh(qemcontext &ctx, procmesh &pm, float edgeminlen) {
   vector<int> mapping(pm.pos.size());
   loopv(mapping) mapping[i] = -1;
   vector<u32> newidx, newmat;
-  vector<iso::octree::node*> newowner;
+  vector<iso::mesh::octree::node*> newowner;
   const auto trinum = pm.trinum();
   auto vertnum = 0;
   loopi(trinum) {
@@ -588,7 +581,7 @@ static void sharpen_mesh(procmesh &pm) {
   vector<int> vertlist(pm.pos.size());
   vector<vec3f> newnor(pm.pos.size());
   vector<u32> newidx, newmat;
-  vector<iso::octree::node*> newowner;
+  vector<iso::mesh::octree::node*> newowner;
 
   // init the chain list
   loopv(vertlist) vertlist[i] = i;
@@ -675,8 +668,8 @@ static void build_leaf_submesh(procmesh &pm, vector<leaf_submesh> &submeshes) {
   }
 }
 
-static int build_bvh_jobs(iso::octree::node *curr,
-                          vector<iso::octree::node*> &jobs,
+static int build_bvh_jobs(iso::mesh::octree::node *curr,
+                          vector<iso::mesh::octree::node*> &jobs,
                           const vector<leaf_submesh> &submeshes)
 {
   if (curr->isleaf) {
@@ -716,7 +709,7 @@ static int build_bvh_jobs(iso::octree::node *curr,
 }
 
 // push all triangles that belongs to this node in vector of primitives
-static void gather_triangles(const iso::octree::node *curr,
+static void gather_triangles(const iso::mesh::octree::node *curr,
                              vector<rt::primitive> &prims,
                              const procmesh &pm,
                              const vector<leaf_submesh> &submeshes)
@@ -737,10 +730,10 @@ static void gather_triangles(const iso::octree::node *curr,
 
 // build bvhs for submeshes
 struct task_build_submesh_bvh : public task {
-  INLINE task_build_submesh_bvh(iso::octree &o,
+  INLINE task_build_submesh_bvh(iso::mesh::octree &o,
                                 procmesh &pm,
                                 const vector<leaf_submesh> &submeshes,
-                                const vector<iso::octree::node*> &jobs) :
+                                const vector<iso::mesh::octree::node*> &jobs) :
     task("task_build_submesh_bvh", jobs.size()), o(o), pm(pm),
     submeshes(submeshes), jobs(jobs)
   {}
@@ -749,15 +742,15 @@ struct task_build_submesh_bvh : public task {
     gather_triangles(jobs[idx], prims, pm, submeshes);
     jobs[idx]->bvh = NEW(rt::intersector, &prims[0], prims.size());
   }
-  iso::octree &o;
+  iso::mesh::octree &o;
   procmesh &pm;
   const vector<leaf_submesh> &submeshes;
-  const vector<iso::octree::node*> &jobs;
+  const vector<iso::mesh::octree::node*> &jobs;
 };
 
 // build the bvh of bvhs for the complete scene
 struct task_build_two_level_bvh : public task {
-  INLINE task_build_two_level_bvh(iso::octree &o, const vector<iso::octree::node*> &jobs) :
+  INLINE task_build_two_level_bvh(iso::mesh::octree &o, const vector<iso::mesh::octree::node*> &jobs) :
     task("task_build_two_level_bvh"), jobs(jobs), o(o)
   {}
   virtual void run(u32) {
@@ -765,13 +758,13 @@ struct task_build_two_level_bvh : public task {
     loopv(jobs) prims.push_back(rt::primitive(jobs[i]->bvh.ptr));
     o.bvh = NEW(rt::intersector, &prims[0], prims.size());
   }
-  const vector<iso::octree::node*> &jobs;
-  iso::octree &o;
+  const vector<iso::mesh::octree::node*> &jobs;
+  iso::mesh::octree &o;
 };
 
 // build a bvh from octree nodes
 struct task_build_bvh : public task {
-  INLINE task_build_bvh(procmesh &pm, iso::octree &o) :
+  INLINE task_build_bvh(procmesh &pm, iso::mesh::octree &o) :
     task("task_build_bvh"), pm(pm), o(o)
   {}
   virtual void run(u32) {
@@ -785,9 +778,9 @@ struct task_build_bvh : public task {
     twolevel_task->scheduled();
   }
   procmesh &pm;
-  iso::octree &o;
+  iso::mesh::octree &o;
   vector<leaf_submesh> submeshes;
-  vector<iso::octree::node*> jobs;
+  vector<iso::mesh::octree::node*> jobs;
 };
 
 /*-------------------------------------------------------------------------
@@ -796,7 +789,7 @@ struct task_build_bvh : public task {
 
 // build a procmesh from a contoured octree
 struct task_iso_mesh : public task {
-  INLINE task_iso_mesh(iso::octree &o, procmesh &pm) :
+  INLINE task_iso_mesh(iso::mesh::octree &o, procmesh &pm) :
     task("task_iso_mesh"), o(o), pm(pm)
   {}
   virtual void run(u32) {
@@ -807,7 +800,7 @@ struct task_iso_mesh : public task {
     con::out("iso: procmesh: %d vertices", pm.pos.size());
     con::out("iso: procmesh: %d triangles", pm.idx.size()/3);
   }
-  iso::octree &o;
+  iso::mesh::octree &o;
   procmesh &pm;
 };
 
@@ -823,7 +816,7 @@ struct task_decimate : public task {
 
 // create proper (possible sharpened) normals and finish the mesh
 struct task_finish_mesh : public task {
-  INLINE task_finish_mesh(mesh &m, procmesh &pm) :
+  INLINE task_finish_mesh(dcmesh &m, procmesh &pm) :
     task("task_finish_mesh"), m(m), pm(pm)
   {}
   virtual void run(u32) {
@@ -857,13 +850,13 @@ struct task_finish_mesh : public task {
     m.init(p.first, n.first, idx.first, s.first, p.second, idx.second, s.second);
   }
 
-  mesh &m;
+  dcmesh &m;
   procmesh &pm;
 };
 
 // task to build the mesh from a "contoured" octree
 struct task_build_mesh : public task {
-  INLINE task_build_mesh(mesh &m, iso::octree &o, float cellsize, int waiternum) :
+  INLINE task_build_mesh(dcmesh &m, iso::mesh::octree &o, float cellsize, int waiternum) :
     task("task_build_mesh", 1, waiternum), m(m), o(o), cellsize(cellsize)
   {}
 
@@ -881,8 +874,6 @@ struct task_build_mesh : public task {
     decimate[DECIMATION_NUM-1]->starts(*bvhtask);
     finish->ends(*this);
     bvhtask->starts(*finish);
-    //finish->starts(*bvhtask);
-    //bvhtask->ends(*this);
 
     // schedule everything
     bvhtask->scheduled();
@@ -891,23 +882,23 @@ struct task_build_mesh : public task {
     init->scheduled();
   }
 
-  mesh &m;
-  iso::octree &o;
+  dcmesh &m;
+  iso::mesh::octree &o;
   float cellsize;
   procmesh pm;
 };
 
-ref<task> create_task(mesh &m, iso::octree &o, float cellsize, int waiternum) {
+ref<task> create_task(dcmesh &m, iso::mesh::octree &o, float cellsize, int waiternum) {
   return NEW(task_build_mesh, m, o, cellsize, waiternum);
 }
 
 /*-------------------------------------------------------------------------
  - mesh interface (very simple)
  -------------------------------------------------------------------------*/
-mesh::mesh() {ZERO(this);}
+dcmesh::dcmesh() {ZERO(this);}
 
-void mesh::init(vec3f *pos, vec3f *nor, u32 *index,
-                segment *seg, u32 vn, u32 idxn, u32 segn) {
+void dcmesh::init(vec3f *pos, vec3f *nor, u32 *index,
+                  segment *seg, u32 vn, u32 idxn, u32 segn) {
   m_pos = pos;
   m_nor = nor;
   m_index = index;
@@ -917,7 +908,15 @@ void mesh::init(vec3f *pos, vec3f *nor, u32 *index,
   m_segmentnum = segn;
 }
 
-void store(const char *filename, const mesh &m) {
+void dcmesh::destroy() {
+  if (m_pos) {FREE(m_pos); m_pos=NULL;}
+  if (m_nor) {FREE(m_nor); m_nor=NULL;}
+  if (m_index) {FREE(m_index); m_index=NULL;}
+  if (m_segment) {FREE(m_segment); m_segment=NULL;}
+}
+
+
+void store(const char *filename, const dcmesh &m) {
   auto f = fopen(filename, "wb");
   assert(f);
   fwrite(&m.m_vertnum, sizeof(u32), 1, f);
@@ -930,7 +929,7 @@ void store(const char *filename, const mesh &m) {
   fclose(f);
 }
 
-bool load(const char *filename, mesh &m) {
+bool load(const char *filename, dcmesh &m) {
   auto f = fopen(filename, "rb");
   if (f==NULL) return false;
   m.destroy();
