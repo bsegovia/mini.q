@@ -482,11 +482,11 @@ void closest(const intersector &RESTRICT bvhtree,
         rangei(first, packetnum) {
           const auto rd = sget(extra.rdir, i);
           const auto t = sget(hit.t, i);
-#if 0
+#if 1
           const auto isec = slab2(pmin, pmax, rd, t);
           if (none(isec.isec))
             continue;
-          c9onst auto n = soa3f(vox->n.x, vox->n.y, vox->nd);
+          const auto n = soa3f(vox->n.x, vox->n.y, vox->nd);
           const auto d0 = vox->bn.x;
           const auto d1 = vox->bn.y;
           const auto r = rcp(dot(sget(p.vdir,i),n));

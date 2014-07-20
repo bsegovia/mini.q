@@ -348,7 +348,7 @@ struct gridbuilder {
   }
   INLINE fielditem &field(const vec3i &xyz) {return m_field[field_index(xyz)];}
 
-  void initfield() {
+  void init_field() {
     stepxyz(vec3i(zero), vec3i(FIELDDIM), vec3i(4)) {
       auto &pos = stack->p;
       auto &d = stack->d;
@@ -373,13 +373,13 @@ struct gridbuilder {
     }
   }
 
-  void initedge() {
+  void init_edge() {
     m_edge_index.memset(u8(0xff));
     m_edges.resize(0);
     delayed_edges.resize(0);
   }
 
-  void initqef() {
+  void init_qef() {
     m_qefnum = 0;
     m_qef_index.memset(u8(0xff));
     delayed_qef.resize(0);
@@ -448,7 +448,7 @@ struct gridbuilder {
     STATS_ADD(iso_num, num*MAX_STEPS);
   }
 
-  void finishedges() {
+  void finish_edges() {
     const auto len = delayed_edges.size();
     STATS_ADD(iso_edge_num, len);
     for (int i = 0; i < len; i += 64) {
@@ -526,7 +526,7 @@ struct gridbuilder {
     }
   }
 
-  void finishvertices() {
+  void finish_vertices() {
     loopv(delayed_qef) {
       const auto &item = delayed_qef[i];
       const auto xyz = item.first;
@@ -671,12 +671,12 @@ struct gridbuilder {
 
   void build(octree::node &node) {
     pl.leaf.init();
-    initfield();
-    initedge();
-    initqef();
+    init_field();
+    init_edge();
+    init_qef();
     tesselate();
-    finishedges();
-    finishvertices();
+    finish_edges();
+    finish_vertices();
     pl.merge();
     output(node);
   }
@@ -684,30 +684,15 @@ struct gridbuilder {
   void create_voxels(octree::node &node) {
     bvh = NULL;
     vector<rt::primitive> voxels;
-    stepxyz(vec3i(zero), vec3i(SUBGRID), vec3i(4)) {
-      auto &p = stack->p;
-      auto &d = stack->d;
-      auto &m = stack->m;
-      const auto bottom = vertex(sxyz);
-      const auto box = aabb(bottom-2.f*cellsize, bottom+6.f*cellsize);
-      int index = 0;
-      const auto end = sxyz+4;
-      loopxyz(sxyz, end) csg::set(p, vertex(xyz)+0.5f*vec3f(cellsize), index++);
-      isodist(m_node, p, NULL, d, m, index, box);
-#if !defined(NDEBUG)
-      loopi(index) assert(d[i] <= 0.f || m[i] == csg::MAT_AIR_INDEX);
-      loopi(index) assert(d[i] >= 0.f || m[i] != csg::MAT_AIR_INDEX);
-#endif /* NDEBUG */
-      STATS_ADD(iso_num, index);
-      STATS_ADD(iso_grid_num, index);
-      index = 0;
+    stepxyz(zero, SUBGRID, 4) {
 
-      // step 1 - find all voxel centers
+      // step 1 - find all voxel centers using distance computed in init_field
       vector<vec3f> voxcenter;
-      loopxyz(sxyz, end) {
-        if (d[index] <= 0.f && abs(d[index]) < cellsize*sqrt(3.f))
-          voxcenter.push_back(vertex(xyz)+0.5f*vec3f(cellsize));
-        ++index;
+      loopxyz(sxyz, sxyz+4) {
+        u32 msk = 0;
+        loopi(8) if (field(icubev[i]+xyz).d < 0.f) msk |= 1<<i;
+        if (msk == 0 || msk == 0xff) continue;
+        voxcenter.push_back(vertex(xyz)+0.5f*vec3f(cellsize));
       }
 
       // step 2 - compute normal using distance gradients. we use two gradient
@@ -719,6 +704,9 @@ struct gridbuilder {
       const auto dx1 = DEFAULT_GRAD_STEP * ov0;
       const auto dy1 = DEFAULT_GRAD_STEP * ov1;
       const auto dz1 = DEFAULT_GRAD_STEP * ov2;
+      auto &d = stack->d;
+      auto &p = stack->p;
+      auto &m = stack->m;
       for (int j = 0; j < num; j += 8) {
         const int subnum = min(num-j, 8);
         auto box = aabb::empty();
@@ -755,14 +743,15 @@ struct gridbuilder {
           const auto grad = grad0+grad1;
           const auto n = grad==vec3f(zero) ? vec3f(zero) : normalize(grad);
           const auto pmin = voxcenter[j+k] - vec3f(cellsize)*0.5f;
-		  const auto pmax = voxcenter[j + k] + vec3f(cellsize)*0.5f;
+          const auto pmax = voxcenter[j+k] + vec3f(cellsize)*0.5f;
           const aabb box(pmin,pmax);
           const auto d0 = c0 - dot(voxcenter[j+k], n);
-		  const auto d1 = d0 + cellsize;
-		  voxels.push_back(rt::primitive(box, n, d0, d1));
+          const auto d1 = d0 + cellsize;
+          voxels.push_back(rt::primitive(box, n, d0, d1));
         }
       }
     }
+
     if (voxels.size() > 0) {
       bvh = NEW(rt::intersector, &voxels[0], voxels.size());
       voxel_num += voxels.size();
@@ -970,6 +959,7 @@ struct task_build_voxel_subbvh : public task {
     localbuilder->setcellsize(job.cellsize);
     localbuilder->setnode(job.csgnode);
     localbuilder->setorg(job.org);
+    localbuilder->init_field();
     localbuilder->create_voxels(*job.octnode);
     items[idx].bvh = localbuilder->bvh;
   }
