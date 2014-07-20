@@ -3,7 +3,6 @@
  - csgavx.cpp -> instantiates avx routines for csg evulation
  -------------------------------------------------------------------------*/
 #define NAMESPACE avx
-#include "csgsimd.cxx"
+#include "csg.simd.cxx"
 #undef avx
-
 

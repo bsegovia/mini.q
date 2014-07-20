@@ -4,9 +4,9 @@
  -------------------------------------------------------------------------*/
 #include "bvh.hpp"
 #include "rt.hpp"
-#include "rtscalar.hpp"
-#include "rtsse.hpp"
-#include "rtavx.hpp"
+#include "rt.scalar.hpp"
+#include "rt.sse.hpp"
+#include "rt.avx.hpp"
 #include "base/math.hpp"
 #include "base/console.hpp"
 #include "base/script.hpp"

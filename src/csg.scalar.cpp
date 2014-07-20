@@ -3,7 +3,7 @@
  - csgscalar.cpp -> implements csg evaluation in plain C (no simd)
  -------------------------------------------------------------------------*/
 #include "csg.hpp"
-#include "csgscalar.hpp"
+#include "csg.scalar.hpp"
 #include "csginternal.hpp"
 
 namespace q {

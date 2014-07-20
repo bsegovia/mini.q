@@ -71,8 +71,8 @@
     <ClCompile Include="..\src\entities.cpp" />
     <ClCompile Include="..\src\client.cpp" />
     <ClCompile Include="..\src\csg.cpp" />
-    <ClCompile Include="..\src\csgsse.cpp" />
-    <ClCompile Include="..\src\csgavx.cpp">
+    <ClCompile Include="..\src\csg.sse.cpp" />
+    <ClCompile Include="..\src\csg.avx.cpp">
       <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AdvancedVectorExtensions</EnableEnhancedInstructionSet>
     </ClCompile>
@@ -92,9 +92,9 @@
     <ClCompile Include="..\src\physics.cpp" />
     <ClCompile Include="..\src\qef.cpp" />
     <ClCompile Include="..\src\rt.cpp" />
-    <ClCompile Include="..\src\rtscalar.cpp" />
-    <ClCompile Include="..\src\rtsse.cpp" />
-    <ClCompile Include="..\src\rtavx.cpp">
+    <ClCompile Include="..\src\rt.scalar.cpp" />
+    <ClCompile Include="..\src\rt.sse.cpp" />
+    <ClCompile Include="..\src\rt.avx.cpp">
       <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">AdvancedVectorExtensions</EnableEnhancedInstructionSet>
       <EnableEnhancedInstructionSet Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AdvancedVectorExtensions</EnableEnhancedInstructionSet>
     </ClCompile>

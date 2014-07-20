@@ -105,9 +105,9 @@ GAME_OBJS=\
   client.o\
   bvh.o\
   csg.o\
-  csgscalar.o\
-  csgsse.o\
-  csgavx.o\
+  csg.scalar.o\
+  csg.sse.o\
+  csg.avx.o\
   demo.o\
   editing.o\
   entities.o\
@@ -125,9 +125,9 @@ GAME_OBJS=\
   renderer.o\
   server.o\
   rt.o\
-  rtscalar.o\
-  rtsse.o\
-  rtavx.o\
+  rt.scalar.o\
+  rt.sse.o\
+  rt.avx.o\
   serverbrowser.o\
   serverms.o\
   serverutil.o\
@@ -191,7 +191,7 @@ all: mini.q.server mini.q.rt mini.q.iso mini.q compress_chars importobj test_scr
 %.o: %.cpp
 	$(CXX) $(CXXSSEFLAGS) -c $< -o $@
 
-%avx.o: %avx.cpp
+%.avx.o: %.avx.cpp
 	$(CXX) $(CXXAVXFLAGS) -c $< -o $@
 
 -include $(MAYAOBJ_OBJS:.o=.d)

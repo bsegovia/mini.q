@@ -3,6 +3,6 @@
  - rtsse.cpp -> instantiates sse routines
  -------------------------------------------------------------------------*/
 #define NAMESPACE sse
-#include "rtsimd.cxx"
+#include "rt.simd.cxx"
 #undef sse
 

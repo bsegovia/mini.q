@@ -1,8 +1,7 @@
 /*-------------------------------------------------------------------------
  - mini.q - a minimalistic multiplayer fps
- - csgsse.cpp -> instantiates sse routines for csg evulation
+ - rtavx.cpp -> instantiates avx routines
  -------------------------------------------------------------------------*/
-#define NAMESPACE sse
-#include "csgsimd.cxx"
-#undef sse
-
+#define NAMESPACE avx
+#include "rt.simd.cxx"
+#undef avx
