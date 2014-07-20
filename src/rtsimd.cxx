@@ -73,9 +73,13 @@ INLINE soaisec slab(const soa3f &pmin, const soa3f &pmax, const soa3f &rdir, con
 }
 
 struct soaisec2 {
-  INLINE soaisec2(const soab &isec, const soaf &tmin, const soaf &tmax) :
-    tmin(tmin), tmax(tmax), isec(isec) {}
+  INLINE soaisec2(const soab &isec,
+                  const soaf &tmin,
+                  const soaf &tmax,
+                  const soa3f &tentry) :
+    tmin(tmin), tmax(tmax), tentry(tentry), isec(isec) {}
   soaf tmin, tmax;
+  soa3f tentry;
   soab isec;
 };
 
@@ -83,11 +87,12 @@ struct soaisec2 {
 INLINE soaisec2 slab2(const soa3f &pmin, const soa3f &pmax, const soa3f &rdir, const soaf &t) {
   const auto l1 = pmin*rdir;
   const auto l2 = pmax*rdir;
-  const auto tfar = reducemin(max(l1,l2));
-  const auto tnear = reducemax(min(l1,l2));
+  const auto tmin = min(l1,l2);
+  const auto tmax = max(l1,l2);
+  const auto tfar = reducemin(tmax);
+  const auto tnear = reducemax(tmin);
   const auto isec = (tfar >= tnear) & (tfar >= soaf(zero)) & (tnear < t);
-  const auto tisec = max(soaf(zero),tnear);
-  return soaisec2(isec, tnear, tfar);
+  return soaisec2(isec, tnear, tfar, tmin);
 }
 
 INLINE bool slabfirst(const aabb &RESTRICT box,
@@ -496,13 +501,42 @@ void closest(const intersector &RESTRICT bvhtree,
           const auto tnear = max(min(t0,t1), isec.tmin);
           const auto tfar = min(max(t0,t1), isec.tmax);
           const auto m = isec.isec & (tnear <= tfar);
+          if (none(m)) continue;
+#if 0
+          normal = select(isecy, soa3f(0.f,1.f,0.f), normal);
+          normal = select(isecy, soa3f(0.f,0.f,1.f), normal);
+          normal = select(isecp, n, normal);
+#else
+          if (vox->sign) {
+            soa3f normal = soa3f(1.f,0.f,0.f);
+            auto const isecy = (tnear == isec.tentry[1]);
+            auto const isecz = (tnear == isec.tentry[2]);
+            auto const isecp = (tnear == min(t0,t1));
+            normal.x = select(isecy|isecz, zero, normal.x);
+            normal.x = select(isecp, n.x, normal.x);
+            normal.y = select(isecy, one, normal.y);
+            normal.y = select(isecz, zero, normal.y);
+            normal.y = select(isecp, n.y, normal.y);
+            normal.z = select(isecy, zero, normal.z);
+            normal.z = select(isecz, one, normal.z);
+            normal.z = select(isecp, n.z, normal.z);
+            maskstore(m, &hit.n[0][soaf::size*i], normal.x);
+            maskstore(m, &hit.n[1][soaf::size*i], normal.y);
+            maskstore(m, &hit.n[2][soaf::size*i], normal.z);
+            maskstore(m, &hit.n[0][soaf::size*i], one);
+            maskstore(m, &hit.n[1][soaf::size*i], one);
+            maskstore(m, &hit.n[2][soaf::size*i], one);
+          } else {
+            maskstore(m, &hit.n[0][soaf::size*i], vox->n.x);
+            maskstore(m, &hit.n[1][soaf::size*i], vox->n.y);
+            maskstore(m, &hit.n[2][soaf::size*i], vox->nd);
+          }
+
+#endif
           maskstore(m, &hit.t[soaf::size*i], tnear);
           maskstore(m, &hit.u[soaf::size*i], soaf(zero));
           maskstore(m, &hit.v[soaf::size*i], soaf(zero));
           maskstore(m, &hit.id[soaf::size*i], soaf(zero));
-          maskstore(m, &hit.n[0][soaf::size*i], vox->n.x);
-          maskstore(m, &hit.n[1][soaf::size*i], vox->n.y);
-          maskstore(m, &hit.n[2][soaf::size*i], vox->nd);
 #else
           const auto isec = slab(pmin, pmax, rd, t);
           if (none(isec.isec))

@@ -222,6 +222,7 @@ INLINE void makeleaf(compiler &c, const segment &data) {
     c.acc[c.accnum].n.x = c.prims[id].v[2].x;
     c.acc[c.accnum].n.y = c.prims[id].v[2].y;
     c.acc[c.accnum].nd  = c.prims[id].v[2].z;
+    c.acc[c.accnum].sign = c.prims[id].discontinuous;
     ++c.accnum;
   } else {
     node.setflag(intersector::TRILEAF);

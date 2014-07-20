@@ -740,6 +740,9 @@ struct gridbuilder {
           const auto dfdz1 = d[8*k+7];
           const auto grad0 = vec3f(c0-dfdx0, c0-dfdy0, c0-dfdz0);
           const auto grad1 = ov0*(c1-dfdx1) + ov1*(c1-dfdy1) + ov2*(c1-dfdz1);
+          const auto ngrad0 = normalize(grad0);
+          const auto ngrad1 = normalize(grad1);
+          const auto discontinuous = dot(ngrad0, ngrad1) < 0.95f;
           const auto grad = grad0+grad1;
           const auto n = grad==vec3f(zero) ? vec3f(zero) : normalize(grad);
           const auto pmin = voxcenter[j+k] - vec3f(cellsize)*0.5f;
@@ -747,7 +750,7 @@ struct gridbuilder {
           const aabb box(pmin,pmax);
           const auto d0 = c0 - dot(voxcenter[j+k], n);
           const auto d1 = d0 + cellsize;
-          voxels.push_back(rt::primitive(box, n, d0, d1));
+          voxels.push_back(rt::primitive(box, n, d0, d1, discontinuous));
         }
       }
     }

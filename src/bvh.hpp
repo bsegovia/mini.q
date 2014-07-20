@@ -69,17 +69,19 @@ static_assert(sizeof(intersector::node) == 32,"invalid node size");
 struct primitive {
   enum { TRI, INTERSECTOR, BOX };
   INLINE primitive(void) {}
-  INLINE primitive(vec3f a, vec3f b, vec3f c) : isec(NULL), type(TRI) {
+  INLINE primitive(vec3f a, vec3f b, vec3f c) : isec(NULL), type(TRI), discontinuous(0) {
     v[0]=a;
     v[1]=b;
     v[2]=c;
   }
-  INLINE primitive(const ref<intersector> &isec) : isec(isec), type(INTERSECTOR) {
+  INLINE primitive(const ref<intersector> &isec) : isec(isec), type(INTERSECTOR), discontinuous(0) {
     const aabb box = isec->getaabb();
     v[0]=box.pmin;
     v[1]=box.pmax;
   }
-  INLINE primitive(aabb box, vec3f normal, float d0, float d1) : isec(NULL), type(BOX) {
+  INLINE primitive(aabb box, vec3f normal, float d0, float d1, bool discontinuous) :
+    isec(NULL), type(BOX), discontinuous(discontinuous)
+  {
     v[0]=box.pmin;
     v[1]=box.pmax;
     v[2]=normal;
@@ -94,7 +96,8 @@ struct primitive {
   ref<intersector> isec;
   vec3f v[3];
   vec2f d;
-  u32 type;
+  u32 type:31;
+  u32 discontinuous:1;
 };
 } /* namespace rt */
 } /* namespace q */
