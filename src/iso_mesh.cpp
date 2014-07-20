@@ -2,7 +2,7 @@
  - mini.q - a minimalistic multiplayer fps
  - iso.cpp -> implements routines for iso surface
  -------------------------------------------------------------------------*/
-#include "iso.hpp"
+#include "iso_mesh.hpp"
 #include "csg.hpp"
 #include "qef.hpp"
 #include "csg.scalar.hpp"
