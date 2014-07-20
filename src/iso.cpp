@@ -13,6 +13,7 @@
 #include "base/task.hpp"
 #include "base/console.hpp"
 
+namespace {
 STATS(iso_num);
 STATS(iso_edgepos_num);
 STATS(iso_edge_num);
@@ -39,6 +40,7 @@ static void stats() {
   printf("\n");
 }
 #endif /* defined(RELEASE) */
+} /* namespace */
 
 #define DEBUGOCTREE 0
 #if DEBUGOCTREE
@@ -64,12 +66,6 @@ static const auto DEFAULT_GRAD_STEP = 1e-3f;
 static const int MAX_STEPS = 8;
 static const double QEM_LEAF_MIN_ERROR = 1e-6;
 
-INLINE pair<vec3i,u32> edge(vec3i start, vec3i end) {
-  const auto lower = select(lt(start,end), start, end);
-  const auto delta = select(eq(start,end), vec3i(zero), vec3i(one));
-  assert(reduceadd(delta) == 1);
-  return makepair(lower, u32(delta.y+2*delta.z));
-}
 struct fielditem {
   INLINE fielditem(float d, u32 m) : d(d), m(m) {}
   INLINE fielditem() {}

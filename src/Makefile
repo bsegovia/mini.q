@@ -114,6 +114,7 @@ GAME_OBJS=\
   game.o\
   geom.o\
   iso.o\
+  iso_voxel.o\
   md2.o\
   menu.o\
   mini.q.o\
