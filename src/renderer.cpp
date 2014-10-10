@@ -5,8 +5,6 @@
 #include "csg.hpp"
 #include "demo.hpp"
 #include "game.hpp"
-#include "geom.hpp"
-#include "iso_mesh.hpp"
 #include "iso_voxel.hpp"
 #include "menu.hpp"
 #include "md2.hpp"
@@ -111,7 +109,7 @@ static void cleanparticles(void) {
   SAFE_DELA(glparts);
 }
 #endif
-
+#if 0
 static void render_particles(int time) {
   if (demo::playing() && demotracking) {
     const vec3f nom(0, 0, 0);
@@ -184,6 +182,7 @@ static void render_particles(int time) {
   ogl::disable(GL_BLEND);
   OGL(DepthMask, GL_TRUE);
 }
+#endif
 
 void particle_splash(int type, int num, int fade, const vec3f &p) {
   loopi(num) {
@@ -334,6 +333,7 @@ static void drawhud(int w, int h, int curfps) {
 /*--------------------------------------------------------------------------
  - handle the HUD gun
  -------------------------------------------------------------------------*/
+#if 0
 static const char *hudgunnames[] = {
   "hudguns/fist",
   "hudguns/shotg",
@@ -362,69 +362,7 @@ static void drawhudgun(float fovy, float aspect, float farplane) {
   else
     drawhudmodel(6, 1, 100.f, 0);
 }
-
-/*--------------------------------------------------------------------------
- - deferred shading stuff
- -------------------------------------------------------------------------*/
-#define SPLITNUM 4
-
-static void deferredrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32 rule) {
-  fixedstring str(fmt, "#define LIGHTNUM %d\n", rule+1);
-  frag.insert(frag.begin(), NEWSTRING(str.c_str()));
-  frag.push_back(NEWSTRING("vec3 shade(vec3 pos, vec3 nor) {\n"));
-  frag.push_back(NEWSTRING("  vec3 outcol = diffuse(pos,nor,u_lightpos[0],u_lightpow[0]);\n"));
-  loopi(int(rule)) {
-    str.fmt("  outcol += diffuse(pos,nor,u_lightpos[%d],u_lightpow[%d]);\n",i+1,i+1);
-    frag.push_back(NEWSTRING(str.c_str()));
-  }
-  frag.push_back(NEWSTRING("  return outcol;\n}\n"));
-}
-
-#define SHADERVARIANT 16
-#define RULES deferredrules
-#define SHADERNAME deferred
-#define VERTEX_PROGRAM "data/shaders/deferred_vp.decl"
-#define FRAGMENT_PROGRAM "data/shaders/deferred_fp.decl"
-#include "shaderdecl.hxx"
-#undef RULES
-
-static void rules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32 rule) {
-  fixedstring str(fmt, "#define SPLITNUM %f\n", float(SPLITNUM));
-  vert.push_back(NEWSTRING(str.c_str()));
-  frag.push_back(NEWSTRING(str.c_str()));
-}
-
-#define RULES rules
-#define SHADERNAME split_deferred
-#define VERTEX_PROGRAM "data/shaders/split_deferred_vp.decl"
-#define FRAGMENT_PROGRAM "data/shaders/split_deferred_fp.decl"
-#include "shaderdecl.hxx"
-
-#define SHADERNAME forward
-#define VERTEX_PROGRAM "data/shaders/forward_vp.decl"
-#define FRAGMENT_PROGRAM "data/shaders/forward_fp.decl"
-#include "shaderdecl.hxx"
-
-#define SHADERNAME debugunsplit
-#define VERTEX_PROGRAM "data/shaders/debugunsplit_vp.decl"
-#define FRAGMENT_PROGRAM "data/shaders/debugunsplit_fp.decl"
-#include "shaderdecl.hxx"
-
-#define SHADERNAME simple_material
-#define VERTEX_PROGRAM "data/shaders/simple_material_vp.decl"
-#define FRAGMENT_PROGRAM "data/shaders/simple_material_fp.decl"
-#include "shaderdecl.hxx"
-
-#define SHADERNAME noise_material
-#define VERTEX_PROGRAM "data/shaders/simple_material_vp.decl"
-#define FRAGMENT_PROGRAM "data/shaders/noise_material_fp.decl"
-#include "shaderdecl.hxx"
-
-#define SHADERNAME fxaa
-#define VERTEX_PROGRAM "data/shaders/fxaa_vp.decl"
-#define FRAGMENT_PROGRAM "data/shaders/fxaa_fp.decl"
-#include "shaderdecl.hxx"
-#undef RULES
+#endif
 
 static void texbufrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32) {
   ogl::fixedrules(vert,frag,0);
@@ -435,61 +373,6 @@ static void texbufrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32) {
 #define FRAGMENT_PROGRAM "data/shaders/texbuf_fp.decl"
 #include "shaderdecl.hxx"
 #undef RULES
-
-static void shadertoyrules(ogl::shaderrules &vert, ogl::shaderrules &frag, u32) {
-  if (ogl::loadfromfile()) {
-    auto s = sys::loadfile("data/shaders/hell.glsl");
-    assert(s);
-    frag.push_back(s);
-  } else
-    frag.push_back(NEWSTRING(shaders::hell));
-}
-
-#define RULES shadertoyrules
-#define SHADERNAME hell
-#define VERTEX_PROGRAM "data/shaders/shadertoy_vp.decl"
-#define FRAGMENT_PROGRAM "data/shaders/shadertoy_fp.decl"
-#include "shaderdecl.hxx"
-#undef RULES
-
-static u32 gdepthtex, gnortex, gdiffusetex, finaltex;
-static u32 gbuffer, shadedbuffer;
-
-static void initdeferred() {
-  // all textures
-  gnortex = ogl::maketex("TB I3 D3 Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
-  gdiffusetex = ogl::maketex("TB I3 D3 Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
-  finaltex = ogl::maketex("TB I3 D3 B2 Wse Wte ml Ml", NULL, sys::scrw, sys::scrh);
-  gdepthtex = ogl::maketex("Tf Id Dd Br Wse Wte mn Mn", NULL, sys::scrw, sys::scrh);
-
-  // all frame buffer objects
-  ogl::genframebuffers(1, &gbuffer);
-  OGL(BindFramebuffer, GL_FRAMEBUFFER, gbuffer);
-  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_RECTANGLE, gdiffusetex, 0);
-  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_RECTANGLE, gnortex, 0);
-  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_RECTANGLE, gdepthtex, 0);
-  if (GL_FRAMEBUFFER_COMPLETE != ogl::CheckFramebufferStatus(GL_FRAMEBUFFER))
-    sys::fatal("renderer: unable to init gbuffer framebuffer");
-  OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
-  ogl::genframebuffers(1, &shadedbuffer);
-  OGL(BindFramebuffer, GL_FRAMEBUFFER, shadedbuffer);
-  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, finaltex, 0);
-  OGL(FramebufferTexture2D, GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_RECTANGLE, gdepthtex, 0);
-  if (GL_FRAMEBUFFER_COMPLETE != ogl::CheckFramebufferStatus(GL_FRAMEBUFFER))
-    sys::fatal("renderer: unable to init debug unsplit framebuffer");
-  OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
-}
-
-#if !defined(RELEASE)
-static void cleandeferred() {
-  if (gdiffusetex) ogl::deletetextures(1, &gdiffusetex);
-  if (gnortex) ogl::deletetextures(1, &gnortex);
-  if (gdepthtex) ogl::deletetextures(1, &gdepthtex);
-  if (finaltex) ogl::deletetextures(1, &finaltex);
-  if (gbuffer) ogl::deleteframebuffers(1, &gbuffer);
-  if (shadedbuffer) ogl::deleteframebuffers(1, &shadedbuffer);
-}
-#endif
 
 static u32 rttex, rtpbo;
 static void initrt() {
@@ -566,30 +449,11 @@ static void texbufunmap(u32 texbuf) {
 }
 
 /*--------------------------------------------------------------------------
- - sky parameters
- -------------------------------------------------------------------------*/
-static const auto latitude = 42.f;
-static const auto longitude = 1.f;
-static const auto utc_hour = 7.8f;
-static vec3f getsundir() {
-  const auto jglobaltime = 1.f+sys::millis()*1e-3f*.75f;
-  const auto season = mod(jglobaltime, 4.f)/4.f;
-  const auto day = floor(season*365.f)+100.f;
-  const auto jd2000 = sky::julianday2000((day*24.f+utc_hour)*3600.f);
-  return sky::sunvector(jd2000, latitude, longitude);
-}
-
-/*--------------------------------------------------------------------------
  - render the complete frame
  -------------------------------------------------------------------------*/
-static u32 scenenorbo = 0u, sceneposbo = 0u, sceneibo = 0u;
-static u32 indexnum = 0u;
 static bool initialized_m = false;
-static geom::segment *segment = NULL;
 
-static u32 segmentnum = 0;
 void start() {
-  initdeferred();
   initparticles();
   initrt();
   texbuf::s.fixedfunction = true;
@@ -597,30 +461,10 @@ void start() {
 
 #if !defined(RELEASE)
 void finish() {
-  if (initialized_m) {
-    ogl::deletebuffers(1, &sceneposbo);
-    ogl::deletebuffers(1, &scenenorbo);
-    ogl::deletebuffers(1, &sceneibo);
-    SAFE_DEL(segment);
-  }
   cleanrt();
   cleanparticles();
-  cleandeferred();
 }
 #endif
-
-static geom::dcmesh dc(const vec3f &org, u32 cellnum, float cellsize, const csg::node &root) {
-  iso::mesh::octree o(cellnum);
-  geom::dcmesh m;
-  ref<task> geom_task = geom::create_task(m, o, cellsize);
-  ref<task> iso_task = iso::mesh::create_task(o, root, org, cellnum, cellsize);
-  iso_task->starts(*geom_task);
-  iso_task->scheduled();
-  geom_task->scheduled();
-  geom_task->wait();
-  rt::setbvh(o.bvh);
-  return m;
-}
 
 static void voxel(const vec3f &org, u32 cellnum, float cellsize, const csg::node &root) {
   iso::voxel::octree o(cellnum);
@@ -642,37 +486,7 @@ CMD(voxelize);
 static const float CELLSIZE = 0.1f;
 static void makescene() {
   if (initialized_m) return;
-
-  // create the indexed mesh from the scene description
-  geom::dcmesh m;
-  auto start = sys::millis();
-  const auto node = csg::makescene();
-  assert(node != NULL);
-  m = dc(vec3f(0.15f), 4096, CELLSIZE, *node);
-  auto duration = sys::millis() - start;
-  con::out("csg: elapsed %f ms ", float(duration));
   voxelize(0.05f);
-
-  ogl::genbuffers(1, &sceneposbo);
-  ogl::bindbuffer(ogl::ARRAY_BUFFER, sceneposbo);
-  OGL(BufferData, GL_ARRAY_BUFFER, m.m_vertnum*sizeof(vec3f), &m.m_pos[0].x, GL_STATIC_DRAW);
-  ogl::genbuffers(1, &scenenorbo);
-  ogl::bindbuffer(ogl::ARRAY_BUFFER, scenenorbo);
-  OGL(BufferData, GL_ARRAY_BUFFER, m.m_vertnum*sizeof(vec3f), &m.m_nor[0].x, GL_STATIC_DRAW);
-  ogl::bindbuffer(ogl::ARRAY_BUFFER, 0);
-  ogl::genbuffers(1, &sceneibo);
-  ogl::bindbuffer(ogl::ELEMENT_ARRAY_BUFFER, sceneibo);
-  OGL(BufferData, GL_ELEMENT_ARRAY_BUFFER, m.m_indexnum*sizeof(u32), &m.m_index[0], GL_STATIC_DRAW);
-  ogl::bindbuffer(ogl::ELEMENT_ARRAY_BUFFER, 0);
-  indexnum = m.m_indexnum;
-  con::out("csg: tris %i verts %i", m.m_indexnum/3, m.m_vertnum);
-
-  // create the bvh out of the mesh data
-  //rt::buildbvh(m.m_pos, m.m_index, m.m_indexnum);
-  segmentnum = m.m_segmentnum;
-  segment = (geom::segment*) MALLOC(sizeof(geom::segment) * segmentnum);
-  memcpy(segment, m.m_segment, segmentnum*sizeof(geom::segment));
-  m.destroy();
   initialized_m = true;
 }
 
@@ -684,154 +498,10 @@ struct screenquad {
   static INLINE screenquad getnormalized() {
     return screenquad({{1.f,1.f,1.f,-1.f,-1.f,1.f,-1.f,-1.f}});
   };
-  static INLINE screenquad getsubbuffer(vec2i xy) {
-    const auto w = float(sys::scrw/SPLITNUM);
-    const auto h = float(sys::scrh/SPLITNUM);
-    const auto sw = w*xy.x, sh = h*xy.y;
-    const auto ew = sw+w, eh = sh+h;
-    return screenquad({{ew,eh,ew,sh,sw,eh,sw,sh}});
-  }
   float v[16];
 };
 
-// XXX just to have something to display
-#define LIGHTNUM 16
-VAR(lightscale, 0, 2000, 10000);
-static const vec3f lightpos[LIGHTNUM] = {
-  vec3f(8.f,20.f,8.f), vec3f(10.f,20.f,8.f),
-  vec3f(12.f,20.f,8.f), vec3f(14.f,20.f,8.f),
-  vec3f(6.f,20.f,8.f), vec3f(16.f,20.f,4.f),
-  vec3f(16.f,21.f,7.f), vec3f(16.f,22.f,9.f),
-  vec3f(8.f,20.f,9.f), vec3f(10.f,20.f,10.f),
-  vec3f(12.f,20.f,12.f), vec3f(14.f,20.f,13.f),
-  vec3f(6.f,20.f,14.f), vec3f(16.f,20.f,15.f),
-  vec3f(15.f,21.f,7.f), vec3f(16.f,22.f,10.f)
-};
-
-static const vec3f lightpow[LIGHTNUM] = {
-  vec3f(1.f,0.f,0.f), vec3f(0.f,1.f,0.f),
-  vec3f(1.f,0.f,1.f), vec3f(1.f,1.f,1.f),
-  vec3f(1.f,0.f,1.f), vec3f(0.f,1.f,1.f),
-  vec3f(1.f,1.f,0.f), vec3f(0.f,1.f,1.f),
-  vec3f(0.f,1.f,1.f), vec3f(1.f,0.f,0.f),
-  vec3f(0.f,1.f,0.f), vec3f(1.f,0.f,1.f),
-  vec3f(1.f,1.f,1.f), vec3f(1.f,0.f,1.f),
-  vec3f(0.f,1.f,1.f), vec3f(1.f,1.f,0.f),
-};
-
 VAR(linemode, 0, 0, 1);
-
-struct context {
-  context(float w, float h, float fovy, float aspect, float farplane)
-    : fovy(fovy), aspect(aspect), farplane(farplane)
-  {}
-
-  INLINE void begin() {
-    makescene();
-    OGL(Clear, GL_DEPTH_BUFFER_BIT);
-  }
-  INLINE void end() {}
-
-  void dogbuffer() {
-    const auto gbuffertimer = ogl::begintimer("gbuffer", true);
-    const GLenum buffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
-    OGL(BindFramebuffer, GL_FRAMEBUFFER, gbuffer);
-    OGL(DrawBuffers, 2, buffers);
-    OGL(Clear, GL_DEPTH_BUFFER_BIT);
-    if (indexnum != 0) {
-      if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_LINE);
-      ogl::bindbuffer(ogl::ARRAY_BUFFER, sceneposbo);
-      ogl::setattribarray()(ogl::ATTRIB_POS0, ogl::ATTRIB_COL);
-      OGL(VertexAttribPointer, ogl::ATTRIB_POS0, 3, GL_FLOAT, 0, sizeof(vec3f), NULL);
-      ogl::bindbuffer(ogl::ARRAY_BUFFER, scenenorbo);
-      OGL(VertexAttribPointer, ogl::ATTRIB_COL, 3, GL_FLOAT, 0, sizeof(vec3f), NULL);
-      ogl::bindbuffer(ogl::ELEMENT_ARRAY_BUFFER, sceneibo);
-      loopi(segmentnum) {
-        const auto seg = segment[i];
-        const ogl::shadertype simpleshader = simple_material::s;
-        const ogl::shadertype noiseshader = noise_material::s;
-        const auto simplemvp = simple_material::s.u_mvp;
-        const auto noisemvp = noise_material::s.u_mvp;
-        const auto simple = seg.mat == csg::MAT_SIMPLE_INDEX;
-        const auto u_mvp = simple ? simplemvp : noisemvp;
-        ogl::bindshader(simple ? simpleshader : noiseshader);
-        OGL(UniformMatrix4fv, u_mvp, 1, GL_FALSE, &game::mvpmat.vx.x);
-        ogl::drawelements(GL_TRIANGLES, seg.num, GL_UNSIGNED_INT, (const void*)(seg.start*sizeof(u32)));
-      }
-      ogl::bindbuffer(ogl::ELEMENT_ARRAY_BUFFER, 0);
-      ogl::bindbuffer(ogl::ARRAY_BUFFER, 0);
-      if (linemode) OGL(PolygonMode, GL_FRONT_AND_BACK, GL_FILL);
-    }
-    game::renderclients();
-    game::rendermonsters();
-    drawhudgun(fovy, aspect, farplane);
-    OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
-    ogl::endtimer(gbuffertimer);
-  }
-
-  void dodeferred() {
-    const auto deferredtimer = ogl::begintimer("deferred", true);
-    OGL(BindFramebuffer, GL_FRAMEBUFFER, shadedbuffer);
-    ogl::disablev(GL_CULL_FACE, GL_DEPTH_TEST);
-    auto &s = deferred::s[LIGHTNUM-1];
-    ogl::bindshader(s);
-    ogl::bindtexture(GL_TEXTURE_RECTANGLE, gnortex, 0);
-    ogl::bindtexture(GL_TEXTURE_RECTANGLE, gdiffusetex, 1);
-    ogl::bindtexture(GL_TEXTURE_RECTANGLE, gdepthtex, 2);
-    OGL(UniformMatrix4fv, s.u_invmvp, 1, GL_FALSE, &game::invmvpmat.vx.x);
-    OGL(UniformMatrix4fv, s.u_dirinvmvp, 1, GL_FALSE, &game::dirinvmvpmat.vx.x);
-
-    const auto sundir = getsundir();
-    vec3f lpow[LIGHTNUM];
-    loopi(LIGHTNUM) lpow[i] = float(lightscale) * lightpow[i];
-    OGL(Uniform3fv, s.u_sundir, 1, &sundir.x);
-    OGL(Uniform3fv, s.u_lightpos, LIGHTNUM, &lightpos[0].x);
-    OGL(Uniform3fv, s.u_lightpow, LIGHTNUM, &lpow[0].x);
-    ogl::immdraw("Sp2", 4, screenquad::getnormalized().v);
-    ogl::enable(GL_DEPTH_TEST);
-
-    render_particles(int(game::curtime()));
-    OGL(BindFramebuffer, GL_FRAMEBUFFER, 0);
-    ogl::enable(GL_CULL_FACE);
-    ogl::endtimer(deferredtimer);
-  }
-
-  void dofxaa() {
-    const auto fxaatimer = ogl::begintimer("fxaa", true);
-    ogl::bindshader(fxaa::s);
-    ogl::disable(GL_CULL_FACE);
-    OGL(DepthMask, GL_FALSE);
-    const vec2f rcptexsize(1.f/float(sys::scrw), 1.f/float(sys::scrh));
-    OGL(Uniform2fv, fxaa::s.u_rcptexsize, 1, &rcptexsize.x);
-    ogl::bindtexture(GL_TEXTURE_2D, finaltex, 0);
-    ogl::immdraw("Sp2", 4, screenquad::getnormalized().v);
-    OGL(DepthMask, GL_TRUE);
-    ogl::enable(GL_CULL_FACE);
-    ogl::endtimer(fxaatimer);
-  }
-
-  float fovy, aspect, farplane;
-};
-
-VAR(shadertoy, 0, 0, 1);
-
-static void doshadertoy(float fovy, float aspect, float farplane) {
-  const auto shadertoytimer = ogl::begintimer("shadertoy", true);
-  const auto w = float(sys::scrw), h = float(sys::scrh);
-  ogl::bindshader(hell::s);
-  ogl::disablev(GL_CULL_FACE, GL_DEPTH_TEST);
-  OGL(DepthMask, GL_FALSE);
-  const vec2f iResolution(w, h);
-  const float sec = 1e-3f * sys::millis();
-  OGL(Uniform3fv, hell::s.iResolution, 1, &iResolution.x);
-  OGL(Uniform1f, hell::s.iGlobalTime, sec);
-  ogl::immdraw("Sp2", 4, screenquad::getnormalized().v);
-  OGL(DepthMask, GL_TRUE);
-  ogl::enablev(GL_CULL_FACE, GL_DEPTH_TEST);
-  ogl::endtimer(shadertoytimer);
-}
-
-VAR(raytrace, 0, 0, 1);
 
 static void ogl2raytrace(int w, int h, float fov, float aspect) {
   const auto pos = game::player1->o;
@@ -878,30 +548,19 @@ static void ogl3raytrace(int w, int h, float fov, float aspect) {
 }
 
 void frame(int w, int h, int curfps) {
-  const auto farplane = 100.f;
   const auto aspect = float(w) / float(h);
   const auto fovy = float(fov) / aspect;
-  if (shadertoy)
-    doshadertoy(fovy,aspect,farplane);
-  else if (raytrace) {
-    const auto rttimer = ogl::begintimer("rt", true);
-    ogl::disable(GL_CULL_FACE);
-    OGL(DepthMask, GL_FALSE);
-    if (ogl::hasTB)
-      ogl3raytrace(w,h,fovy,aspect);
-    else
-      ogl2raytrace(w,h,fovy,aspect);
-    ogl::enable(GL_CULL_FACE);
-    OGL(DepthMask, GL_TRUE);
-    ogl::endtimer(rttimer);
-  } else {
-    context ctx(float(w),float(h),float(fov),aspect,farplane);
-    ctx.begin();
-    ctx.dogbuffer();
-    ctx.dodeferred();
-    ctx.dofxaa();
-    ctx.end();
-  }
+  const auto rttimer = ogl::begintimer("rt", true);
+  makescene();
+  ogl::disable(GL_CULL_FACE);
+  OGL(DepthMask, GL_FALSE);
+  if (ogl::hasTB)
+    ogl3raytrace(w,h,fovy,aspect);
+  else
+    ogl2raytrace(w,h,fovy,aspect);
+  ogl::enable(GL_CULL_FACE);
+  OGL(DepthMask, GL_TRUE);
+  ogl::endtimer(rttimer);
 
   const auto hudtimer = ogl::begintimer("hud", true);
   ogl::disable(GL_CULL_FACE);

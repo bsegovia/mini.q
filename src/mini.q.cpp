@@ -6,7 +6,6 @@
 #include "client.hpp"
 #include "csg.hpp"
 #include "iso_voxel.hpp"
-#include "iso_mesh.hpp"
 #include "game.hpp"
 #include "menu.hpp"
 #include "md2.hpp"
@@ -261,8 +260,6 @@ void start(int argc, char *argv[]) {
   md2::start();
   con::out("init: renderer");
   rr::start();
-  con::out("init: iso::mesh module");
-  iso::mesh::start();
   con::out("init: iso::voxel module");
   iso::voxel::start();
 
@@ -307,7 +304,6 @@ void finish() {
   game::zapdynent(game::player1);
   game::cleanmonsters();
   rt::finish();
-  //iso::finish();
   rr::finish();
   md2::finish();
   shaders::finish();

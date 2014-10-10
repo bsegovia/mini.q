@@ -4,9 +4,9 @@
  -------------------------------------------------------------------------*/
 #pragma once
 #include "csg.hpp"
-#include "geom.hpp"
 #include "bvh.hpp"
 #include "base/sys.hpp"
+#include "base/task.hpp"
 #include "base/vector.hpp"
 #include "base/math.hpp"
 

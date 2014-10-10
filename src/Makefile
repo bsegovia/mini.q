@@ -112,8 +112,6 @@ GAME_OBJS=\
   editing.o\
   entities.o\
   game.o\
-  geom.o\
-  iso_mesh.o\
   iso_voxel.o\
   md2.o\
   menu.o\
@@ -122,7 +120,6 @@ GAME_OBJS=\
   network.o\
   ogl.o\
   physics.o\
-  qef.o\
   renderer.o\
   server.o\
   rt.o\
@@ -147,20 +144,6 @@ CLIENT_OBJS=\
   $(GAME_OBJS)\
   main.o
 
-RT_OBJS=\
-  $(LUA_OBJS)\
-  $(ENET_OBJS)\
-  $(BASE_OBJS)\
-  $(GAME_OBJS)\
-  mini.q.rt.o
-
-ISO_OBJS=\
-  $(LUA_OBJS)\
-  $(ENET_OBJS)\
-  $(BASE_OBJS)\
-  $(GAME_OBJS)\
-  mini.q.iso.o
-
 SERVER_OBJS=\
   $(LUA_OBJS)\
   $(ENET_OBJS)\
@@ -180,7 +163,7 @@ MAYAOBJ_OBJS=\
   obj.o
 
 SHADERS=$(shell ls data/shaders/*[glsl,decl])
-all: mini.q.server mini.q.rt mini.q.iso mini.q compress_chars importobj
+all: mini.q.server mini.q compress_chars importobj
 
 %.o: %.cpp
 	$(CXX) $(CXXSSEFLAGS) -c $< -o $@
@@ -208,12 +191,6 @@ font.hxx: compress_chars data/font8x16.png
 mini.q: $(CLIENT_OBJS)
 	$(CXX) $(CXXFLAGS) -o mini.q $(CLIENT_OBJS) $(LIBS)
 
-mini.q.rt: $(RT_OBJS)
-	$(CXX) $(CXXFLAGS) -o mini.q.rt $(RT_OBJS) $(LIBS)
-
-mini.q.iso: $(ISO_OBJS)
-	$(CXX) $(CXXFLAGS) -o mini.q.iso $(ISO_OBJS) $(LIBS)
-
 mini.q.server: $(SERVER_OBJS)
 	$(CXX) $(CXXFLAGS) -o mini.q.server $(SERVER_OBJS) $(LIBS)
 
@@ -224,7 +201,7 @@ compress_chars: compress_chars.o
 	$(CXX) $(CXXFLAGS) -o compress_chars compress_chars.o $(LIBS)
 
 clean:
-	rm -rf mini.q mini.q.server mini.q.rt importobj\
+	rm -rf mini.q mini.q.server importobj\
 		compress_chars test_script *.o *.d ./utests/*.o ./enet/*.o ./enet/*.d\
 		base/*.o base/*.d base/lua/*.o base/lua/*.d\
 		oprofile_data

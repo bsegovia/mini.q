@@ -80,8 +80,6 @@
     <ClCompile Include="..\src\demo.cpp" />
     <ClCompile Include="..\src\editing.cpp" />
     <ClCompile Include="..\src\game.cpp" />
-    <ClCompile Include="..\src\geom.cpp" />
-    <ClCompile Include="..\src\iso_mesh.cpp" />
     <ClCompile Include="..\src\iso_voxel.cpp" />
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\md2.cpp" />
@@ -91,7 +89,6 @@
     <ClCompile Include="..\src\network.cpp" />
     <ClCompile Include="..\src\ogl.cpp" />
     <ClCompile Include="..\src\physics.cpp" />
-    <ClCompile Include="..\src\qef.cpp" />
     <ClCompile Include="..\src\rt.cpp" />
     <ClCompile Include="..\src\rt.scalar.cpp" />
     <ClCompile Include="..\src\rt.sse.cpp" />
@@ -163,8 +160,6 @@
     <ClInclude Include="..\src\bvh.hpp" />
     <ClInclude Include="..\src\rt.hpp" />
     <ClInclude Include="..\src\game.hpp" />
-    <ClInclude Include="..\src\geom.hpp" />
-    <ClInclude Include="..\src\iso_mesh.hpp" />
     <ClInclude Include="..\src\iso_voxel.hpp" />
     <ClInclude Include="..\src\md2.hpp" />
     <ClInclude Include="..\src\menu.hpp" />
@@ -174,7 +169,6 @@
     <ClInclude Include="..\src\ogl.hpp" />
     <ClInclude Include="..\src\ogl.hxx" />
     <ClInclude Include="..\src\physics.hpp" />
-    <ClInclude Include="..\src\qef.hpp" />
     <ClInclude Include="..\src\renderer.hpp" />
     <ClInclude Include="..\src\server.hpp" />
     <ClInclude Include="..\src\serverbrowser.hpp" />

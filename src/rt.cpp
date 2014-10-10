@@ -11,28 +11,10 @@
 #include "base/console.hpp"
 #include "base/script.hpp"
 #include "base/task.hpp"
-#include "iso_voxel.hpp" // XXX remove this when we are done with tests
-#include "iso_mesh.hpp"  // XXX remove this when we are done with tests
+#include "iso_voxel.hpp"
 
 namespace q {
 namespace rt {
-ref<intersector> world;
-
-void setbvh(const ref<intersector> &bvh) { world = bvh; }
-// create a triangle soup and make a mesh out of it
-void buildbvh(vec3f *v, u32 *idx, u32 idxnum) {
-  const auto start = sys::millis();
-  const auto trinum = idxnum/3;
-  auto prim = NEWAE(primitive, trinum);
-  loopi(trinum) {
-    loopj(3) prim[i].v[j] = v[idx[3*i+j]];
-    prim[i].type = primitive::TRI;
-  }
-  world = NEW(intersector, prim, trinum);
-  const auto ms = sys::millis() - start;
-  SAFE_DELA(prim);
-  con::out("bvh: elapsed %f ms", float(ms));
-}
 
 // all packets functions we dynamically select at start-up time
 static void (*rtclosest)(const intersector&, const raypacket&, packethit&);
@@ -89,7 +71,6 @@ void start() {
 }
 void finish() {
   IF_STATS(rtstats());
-  world=NULL;
 }
 
 camera::camera(vec3f org, vec3f up, vec3f view, float fov, float ratio) :
@@ -108,31 +89,16 @@ camera::camera(vec3f org, vec3f up, vec3f view, float fov, float ratio) :
   xaxis *= ratio;
 }
 
-#define NORMAL_ONLY 0
-#define SHADOWS 1
-#define VOXELS 2
-#define RT_MODE VOXELS
-
-VAR(rtmode, 0, 2, 2);
-
 //static const vec3f lpos(0.f, -4.f, 2.f);
 static const vec3f lpos0(35.f, 10.f, 11.f);
 static const vec3f lpos1(10.f, 15.f, 10.f);
 static atomic totalraynum;
 struct task_raycast : public task {
-  task_raycast(intersector *bvhisec, const camera &cam, int *pixels, vec2i dim, vec2i tile) :
+  task_raycast(const camera &cam, int *pixels, vec2i dim, vec2i tile) :
     task("task_raycast", tile.x*tile.y, 1, 0, UNFAIR),
-    bvhisec(bvhisec), cam(cam), pixels(pixels), dim(dim), tile(tile)
+    cam(cam), pixels(pixels), dim(dim), tile(tile)
   {}
   INLINE u32 primarypoint(vec2i tileorg, array3f &pos, array3f &nor, arrayi &mask) {
-    raypacket p;
-    packethit hit;
-    rtvisibilitypacket(cam, p, tileorg, dim);
-    rtclearpackethit(hit);
-    rtclosest(*bvhisec, p, hit);
-    return rtprimarypoint(p, hit, pos, nor, mask);
-  }
-  INLINE u32 primarypoint2(vec2i tileorg, array3f &pos, array3f &nor, arrayi &mask) {
     const auto voxelbvh = iso::voxel::get_bvh();
     raypacket p;
     packethit hit;
@@ -144,18 +110,8 @@ struct task_raycast : public task {
   virtual void run(u32 tileID) {
     const vec2i tilexy(tileID%tile.x, tileID/tile.x);
     const vec2i tileorg = int(TILESIZE) * tilexy;
-
-    if (rtmode == NORMAL_ONLY) {
-      // primary intersections
-      raypacket p;
-      packethit hit;
-      rtvisibilitypacket(cam, p, tileorg, dim);
-      rtclearpackethit(hit);
-      rtclosest(*bvhisec, p, hit);
-      rtwritenormal(hit, tileorg, dim, pixels);
-      totalraynum += TILESIZE*TILESIZE;
-    } else if (rtmode == SHADOWS) {
-      // shadow rays toward the light source
+    const auto voxelbvh = iso::voxel::get_bvh();
+    if (voxelbvh) {
       array3f pos, nor;
       arrayi mask;
       raypacket shadow;
@@ -167,41 +123,12 @@ struct task_raycast : public task {
       } else {
         const auto newpos = lpos0;
         rtshadowpacket(pos, mask, newpos, shadow, occluded, TILESIZE*TILESIZE);
-        rtoccluded(*bvhisec, shadow, occluded);
-        rtwritendotl(shadow, nor, occluded, tileorg, dim, pixels);
-        totalraynum += shadow.raynum+TILESIZE*TILESIZE;
-      }
-    } else if (rtmode == VOXELS) {
-      const auto voxelbvh = iso::voxel::get_bvh();
-      if (voxelbvh) {
-#if 1
-        raypacket p;
-        packethit hit;
-        rtvisibilitypacket(cam, p, tileorg, dim);
-        rtclearpackethit(hit);
-        rtclosest(*voxelbvh, p, hit);
-        rtwritenormal(hit, tileorg, dim, pixels);
-#else
-      array3f pos, nor;
-      arrayi mask;
-      raypacket shadow;
-      packetshadow occluded;
-      const auto validnum = primarypoint2(tileorg, pos, nor, mask);
-      if (validnum == 0) {
-        rtclear(tileorg, dim, pixels);
-        totalraynum += TILESIZE*TILESIZE;
-      } else {
-        const auto newpos = lpos0;
-        rtshadowpacket(pos, mask, newpos, shadow, occluded, TILESIZE*TILESIZE);
         rtoccluded(*voxelbvh, shadow, occluded);
         rtwritendotl(shadow, nor, occluded, tileorg, dim, pixels);
         totalraynum += shadow.raynum+TILESIZE*TILESIZE;
       }
-#endif
-      }
     }
   }
-  intersector *bvhisec;
   const camera &cam;
   int *pixels;
   vec2i dim;
@@ -217,7 +144,7 @@ void raytrace(int *pixels, const vec3f &pos, const vec3f &ypr,
   const camera cam(pos, -r.vy, -r.vz, fovy, aspect);
   const vec2i dim(w,h), tile(dim/int(TILESIZE));
   totalraynum=0;
-  ref<task> raycast = NEW(task_raycast, world, cam, pixels, dim, tile);
+  ref<task> raycast = NEW(task_raycast, cam, pixels, dim, tile);
   raycast->scheduled();
   raycast->wait();
 }

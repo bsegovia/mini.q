@@ -93,8 +93,6 @@ enum { TILESIZE = 16 };
 
 void start();
 void finish();
-void setbvh(const ref<struct intersector> &bvh);
-void buildbvh(vec3f *v, u32 *idx, u32 idxnum);
 void raytrace(int *pixels, const vec3f &pos, const vec3f &ypr,
               int w, int h, float fovy, float aspect);
 void raytrace(const char *bmp, const vec3f &pos, const vec3f &ypr,
