@@ -48,6 +48,10 @@ INLINE void mainloop() {
   SDL_Event event;
   int lasttype = 0, lastbut = 0;
   while (SDL_PollEvent(&event)) {
+    if (ignore) {
+      ignore--;
+      break;
+    }
     switch (event.type) {
       case SDL_QUIT: sys::quit(); break;
       case SDL_TEXTINPUT:
@@ -58,10 +62,6 @@ INLINE void mainloop() {
         con::keypress(event.key.keysym.sym, event.key.state==SDL_PRESSED);
       break;
       case SDL_MOUSEMOTION:
-        if (ignore) {
-          ignore--;
-          break;
-        }
         game::mousemove(event.motion.xrel, event.motion.yrel);
       break;
       case SDL_MOUSEBUTTONDOWN:

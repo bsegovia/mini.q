@@ -194,9 +194,9 @@ void start(int argc, char *argv[]) {
   if(SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO|SDL_INIT_AUDIO|par)<0)
     sys::fatal("init: failed to initialize SDL");
 
- SDL_SetHint(SDL_HINT_GRAB_KEYBOARD, "0");
+  SDL_SetHint(SDL_HINT_GRAB_KEYBOARD, "0");
 #if !defined(WIN32) && !defined(__APPLE__)
- SDL_SetHint(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0");
+  SDL_SetHint(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0");
 #endif
 
   outputcpufeatures();
