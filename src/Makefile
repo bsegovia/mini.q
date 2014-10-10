@@ -179,15 +179,8 @@ MAYAOBJ_OBJS=\
   base/intrusive_list.o\
   obj.o
 
-TEST_SCRIPTS_OBJS=\
-  $(BASE_OBJS)\
-  $(LUA_OBJS)\
-  $(GAME_OBJS)\
-  $(ENET_OBJS)\
-  utests/test_script.o
-
 SHADERS=$(shell ls data/shaders/*[glsl,decl])
-all: mini.q.server mini.q.rt mini.q.iso mini.q compress_chars importobj test_script
+all: mini.q.server mini.q.rt mini.q.iso mini.q compress_chars importobj
 
 %.o: %.cpp
 	$(CXX) $(CXXSSEFLAGS) -c $< -o $@
@@ -203,7 +196,6 @@ all: mini.q.server mini.q.rt mini.q.iso mini.q compress_chars importobj test_scr
 -include $(LUA_OBJS:.o=.d)
 -include $(GAME_OBJS:.o=.d)
 -include $(BASE_OBJS:.o=.d)
--include $(TEST_SCRIPTS_OBJS:.o=.d)
 
 ## build embedded shader source
 shaders.hxx shaders.cxx: $(SHADERS)
@@ -230,9 +222,6 @@ importobj: $(MAYAOBJ_OBJS)
 
 compress_chars: compress_chars.o
 	$(CXX) $(CXXFLAGS) -o compress_chars compress_chars.o $(LIBS)
-
-test_script: $(TEST_SCRIPTS_OBJS)
-	$(CXX) $(CXXFLAGS) -o test_script $(TEST_SCRIPTS_OBJS) $(LIBS)
 
 clean:
 	rm -rf mini.q mini.q.server mini.q.rt importobj\
