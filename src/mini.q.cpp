@@ -307,7 +307,7 @@ void finish() {
   game::zapdynent(game::player1);
   game::cleanmonsters();
   rt::finish();
-  iso::finish();
+  //iso::finish();
   rr::finish();
   md2::finish();
   shaders::finish();

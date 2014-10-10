@@ -19,7 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\src\csgscalar.cpp" />
+    <ClCompile Include="..\src\csg.scalar.cpp" />
     <ClCompile Include="..\src\enet\callbacks.cpp" />
     <ClCompile Include="..\src\enet\elist.cpp" />
     <ClCompile Include="..\src\enet\host.cpp" />
@@ -144,7 +144,7 @@
     <ClInclude Include="..\src\base\script.hpp" />
     <ClInclude Include="..\src\base\sys.hpp" />
     <ClInclude Include="..\src\base\task.hpp" />
-    <ClInclude Include="..\src\csgscalar.hpp" />
+    <ClInclude Include="..\src\csg.scalar.hpp" />
     <ClInclude Include="..\src\enet\callbacks.h" />
     <ClInclude Include="..\src\enet\elist.h" />
     <ClInclude Include="..\src\enet\enet.h" />
