@@ -1,4 +1,0 @@
-SHADER(simple_material)
-FRAGDATA(vec4, rt_nor, 1)
-FRAGDATA(vec4, rt_col, 0)
-

@@ -1,4 +1,0 @@
-SHADER(debugunsplit)
-UNIFORM(mat4, u_mvp)
-VATTRIB(vec2, vs_pos, ogl::ATTRIB_POS0);
-

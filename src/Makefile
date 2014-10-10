@@ -130,7 +130,6 @@ GAME_OBJS=\
   serverms.o\
   serverutil.o\
   shaders.o\
-  sky.o\
   sound.o\
   text.o\
   ui.o\

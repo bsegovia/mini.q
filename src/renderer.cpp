@@ -13,7 +13,6 @@
 #include "rt.hpp"
 #include "renderer.hpp"
 #include "shaders.hpp"
-#include "sky.hpp"
 #include "text.hpp"
 #include "weapon.hpp"
 #include "base/console.hpp"
