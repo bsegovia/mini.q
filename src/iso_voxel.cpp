@@ -18,7 +18,6 @@ STATS(iso_edge_num);
 STATS(iso_gradient_num);
 STATS(iso_grid_num);
 STATS(iso_octree_num);
-STATS(iso_edgepos);
 
 #if !defined(RELEASE)
 static void stats() {

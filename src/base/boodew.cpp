@@ -78,7 +78,7 @@ static pair<value,int> expr(const string &s, char c, int curr) {
   stringstream ss;
   int opened = 1, next = curr;
   while (opened) {
-    if ((next = s.find_first_of(match,next+1)) == size_t(string::npos))
+    if ((next = s.find_first_of(match,next+1)) == int(string::npos))
       return makepair(verr(format("missing %c", c=='['?']':')')),0);
     if (c == '[' && s[next] == '@') {
       ss << s.substr(curr+1, int(next-curr-1));

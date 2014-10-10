@@ -202,7 +202,7 @@ void task::starts(task &other) {
   // compare-and-swap loop to safely both number of tasks to start and the task
   // itself. Be careful with race condition, we first need to put the task and
   // then to update the counter
-  auto old = 0;
+  auto old = 0u;
   do {
     old = tasktostartnum;
     assert(old < task::MAXSTART);
@@ -222,19 +222,19 @@ void task::ends(task &other) {
   other.toend++;
 
   // compare-and-swap loop as above
-  auto old = 0;
+  auto old = 0u;
   do {
     old = tasktoendnum;
     assert(old < task::MAXEND);
     tasktoend[old] = &other;
-  } while (old != cmpxchg(tasktoendnum, old+1, old));
+  } while (old != u32(cmpxchg(tasktoendnum, old+1, old)));
 
   // same strategy for the dependency array
   do {
     old = other.depnum;
     assert(old < task::MAXDEP);
     other.deps[old] = this;
-  } while (old != cmpxchg(other.depnum, old+1, old));
+  } while (old != u32(cmpxchg(other.depnum, old+1, old)));
 }
 
 void task::wait(bool recursivewait) {
