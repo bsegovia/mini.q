@@ -82,7 +82,6 @@
     <ClCompile Include="..\src\game.cpp" />
     <ClCompile Include="..\src\geom.cpp" />
     <ClCompile Include="..\src\iso_mesh.cpp" />
-    <ClCompile Include="..\src\iso_voxel.cpp" />
     <ClCompile Include="..\src\main.cpp" />
     <ClCompile Include="..\src\md2.cpp" />
     <ClCompile Include="..\src\menu.cpp" />
@@ -165,7 +164,6 @@
     <ClInclude Include="..\src\game.hpp" />
     <ClInclude Include="..\src\geom.hpp" />
     <ClInclude Include="..\src\iso_mesh.hpp" />
-    <ClInclude Include="..\src\iso_voxel.hpp" />
     <ClInclude Include="..\src\md2.hpp" />
     <ClInclude Include="..\src\menu.hpp" />
     <ClInclude Include="..\src\mini.q.hpp" />
