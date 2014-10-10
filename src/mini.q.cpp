@@ -5,7 +5,6 @@
 #include "mini.q.hpp"
 #include "client.hpp"
 #include "csg.hpp"
-#include "iso_voxel.hpp"
 #include "iso_mesh.hpp"
 #include "game.hpp"
 #include "menu.hpp"
@@ -263,8 +262,6 @@ void start(int argc, char *argv[]) {
   rr::start();
   con::out("init: iso::mesh module");
   iso::mesh::start();
-  con::out("init: iso::voxel module");
-  iso::voxel::start();
 
   con::out("script");
   menu::newm("frags\tpj\tping\tteam\tname");

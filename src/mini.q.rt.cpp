@@ -6,7 +6,6 @@
 #include "bvh.hpp"
 #include "csg.hpp"
 #include "iso_mesh.hpp"
-#include "iso_voxel.hpp"
 #include "game.hpp"
 #include "rt.hpp"
 #include "base/console.hpp"
@@ -54,8 +53,6 @@ static void run(int argc, const char *argv[]) {
   task::start(&threadnum, 1);
   con::out("init: iso::mesh module");
   iso::mesh::start();
-  con::out("init: iso::voxel module");
-  iso::voxel::start();
 
   // load everything
   script::execscript(argv[1]);

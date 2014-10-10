@@ -11,8 +11,7 @@
 #include "base/console.hpp"
 #include "base/script.hpp"
 #include "base/task.hpp"
-#include "iso_voxel.hpp" // XXX remove this when we are done with tests
-#include "iso_mesh.hpp"  // XXX remove this when we are done with tests
+#include "iso_mesh.hpp"
 
 namespace q {
 namespace rt {
@@ -110,8 +109,7 @@ camera::camera(vec3f org, vec3f up, vec3f view, float fov, float ratio) :
 
 #define NORMAL_ONLY 0
 #define SHADOWS 1
-#define VOXELS 2
-#define RT_MODE VOXELS
+#define RT_MODE SHADOWS
 
 VAR(rtmode, 0, 2, 2);
 
@@ -132,15 +130,6 @@ struct task_raycast : public task {
     rtclosest(*bvhisec, p, hit);
     return rtprimarypoint(p, hit, pos, nor, mask);
   }
-  INLINE u32 primarypoint2(vec2i tileorg, array3f &pos, array3f &nor, arrayi &mask) {
-    const auto voxelbvh = iso::voxel::get_bvh();
-    raypacket p;
-    packethit hit;
-    rtvisibilitypacket(cam, p, tileorg, dim);
-    rtclearpackethit(hit);
-    rtclosest(*voxelbvh, p, hit);
-    return rtprimarypoint(p, hit, pos, nor, mask);
-  }
   virtual void run(u32 tileID) {
     const vec2i tilexy(tileID%tile.x, tileID/tile.x);
     const vec2i tileorg = int(TILESIZE) * tilexy;
@@ -154,7 +143,7 @@ struct task_raycast : public task {
       rtclosest(*bvhisec, p, hit);
       rtwritenormal(hit, tileorg, dim, pixels);
       totalraynum += TILESIZE*TILESIZE;
-    } else if (rtmode == SHADOWS) {
+    } else {
       // shadow rays toward the light source
       array3f pos, nor;
       arrayi mask;
@@ -170,34 +159,6 @@ struct task_raycast : public task {
         rtoccluded(*bvhisec, shadow, occluded);
         rtwritendotl(shadow, nor, occluded, tileorg, dim, pixels);
         totalraynum += shadow.raynum+TILESIZE*TILESIZE;
-      }
-    } else if (rtmode == VOXELS) {
-      const auto voxelbvh = iso::voxel::get_bvh();
-      if (voxelbvh) {
-#if 1
-        raypacket p;
-        packethit hit;
-        rtvisibilitypacket(cam, p, tileorg, dim);
-        rtclearpackethit(hit);
-        rtclosest(*voxelbvh, p, hit);
-        rtwritenormal(hit, tileorg, dim, pixels);
-#else
-      array3f pos, nor;
-      arrayi mask;
-      raypacket shadow;
-      packetshadow occluded;
-      const auto validnum = primarypoint2(tileorg, pos, nor, mask);
-      if (validnum == 0) {
-        rtclear(tileorg, dim, pixels);
-        totalraynum += TILESIZE*TILESIZE;
-      } else {
-        const auto newpos = lpos0;
-        rtshadowpacket(pos, mask, newpos, shadow, occluded, TILESIZE*TILESIZE);
-        rtoccluded(*voxelbvh, shadow, occluded);
-        rtwritendotl(shadow, nor, occluded, tileorg, dim, pixels);
-        totalraynum += shadow.raynum+TILESIZE*TILESIZE;
-      }
-#endif
       }
     }
   }

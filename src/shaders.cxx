@@ -215,6 +215,12 @@ const char forward_vp[] = {
 "void main() {entry(fs_nor, vs_nor);}\n"
 
 };
+const char fxaa_fp[] = {
+"void main() {\n"
+"  rt_col = FxaaPixelShader(gl_FragCoord.xy*u_rcptexsize, u_tex, u_rcptexsize, 0.75, 0.125, 0.0);\n"
+"}\n"
+
+};
 const char fxaa[] = {
 "#define FXAA_GLSL_130 1\n"
 "#define FXAA_QUALITY_PRESET 39\n"
@@ -1100,12 +1106,6 @@ const char fxaa[] = {
 "    #else\n"
 "        return FxaaFloat4(FxaaTexTop(tex, posM).xyz, lumaM);\n"
 "    #endif\n"
-"}\n"
-
-};
-const char fxaa_fp[] = {
-"void main() {\n"
-"  rt_col = FxaaPixelShader(gl_FragCoord.xy*u_rcptexsize, u_tex, u_rcptexsize, 0.75, 0.125, 0.0);\n"
 "}\n"
 
 };

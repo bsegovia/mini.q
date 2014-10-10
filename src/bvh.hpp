@@ -32,7 +32,6 @@ struct intersector : public refcount {
   virtual ~intersector();
   INLINE aabb getaabb() const {return root[0].box;}
   static const u32 NONLEAF = 0x0;
-  static const u32 BOXLEAF = 0x1;
   static const u32 TRILEAF = 0x2;
   static const u32 ISECLEAF = 0x3;
   static const u32 MASK = 0x3;
