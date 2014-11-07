@@ -102,7 +102,6 @@
     <ClCompile Include="..\src\serverms.cpp" />
     <ClCompile Include="..\src\serverutil.cpp" />
     <ClCompile Include="..\src\shaders.cpp" />
-    <ClCompile Include="..\src\sky.cpp" />
     <ClCompile Include="..\src\sound.cpp" />
     <ClCompile Include="..\src\text.cpp" />
     <ClCompile Include="..\src\ui.cpp" />
@@ -176,7 +175,6 @@
     <ClInclude Include="..\src\shaders.hpp" />
     <ClInclude Include="..\src\shaders.hxx" />
     <ClInclude Include="..\src\shaderundef.hxx" />
-    <ClInclude Include="..\src\sky.hpp" />
     <ClInclude Include="..\src\sound.hpp" />
     <ClInclude Include="..\src\text.hpp" />
     <ClInclude Include="..\src\ui.hpp" />
