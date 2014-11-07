@@ -4,8 +4,10 @@ mini.q.dual.contouring
 Small FPS code base with dual contouring
 ----------------------------------------
 
-This version implements dual contourin and Garland mesh simplification.
-A lua script describes the CFG function and the mesh is built from it
+This version implements dual contouring and Garland mesh simplification based on
+quadric errors.
+
+A lua script describes the CSG function and the mesh is built from it
 
 How to build
 ------------
